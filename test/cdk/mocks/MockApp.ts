@@ -93,6 +93,7 @@ export default class MockApp {
         const apiBaseStack = new LisaApiBaseStack(app, 'LisaApiBase', {
             ...baseStackProps,
             stackName: 'LisaApiBase',
+            bucketAccessLogsBucket: coreStack.loggingBucket,
             vpc: networkingStack.vpc,
             securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
         });
@@ -105,6 +106,7 @@ export default class MockApp {
             ...baseStackProps,
             stackName: 'LisaMcpApi',
             authorizer: apiBaseStack.authorizer!,
+            bucketAccessLogsBucket: coreStack.loggingBucket,
             restApiId: apiBaseStack.restApiId,
             rootResourceId: apiBaseStack.rootResourceId,
             securityGroups: [networkingStack.vpc.securityGroups.ecsModelAlbSg],
@@ -120,6 +122,7 @@ export default class MockApp {
             ...baseStackProps,
             stackName: 'LisaModels',
             authorizer: apiBaseStack.authorizer,
+            bucketAccessLogsBucket: coreStack.loggingBucket,
             restApiId: apiBaseStack.restApiId,
             rootResourceId: apiBaseStack.rootResourceId,
             securityGroups: [networkingStack.vpc.securityGroups.ecsModelAlbSg],
@@ -128,16 +131,18 @@ export default class MockApp {
         const mcpWorkbenchStack = new McpWorkbenchStack(app, 'LisaMcpWorkbench', {
             ...baseStackProps,
             stackName: 'LisaMcpWorkbench',
+            bucketAccessLogsBucket: coreStack.loggingBucket,
             vpc: networkingStack.vpc,
             restApiId: apiBaseStack.restApiId,
             rootResourceId: apiBaseStack.rootResourceId,
-            apiCluster: serveStack.restApi.apiCluster,
             authorizer: apiBaseStack.authorizer
         });
+        serveStack.addDependency(mcpWorkbenchStack);
         const ragStack = new LisaRagStack(app, 'LisaRAG', {
             ...baseStackProps,
             stackName: 'LisaRAG',
             authorizer: apiBaseStack.authorizer!,
+            bucketAccessLogsBucket: coreStack.loggingBucket,
             restApiId: apiBaseStack.restApiId,
             rootResourceId: apiBaseStack.rootResourceId,
             securityGroups: [networkingStack.vpc.securityGroups.lambdaSg],
@@ -165,12 +170,14 @@ export default class MockApp {
         const uiStack = new UserInterfaceStack(app, 'LisaUI', {
             ...baseStackProps,
             architecture: ARCHITECTURE,
+            bucketAccessLogsBucket: coreStack.loggingBucket,
             stackName: 'LisaUI',
             restApiId: apiBaseStack.restApiId,
             rootResourceId: apiBaseStack.rootResourceId,
         });
         const docStack = new LisaDocsStack(app, 'LisaDocs', {
             ...baseStackProps,
+            bucketAccessLogsBucket: coreStack.loggingBucket,
             stackName: 'LisaDocs'
         });
 

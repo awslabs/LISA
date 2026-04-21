@@ -1,0 +1,98 @@
+diff --git a/node_modules/use-mcp/dist/react/index.d.ts b/node_modules/use-mcp/dist/react/index.d.ts
+index 4647992..cd92dd7 100644
+--- a/node_modules/use-mcp/dist/react/index.d.ts
++++ b/node_modules/use-mcp/dist/react/index.d.ts
+@@ -79,6 +79,12 @@ type UseMcpResult = {
+      * @throws If the client is not in the 'ready' state or the call fails.
+      */
+     callTool: (name: string, args?: Record<string, unknown>) => Promise<any>;
++    /**
++     * Function to refresh the tool list from the MCP server (e.g. after tools are added or removed server-side).
++     * @returns A promise that resolves when tools are refreshed.
++     * @throws If the client is not in the 'ready' state.
++     */
++    listTools: () => Promise<void>;
+     /**
+      * Function to list resources from the MCP server.
+      * @returns A promise that resolves when resources are refreshed.
+diff --git a/node_modules/use-mcp/dist/react/index.js b/node_modules/use-mcp/dist/react/index.js
+index 3412d02..ff6dcd9 100644
+--- a/node_modules/use-mcp/dist/react/index.js
++++ b/node_modules/use-mcp/dist/react/index.js
+@@ -70,13 +70,32 @@ function useMcp(options) {
+   const addLog = useCallback(
+     (level, message, ...args) => {
+       const fullMessage = args.length > 0 ? `${message} ${args.map((arg) => JSON.stringify(arg)).join(" ")}` : message;
++      if (!debug) {
++        if (level === "info" || level === "debug") {
++          return;
++        }
++        if (level === "warn" || level === "error") {
++          const benign =
++            fullMessage.includes("AbortError") ||
++            fullMessage.includes("The operation was aborted") ||
++            fullMessage.includes("SSE stream disconnected") ||
++            fullMessage.includes("Error in input stream") ||
++            /^Transport error event \((HTTP|SSE)\): \{\}\s*$/.test(fullMessage.trim()) ||
++            (fullMessage.includes("Transport error event") &&
++              (fullMessage.includes(": {}") || fullMessage.endsWith(": {}"))) ||
++            /^Transport error \((HTTP|SSE)\): (undefined)?\s*$/.test(fullMessage.trim()) ||
++            /Failed to connect via (HTTP|SSE): Not connected/.test(fullMessage);
++          if (benign) {
++            return;
++          }
++        }
++      }
+       console[level](`[useMcp] ${fullMessage}`);
+       if (isMountedRef.current) {
+         setLog((prevLog) => [...prevLog.slice(-100), { level, message: fullMessage, timestamp: Date.now() }]);
+       }
+     },
+-    []
+-    // Empty dependency array makes this stable
++    [debug]
+   );
+   const disconnect = useCallback(
+     async (quiet = false) => {
+@@ -341,7 +360,9 @@ function useMcp(options) {
+       }
+     };
+     let finalStatus = "failed";
+-    console.log({ transportType });
++    if (debug) {
++      console.log({ transportType });
++    }
+     if (transportType === "sse") {
+       addLog("debug", "Using SSE-only transport mode");
+       finalStatus = await tryConnectWithTransport("sse");
+@@ -495,6 +516,22 @@ function useMcp(options) {
+       addLog("warn", "Auth provider not initialized, cannot clear storage.");
+     }
+   }, [url, addLog, disconnect]);
++  const listTools = useCallback(async () => {
++    if (stateRef.current !== "ready" || !clientRef.current) {
++      throw new Error(`MCP client is not ready (current state: ${state}). Cannot list tools.`);
++    }
++    addLog("info", "Listing tools...");
++    try {
++      const toolsResponse = await clientRef.current.request({ method: "tools/list" }, ListToolsResultSchema);
++      if (isMountedRef.current) {
++        setTools(toolsResponse.tools);
++        addLog("info", `Listed ${toolsResponse.tools.length} tools.`);
++      }
++    } catch (err) {
++      addLog("error", `Error listing tools: ${err instanceof Error ? err.message : String(err)}`, err);
++      throw err;
++    }
++  }, [state, addLog]);
+   const listResources = useCallback(async () => {
+     if (stateRef.current !== "ready" || !clientRef.current) {
+       throw new Error(`MCP client is not ready (current state: ${state}). Cannot list resources.`);
+@@ -646,6 +683,7 @@ function useMcp(options) {
+     log,
+     authUrl,
+     callTool,
++    listTools,
+     listResources,
+     readResource,
+     listPrompts,

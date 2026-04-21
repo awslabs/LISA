@@ -15,6 +15,8 @@
 """Helper functions to parse documents for ingestion into RAG vector store."""
 import logging
 import os
+import re
+import unicodedata
 from io import BytesIO
 from urllib.parse import urlparse
 
@@ -26,7 +28,7 @@ from models.domain_objects import IngestionJob
 from pypdf import PdfReader
 from pypdf.errors import PdfReadError
 from utilities.chunking_strategy_factory import ChunkingStrategyFactory
-from utilities.constants import DOCX_FILE, PDF_FILE, RICH_TEXT_FILE, TEXT_FILE
+from utilities.constants import DOCX_FILE, PDF_FILE, RAG_FILES
 from utilities.exceptions import RagUploadException
 
 logger = logging.getLogger(__name__)
@@ -60,16 +62,12 @@ def _get_s3_uri(bucket: str, key: str) -> str:
 
 
 def _extract_text_by_content_type(content_type: str, s3_object: dict) -> str:
-    extraction_functions = {
-        PDF_FILE: _extract_pdf_content,
-        DOCX_FILE: _extract_docx_content,
-        TEXT_FILE: _extract_text_content,
-        RICH_TEXT_FILE: _extract_text_content,
-    }
-
-    extraction_function = extraction_functions.get(content_type)
-    if extraction_function:
-        return extraction_function(s3_object)
+    if content_type == PDF_FILE:
+        return _extract_pdf_content(s3_object)
+    elif content_type == DOCX_FILE:
+        return _extract_docx_content(s3_object)
+    elif content_type in RAG_FILES:
+        return _extract_text_content(s3_object)
     else:
         logger.error(f"File has unsupported content type: {content_type}")
         raise RagUploadException("Unsupported file type")
@@ -96,8 +94,10 @@ def _extract_pdf_content(s3_object: dict) -> str:
     except PdfReadError as e:
         logger.error(f"Error reading PDF file: {e}")
         raise
-
-    return "".join(page.extract_text() or "" for page in pdf_reader.pages)
+    raw = " ".join(page.extract_text() or "" for page in pdf_reader.pages)
+    raw = unicodedata.normalize("NFKC", raw)
+    raw = re.sub(r"[\xad\u200b\u200c\u200d\ufeff]", "", raw)
+    return re.sub(r"\s+", " ", raw).strip()
 
 
 def _extract_docx_content(s3_object: dict) -> str:

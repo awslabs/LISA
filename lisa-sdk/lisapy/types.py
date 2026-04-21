@@ -16,9 +16,48 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, TypedDict
+from typing import Any, Literal, TypedDict, Union
 
 from pydantic import BaseModel, ConfigDict, Field
+
+
+class ModelInfoEntry(BaseModel):
+    """A model entry from the LiteLLM model info endpoint."""
+
+    model_name: str = Field(..., description="Model name registered in LiteLLM.")
+    litellm_params: dict[str, Any] = Field(default_factory=dict, description="LiteLLM parameters.")
+    model_info: dict[str, Any] = Field(default_factory=dict, description="Model metadata.")
+
+    model_config = ConfigDict(extra="allow")
+
+
+class CompletionChoice(BaseModel):
+    """A single choice from a legacy text completion response."""
+
+    text: str = Field(..., description="Generated text.")
+    index: int = Field(0, description="Choice index.")
+    finish_reason: str | None = Field(None, description="Finish reason.")
+
+    model_config = ConfigDict(extra="allow")
+
+
+class CompletionResponse(BaseModel):
+    """Response from the legacy text completions endpoint."""
+
+    id: str = Field(..., description="Completion ID.")
+    choices: list[CompletionChoice] = Field(default_factory=list, description="Completion choices.")
+    usage: dict[str, Any] = Field(default_factory=dict, description="Token usage.")
+
+    model_config = ConfigDict(extra="allow")
+
+
+class ImageResponse(BaseModel):
+    """Response from the image generation endpoint."""
+
+    created: int = Field(..., description="Unix timestamp of creation.")
+    data: list[dict[str, Any]] = Field(default_factory=list, description="Generated image data.")
+
+    model_config = ConfigDict(extra="allow")
 
 
 class ModelType(str, Enum):
@@ -116,12 +155,53 @@ class BedrockModelRequest(TypedDict, total=False):
     apiKey: str
 
 
+class DaySchedule(TypedDict, total=False):
+    """Start/stop times for a single day (HH:MM format)."""
+
+    startTime: str
+    stopTime: str
+
+
+class WeeklySchedule(TypedDict, total=False):
+    """Per-day schedule for a full week."""
+
+    monday: DaySchedule
+    tuesday: DaySchedule
+    wednesday: DaySchedule
+    thursday: DaySchedule
+    friday: DaySchedule
+    saturday: DaySchedule
+    sunday: DaySchedule
+
+
+class DailySchedulingConfig(TypedDict, total=False):
+    """Daily (per-weekday) auto-scaling schedule."""
+
+    scheduleType: Literal["DAILY"]
+    timezone: str
+    dailySchedule: WeeklySchedule
+    scheduleEnabled: bool
+
+
+class RecurringSchedulingConfig(TypedDict, total=False):
+    """Recurring (same window every day) auto-scaling schedule."""
+
+    scheduleType: Literal["RECURRING"]
+    timezone: str
+    recurringSchedule: DaySchedule
+    scheduleEnabled: bool
+
+
+SchedulingConfig = Union[DailySchedulingConfig, RecurringSchedulingConfig]
+
+
 class RagRepositoryConfig(TypedDict, total=False):
     """Type definition for RAG repository configuration."""
 
     repositoryId: str
     repositoryName: str
     embeddingModelId: str
+    description: str | None
     type: str
     opensearchConfig: dict[str, Any]
     rdsConfig: dict[str, Any]

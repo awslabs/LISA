@@ -190,10 +190,16 @@ export function deletePromptTemplateIfExists (templateTitle: string) {
  * Send a message that's already in the input field by clicking the send button
  */
 export function sendMessageWithButton () {
+    // Set up intercept for chat completions API
+    cy.intercept('POST', '**/chat/completions').as('chatCompletion');
+
     cy.get('button[aria-label="Send message"]')
         .should('be.visible')
         .and('not.be.disabled')
         .click();
+
+    // Wait for the chat completion to finish
+    cy.wait('@chatCompletion', { timeout: 60000 });
 }
 
 /**
@@ -236,7 +242,13 @@ export function selectPromptTemplateInChat (templateTitle: string, templateType:
         .and('not.be.disabled')
         .click();
 
-    // Wait for modal to close and UI to stabilize
+    // Wait for modal to close
     cy.get(modalSelector).should('not.be.visible');
-    cy.wait(500);
+
+    // Verify template was applied based on type
+    if (!isPersona) {
+        // Directive content goes to the textarea
+        cy.get('[data-testid="chat-prompt-textarea"] textarea, textarea[placeholder*="message" i]')
+            .should('not.have.value', '');
+    }
 }

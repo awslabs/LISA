@@ -115,7 +115,7 @@ def generate_html_response(status_code: int, response_body: Any) -> dict[str, st
             "Content-Type": "application/json",
             "Cache-Control": "no-store, no-cache",
             "Pragma": "no-cache",
-            "Strict-Transport-Security": "max-age:47304000; includeSubDomains",
+            "Strict-Transport-Security": "max-age=47304000; includeSubDomains",
             "X-Content-Type-Options": "nosniff",
             "X-Frame-Options": "DENY",
         },

@@ -28,6 +28,7 @@ import pytest
 from botocore.config import Config
 from moto import mock_aws
 from utilities.exceptions import HTTPException
+from utilities.validation import ValidationError as UtilitiesValidationError
 
 # Add the lambda directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../"))
@@ -41,6 +42,7 @@ os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 os.environ["AWS_REGION"] = "us-east-1"
 os.environ["MCP_SERVERS_TABLE_NAME"] = "mcp-servers-table"
 os.environ["MCP_SERVERS_BY_OWNER_INDEX_NAME"] = "mcp-servers-by-owner-index"
+os.environ["BEDROCK_AGENT_APPROVALS_TABLE_NAME"] = "bedrock-agent-approvals-table"
 
 # Create a real retry config
 retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")
@@ -80,6 +82,12 @@ def mock_api_wrapper(func):
                 "statusCode": status_code,
                 "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
                 "body": json.dumps({"error": error_msg}, default=str),
+            }
+        except UtilitiesValidationError as e:
+            return {
+                "statusCode": 400,
+                "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
+                "body": json.dumps({"error": str(e)}, default=str),
             }
         except Exception as e:
             logging.error(f"Error in {func.__name__}: {str(e)}")
@@ -130,11 +138,17 @@ from mcp_server.lambda_functions import (
     create,
     create_hosted_mcp_server,
     delete,
+    delete_bedrock_agent_approval,
     get,
     get_hosted_mcp_server,
     get_mcp_server_id,
+    invoke_bedrock_agent,
+    list_bedrock_agent_approvals,
+    list_bedrock_agents,
+    list_bedrock_agents_discovery,
     list_hosted_mcp_servers,
     list_mcp_servers,
+    put_bedrock_agent_approval,
     update,
     update_hosted_mcp_server,
 )
@@ -154,8 +168,8 @@ def setup_mcp_patches(request, mock_auth):
     This fixture runs after conftest's setup_auth_patches and ensures
     api_wrapper is properly mocked and adds additional patches needed.
     """
-    # Skip patching for test_auth.py since it tests the auth module itself
-    if "test_auth" in request.node.nodeid:
+    # Skip patching for test_lambda_auth.py since it tests the auth module itself
+    if "test_lambda_auth" in request.node.nodeid:
         yield
         return
 
@@ -522,7 +536,7 @@ def test_delete_hosted_mcp_server_missing_sfn_arn(mcp_servers_table, lambda_cont
         set_auth_user(mock_auth, "admin-user", [], True)
 
         response = mcp_module.delete_hosted_mcp_server(event, lambda_context)
-        assert response["statusCode"] == 400
+        assert response["statusCode"] == 500
         body = json.loads(response["body"])
         assert "DELETE_MCP_SERVER_SFN_ARN not configured" in get_error_message(body)
 
@@ -1135,7 +1149,7 @@ def test_create_hosted_mcp_server_missing_sfn_arn(mcp_servers_table, lambda_cont
             set_auth_user(mock_auth, "admin-user", [], True)
 
             response = mcp_module.create_hosted_mcp_server(event, lambda_context)
-            assert response["statusCode"] == 400
+            assert response["statusCode"] == 500
             body = json.loads(response["body"])
             assert "CREATE_MCP_SERVER_SFN_ARN not configured" in get_error_message(body)
 
@@ -1183,7 +1197,7 @@ def test_create_hosted_mcp_server_duplicate_normalized_name(mcp_servers_table, l
         set_auth_user(mock_auth, "admin-user", [], True)
 
         response = mcp_module.create_hosted_mcp_server(event, lambda_context)
-        assert response["statusCode"] == 400
+        assert response["statusCode"] == 409
         body = json.loads(response["body"])
         assert "conflicts with existing server" in get_error_message(body).lower()
         assert "normalized names must be unique" in get_error_message(body).lower()
@@ -1246,7 +1260,7 @@ def test_delete_hosted_mcp_server_invalid_status_creating(mcp_servers_table, lam
     set_auth_user(mock_auth, "admin-user", [], True)
 
     response = mcp_module.delete_hosted_mcp_server(event, lambda_context)
-    assert response["statusCode"] == 400
+    assert response["statusCode"] == 409
     body = json.loads(response["body"])
     assert "cannot delete server" in get_error_message(body).lower()
     assert "creating" in get_error_message(body).lower()
@@ -1274,7 +1288,7 @@ def test_delete_hosted_mcp_server_invalid_status_starting(mcp_servers_table, lam
     set_auth_user(mock_auth, "admin-user", [], True)
 
     response = mcp_module.delete_hosted_mcp_server(event, lambda_context)
-    assert response["statusCode"] == 400
+    assert response["statusCode"] == 409
     body = json.loads(response["body"])
     assert "cannot delete server" in get_error_message(body).lower()
 
@@ -1301,7 +1315,7 @@ def test_delete_hosted_mcp_server_invalid_status_stopping(mcp_servers_table, lam
     set_auth_user(mock_auth, "admin-user", [], True)
 
     response = mcp_module.delete_hosted_mcp_server(event, lambda_context)
-    assert response["statusCode"] == 400
+    assert response["statusCode"] == 409
     body = json.loads(response["body"])
     assert "cannot delete server" in get_error_message(body).lower()
 
@@ -1328,7 +1342,7 @@ def test_delete_hosted_mcp_server_invalid_status_updating(mcp_servers_table, lam
     set_auth_user(mock_auth, "admin-user", [], True)
 
     response = mcp_module.delete_hosted_mcp_server(event, lambda_context)
-    assert response["statusCode"] == 400
+    assert response["statusCode"] == 409
     body = json.loads(response["body"])
     assert "cannot delete server" in get_error_message(body).lower()
 
@@ -1355,7 +1369,7 @@ def test_delete_hosted_mcp_server_invalid_status_deleting(mcp_servers_table, lam
     set_auth_user(mock_auth, "admin-user", [], True)
 
     response = mcp_module.delete_hosted_mcp_server(event, lambda_context)
-    assert response["statusCode"] == 400
+    assert response["statusCode"] == 409
     body = json.loads(response["body"])
     assert "cannot delete server" in get_error_message(body).lower()
 
@@ -1706,3 +1720,382 @@ def test_update_hosted_mcp_server_not_found(mcp_servers_table, lambda_context, m
     assert response["statusCode"] == 404
     body = json.loads(response["body"])
     assert "not found" in get_error_message(body).lower()
+
+
+def test_list_bedrock_agents_success():
+    """Test listing approved Bedrock Agents merged with discovery (MCP Lambda)."""
+    from models.domain_objects import BedrockAgentDiscoveryItem
+
+    event = {
+        "requestContext": {
+            "authorizer": {
+                "username": "testuser",
+                "groups": ["admin"],
+            }
+        }
+    }
+
+    item = BedrockAgentDiscoveryItem(
+        agentId="ag1",
+        agentName="Agent",
+        agentStatus="PREPARED",
+        suggestedAliasId="TSTALIASID",
+        invokeReady=True,
+    )
+    approval = {"agentId": "ag1", "agentAliasId": "TSTALIASID", "agentName": "Agent", "groups": []}
+
+    with (
+        patch("mcp_server.lambda_functions._scan_bedrock_agent_approvals", return_value=[approval]),
+        patch("mcp_server.lambda_functions.discover_bedrock_agents", return_value=[item]),
+    ):
+        result = list_bedrock_agents(event, {})
+
+    assert result["statusCode"] == 200
+    body = json.loads(result["body"])
+    assert body["totalAgents"] == 1
+    assert body["agents"][0]["agentId"] == "ag1"
+
+
+def test_invoke_bedrock_agent_success():
+    """Test InvokeAgent aggregation in MCP Lambda."""
+    event = {
+        "requestContext": {
+            "authorizer": {
+                "username": "testuser",
+                "groups": ["admin"],
+            }
+        },
+        "body": json.dumps(
+            {
+                "agentId": "agent-1",
+                "agentAliasId": "TSTALIASID",
+                "inputText": "hello",
+                "sessionId": "sess-1",
+            }
+        ),
+    }
+
+    mock_runtime = MagicMock()
+    mock_runtime.invoke_agent.return_value = {
+        "completion": [
+            {"chunk": {"bytes": b"Hello "}},
+            {"chunk": {"bytes": b"world"}},
+        ]
+    }
+
+    mock_appr = MagicMock()
+    mock_appr.get_item.return_value = {
+        "Item": {"agentId": "agent-1", "agentAliasId": "TSTALIASID", "groups": []},
+    }
+
+    def client_factory(service_name, *args, **kwargs):
+        if service_name == "bedrock-agent-runtime":
+            return mock_runtime
+        return MagicMock()
+
+    with (
+        patch("mcp_server.lambda_functions._bedrock_approvals_table", return_value=mock_appr),
+        patch("mcp_server.lambda_functions.boto3.client", side_effect=client_factory),
+    ):
+        result = invoke_bedrock_agent(event, {})
+
+    assert result["statusCode"] == 200
+    body = json.loads(result["body"])
+    assert body["outputText"] == "Hello world"
+    assert body["sessionId"] == "sess-1"
+
+
+def test_invoke_bedrock_agent_function_mode_builds_prompt():
+    """InvokeAgent receives orchestration prompt when functionName is set."""
+    event = {
+        "requestContext": {
+            "authorizer": {
+                "username": "testuser",
+                "groups": ["admin"],
+            }
+        },
+        "body": json.dumps(
+            {
+                "agentId": "agent-1",
+                "agentAliasId": "TSTALIASID",
+                "functionName": "get_weather_by_zipcode",
+                "actionGroupId": "ag-123",
+                "actionGroupName": "mcp-tools",
+                "parameters": {"zipcode": "98101"},
+                "sessionId": "sess-fn",
+            }
+        ),
+    }
+
+    mock_runtime = MagicMock()
+    mock_runtime.invoke_agent.return_value = {"completion": []}
+
+    mock_appr = MagicMock()
+    mock_appr.get_item.return_value = {
+        "Item": {"agentId": "agent-1", "agentAliasId": "TSTALIASID", "groups": []},
+    }
+
+    def client_factory(service_name, *args, **kwargs):
+        if service_name == "bedrock-agent-runtime":
+            return mock_runtime
+        return MagicMock()
+
+    with (
+        patch("mcp_server.lambda_functions._bedrock_approvals_table", return_value=mock_appr),
+        patch("mcp_server.lambda_functions.boto3.client", side_effect=client_factory),
+    ):
+        result = invoke_bedrock_agent(event, {})
+
+    assert result["statusCode"] == 200
+    call_kw = mock_runtime.invoke_agent.call_args.kwargs
+    assert call_kw["sessionId"] == "sess-fn"
+    assert "get_weather_by_zipcode" in call_kw["inputText"]
+    assert "98101" in call_kw["inputText"]
+    assert "mcp-tools" in call_kw["inputText"]
+
+
+def test_list_bedrock_agents_merge_not_in_account(mock_auth, lambda_context):
+    """Catalog approval without matching AWS discovery yields NOT_IN_ACCOUNT row."""
+    from models.domain_objects import BedrockAgentDiscoveryItem
+
+    set_auth_user(mock_auth, "user1", ["everyone"], False)
+    approval = {
+        "agentId": "ghost",
+        "agentAliasId": "ALIAS1",
+        "agentName": "Ghost Agent",
+        "groups": [],
+    }
+    in_account = BedrockAgentDiscoveryItem(
+        agentId="live",
+        agentName="Live",
+        agentStatus="PREPARED",
+        suggestedAliasId="TSTALIASID",
+        invokeReady=True,
+    )
+    event = {"requestContext": {"authorizer": {"username": "user1"}}}
+
+    with (
+        patch("mcp_server.lambda_functions._scan_bedrock_agent_approvals", return_value=[approval]),
+        patch("mcp_server.lambda_functions.discover_bedrock_agents", return_value=[in_account]),
+    ):
+        result = list_bedrock_agents(event, lambda_context)
+
+    assert result["statusCode"] == 200
+    body = json.loads(result["body"])
+    assert body["totalAgents"] == 1
+    row = body["agents"][0]
+    assert row["agentId"] == "ghost"
+    assert row["agentStatus"] == "NOT_IN_ACCOUNT"
+    assert row["inAccount"] is False
+    assert row["invokeReady"] is True
+
+
+def test_list_bedrock_agents_discovery_admin(mock_auth, lambda_context):
+    from models.domain_objects import BedrockAgentDiscoveryItem
+
+    set_auth_user(mock_auth, "admin-user", [], True)
+    item = BedrockAgentDiscoveryItem(
+        agentId="d1",
+        agentName="Disc",
+        agentStatus="PREPARED",
+        invokeReady=False,
+    )
+    event = {"requestContext": {"authorizer": {"username": "admin-user"}}}
+
+    with patch("mcp_server.lambda_functions.discover_bedrock_agents", return_value=[item]):
+        result = list_bedrock_agents_discovery(event, lambda_context)
+
+    assert result["statusCode"] == 200
+    body = json.loads(result["body"])
+    assert body["totalAgents"] == 1
+    assert body["agents"][0]["agentId"] == "d1"
+
+
+def test_list_bedrock_agents_discovery_forbidden_non_admin(mock_auth, lambda_context):
+    set_auth_user(mock_auth, "plain", [], False)
+    event = {"requestContext": {"authorizer": {"username": "plain"}}}
+    response = list_bedrock_agents_discovery(event, lambda_context)
+    assert response["statusCode"] == 403
+
+
+def test_list_bedrock_agent_approvals_admin(mock_auth, lambda_context):
+    set_auth_user(mock_auth, "admin-user", [], True)
+    raw = [{"agentId": "ap1", "agentAliasId": "al", "agentName": "N", "groups": []}]
+    event = {"requestContext": {"authorizer": {"username": "admin-user"}}}
+
+    with patch("mcp_server.lambda_functions._scan_bedrock_agent_approvals", return_value=raw):
+        result = list_bedrock_agent_approvals(event, lambda_context)
+
+    assert result["statusCode"] == 200
+    body = json.loads(result["body"])
+    assert len(body["approvals"]) == 1
+    assert body["approvals"][0]["agentId"] == "ap1"
+
+
+def test_put_and_delete_bedrock_agent_approval(mock_auth, lambda_context):
+    set_auth_user(mock_auth, "admin-user", [], True)
+    mock_table = MagicMock()
+    event_put = {
+        "requestContext": {"authorizer": {"username": "admin-user"}},
+        "pathParameters": {"agentId": "put-agent-1"},
+        "body": json.dumps({"agentAliasId": "AL1", "agentName": "Catalog Agent", "groups": ["researchers"]}),
+    }
+    with patch("mcp_server.lambda_functions._bedrock_approvals_table", return_value=mock_table):
+        put_res = put_bedrock_agent_approval(event_put, lambda_context)
+    assert put_res["statusCode"] == 200
+    mock_table.put_item.assert_called_once()
+    put_body = json.loads(put_res["body"])
+    assert put_body["agentId"] == "put-agent-1"
+
+    event_del = {
+        "requestContext": {"authorizer": {"username": "admin-user"}},
+        "pathParameters": {"agentId": "put-agent-1"},
+    }
+    with patch("mcp_server.lambda_functions._bedrock_approvals_table", return_value=mock_table):
+        del_res = delete_bedrock_agent_approval(event_del, lambda_context)
+    assert del_res["statusCode"] == 200
+    mock_table.delete_item.assert_called_with(Key={"agentId": "put-agent-1"})
+
+
+def test_invoke_bedrock_agent_not_approved(mock_auth, lambda_context):
+    set_auth_user(mock_auth, "user", [], False)
+    event = {
+        "requestContext": {"authorizer": {"username": "user"}},
+        "body": json.dumps({"agentId": "missing", "agentAliasId": "TSTALIASID", "inputText": "hi"}),
+    }
+    mock_appr = MagicMock()
+    mock_appr.get_item.return_value = {}
+    with patch("mcp_server.lambda_functions._bedrock_approvals_table", return_value=mock_appr):
+        response = invoke_bedrock_agent(event, lambda_context)
+    assert response["statusCode"] == 403
+
+
+def test_invoke_bedrock_agent_group_forbidden(mock_auth, lambda_context):
+    set_auth_user(mock_auth, "user", ["other-group"], False)
+    event = {
+        "requestContext": {"authorizer": {"username": "user"}},
+        "body": json.dumps({"agentId": "a1", "agentAliasId": "TSTALIASID", "inputText": "hi"}),
+    }
+    mock_appr = MagicMock()
+    mock_appr.get_item.return_value = {
+        "Item": {"agentId": "a1", "agentAliasId": "TSTALIASID", "groups": ["group:restricted"]},
+    }
+    with patch("mcp_server.lambda_functions._bedrock_approvals_table", return_value=mock_appr):
+        response = invoke_bedrock_agent(event, lambda_context)
+    assert response["statusCode"] == 403
+
+
+def test_invoke_bedrock_agent_alias_mismatch(mock_auth, lambda_context):
+    set_auth_user(mock_auth, "user", [], False)
+    event = {
+        "requestContext": {"authorizer": {"username": "user"}},
+        "body": json.dumps({"agentId": "a1", "agentAliasId": "WRONG", "inputText": "hi"}),
+    }
+    mock_appr = MagicMock()
+    mock_appr.get_item.return_value = {
+        "Item": {"agentId": "a1", "agentAliasId": "RIGHT", "groups": []},
+    }
+    with patch("mcp_server.lambda_functions._bedrock_approvals_table", return_value=mock_appr):
+        response = invoke_bedrock_agent(event, lambda_context)
+    assert response["statusCode"] == 400
+
+
+def test_invoke_bedrock_agent_runtime_access_denied(mock_auth, lambda_context):
+    from botocore.exceptions import ClientError
+
+    set_auth_user(mock_auth, "admin", [], True)
+    event = {
+        "requestContext": {"authorizer": {"username": "admin"}},
+        "body": json.dumps({"agentId": "a1", "agentAliasId": "TSTALIASID", "inputText": "hi"}),
+    }
+    mock_appr = MagicMock()
+    mock_appr.get_item.return_value = {
+        "Item": {"agentId": "a1", "agentAliasId": "TSTALIASID", "groups": []},
+    }
+    mock_runtime = MagicMock()
+    mock_runtime.invoke_agent.side_effect = ClientError(
+        {"Error": {"Code": "AccessDeniedException", "Message": "no"}}, "InvokeAgent"
+    )
+
+    def client_factory(service_name, *args, **kwargs):
+        if service_name == "bedrock-agent-runtime":
+            return mock_runtime
+        return MagicMock()
+
+    with (
+        patch("mcp_server.lambda_functions._bedrock_approvals_table", return_value=mock_appr),
+        patch("mcp_server.lambda_functions.boto3.client", side_effect=client_factory),
+    ):
+        response = invoke_bedrock_agent(event, lambda_context)
+    assert response["statusCode"] == 400
+    body = json.loads(response["body"])
+    assert "Access denied" in get_error_message(body) or "access denied" in get_error_message(body).lower()
+
+
+def test_invoke_bedrock_agent_chunk_string_bytes(mock_auth, lambda_context):
+    set_auth_user(mock_auth, "admin", [], True)
+    event = {
+        "requestContext": {"authorizer": {"username": "admin"}},
+        "body": json.dumps({"agentId": "a1", "agentAliasId": "TSTALIASID", "inputText": "hi"}),
+    }
+    mock_runtime = MagicMock()
+    mock_runtime.invoke_agent.return_value = {
+        "completion": [
+            {"chunk": {"bytes": "text-chunk"}},
+        ]
+    }
+    mock_appr = MagicMock()
+    mock_appr.get_item.return_value = {
+        "Item": {"agentId": "a1", "agentAliasId": "TSTALIASID", "groups": []},
+    }
+
+    def client_factory(service_name, *args, **kwargs):
+        if service_name == "bedrock-agent-runtime":
+            return mock_runtime
+        return MagicMock()
+
+    with (
+        patch("mcp_server.lambda_functions._bedrock_approvals_table", return_value=mock_appr),
+        patch("mcp_server.lambda_functions.boto3.client", side_effect=client_factory),
+    ):
+        response = invoke_bedrock_agent(event, lambda_context)
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert body["outputText"] == "text-chunk"
+
+
+def test_invoke_bedrock_agent_function_mode_without_action_group_name(mock_auth, lambda_context):
+    set_auth_user(mock_auth, "admin", [], True)
+    event = {
+        "requestContext": {"authorizer": {"username": "admin"}},
+        "body": json.dumps(
+            {
+                "agentId": "a1",
+                "agentAliasId": "TSTALIASID",
+                "functionName": "fn_only",
+                "actionGroupId": "ag-9",
+                "parameters": {},
+            }
+        ),
+    }
+    mock_runtime = MagicMock()
+    mock_runtime.invoke_agent.return_value = {"completion": []}
+    mock_appr = MagicMock()
+    mock_appr.get_item.return_value = {
+        "Item": {"agentId": "a1", "agentAliasId": "TSTALIASID", "groups": []},
+    }
+
+    def client_factory(service_name, *args, **kwargs):
+        if service_name == "bedrock-agent-runtime":
+            return mock_runtime
+        return MagicMock()
+
+    with (
+        patch("mcp_server.lambda_functions._bedrock_approvals_table", return_value=mock_appr),
+        patch("mcp_server.lambda_functions.boto3.client", side_effect=client_factory),
+    ):
+        response = invoke_bedrock_agent(event, lambda_context)
+    assert response["statusCode"] == 200
+    call_kw = mock_runtime.invoke_agent.call_args.kwargs
+    assert "fn_only" in call_kw["inputText"]
+    assert "ag-9" in call_kw["inputText"]

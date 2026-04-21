@@ -28,6 +28,11 @@ from collections.abc import Callable
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from loguru import logger
+from starlette.status import (
+    HTTP_400_BAD_REQUEST,
+    HTTP_405_METHOD_NOT_ALLOWED,
+    HTTP_413_CONTENT_TOO_LARGE,
+)
 
 # HTTP methods that require a request body
 METHODS_REQUIRING_BODY = {"POST", "PUT", "PATCH"}
@@ -118,7 +123,7 @@ async def security_middleware(
     if method not in ALLOWED_METHODS:
         logger.warning(f"Unsupported HTTP method: {method} for path: {path}")
         response = create_error_response(
-            status_code=405,
+            status_code=HTTP_405_METHOD_NOT_ALLOWED,
             error="Method Not Allowed",
             message=f"HTTP method {method} is not allowed",
         )
@@ -129,7 +134,7 @@ async def security_middleware(
     if contains_null_bytes(path.encode("utf-8", errors="surrogateescape")):
         logger.warning(f"Null bytes detected in request path: {path}")
         return create_error_response(
-            status_code=400,
+            status_code=HTTP_400_BAD_REQUEST,
             error="Bad Request",
             message="Invalid characters detected in request",
         )
@@ -139,7 +144,7 @@ async def security_middleware(
     if contains_null_bytes(query_string.encode("utf-8", errors="surrogateescape")):
         logger.warning(f"Null bytes detected in query string for path: {path}")
         return create_error_response(
-            status_code=400,
+            status_code=HTTP_400_BAD_REQUEST,
             error="Bad Request",
             message="Invalid characters detected in request",
         )
@@ -149,17 +154,27 @@ async def security_middleware(
         # Read the body
         body = await request.body()
 
-        # Check for null bytes in body
-        if contains_null_bytes(body):
+        # Check content type to determine if we should validate body
+        content_type = request.headers.get("content-type", "").lower()
+
+        # Skip null byte check for multipart/form-data (binary file uploads contain null bytes)
+        # and other binary content types
+        is_binary_content = (
+            "multipart/form-data" in content_type
+            or "application/octet-stream" in content_type
+            or "image/" in content_type
+            or "video/" in content_type
+            or "audio/" in content_type
+        )
+
+        # Check for null bytes in body (only for text-based content)
+        if not is_binary_content and contains_null_bytes(body):
             logger.warning(f"Null bytes detected in request body for path: {path}")
             return create_error_response(
-                status_code=400,
+                status_code=HTTP_400_BAD_REQUEST,
                 error="Bad Request",
                 message="Invalid characters detected in request",
             )
-
-        # Check content type to determine if we should validate JSON
-        content_type = request.headers.get("content-type", "").lower()
 
         # Skip body validation for multipart/form-data (file uploads)
         if "multipart/form-data" not in content_type:
@@ -167,7 +182,7 @@ async def security_middleware(
             if not body:
                 logger.warning(f"Missing request body for {method} request to: {path}")
                 return create_error_response(
-                    status_code=400,
+                    status_code=HTTP_400_BAD_REQUEST,
                     error="Bad Request",
                     message="Request body is required",
                 )
@@ -179,7 +194,7 @@ async def security_middleware(
                 except json.JSONDecodeError:
                     logger.warning(f"Invalid JSON in request body for path: {path}")
                     return create_error_response(
-                        status_code=400,
+                        status_code=HTTP_400_BAD_REQUEST,
                         error="Bad Request",
                         message="Request body must be valid JSON",
                     )
@@ -192,7 +207,7 @@ async def security_middleware(
                     f"max allowed: {default_max_size} bytes"
                 )
                 return create_error_response(
-                    status_code=413,
+                    status_code=HTTP_413_CONTENT_TOO_LARGE,
                     error="Payload Too Large",
                     message="Request body exceeds maximum size",
                 )

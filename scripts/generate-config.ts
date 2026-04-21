@@ -62,11 +62,18 @@ type RestApiConfig = {
     imageConfig?: ImageConfig;
 };
 
-type ImageConfig = {
+type ImageConfigEcr = {
     type: 'ecr';
     repositoryArn: string;
     tag: string;
 };
+
+type ImageConfigTarball = {
+    type: 'tarball';
+    path: string;
+};
+
+type ImageConfig = ImageConfigEcr | ImageConfigTarball;
 
 type McpWorkbenchConfig = {
     imageConfig: ImageConfig;
@@ -79,6 +86,7 @@ type BatchIngestionConfig = {
 type LambdaLayerAssets = {
     authorizerLayerPath: string;
     commonLayerPath: string;
+    cdkLayerPath: string;
     fastapiLayerPath: string;
     ragLayerPath: string;
     sdkLayerPath: string;
@@ -90,6 +98,7 @@ type PrebuiltAssetsConfig = {
     webAppAssetsPath: string;
     documentsPath: string;
     ecsModelDeployerPath: string;
+    mcpServerDeployerPath: string;
     vectorStoreDeployerPath: string;
     certificateAuthorityBundle: string;
     restApiImageConfig: ImageConfig;
@@ -135,6 +144,7 @@ type LisaConfig = {
     webAppAssetsPath?: string;
     documentsPath?: string;
     ecsModelDeployerPath?: string;
+    mcpServerDeployerPath?: string;
     vectorStoreDeployerPath?: string;
     certificateAuthorityBundle?: string;
     deployChat: boolean;
@@ -287,9 +297,13 @@ class ConfigBuilder {
         return this;
     }
 
-    setPrebuiltAssets (usePrebuilt: boolean, partition?: AwsPartition, region?: string, accountNumber?: string): this {
-        if (usePrebuilt && partition && region && accountNumber) {
-            this.prebuiltAssets = this.createPrebuiltAssetsConfig(partition, region, accountNumber);
+    setPrebuiltAssets (usePrebuilt: boolean, imageSource?: 'ecr' | 'tarball', partition?: AwsPartition, region?: string, accountNumber?: string): this {
+        if (usePrebuilt) {
+            if (imageSource === 'tarball') {
+                this.prebuiltAssets = this.createPrebuiltAssetsConfigWithTarball();
+            } else if (partition && region && accountNumber) {
+                this.prebuiltAssets = this.createPrebuiltAssetsConfig(partition, region, accountNumber);
+            }
         } else {
             this.prebuiltAssets = undefined;
         }
@@ -318,21 +332,55 @@ class ConfigBuilder {
         const base = PREBUILT_ASSETS_BASE;
         return {
             lambdaLayerAssets: {
-                authorizerLayerPath: `${base}/layers/AimlAdcLisaAuthLayer.zip`,
-                commonLayerPath: `${base}/layers/AimlAdcLisaCommonLayer.zip`,
-                fastapiLayerPath: `${base}/layers/AimlAdcLisaFastApiLayer.zip`,
-                ragLayerPath: `${base}/layers/AimlAdcLisaRag.zip`,
-                sdkLayerPath: `${base}/layers/AimlAdcLisaSdk.zip`,
+                authorizerLayerPath: `${base}/layers/AuthLayer.zip`,
+                commonLayerPath: `${base}/layers/CommonLayer.zip`,
+                cdkLayerPath: `${base}/layers/CdkLayer.zip`,
+                fastapiLayerPath: `${base}/layers/FastApiLayer.zip`,
+                ragLayerPath: `${base}/layers/Rag.zip`,
+                sdkLayerPath: `${base}/layers/Sdk.zip`,
             },
-            lambdaPath: `${base}/layers/AimlAdcLisaLambda.zip`,
+            lambdaPath: `${base}/layers/Lambda.zip`,
             webAppAssetsPath: `${base}/lisa-web`,
             documentsPath: `${base}/docs`,
             ecsModelDeployerPath: `${base}/ecs_model_deployer`,
             vectorStoreDeployerPath: `${base}/vector_store_deployer`,
+            mcpServerDeployerPath: `${base}/mcp_server_deployer`,
             certificateAuthorityBundle: '/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem',
             restApiImageConfig: this.createImageConfig(partition, region, accountNumber, 'lisa-rest-api'),
             mcpWorkbenchImageConfig: this.createImageConfig(partition, region, accountNumber, 'lisa-mcp-workbench'),
             batchIngestionImageConfig: this.createImageConfig(partition, region, accountNumber, 'lisa-batch-ingestion'),
+        };
+    }
+
+    private createTarballImageConfig (repositoryName: string, version: string): ImageConfig {
+        return {
+            type: 'tarball',
+            path: `./dist/images/${repositoryName}_${version}.tar`,
+        };
+    }
+
+    private createPrebuiltAssetsConfigWithTarball (): PrebuiltAssetsConfig {
+        const base = PREBUILT_ASSETS_BASE;
+        const version = fs.readFileSync(path.join(process.cwd(), 'VERSION'), 'utf-8').trim();
+        return {
+            lambdaLayerAssets: {
+                authorizerLayerPath: `${base}/layers/AuthLayer.zip`,
+                commonLayerPath: `${base}/layers/CommonLayer.zip`,
+                cdkLayerPath: `${base}/layers/CdkLayer.zip`,
+                fastapiLayerPath: `${base}/layers/FastApiLayer.zip`,
+                ragLayerPath: `${base}/layers/Rag.zip`,
+                sdkLayerPath: `${base}/layers/Sdk.zip`,
+            },
+            lambdaPath: `${base}/layers/Lambda.zip`,
+            webAppAssetsPath: `${base}/lisa-web`,
+            documentsPath: `${base}/docs`,
+            ecsModelDeployerPath: `${base}/ecs_model_deployer`,
+            vectorStoreDeployerPath: `${base}/vector_store_deployer`,
+            mcpServerDeployerPath: `${base}/mcp_server_deployer`,
+            certificateAuthorityBundle: '/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem',
+            restApiImageConfig: this.createTarballImageConfig('lisa-rest-api', version),
+            mcpWorkbenchImageConfig: this.createTarballImageConfig('lisa-mcp-workbench', version),
+            batchIngestionImageConfig: this.createTarballImageConfig('lisa-batch-ingestion', version),
         };
     }
 
@@ -371,6 +419,7 @@ class ConfigBuilder {
             config.webAppAssetsPath = this.prebuiltAssets.webAppAssetsPath;
             config.documentsPath = this.prebuiltAssets.documentsPath;
             config.ecsModelDeployerPath = this.prebuiltAssets.ecsModelDeployerPath;
+            config.mcpServerDeployerPath = this.prebuiltAssets.mcpServerDeployerPath;
             config.vectorStoreDeployerPath = this.prebuiltAssets.vectorStoreDeployerPath;
             config.certificateAuthorityBundle = this.prebuiltAssets.certificateAuthorityBundle;
 
@@ -555,9 +604,37 @@ class ConfigPrompter {
         };
     }
 
-    async promptPrebuiltAssets (): Promise<boolean> {
+    async promptPrebuiltAssets (): Promise<{ usePrebuilt: boolean; imageSource?: 'ecr' | 'tarball' }> {
         console.log('\n📦 Prebuilt Assets\n');
-        return await this.promptYesNo('Use prebuilt assets from @awslabs/lisa?', true);
+        const usePrebuilt = await this.promptYesNo('Use prebuilt assets from @awslabs/lisa?', true);
+        if (!usePrebuilt) {
+            return { usePrebuilt: false };
+        }
+
+        console.log('\n🐳 Container Image Source\n');
+        console.log('  Container images can be sourced from:');
+        console.log('');
+        console.log('  1) ecr     - Pull from an ECR repository you have already pushed images to.');
+        console.log('               Requires account number, region, and partition from the core config.');
+        console.log('');
+        console.log('  2) tarball - Use local .tar image exports downloaded from a GitHub Release.');
+        console.log('               Run "./bin/pull-images --version <tag>" to download them first.');
+        console.log('               Images are stored in ./dist/images/ and loaded by CDK at deploy time.');
+        console.log('');
+
+        const sourceInput = await this.promptWithValidation(
+            'Image source (ecr/tarball)',
+            (v) => {
+                const lower = v.toLowerCase();
+                if (lower === 'ecr' || lower === 'tarball') {
+                    return { isValid: true };
+                }
+                return { isValid: false, error: 'Must be "ecr" or "tarball"' };
+            },
+            'tarball'
+        );
+
+        return { usePrebuilt: true, imageSource: sourceInput.toLowerCase() as 'ecr' | 'tarball' };
     }
 
     async promptAuthConfig (): Promise<AuthConfig | undefined> {
@@ -729,7 +806,7 @@ async function main (): Promise<void> {
 
         // Collect configuration through prompts
         const coreConfig = await prompter.promptCoreConfig();
-        const usePrebuiltAssets = await prompter.promptPrebuiltAssets();
+        const { usePrebuilt: usePrebuiltAssets, imageSource } = await prompter.promptPrebuiltAssets();
         const authConfig = await prompter.promptAuthConfig();
         const apiGatewayConfig = await prompter.promptApiGatewayConfig();
         const restApiConfig = await prompter.promptRestApiConfig();
@@ -739,7 +816,7 @@ async function main (): Promise<void> {
         // Build the configuration
         builder
             .setCoreConfig(coreConfig)
-            .setPrebuiltAssets(usePrebuiltAssets, coreConfig.partition, coreConfig.region, coreConfig.accountNumber)
+            .setPrebuiltAssets(usePrebuiltAssets, imageSource, coreConfig.partition, coreConfig.region, coreConfig.accountNumber)
             .setAuthConfig(authConfig)
             .setApiGatewayConfig(apiGatewayConfig)
             .setRestApiConfig(restApiConfig)

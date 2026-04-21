@@ -70,7 +70,7 @@ export function McpServerForm (props: McpServerFormProps) {
 
     if (isSuccess) {
         dispatch(setBreadcrumbs([
-            { text: 'MCP Connections', href: '/mcp-connections' },
+            { text: 'Agentic connections', href: '/mcp-connections' },
             { text: data.name, href: '' }
         ]));
     }
@@ -177,15 +177,17 @@ export function McpServerForm (props: McpServerFormProps) {
     // Reset test connection state when URL changes
     useEffect(() => {
         if (testConnectionUrl !== state.form.url) {
-            setTestConnectionUrl('');
-            setIsTestingConnection(false);
+            queueMicrotask(() => {
+                setTestConnectionUrl('');
+                setIsTestingConnection(false);
+            });
         }
     }, [state.form.url, testConnectionUrl]);
 
     // Reset testing state when connection completes
     useEffect(() => {
         if (testConnectionUrl && (connectionState === 'ready' || connectionState === 'failed')) {
-            setIsTestingConnection(false);
+            queueMicrotask(() => setIsTestingConnection(false));
         }
     }, [connectionState, testConnectionUrl]);
 

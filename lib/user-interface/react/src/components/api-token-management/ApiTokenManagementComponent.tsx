@@ -236,6 +236,7 @@ export function ApiTokenManagementComponent ({ currentUserOnly = false }: ApiTok
                 resizableColumns
                 selectionType='single'
                 trackBy='name'
+                variant='full-page'
                 empty={
                     <Box margin={{ vertical: 'xs' }} textAlign='center' color='inherit'>
                         <SpaceBetween size='m'>

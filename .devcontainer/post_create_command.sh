@@ -3,22 +3,21 @@
 pwd
 
 sudo apt-get update -y
-sudo apt-get install -y jq yq
+sudo apt-get install -y jq
 
-make createPythonEnvironment
+python3 -m venv .venv
 . .venv/bin/activate
 echo "source .venv/bin/activate" >> ~/.bashrc
 echo "source .venv/bin/activate" >> ~/.zshrc
 
-echo "alias deploylisa='make clean && npm ci && make deploy HEADLESS=true'" >> ~/.bashrc
-echo "alias deploylisa='make clean && npm ci && make deploy HEADLESS=true'" >> ~/.zshrc
+echo "alias deploylisa='npm run clean && npm ci && HEADLESS=true npm run deploy'" >> ~/.bashrc
+echo "alias deploylisa='npm run clean && npm ci && HEADLESS=true npm run deploy'" >> ~/.zshrc
 
 python -m pip install --upgrade pip
-pip3 install yq==3.4.3 huggingface_hub==0.26.3 s5cmd==2.2.2
-make installPythonRequirements
+pip3 install huggingface_hub s5cmd
+npm run install:python
 
-make createTypeScriptEnvironment
-make installTypeScriptRequirements
+npm install
 
 git config --unset-all core.hooksPath
 pre-commit install

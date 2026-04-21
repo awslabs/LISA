@@ -26,7 +26,7 @@ import {
 } from 'aws-cdk-lib/aws-iam';
 import { Code, Function } from 'aws-cdk-lib/aws-lambda';
 import { Duration, RemovalPolicy, Stack } from 'aws-cdk-lib';
-import { BlockPublicAccess, Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
+import { BlockPublicAccess, Bucket, BucketEncryption, IBucket } from 'aws-cdk-lib/aws-s3';
 import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { createCdkId } from '../core/utils';
@@ -35,9 +35,9 @@ import { Vpc } from '../networking/vpc';
 import { Roles } from '../core/iam/roles';
 import { getPythonRuntime } from '../api-base/utils';
 import { ECS_MODEL_PATH, LAMBDA_PATH } from '../util';
-import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 
 export type DockerImageBuilderProps = BaseProps & {
+    bucketAccessLogsBucket: IBucket;
     ecrUri: string;
     mountS3DebUrl: string;
     securityGroups: ISecurityGroup[];
@@ -52,11 +52,7 @@ export class DockerImageBuilder extends Construct {
 
         const stackName = Stack.of(scope).stackName;
 
-        const { config } = props;
-
-        const bucketAccessLogsBucket = Bucket.fromBucketArn(scope, 'BucketAccessLogsBucket',
-            StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/bucket/bucket-access-logs`)
-        );
+        const { bucketAccessLogsBucket, config } = props;
 
         const ec2DockerBucket = new Bucket(this, createCdkId([stackName, 'docker-image-builder-ec2-bucket']), {
             enforceSSL: true,

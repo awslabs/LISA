@@ -18,23 +18,31 @@ import asyncio
 import inspect
 import logging
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from fastmcp import FastMCP
 from starlette.applications import Starlette
-from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware import Middleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Mount, Route
+from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
+from ..aws.aws_routes import router as aws_router
 from ..config.models import ServerConfig
 from ..core.base_tool import BaseTool
 from ..core.tool_discovery import ToolDiscovery, ToolInfo, ToolType
 from ..core.tool_registry import ToolRegistry
-from .auth import OIDCHTTPBearer
+from .auth import is_idp_used, OIDCHTTPBearer
+from .middleware import CORSMiddleware, wrap_asgi_with_cors_headers
 
 logger = logging.getLogger(__name__)
+
+
+def _utc_iso_z() -> str:
+    """UTC instant as ISO-8601 with Z suffix (RFC 3339)."""
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 class MCPWorkbenchServer:
@@ -84,7 +92,7 @@ class MCPWorkbenchServer:
                 result = {
                     "status": "success",
                     "message": "Server shutdown initiated",
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "timestamp": _utc_iso_z(),
                 }
                 return JSONResponse(result)
 
@@ -100,14 +108,28 @@ class MCPWorkbenchServer:
                     # Use the enhanced rescan_tools method which includes module reloading
                     rescan_result = self.tool_discovery.rescan_tools()
 
-                    # Clear existing registered tools tracking
-                    # Note: FastMCP 2.0 may not have tool unregistration
-                    # This is a limitation we'll document
+                    # Unbind prior FastMCP registrations so deletes take effect and same-name tools pick up
+                    # new callables after file edits (FastMCP 2.10+ remove_tool).
+                    to_unbind = set(rescan_result.tools_removed) | set(rescan_result.tools_updated)
+                    remove_fn = getattr(self.app, "remove_tool", None)
+                    if callable(remove_fn):
+                        for name in to_unbind:
+                            try:
+                                remove_fn(name)
+                                logger.debug("FastMCP remove_tool before rescan reconcile: %s", name)
+                            except Exception as rm_err:
+                                logger.warning("Could not remove tool %s from FastMCP: %s", name, rm_err)
+                    elif to_unbind:
+                        logger.warning(
+                            "FastMCP has no remove_tool(); rescan may not reflect deletes or in-place "
+                            "updates for tools %s until process restart",
+                            sorted(to_unbind),
+                        )
+
                     self.registered_tools.clear()
 
-                    # Get the newly discovered tools and register them
                     tools = list(self.tool_discovery.current_tools.values())
-                    self.tool_registry.register_tools(tools)
+                    self.tool_registry.update_registry(tools)
                     await self._register_discovered_tools(tools)
 
                     # Build result using the rescan_result data
@@ -118,7 +140,7 @@ class MCPWorkbenchServer:
                         "tools_removed": rescan_result.tools_removed,
                         "total_tools": rescan_result.total_tools,
                         "errors": rescan_result.errors,
-                        "timestamp": datetime.utcnow().isoformat() + "Z",
+                        "timestamp": _utc_iso_z(),
                     }
 
                     logger.info(f"Rescan completed: {result}")
@@ -129,9 +151,9 @@ class MCPWorkbenchServer:
                     error_result = {
                         "status": "error",
                         "error": str(e),
-                        "timestamp": datetime.utcnow().isoformat() + "Z",
+                        "timestamp": _utc_iso_z(),
                     }
-                    return JSONResponse(error_result, status_code=500)
+                    return JSONResponse(error_result, status_code=HTTP_500_INTERNAL_SERVER_ERROR)
 
             app.add_route(self.config.rescan_route_path, rescan_endpoint, methods=["GET"])
 
@@ -145,14 +167,14 @@ class MCPWorkbenchServer:
             return JSONResponse({"status": "healthy", "service": "mcpworkbench"})
 
         logger.info(f"CORS Allowed Origins: {self.config.cors_settings.allow_origins}")
-        mcp_app.add_middleware(
-            CORSMiddleware,
-            allow_origins=self.config.cors_settings.allow_origins,
-            allow_methods=self.config.cors_settings.allow_methods,
-            allow_headers=self.config.cors_settings.allow_headers,
-        )
-
-        mcp_app.add_middleware(OIDCHTTPBearer)
+        # Auth only on mounted apps; CORS is applied at the root Starlette app so OPTIONS preflight
+        # is handled before routing (avoids FastMCP 500 on OPTIONS and missing ACAO on errors).
+        if is_idp_used():
+            mcp_app.add_middleware(OIDCHTTPBearer)
+        else:
+            logger.info(
+                "USE_AUTH is false or unset: OIDC/API-token auth middleware is disabled (same as Serve REST API)."
+            )
 
         # Add MCP mount
         routes = [
@@ -160,9 +182,22 @@ class MCPWorkbenchServer:
             Mount("/v2/mcp", mcp_app),
         ]
 
+        # Mount AWS session management routes under /api/aws
+        from fastapi import FastAPI  # noqa: PLC0415
+
+        aws_app = FastAPI()
+        if is_idp_used():
+            aws_app.add_middleware(OIDCHTTPBearer)
+        aws_app.include_router(aws_router)
+        routes.append(Mount("/api/aws", aws_app))
+
         self._add_management_routes(mcp_app)
 
-        return Starlette(routes=routes, lifespan=mcp_app.lifespan)
+        return Starlette(
+            routes=routes,
+            middleware=[Middleware(CORSMiddleware, cors_config=self.config.cors_settings)],
+            lifespan=mcp_app.lifespan,
+        )
 
     async def _register_discovered_tools(self, tools: list[ToolInfo]) -> None:
         """Register discovered tools with FastMCP."""
@@ -248,6 +283,8 @@ class MCPWorkbenchServer:
 
         # Create Starlette app with both MCP and HTTP routes
         starlette_app = self._create_starlette_app()
+        # Outer ASGI wrapper so 500s from ServerErrorMiddleware still get CORS headers (browser can read body)
+        asgi_app = wrap_asgi_with_cors_headers(starlette_app, self.config.cors_settings)
 
         # Start server with Starlette app
         logger.info(f"Starting MCP Workbench server on {self.config.server_host}:{self.config.server_port}")
@@ -263,7 +300,7 @@ class MCPWorkbenchServer:
         import uvicorn  # noqa: PLC0415
 
         config = uvicorn.Config(
-            starlette_app,
+            asgi_app,
             host=self.config.server_host,
             port=self.config.server_port,
             log_level="info",

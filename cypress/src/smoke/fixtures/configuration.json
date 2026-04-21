@@ -17,13 +17,18 @@
         "editNumOfRagDocument": true,
         "editChatHistoryBuffer": true,
         "uploadRagDocs": true,
+        "ragSelectionAvailable": true,
         "uploadContextDocs": true,
         "documentSummarization": true,
         "showRagLibrary": true,
         "showPromptTemplateLibrary": true,
         "mcpConnections": true,
-        "showMcpWorkbench": true
-      }
+        "bedrockAgents": true,
+        "awsSessions": false,
+        "showMcpWorkbench": true,
+        "projectOrganization": true
+      },
+      "maxProjectsPerUser": 50
     },
     "changedBy": "System",
     "configScope": "global",

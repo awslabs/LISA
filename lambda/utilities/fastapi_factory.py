@@ -14,7 +14,7 @@
 
 """Factory for creating FastAPI applications with standard LISA configuration."""
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -103,24 +103,24 @@ def create_fastapi_app() -> FastAPI:
     @app.exception_handler(UnauthorizedException)
     async def unauthorized_handler(request: Request, exc: UnauthorizedException) -> JSONResponse:
         """Handle unauthorized exceptions and translate to a 401 error."""
-        return JSONResponse(status_code=401, content={"message": exc.message})
+        return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content={"message": exc.message})
 
     @app.exception_handler(ForbiddenException)
     async def forbidden_handler(request: Request, exc: ForbiddenException) -> JSONResponse:
         """Handle forbidden exceptions and translate to a 403 error."""
-        return JSONResponse(status_code=403, content={"message": exc.message})
+        return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content={"message": exc.message})
 
     @app.exception_handler(NotFoundException)
     async def not_found_handler(request: Request, exc: NotFoundException) -> JSONResponse:
         """Handle not found exceptions and translate to a 404 error."""
-        return JSONResponse(status_code=404, content={"message": exc.message})
+        return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"message": exc.message})
 
     # Request validation errors (422)
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
         """Handle exception when request fails validation and translate to a 422 error."""
         return JSONResponse(
-            status_code=422,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             content={"detail": jsonable_encoder(exc.errors()), "type": "RequestValidationError"},
         )
 

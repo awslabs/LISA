@@ -23,14 +23,28 @@ export const getButtonItems = (
     config: IConfiguration,
     useRag: boolean,
     isImageGenerationMode: boolean,
-    isVideoGenerationMode: boolean
+    isVideoGenerationMode: boolean,
+    isConnected: boolean,
+    isModelDeleted: boolean = false,
+    showMarkdownPreview: boolean = false,
+    isChatAssistantMode: boolean = false,
+    isModelSelected: boolean = false,
+    isSessionLoading: boolean = false,
 ): ButtonGroupProps.Item[] => {
     const baseItems: ButtonGroupProps.Item[] = [
         {
             type: 'icon-button',
             id: 'settings',
             iconName: 'settings',
-            text: 'Session configuration'
+            text: 'Session configuration',
+            disabled: !isConnected || isModelDeleted || !isModelSelected || isSessionLoading
+        },
+        {
+            type: 'icon-button',
+            id: 'toggle-markdown-preview',
+            iconName: 'view-vertical',
+            text: showMarkdownPreview ? 'Hide Preview' : 'Show Preview',
+            disabled: !isConnected || isModelDeleted || !isModelSelected || isSessionLoading
         }
     ];
 
@@ -45,7 +59,7 @@ export const getButtonItems = (
             id: 'upload-to-rag',
             iconName: 'upload',
             text: 'Upload to RAG',
-            disabled: !useRag
+            disabled: !useRag || !isConnected || isModelDeleted || !isModelSelected || isSessionLoading
         });
     }
 
@@ -56,7 +70,8 @@ export const getButtonItems = (
             type: 'icon-button',
             id: 'add-file-to-context',
             iconName: 'insert-row',
-            text: 'Add file to context'
+            text: 'Add file to context',
+            disabled: !isConnected || isModelDeleted || !isModelSelected || isSessionLoading
         });
     }
 
@@ -66,7 +81,8 @@ export const getButtonItems = (
             type: 'icon-button',
             id: 'insert-prompt-template',
             iconName: 'contact',
-            text: 'Insert Prompt Template'
+            text: 'Insert Prompt Template',
+            disabled: !isConnected || isModelDeleted || !isModelSelected || isSessionLoading
         });
     }
 
@@ -76,7 +92,8 @@ export const getButtonItems = (
             type: 'icon-button',
             id: 'summarize-document',
             iconName: 'transcript',
-            text: 'Summarize Document'
+            text: 'Summarize Document',
+            disabled: !isConnected || isModelDeleted || !isModelSelected || isSessionLoading
         });
     }
 
@@ -86,11 +103,13 @@ export const getButtonItems = (
             type: 'menu-dropdown',
             id: 'more-actions',
             text: 'Additional Configuration',
+            disabled: !isConnected || isModelDeleted || !isModelSelected || isSessionLoading,
             items: [
                 {
                     id: 'edit-prompt-template',
                     iconName: 'contact',
-                    text: 'Edit Persona'
+                    text: 'Edit Persona',
+                    disabled: isChatAssistantMode,
                 },
             ]
         });
@@ -101,7 +120,8 @@ export const getButtonItems = (
             type: 'icon-button',
             id: 'attach-reference-photo',
             iconName: 'video-on',
-            text: 'Add Reference Photo'
+            text: 'Add Reference Photo',
+            disabled: !isConnected || isModelDeleted || !isModelSelected || isSessionLoading
         });
     }
 

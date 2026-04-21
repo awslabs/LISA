@@ -4,9 +4,12 @@
 TOOLS_DIR="${TOOLS_DIR:-/workspace/tools}"
 LOG_LEVEL="${LOG_LEVEL:-info}"
 MCPWORKBENCH_BUCKET="${MCPWORKBENCH_BUCKET:-}"
+# Poll S3 for listing changes so new tool objects appear without remounting the FUSE mount.
+# Hot reload of Python modules is triggered separately (e.g. S3 EventBridge Lambda -> GET .../rescan).
+RCLONE_POLL_INTERVAL="${RCLONE_POLL_INTERVAL:-30s}"
 
 # Build command arguments
-ARGS="--allow-other --read-only --vfs-cache-mode off --direct-io --dir-cache-time 0s --attr-timeout 0s --poll-interval 0s :s3,provider=AWS,env_auth:${MCPWORKBENCH_BUCKET} ${TOOLS_DIR}"
+ARGS="--allow-other --read-only --vfs-cache-mode off --direct-io --dir-cache-time 0s --attr-timeout 0s --poll-interval ${RCLONE_POLL_INTERVAL} :s3,provider=AWS,env_auth:${MCPWORKBENCH_BUCKET} ${TOOLS_DIR}"
 
 # Add verbosity based on log level
 case "${LOG_LEVEL}" in

@@ -17,6 +17,7 @@
 import json
 import logging
 import os
+import time
 from copy import deepcopy
 from datetime import datetime
 from typing import Any
@@ -25,7 +26,14 @@ from zoneinfo import ZoneInfo
 import boto3
 from botocore.config import Config
 from models.clients.litellm_client import LiteLLMClient
-from models.domain_objects import CreateModelRequest, GuardrailsTableEntry, InferenceContainer, ModelStatus, ModelType
+from models.domain_objects import (
+    CreateModelRequest,
+    GuardrailsTableEntry,
+    InferenceContainer,
+    ModelHostingType,
+    ModelStatus,
+    ModelType,
+)
 from models.exception import (
     MaxPollsExceededException,
     StackFailedToCreateException,
@@ -47,6 +55,7 @@ lambdaConfig = Config(connect_timeout=60, read_timeout=600, retries={"max_attemp
 lambdaClient = boto3.client("lambda", region_name=os.environ["AWS_REGION"], config=lambdaConfig)
 ecrClient = boto3.client("ecr", region_name=os.environ["AWS_REGION"], config=retry_config)
 ec2Client = boto3.client("ec2", region_name=os.environ["AWS_REGION"], config=retry_config)
+s3_client = boto3.client("s3", region_name=os.environ["AWS_REGION"], config=retry_config)
 ddbResource = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 model_table = ddbResource.Table(os.environ["MODEL_TABLE_NAME"])
 guardrails_table = ddbResource.Table(os.environ["GUARDRAILS_TABLE_NAME"])
@@ -593,11 +602,42 @@ def handle_add_model_to_litellm(event: dict[str, Any], context: Any) -> dict[str
         litellm_params["drop_params"] = True  # drop unrecognized param instead of failing the request on it
 
     if is_lisa_managed:
-        # get load balancer from cloudformation stack
-        litellm_params["model"] = f'openai/{event["modelName"]}'
+        # Determine the correct LiteLLM provider prefix based on the inference container type
+        # - vLLM: Use hosted_vllm/ to pass through full model name (e.g., "openai/gpt-oss-20b")
+        # - TGI/TEI: Use openai/ prefix (LiteLLM strips it before sending to backend)
+        model_name = event["modelName"]
+        inference_container = event.get("inferenceContainer", "").lower()
+
+        if inference_container == "vllm":
+            # vLLM serves models with full HF repo name (e.g., "openai/gpt-oss-20b")
+            # hosted_vllm/ prefix ensures LiteLLM passes through the complete name
+            provider_prefix = "hosted_vllm"
+        else:
+            # TGI and TEI use OpenAI-compatible APIs with model name stripping
+            provider_prefix = "openai"
+
+            # Prefixing is added later, remove duplicate openai prefixing if present
+            if model_name.startswith("openai/"):
+                model_name = model_name[len("openai/") :]
+
+        litellm_params["model"] = f"{provider_prefix}/{model_name}"
         litellm_params["api_base"] = f"{event['modelUrl']}/v1"  # model's OpenAI-compliant route
     else:
-        litellm_params["model"] = event["modelName"]
+        model_name = event["modelName"]
+        if str(event.get("hostingType", "")).upper() == ModelHostingType.INTERNAL_HOSTED.value.upper():
+            # Internal hosted models are registered as OpenAI-compatible providers routed through api_base.
+            # Normalize common user-entered prefixes so LiteLLM doesn't route via hosted_vllm or external providers.
+            stripped = True
+            while stripped:
+                stripped = False
+                for prefix in ("openai/", "hosted_vllm/"):
+                    if model_name.startswith(prefix):
+                        model_name = model_name[len(prefix) :]
+                        stripped = True
+            litellm_params["model"] = f"openai/{model_name}"
+            litellm_params["api_base"] = str(event["modelUrl"]).rstrip("/")
+        else:
+            litellm_params["model"] = model_name
 
     litellm_response = litellm_client.add_model(
         model_name=event["modelId"],
@@ -748,6 +788,120 @@ def handle_add_guardrails_to_litellm(event: dict[str, Any], context: Any) -> dic
     output_dict["created_guardrails"] = created_guardrails
 
     logger.info(f"Successfully created {len(guardrail_ids)} guardrails for model: {event['modelId']}")
+    return output_dict
+
+
+def _fetch_context_window_from_litellm(
+    litellm_id: str,
+    max_attempts: int = 5,
+    base_delay: float = 2.0,
+    backoff_factor: float = 2.0,
+) -> Any | None:
+    """Fetch max_input_tokens from LiteLLM for non-LISA-managed (Bedrock/third-party) models.
+
+    Retries with exponential backoff to handle cases where LiteLLM is queried too
+    quickly after a model is registered and returns a transient error.
+
+    Args:
+        litellm_id: The LiteLLM model ID to query.
+        max_attempts: Maximum number of attempts before giving up (default: 5).
+        base_delay: Initial delay in seconds between retries (default: 2.0).
+        backoff_factor: Multiplier applied to delay after each failed attempt (default: 2.0).
+
+    Returns:
+        The context window size as an int, or None if it could not be determined.
+    """
+    last_exception: Exception | None = None
+    delay = base_delay
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            model_info = litellm_client.get_model(litellm_id)
+            return int(model_info.get("model_info", {}).get("max_input_tokens"))
+        except Exception as e:
+            last_exception = e
+            if attempt < max_attempts:
+                logger.warning(
+                    f"Attempt {attempt}/{max_attempts} failed to fetch context window from LiteLLM "
+                    f"for {litellm_id}: {e}. Retrying in {delay:.1f}s..."
+                )
+                time.sleep(delay)
+                delay *= backoff_factor
+            else:
+                logger.warning(
+                    f"All {max_attempts} attempts exhausted fetching context window from LiteLLM "
+                    f"for {litellm_id}: {last_exception}"
+                )
+
+    return None
+
+
+def _fetch_context_window_from_s3(model_name: Any, model_type: str) -> int | None:
+    """Fetch max_position_embeddings from S3 config.json for LISA-managed models.
+
+    For IMAGEGEN models, also checks text_encoder/config.json as a fallback.
+    """
+    bucket = os.environ.get("MODELS_BUCKET_NAME", "")
+    if not bucket:
+        logger.warning("MODELS_BUCKET_NAME not set, cannot fetch context window from S3")
+        return None
+
+    paths = [f"{model_name}/config.json"]
+    if model_type.upper() == ModelType.IMAGEGEN.upper():
+        paths.append(f"{model_name}/text_encoder/config.json")
+
+    for path in paths:
+        try:
+            obj = s3_client.get_object(Bucket=bucket, Key=path)
+            config = json.loads(obj["Body"].read())
+            val = config.get("max_position_embeddings")
+            if val is not None:
+                logger.info(f"Found max_position_embeddings={val} in s3://{bucket}/{path}")
+                return int(val)
+        except s3_client.exceptions.NoSuchKey:
+            logger.debug(f"S3 key not found: s3://{bucket}/{path}")
+            continue
+        except Exception as e:
+            logger.warning(f"Could not read s3://{bucket}/{path}: {e}")
+    return None
+
+
+def handle_enrich_context_window(event: dict[str, Any], context: Any) -> dict[str, Any]:
+    """Enrich model DDB record with context window size.
+
+    Non-blocking — failure is logged as a warning but does not raise an exception
+    or affect the state machine's success path.
+    """
+    output_dict = deepcopy(event)
+    model_id = event.get("modelId")
+    model_name = event.get("modelName")
+    model_type = event.get("modelType", "")
+    is_lisa_managed = event.get("create_infra", False)
+
+    context_window = None
+    try:
+        if is_lisa_managed:
+            context_window = _fetch_context_window_from_s3(model_name, model_type)
+        else:
+            litellm_id = event.get("litellm_id")
+            if litellm_id:
+                context_window = _fetch_context_window_from_litellm(litellm_id)
+            else:
+                logger.warning(f"No litellm_id in event for model {model_id}, cannot fetch context window")
+
+        if context_window is not None:
+            model_table.update_item(
+                Key={"model_id": model_id},
+                UpdateExpression="SET context_window = :cw, last_modified_date = :lm",
+                ExpressionAttributeValues={":cw": context_window, ":lm": now()},
+            )
+            logger.info(f"Enriched model {model_id} with context_window={context_window}")
+        else:
+            logger.warning(f"Could not determine context window for model {model_id}, skipping enrichment")
+
+    except Exception as e:
+        logger.warning(f"Non-fatal: failed to enrich context window for model {model_id}: {e}", exc_info=True)
+
     return output_dict
 
 

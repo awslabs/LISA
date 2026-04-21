@@ -18,6 +18,8 @@ __pycache__/
 *.key
 *.pem
 TIKTOKEN_CACHE
+# Ignore only top-level docs directory, not lib/docs
+/docs/
 
 # CDK asset staging directory
 .cdk.staging
@@ -32,6 +34,7 @@ lib/rag/ingestion/ingestion-image/build
 .DS_Store
 *.iml
 *.code-workspace
+.hf_token_cache
 
 # AI Tools
 .cursor
@@ -39,6 +42,7 @@ lib/rag/ingestion/ingestion-image/build
 .kiro/
 .amazonq/
 memory-bank/
+tracking/
 
 # Coverage Statistic Folders
 coverage
@@ -58,3 +62,4 @@ config-generated.yaml
 
 # Cypress local environment
 /cypress/.env.local
+.npmrc

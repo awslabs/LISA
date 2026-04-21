@@ -31,7 +31,7 @@ The generator walks you through the following configuration sections:
 
 ### Prebuilt Assets
 
-If you're using prebuilt assets from `@amzn/lisa-adc`, the generator automatically configures:
+If you're using prebuilt assets from `awslabs-lisa`, the generator automatically configures:
 
 - Lambda layer paths
 - Web app assets path
@@ -107,7 +107,7 @@ S3 Bucket for Models: my-models-bucket
 
 📦 Prebuilt Assets
 
-Use prebuilt assets from @amzn/lisa-adc? [Y/n]: y
+Use prebuilt assets from awslabs-lisa? [Y/n]: y
 
 🔐 Authentication Configuration
 
@@ -179,11 +179,12 @@ batchIngestionConfig:
     repositoryArn: arn:aws:ecr:us-east-1:123456789012:repository/lisa-batch-ingestion
     tag: latest
 lambdaLayerAssets:
-  authorizerLayerPath: ./node_modules/@amzn/lisa-adc/dist/layers/AimlAdcLisaAuthLayer.zip
-  commonLayerPath: ./node_modules/@amzn/lisa-adc/dist/layers/AimlAdcLisaCommonLayer.zip
-  fastapiLayerPath: ./node_modules/@amzn/lisa-adc/dist/layers/AimlAdcLisaFastApiLayer.zip
-  ragLayerPath: ./node_modules/@amzn/lisa-adc/dist/layers/AimlAdcLisaRag.zip
-  sdkLayerPath: ./node_modules/@amzn/lisa-adc/dist/layers/AimlAdcLisaSdk.zip
+  authorizerLayerPath: ./node_modules/awslabs-lisa/dist/layersAuthLayer.zip
+  commonLayerPath: ./node_modules/awslabs-lisa/dist/layersCommonLayer.zip
+  cdkLayerPath: ./node_modules/awslabs-lisa/dist/layers/CdkLayer.zip
+  fastapiLayerPath: ./node_modules/awslabs-lisa/dist/layersFastApiLayer.zip
+  ragLayerPath: ./node_modules/awslabs-lisa/dist/layersRag.zip
+  sdkLayerPath: ./node_modules/awslabs-lisa/dist/layersSdk.zip
 deployChat: true
 deployMetrics: true
 deployMcpWorkbench: true

@@ -137,7 +137,7 @@ class CollectionService:
             user_groups: User groups for access control
             is_admin: Whether user is admin
         """
-        collection = self.collection_repo.find_by_id(collection_id, repository_id)
+        collection = self.collection_repo.find_by_id_or_name(collection_id, repository_id)
         if not collection:
             raise ValidationError(f"Collection {collection_id} not found")
         if not self.has_access(collection, username, user_groups, is_admin):
@@ -176,9 +176,7 @@ class CollectionService:
                 if service.should_create_default_collection():
                     default_collection = service.create_default_collection()
                     if default_collection:
-                        # Check if a collection with the default embedding model ID already exists
-                        existing_ids = {c.collectionId for c in filtered}
-                        if default_collection.collectionId not in existing_ids:
+                        if not any(c.default for c in filtered):
                             filtered.append(default_collection)
 
         return filtered, key
@@ -452,6 +450,7 @@ class CollectionService:
         username: str,
         user_groups: list[str],
         is_admin: bool,
+        is_rag_admin: bool = False,
         page_size: int = 20,
         pagination_token: dict[str, Any] | None = None,
         filter_text: str | None = None,
@@ -501,15 +500,30 @@ class CollectionService:
         logger.info(f"Estimated total collections: {estimated_total}")
 
         # Select and execute pagination strategy
+        effective_admin = is_admin or is_rag_admin
         if estimated_total > 1000:
             logger.info("Using scalable pagination strategy for large dataset")
             collections, next_token = self._paginate_large_collections(
-                repositories, username, user_groups, is_admin, page_size, pagination_token, filter_text, sort_params
+                repositories,
+                username,
+                user_groups,
+                effective_admin,
+                page_size,
+                pagination_token,
+                filter_text,
+                sort_params,
             )
         else:
             logger.info("Using simple pagination strategy")
             collections, next_token = self._paginate_collections(
-                repositories, username, user_groups, is_admin, page_size, pagination_token, filter_text, sort_params
+                repositories,
+                username,
+                user_groups,
+                effective_admin,
+                page_size,
+                pagination_token,
+                filter_text,
+                sort_params,
             )
 
         logger.info(f"Returning {len(collections)} collections")
@@ -685,9 +699,7 @@ class CollectionService:
                     service.create_default_collection() if service.should_create_default_collection() else None
                 )
                 if default_collection:
-                    # Check if a collection with the default embedding model ID already exists
-                    existing_ids = {c.collectionId for c in accessible}
-                    if default_collection.collectionId not in existing_ids:
+                    if not any(c.default for c in accessible):
                         accessible.append(default_collection)
 
                 all_collections.extend(accessible)
@@ -865,8 +877,7 @@ class CollectionService:
                     if service.should_create_default_collection():
                         default_collection = service.create_default_collection()
                         if default_collection:
-                            # Check if we've seen a collection with the default embedding model ID
-                            if default_collection.collectionId not in seen_collection_ids[repo_id]:
+                            if not any(c.default for c in accessible):
                                 accessible.append(default_collection)
                                 seen_collection_ids[repo_id].add(default_collection.collectionId)
 

@@ -17,6 +17,7 @@ import { S3UploadRequest } from '../shared/reducers/rag.reducer';
 import { MessageContent } from '@langchain/core/messages';
 import { LisaChatSession, LisaChatMessage, MessageTypes } from './types';
 import { truncateText } from '@/shared/util/formats';
+import { LISA_MCP_WORKBENCH_SERVER_ID } from '@/shared/constants/mcpWorkbenchServerId';
 
 const stripTrailingSlash = (str) => {
     return str && str.endsWith('/') ? str.slice(0, -1) : str;
@@ -24,6 +25,36 @@ const stripTrailingSlash = (str) => {
 
 export const RESTAPI_URI = stripTrailingSlash(window.env.RESTAPI_URI);
 export const RESTAPI_VERSION = window.env.RESTAPI_VERSION;
+
+/**
+ * Base URL for MCP Workbench HTTP (MCP stream + /api/aws).
+ * From SSM …/mcpWorkbench/endpoint (workbench ALB; distinct from Serve API when custom domains are used).
+ * */
+export const MCP_WORKBENCH_URI = window.env.MCP_WORKBENCH_URI
+    ? stripTrailingSlash(window.env.MCP_WORKBENCH_URI)
+    : RESTAPI_URI;
+
+export { LISA_MCP_WORKBENCH_SERVER_ID };
+
+/**
+ * True for the LISA-hosted MCP Workbench connection. That server's browser URL is often
+ * `{FASTAPI_ENDPOINT}/v2/mcp/` while `MCP_WORKBENCH_URI` points at the workbench ALB —
+ * different origins — so we key off the server id first.
+ */
+export function isWorkbenchMcpServer (server: { url: string; id?: string }): boolean {
+    if (server.id === LISA_MCP_WORKBENCH_SERVER_ID) {
+        return true;
+    }
+    try {
+        const base = MCP_WORKBENCH_URI;
+        if (!base?.trim() || !server.url?.trim()) {
+            return false;
+        }
+        return new URL(server.url.trim()).origin === new URL(base).origin;
+    } catch {
+        return false;
+    }
+}
 
 /**
  * Gets base URI for API Gateway. This can either be the APIGW execution URL directly or a
@@ -67,13 +98,6 @@ export const formatDocumentsAsString = (docs: any, forMetadata = false): string 
     return contents;
 };
 
-export const formatDocumentTitlesAsString = (docs: any): string => {
-    const uniqueNames = [...new Set(
-        docs.map((doc) => doc.Document.metadata.name || doc.Document.metadata.source?.split('/').pop()).filter(Boolean)
-    )];
-    return uniqueNames.length !== 0 ? `\n*Source - ${uniqueNames.join(', ')}*` : undefined;
-};
-
 export const getSessionDisplay = (session: LisaChatSession, maxLength?: number) => {
     const display = session.name || getDisplayableMessage(session.firstHumanMessage);
     return maxLength ? truncateText(display, 40, '...') : display;
@@ -81,7 +105,15 @@ export const getSessionDisplay = (session: LisaChatSession, maxLength?: number) 
 
 export const getDisplayableMessage = (content: MessageContent, ragCitations?: string) => {
     if (Array.isArray(content)) {
-        return content.find((item) => item.type === 'text' && !item.text.startsWith('File context:'))?.text + (ragCitations ?? '') || '';
+        return (
+            content.find(
+                (item) =>
+                    item.type === 'text' &&
+                    !item.text.startsWith('File context:') &&
+                    !item.text.startsWith('Context from document search:')
+            )?.text + (ragCitations ?? '')
+            || ''
+        );
     }
     return content + (ragCitations ?? '');
 };
@@ -178,4 +210,47 @@ export const markLastUserMessageAsGuardrailTriggered = (history: LisaChatMessage
     }
 
     return updatedHistory;
+};
+
+/**
+ * Determines the file type based on the file extension.
+ *
+ * @param {string} filename - The name of the file
+ * @returns {'pdf' | 'docx' | 'txt'} The file type
+ */
+export const getFileType = (filename: string): 'pdf' | 'docx' | 'txt' => {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    if (ext === 'pdf') return 'pdf';
+    if (ext === 'docx') return 'docx';
+    return 'txt';
+};
+
+/**
+ * Normalizes a document name by removing the prepended random number prefix
+ * and formatting for display. Handles filenames with various formats including
+ * multiple underscores, whitespace, and dots.
+ *
+ * @param {string} filename - The document name to normalize (e.g., "1772045799996_gatech_admissions_letter.pdf")
+ * @param {number} maxLength - Maximum length of returned string (default: 30)
+ * @returns {string} Normalized document name trimmed to maxLength with ellipsis if needed
+ */
+export const normalizeDocumentName = (filename: string, maxLength: number = 30): string => {
+    if (!filename) return '';
+
+    // Split by underscore to remove random number prefix
+    const parts = filename.split('_');
+    let normalized = filename;
+
+    // Remove the first part (random ID)
+    if (parts.length > 1) {
+        // Rejoin everything after the first part
+        normalized = parts.slice(1).join('_');
+    }
+
+    // Trim to maxLength and add ellipsis if needed
+    if (normalized.length > maxLength) {
+        return normalized.slice(0, maxLength) + '...';
+    }
+
+    return normalized;
 };

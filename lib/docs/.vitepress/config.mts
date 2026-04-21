@@ -54,10 +54,17 @@ const navLinks = [
     text: 'Advanced Configuration',
     items: [
       { text: 'API Token Management', link: '/config/api-tokens' },
-      { text: 'Model Compatibility', link: '/config/model-compatibility' },
+      { text: 'Model Compatibility', link: '/config/model-compatibility',
+        items: [
+          {text: "vLLM Variables", link: '/config/vllm_variables'}
+        ]
+      },
       { text: 'Model Management API', link: '/config/model-management-api' },
       { text: 'Model Management UI', link: '/config/model-management-ui' },
+      { text: 'Chat Assistant Stacks', link: '/config/chat-assistant-stacks' },
+      { text: 'Project Organization', link: '/config/projects' },
       { text: 'Bedrock Guardrails', link: '/config/guardrails' },
+      { text: 'Configuration UI', link: '/config/configuration-ui' },
       { text: 'Usage & Features', link: '/config/usage' },
       { text: 'RAG Repository', link: '/config/repositories' },
       { text: 'Langfuse Tracing', link: '/config/langfuse-tracing'},
@@ -76,6 +83,7 @@ const navLinks = [
       { text: 'MCP Connections: Third-party servers', link: '/config/mcp' },
       { text: 'MCP Workbench: Experimentation', link: '/config/mcp-workbench' },
       { text: 'Usage Analytics', link: '/config/cloudwatch' },
+      { text: 'Claude Code Setup for LISA Serve', link: '/config/claude-code-setup' },
     ],
   },
   {
@@ -84,10 +92,35 @@ const navLinks = [
       { text: 'LISA Chat UI', link: '/user/chat' },
       { text: 'Document Library Management', link: '/user/document-library' },
       { text: 'Model Library', link: '/user/model-library' },
-      { text: 'Breaking Changes', link: '/user/breaking-changes' },
+      { text: 'Prompt Template Library', link: '/user/prompt-template-library' },
+      { text: 'Session History', link: '/config/session' },
+      { text: 'User Preferences', link: '/config/user-preferences' },
+      { text: 'Breaking Changes', link: '/config/breaking-changes' },
       { text: 'Change Log', link: 'https://github.com/awslabs/LISA/releases' },
     ],
-  }];
+  },
+  {
+    text: 'API Reference',
+    items: [
+      { text: 'API Tokens', link: '/config/api-tokens#managing-tokens-via-api' },
+      { text: 'Chat Assistant Stacks', link: '/config/chat-assistant-stacks#api-reference' },
+      { text: 'Collection Management (Repository)', link: '/config/collection-management-api#endpoints' },
+      { text: 'Bedrock Guardrails', link: '/config/guardrails#managing-guardrails-via-lisa-models-api' },
+      { text: 'Hosted MCP Servers', link: '/config/hosted-mcp#api-operations' },
+      { text: 'Metrics', link: '/admin/api-overview#metrics-api-gateway-endpoints' },
+      { text: 'Model Management', link: '/config/model-management-api#listing-models-admin-api' },
+      { text: 'Project Organization', link: '/config/projects#api-reference' },
+      { text: 'RAG Repository', link: '/config/repositories#configuration-examples' },
+      { text: 'MCP Workbench', link: '/config/mcp-workbench#programmatic-api-access' },
+      { text: 'Bedrock Knowledge Base', link: '/config/repositories#bedrock-knowledge-base-api-reference' },
+      { text: 'MCP Server Connections', link: '/config/mcp#api-reference' },
+      { text: 'MCP Workbench', link: '/config/mcp-workbench#api-reference' },
+      { text: 'Prompt Templates', link: '/config/prompt-templates#api-reference' },
+      { text: 'Session', link: '/config/session#api-reference' },
+      { text: 'User Preferences', link: '/config/user-preferences#api-reference' },
+    ],
+  },
+];
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
@@ -100,6 +133,11 @@ export default defineConfig({
   markdown: {
     config(md) {
       md.use(tabsMarkdownPlugin)
+      const defaultRender = md.render.bind(md);
+      md.render = (src, env) => {
+        src = src.replace(/Array<([^>]+)>/g, 'Array&lt;$1&gt;');
+        return defaultRender(src, env);
+      };
     },
   },
   // https://vitepress.dev/reference/default-theme-config

@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Provider } from 'react-redux';
@@ -29,6 +29,14 @@ vi.mock('@/shared/reducers/configuration.reducer', () => ({
     useLazyGetConfigurationQuery: vi.fn(() => [
         vi.fn(() => Promise.resolve({ data: [{ configuration: { enabledComponents: { deleteSessionHistory: true } } }] })),
     ]),
+}));
+
+vi.mock('@/shared/reducers/project.reducer', () => ({
+    useListProjectsQuery: vi.fn(() => ({ data: [] })),
+}));
+
+vi.mock('@/shared/reducers/chat-assistant-stacks.reducer', () => ({
+    useListStacksQuery: vi.fn(() => ({ data: [] })),
 }));
 
 vi.mock('@/shared/reducers/session.reducer', () => ({
@@ -48,6 +56,10 @@ vi.mock('@/shared/reducers/session.reducer', () => ({
     useLazyGetSessionByIdQuery: vi.fn(() => [vi.fn()]),
     useListSessionsQuery: vi.fn(),
     useUpdateSessionNameMutation: vi.fn(() => [
+        vi.fn(),
+        { isSuccess: false, isError: false, error: null, isLoading: false },
+    ]),
+    useAssignSessionProjectMutation: vi.fn(() => [
         vi.fn(),
         { isSuccess: false, isError: false, error: null, isLoading: false },
     ]),
@@ -171,12 +183,8 @@ describe('Sessions', () => {
 
         renderWithProviders(<Sessions newSession={mockNewSession} />);
 
-        // Open search popover
-        const searchButton = screen.getByLabelText('Search sessions');
-        await user.click(searchButton);
-
         // Type search query that won't match
-        const searchInput = screen.getByPlaceholderText('Search sessions by name...');
+        const searchInput = screen.getByPlaceholderText('Search sessions by name');
         await user.type(searchInput, 'NonExistentSession');
 
         await waitFor(() => {
@@ -210,12 +218,8 @@ describe('Sessions', () => {
 
         renderWithProviders(<Sessions newSession={mockNewSession} />);
 
-        // Open search popover
-        const searchButton = screen.getByLabelText('Search sessions');
-        await user.click(searchButton);
-
         // Type search query
-        const searchInput = screen.getByPlaceholderText('Search sessions by name...');
+        const searchInput = screen.getByPlaceholderText('Search sessions by name');
         await user.type(searchInput, 'Python');
 
         await waitFor(() => {
@@ -234,8 +238,12 @@ describe('Sessions', () => {
 
         renderWithProviders(<Sessions newSession={mockNewSession} />);
 
-        const newSessionButton = screen.getByLabelText('New Session');
-        await user.click(newSessionButton);
+        const actionsContainer = screen.getByTestId('sessions-actions');
+        const [dropdownTrigger] = within(actionsContainer).getAllByRole('button');
+        await user.click(dropdownTrigger);
+
+        const newChatItem = await screen.findByRole('menuitem', { name: /new chat/i });
+        await user.click(newChatItem);
 
         expect(mockNewSession).toHaveBeenCalledOnce();
     });

@@ -74,6 +74,14 @@ class ModelType(StrEnum):
     EMBEDDING = auto()
 
 
+class ModelHostingType(StrEnum):
+    """Defines where a model is hosted."""
+
+    THIRD_PARTY = auto()
+    LISA_HOSTED = auto()
+    INTERNAL_HOSTED = auto()
+
+
 class GuardrailMode(StrEnum):
     """Defines supported guardrail execution modes."""
 
@@ -132,8 +140,8 @@ class GuardrailsTableEntry(BaseModel):
 class MetricConfig(BaseModel):
     """Defines metrics configuration for auto-scaling policies."""
 
-    albMetricName: str = Field(min_length=1)
-    targetValue: NonNegativeInt
+    albMetricName: str = Field(default="RequestCountPerTarget", min_length=1)
+    targetValue: NonNegativeInt = Field(default=30)
     duration: PositiveInt
     estimatedInstanceWarmup: PositiveInt
 
@@ -324,7 +332,7 @@ class AutoScalingConfig(BaseModel):
     maxCapacity: PositiveInt
     desiredCapacity: PositiveInt | None = None
     cooldown: PositiveInt
-    defaultInstanceWarmup: PositiveInt
+    defaultInstanceWarmup: Annotated[int, Field(gt=0, le=3600)]
     metricConfig: MetricConfig
     scheduling: SchedulingConfig | None = None
 
@@ -349,7 +357,7 @@ class AutoScalingInstanceConfig(BaseModel):
     maxCapacity: PositiveInt | None = None
     desiredCapacity: PositiveInt | None = None
     cooldown: PositiveInt | None = None
-    defaultInstanceWarmup: PositiveInt | None = None
+    defaultInstanceWarmup: Annotated[int, Field(gt=0, le=3600)] | None = None
 
     @model_validator(mode="after")
     def validate_auto_scaling_instance_config(self) -> Self:
@@ -401,6 +409,9 @@ class ContainerConfig(BaseModel):
     sharedMemorySize: PositiveInt
     healthCheckConfig: ContainerHealthCheckConfig
     environment: dict[str, str] | None = {}
+    memoryReservation: int | None = Field(
+        default=None, ge=0, description="Memory reservation in MiB for the container."
+    )
 
     @field_validator("environment")
     @classmethod
@@ -462,6 +473,8 @@ class LISAModel(BaseModel):
     features: list[ModelFeature] | None = None
     allowedGroups: list[str] | None = None
     guardrailsConfig: GuardrailsConfig | None = None
+    contextWindow: int | None = None
+    hostingType: ModelHostingType | None = ModelHostingType.THIRD_PARTY
 
 
 class ApiResponseBase(BaseModel):
@@ -488,6 +501,7 @@ class CreateModelRequest(BaseModel):
     allowedGroups: list[str] | None = None
     apiKey: str | None = None
     guardrailsConfig: GuardrailsConfig | None = None
+    hostingType: ModelHostingType | None = ModelHostingType.THIRD_PARTY
 
     @model_validator(mode="after")
     def validate_create_model_request(self) -> Self:
@@ -508,6 +522,13 @@ class CreateModelRequest(BaseModel):
                     "All of the following fields must be defined if creating a LISA-hosted model: "
                     "autoScalingConfig, containerConfig, inferenceContainer, instanceType, and loadBalancerConfig"
                 )
+
+        if self.hostingType == ModelHostingType.INTERNAL_HOSTED and not self.modelUrl:
+            raise ValueError("modelUrl is required for INTERNAL_HOSTED models.")
+        if self.hostingType == ModelHostingType.INTERNAL_HOSTED and self.modelUrl:
+            parsed_url = urllib.parse.urlparse(self.modelUrl)
+            if not parsed_url.hostname or not parsed_url.hostname.lower().endswith(".elb.amazonaws.com"):
+                raise ValueError("modelUrl for INTERNAL_HOSTED models must target an AWS load balancer hostname.")
 
         return self
 
@@ -587,6 +608,18 @@ class UpdateModelRequest(BaseModel):
 
 class UpdateModelResponse(ApiResponseBase):
     """Defines response structure for model updates."""
+
+    pass
+
+
+class UpdateContextWindowRequest(BaseModel):
+    """Request body for manually setting a model's context window."""
+
+    contextWindow: int = Field(gt=0, description="The maximum context window size (number of tokens) for the model.")
+
+
+class UpdateContextWindowResponse(ApiResponseBase):
+    """Response for a single-model context window update."""
 
     pass
 
@@ -1138,6 +1171,11 @@ class PipelineConfig(BaseModel):
 
         return self
 
+    @field_validator("s3Bucket")
+    @classmethod
+    def strip_s3_bucket(cls, v: str) -> str:
+        return v.strip()
+
 
 class CollectionMetadata(BaseModel):
     """Defines metadata for a collection."""
@@ -1460,3 +1498,80 @@ class DataSourceSelection(BaseModel):
     dataSourceName: str = Field(description="Data Source name")
     s3Bucket: str = Field(description="S3 bucket for the data source")
     s3Prefix: str = Field(default="", description="S3 prefix for the data source")
+
+
+class BedrockAgentAliasSummary(BaseModel):
+    """Summary row from bedrock-agent ListAgentAliases."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    agentAliasId: str
+    agentAliasName: str | None = None
+    agentAliasStatus: str | None = None
+    description: str | None = None
+
+
+class BedrockAgentActionTool(BaseModel):
+    """One action-group function exposed as an OpenAI tool in LISA chat."""
+
+    openAiToolName: str = Field(description="Unique tool name for the chat LLM")
+    functionName: str
+    actionGroupId: str
+    actionGroupName: str = ""
+    description: str = ""
+    parameterSchema: dict[str, Any] = Field(
+        default_factory=dict,
+        description="OpenAI-style JSON Schema object with type, properties, required",
+    )
+
+
+class BedrockAgentDiscoveryItem(BaseModel):
+    """One Bedrock Agent with alias metadata for LISA discovery UI."""
+
+    agentId: str
+    agentName: str
+    agentStatus: str
+    description: str = ""
+    updatedAt: datetime | None = None
+    latestAgentVersion: str | None = None
+    suggestedAliasId: str | None = None
+    aliases: list[BedrockAgentAliasSummary] = Field(default_factory=list)
+    invokeReady: bool = False
+    actionTools: list[BedrockAgentActionTool] = Field(default_factory=list)
+
+
+class InvokeBedrockAgentRequest(BaseModel):
+    """Body for invoking an agent via LISA (server-side InvokeAgent)."""
+
+    agentId: str = Field(min_length=1)
+    agentAliasId: str = Field(min_length=1)
+    inputText: str | None = Field(
+        default=None,
+        description="Natural-language turn for the agent orchestrator (omit when using functionName)",
+    )
+    sessionId: str | None = Field(
+        default=None,
+        description="Bedrock agent session id for multi-turn; generated if omitted",
+    )
+    functionName: str | None = Field(
+        default=None,
+        description="When set, LISA builds inputText so the agent should run this action-group function",
+    )
+    actionGroupId: str | None = Field(default=None, description="Required when functionName is set")
+    actionGroupName: str | None = Field(default=None, description="Optional; improves orchestration prompt")
+    parameters: dict[str, Any] | None = Field(
+        default=None,
+        description="Parameter values for functionName (object); may be empty",
+    )
+
+    @model_validator(mode="after")
+    def validate_invoke_mode(self) -> Self:
+        has_fn = bool(self.functionName and self.functionName.strip())
+        has_text = bool(self.inputText and str(self.inputText).strip())
+        if has_fn and has_text:
+            raise ValueError("Provide either inputText or functionName, not both")
+        if not has_fn and not has_text:
+            raise ValueError("Provide inputText or functionName (with optional parameters)")
+        if has_fn and not (self.actionGroupId and str(self.actionGroupId).strip()):
+            raise ValueError("actionGroupId is required when functionName is set")
+        return self

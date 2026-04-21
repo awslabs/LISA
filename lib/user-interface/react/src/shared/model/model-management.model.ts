@@ -48,6 +48,12 @@ export enum InferenceContainer {
     INSTRUCTOR = 'instructor',
 }
 
+export enum ModelHostingType {
+    THIRD_PARTY = 'third_party',
+    LISA_HOSTED = 'lisa_hosted',
+    INTERNAL_HOSTED = 'internal_hosted',
+}
+
 export enum ScheduleType {
     NONE = 'NONE',
     DAILY = 'DAILY',
@@ -195,6 +201,7 @@ export type IModel = {
     autoScalingConfig: IAutoScalingConfig;
     loadBalancerConfig: ILoadBalancerConfig;
     allowedGroups?: string[];
+    hostingType?: ModelHostingType;
 };
 
 export type IModelListResponse = {
@@ -216,6 +223,7 @@ export type IModelRequest = {
     autoScalingConfig: IAutoScalingConfig;
     loadBalancerConfig: ILoadBalancerConfig;
     lisaHostedModel: boolean;
+    hostingType: ModelHostingType;
     allowedGroups?: string[];
     apiKey?: string;
     guardrailsConfig?: IGuardrailsConfig;
@@ -360,7 +368,7 @@ export const autoScalingConfigSchema = z.object({
     maxCapacity: z.number().min(1).default(1),
     desiredCapacity: z.number().optional(),
     cooldown: z.number().min(1).default(420),
-    defaultInstanceWarmup: z.number().default(180),
+    defaultInstanceWarmup: z.number().min(0).max(3600).default(180),
     metricConfig: MetricConfigSchema.default(MetricConfigSchema.parse({})),
     scheduling: scheduleConfigSchema.optional(),
 }).superRefine((value, context) => {
@@ -400,7 +408,7 @@ export const containerConfigSchema = z.object({
 export const ModelRequestBaseSchema = z.object({
     modelId: z.string()
         .regex(/^[a-z\d-]+$/, {message: 'Only lowercase alphanumeric characters and hyphens allowed'})
-        .regex(/^[a-z0-9].*[a-z0-9]$/, {message: 'Must start and end with a lowercase alphanumeric character.'})
+        .regex(/^[a-z].*[a-z0-9]$/, {message: 'Must start with a lowercase letter and end with a lowercase alphanumeric character.'})
         .default(''),
     modelName: z.string().min(1).default(''),
     modelDescription: z.string().default(''),
@@ -412,6 +420,7 @@ export const ModelRequestBaseSchema = z.object({
         overview: z.string()
     })).default([]),
     lisaHostedModel: z.boolean().default(false),
+    hostingType: z.nativeEnum(ModelHostingType).default(ModelHostingType.THIRD_PARTY),
     modelType: z.nativeEnum(ModelType).default(ModelType.textgen),
     instanceType: z.string().default(''),
     inferenceContainer: z.nativeEnum(InferenceContainer).optional(),
@@ -424,7 +433,9 @@ export const ModelRequestBaseSchema = z.object({
 
 // Full schema with refinements - use this for validation
 export const ModelRequestSchema = ModelRequestBaseSchema.superRefine((value, context) => {
-    if (value.lisaHostedModel) {
+    const isLisaHosted = value.hostingType === ModelHostingType.LISA_HOSTED || value.lisaHostedModel;
+
+    if (isLisaHosted) {
         const instanceTypeValidator = z.string().min(1, {message: 'Required for LISA hosted models.'});
         const instanceTypeResult = instanceTypeValidator.safeParse(value.instanceType);
         if (instanceTypeResult.success === false) {
@@ -455,6 +466,33 @@ export const ModelRequestSchema = ModelRequestBaseSchema.superRefine((value, con
                     ...error,
                     path: ['containerConfig', 'image', 'baseImage']
                 });
+            }
+        }
+    }
+
+    if (value.hostingType === ModelHostingType.INTERNAL_HOSTED) {
+        const modelUrlValidator = z.string().url('Model URL is required for internal hosted models.');
+        const modelUrlResult = modelUrlValidator.safeParse(value.modelUrl);
+        if (modelUrlResult.success === false) {
+            for (const error of modelUrlResult.error.issues) {
+                context.addIssue({
+                    ...error,
+                    path: ['modelUrl']
+                });
+            }
+        } else {
+            const internalAlbHostValidator = z.string().regex(/\.elb\.amazonaws\.com$/i, {
+                message: 'Internal hosted model URL must target an AWS load balancer hostname.'
+            });
+            const host = new URL(value.modelUrl).hostname;
+            const hostResult = internalAlbHostValidator.safeParse(host);
+            if (hostResult.success === false) {
+                for (const error of hostResult.error.issues) {
+                    context.addIssue({
+                        ...error,
+                        path: ['modelUrl']
+                    });
+                }
             }
         }
     }

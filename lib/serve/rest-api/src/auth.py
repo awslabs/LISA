@@ -372,7 +372,7 @@ class Authorizer:
             logger.trace("Valid OIDC token")
             return jwt_data
 
-        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, message="Not authenticated")
+        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
     def _log_access_attempt(
         self, request: Request, auth_method: str, user_id: str, endpoint: str, success: bool, reason: str = ""

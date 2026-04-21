@@ -18,25 +18,18 @@ import logging
 import os
 
 from api.endpoints.v2 import litellm_passthrough
-from auth import Authorizer
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from fastapi.responses import JSONResponse
+from starlette.status import HTTP_200_OK, HTTP_503_SERVICE_UNAVAILABLE
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-dependencies = []
-if os.getenv("USE_AUTH", "true").lower() == "true":
-    logger.info("Auth enabled")
-    security = Authorizer()
-    dependencies = [Depends(security)]
-else:
-    logger.info("Auth disabled")
+# Auth is now handled by auth_middleware in main.py
+# Routes can use @require_auth or @require_admin decorators for additional checks
 
-router.include_router(
-    litellm_passthrough.router, prefix="/v2/serve", tags=["litellm_passthrough"], dependencies=dependencies
-)
+router.include_router(litellm_passthrough.router, prefix="/v2/serve", tags=["litellm_passthrough"])
 
 
 @router.get("/health")
@@ -52,10 +45,10 @@ async def health_check() -> JSONResponse:
 
         if missing_vars:
             content = {"status": "UNHEALTHY", "missing_env_vars": missing_vars}
-            return JSONResponse(content=content, status_code=503)
+            return JSONResponse(content=content, status_code=HTTP_503_SERVICE_UNAVAILABLE)
 
         content = {"status": "OK"}
-        return JSONResponse(content=content, status_code=200)
+        return JSONResponse(content=content, status_code=HTTP_200_OK)
     except Exception as e:
         content = {"status": "UNHEALTHY", "error": str(e)}
-        return JSONResponse(content=content, status_code=503)
+        return JSONResponse(content=content, status_code=HTTP_503_SERVICE_UNAVAILABLE)

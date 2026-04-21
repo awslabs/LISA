@@ -28,6 +28,8 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as batch from 'aws-cdk-lib/aws-batch';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { getPythonRuntime } from '../../api-base/utils';
 import { Vpc } from '../../networking/vpc';
@@ -35,8 +37,7 @@ import path from 'path';
 import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import * as fs from 'fs';
-import * as crypto from 'crypto';
-import { BATCH_INGESTION_PATH, CodeFactory } from '../../util';
+import { BATCH_INGESTION_PATH, CodeFactory, LAMBDA_PATH } from '../../util';
 
 // Props interface for the IngestionJobConstruct
 export type IngestionJobConstructProps = StackProps & BaseProps & {
@@ -64,7 +65,7 @@ export class IngestionJobConstruct extends Construct {
         super(scope, id);
 
         const { config, vpc, layers, lambdaRole, baseEnvironment } = props;
-        const hash = crypto.randomBytes(6).toString('hex');
+        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
 
         // DynamoDB table for tracking ingestion jobs
         // Uses id as partition key with additional GSIs for querying by created date, s3 path and document id
@@ -108,15 +109,13 @@ export class IngestionJobConstruct extends Construct {
         // AWS Batch Fargate compute environment for running ingestion jobs
         const maxvCpus = this.getMaxCpus(vpc);
         const computeEnv = new batch.FargateComputeEnvironment(this, 'IngestionJobFargateEnv', {
-            computeEnvironmentName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job-${hash}`,
+            computeEnvironmentName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job-compute`,
             vpc: vpc.vpc,
             vpcSubnets: vpc.subnetSelection,
             maxvCpus: maxvCpus,
         });
 
-        // AWS Batch job queue that uses the Fargate compute environment
         const jobQueue = new batch.JobQueue(this, 'IngestionJobQueue', {
-            jobQueueName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job-${hash}`,
             computeEnvironments: [
                 {
                     computeEnvironment: computeEnv,
@@ -170,9 +169,25 @@ export class IngestionJobConstruct extends Construct {
             'BUILD_DIR': buildDirName
         });
 
+        // Create execution role for ECS tasks to pull images from ECR and write logs
+        const executionRole = new iam.Role(this, 'BatchJobExecutionRole', {
+            roleName: `${config.deploymentName}-${config.deploymentStage}-batch-exec-role`,
+            assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
+            description: 'Execution role for ECS Batch ingestion tasks',
+        });
+
+        // Add ECR permissions for pulling container images
+        executionRole.addManagedPolicy(
+            iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy')
+        );
+
+        // Grant CloudWatch Logs permissions
+        logGroup.grantWrite(executionRole);
+
         // AWS Batch job definition specifying container configuration
-        const jobDefinition = new batch.EcsJobDefinition(this, 'IngestionJobDefinition', {
-            jobDefinitionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job-${hash}`,
+        const jobDefinition = new batch.EcsJobDefinition(this, 'IngestionJobDef', {
+            // Keep the name static so pipeline-ingest events reference latest
+            jobDefinitionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job-def`,
             container: new batch.EcsFargateContainerDefinition(this, 'IngestionJobContainer', {
                 environment: baseEnvironment,
                 image,
@@ -180,6 +195,7 @@ export class IngestionJobConstruct extends Construct {
                 cpu: 2,
                 command: ['-m', 'repository.pipeline_ingestion', 'Ref::ACTION', 'Ref::DOCUMENT_ID'],
                 jobRole: lambdaRole,
+                executionRole: executionRole,
                 logging: new ecs.AwsLogDriver({
                     streamPrefix: 'batch-job',
                     logGroup: logGroup
@@ -200,10 +216,10 @@ export class IngestionJobConstruct extends Construct {
 
         // Lambda function for handling scheduled document ingestion - using container image
         const handlePipelineIngestScheduleLambda = new lambda.Function(this, 'handlePipelineIngestSchedule', {
-            functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-ingest-schedule-${hash}`,
+            functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-ingest-schedule`,
             runtime: getPythonRuntime(),
-            handler: 'repository.pipeline_ingest_documents.handle_pipline_ingest_schedule',
-            code: lambda.Code.fromAsset('./lambda'),
+            handler: 'repository.pipeline_ingest_handlers.handle_pipline_ingest_schedule',
+            code: lambda.Code.fromAsset(lambdaPath),
             timeout: Duration.seconds(60),
             memorySize: 256,
             vpc: vpc!.vpc,
@@ -228,10 +244,10 @@ export class IngestionJobConstruct extends Construct {
 
         // Lambda function for handling S3 event-based document ingestion - using container image
         const handlePipelineIngestEvent = new lambda.Function(this, 'handlePipelineIngestEvent', {
-            functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-ingest-event-${hash}`,
+            functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-ingest-event`,
             runtime: getPythonRuntime(),
-            handler: 'repository.pipeline_ingest_documents.handle_pipeline_ingest_event',
-            code: lambda.Code.fromAsset('./lambda'),
+            handler: 'repository.pipeline_ingest_handlers.handle_pipeline_ingest_event',
+            code: lambda.Code.fromAsset(lambdaPath),
             timeout: Duration.seconds(60),
             memorySize: 256,
             vpc: vpc!.vpc,
@@ -256,10 +272,10 @@ export class IngestionJobConstruct extends Construct {
 
         // Lambda function for handling document deletion events - using container image
         const handlePipelineDeleteEvent = new lambda.Function(this, 'handlePipelineDeleteEvent', {
-            functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-delete-event-${hash}`,
+            functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-delete-event`,
             runtime: getPythonRuntime(),
-            handler: 'repository.pipeline_ingest_documents.handle_pipeline_delete_event',
-            code: lambda.Code.fromAsset('./lambda'),
+            handler: 'repository.pipeline_ingest_handlers.handle_pipeline_delete_event',
+            code: lambda.Code.fromAsset(lambdaPath),
             timeout: Duration.seconds(60),
             memorySize: 256,
             vpc: vpc!.vpc,
@@ -281,6 +297,46 @@ export class IngestionJobConstruct extends Construct {
         deleteAlias.addPermission('AllowEventBridgeInvoke', {
             principal: new iam.ServicePrincipal('events.amazonaws.com'),
             action: 'lambda:InvokeFunction'
+        });
+
+        // EventBridge rule to capture Batch job state changes and publish custom CloudWatch metrics.
+        // AWS Batch does not publish job-level metrics to CloudWatch natively, so we use
+        // EventBridge job state change events as the source of truth. This captures all
+        // ingestion jobs regardless of trigger (S3 event, scheduled, or manual upload).
+        const batchJobMetricLambda = new lambda.Function(this, 'BatchJobMetricPublisher', {
+            functionName: `${config.deploymentName}-${config.deploymentStage}-batch-job-metric`,
+            runtime: lambda.Runtime.PYTHON_3_13,
+            handler: 'batch_job_metric.handler',
+            code: lambda.Code.fromAsset(path.join(__dirname, '../../../lambda/metrics')),
+            environment: {
+                METRICS_NAMESPACE: 'LISA/BatchIngestion',
+                DEPLOYMENT_NAME: config.deploymentName,
+                DEPLOYMENT_STAGE: config.deploymentStage,
+                JOB_QUEUE_LABEL: `${config.deploymentName}-${config.deploymentStage}-ingestion-job`,
+            },
+            timeout: Duration.seconds(30),
+            vpc: vpc.vpc,
+            vpcSubnets: vpc.subnetSelection,
+            securityGroups: [vpc.securityGroups.lambdaSg],
+        });
+
+        batchJobMetricLambda.addToRolePolicy(new iam.PolicyStatement({
+            actions: ['cloudwatch:PutMetricData'],
+            resources: ['*'],
+        }));
+
+        new events.Rule(this, 'BatchJobStateChangeRule', {
+            ruleName: `${config.deploymentName}-${config.deploymentStage}-batch-job-state-change`,
+            description: 'Captures AWS Batch job state changes for ingestion pipeline and publishes CloudWatch metrics',
+            eventPattern: {
+                source: ['aws.batch'],
+                detailType: ['Batch Job State Change'],
+                detail: {
+                    status: ['SUBMITTED', 'RUNNING', 'SUCCEEDED', 'FAILED'],
+                    jobQueue: [jobQueue.jobQueueArn],
+                },
+            },
+            targets: [new targets.LambdaFunction(batchJobMetricLambda)],
         });
     }
 }

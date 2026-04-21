@@ -14,6 +14,7 @@
  limitations under the License.
  */
 import { Duration, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
+import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import { ITable, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { Credentials, DatabaseInstance, DatabaseInstanceEngine } from 'aws-cdk-lib/aws-rds';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -27,6 +28,7 @@ import {
     Effect,
     Policy,
     PolicyStatement,
+    Role,
 } from 'aws-cdk-lib/aws-iam';
 import { HostedRotation } from 'aws-cdk-lib/aws-secretsmanager';
 import { SecurityGroupEnum } from '../core/iam/SecurityGroups';
@@ -36,7 +38,6 @@ import { AwsCustomResource, AwsCustomResourcePolicy, PhysicalResourceId } from '
 import { ISecurityGroup, Port } from 'aws-cdk-lib/aws-ec2';
 import { ECSTasks } from '../api-base/ecsCluster';
 import { GuardrailsTable } from '../models/guardrails-table';
-import { Role } from 'aws-cdk-lib/aws-iam';
 
 export type LisaServeApplicationProps = {
     vpc: Vpc;
@@ -258,6 +259,7 @@ export class LisaServeApplicationConstruct extends Construct {
                 // This runs when switching to IAM auth or updating the configuration
                 // Pass parameters via payload since the Lambda is shared
                 // Use Stack.of(scope).toJsonString() to properly resolve CDK tokens in the payload
+                // Include timestamp to force re-run on every deployment
                 const lambdaInvokeParams = {
                     service: 'Lambda',
                     action: 'invoke',
@@ -271,6 +273,7 @@ export class LisaServeApplicationConstruct extends Construct {
                             dbName: config.restApiConfig.rdsConfig.dbName,
                             dbUser: config.restApiConfig.rdsConfig.username,
                             iamName: serveRole.roleName,
+                            timestamp: new Date().toISOString(), // Force re-run on every deployment
                         })
                     },
                 };
@@ -314,6 +317,7 @@ export class LisaServeApplicationConstruct extends Construct {
             container.addEnvironment('LITELLM_DB_INFO_PS_NAME', litellmDbConnectionInfoPs.parameterName);
             container.addEnvironment('GUARDRAILS_TABLE_NAME', guardrailsTableName);
             container.addEnvironment('GENERATED_IMAGES_S3_BUCKET_NAME', imagesBucketName);
+            container.addEnvironment('MODEL_INFO_CACHE_TTL', '300');
             // Add metrics queue URL if provided
             if (props.metricsQueueUrl) {
                 // Get the queue URL from SSM parameter
@@ -425,6 +429,69 @@ export class LisaServeApplicationConstruct extends Construct {
                 serveRole.attachInlinePolicy(invocation_permissions);
             }
         }
-    };
+
+        // =====================================================================
+        // REST API ALB Alarms
+        // =====================================================================
+        // These alarms use the REST API ALB's concrete dimensions (known at deploy
+        // time). Model ALB alarms are not created here because model ALBs are
+        // dynamic and CloudWatch does not support SEARCH in Metric Alarms.
+        // Model ALB health is monitored via SEARCH-based dashboard widgets in
+        // the ModelHealthDashboard.
+        if (config.deployHealthDashboard) {
+            const restAlb = restApi.apiCluster.loadBalancer;
+            const restAlbFullName = restAlb.loadBalancerFullName;
+            const alarmPrefix = `${config.deploymentName}-${config.deploymentStage}-LISA`;
+
+            new cloudwatch.Alarm(scope, 'RestApi-ELB5xxAlarm', {
+                alarmName: `${alarmPrefix}-RestApi-ELB5xxErrors`,
+                alarmDescription: 'REST API ALB is returning 5xx errors, typically meaning no healthy targets are available.',
+                metric: new cloudwatch.Metric({
+                    namespace: 'AWS/ApplicationELB',
+                    metricName: 'HTTPCode_ELB_5XX_Count',
+                    dimensionsMap: { LoadBalancer: restAlbFullName },
+                    statistic: 'Sum',
+                    period: Duration.minutes(5),
+                }),
+                threshold: 5,
+                comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+                evaluationPeriods: 2,
+                treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+            });
+
+            new cloudwatch.Alarm(scope, 'RestApi-HighLatencyAlarm', {
+                alarmName: `${alarmPrefix}-RestApi-HighP99Latency`,
+                alarmDescription: 'REST API p99 response time exceeds 120 seconds. The API may be overloaded.',
+                metric: new cloudwatch.Metric({
+                    namespace: 'AWS/ApplicationELB',
+                    metricName: 'TargetResponseTime',
+                    dimensionsMap: { LoadBalancer: restAlbFullName },
+                    statistic: 'p99',
+                    period: Duration.minutes(5),
+                }),
+                threshold: 120,
+                comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+                evaluationPeriods: 3,
+                treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+            });
+
+            new cloudwatch.Alarm(scope, 'RestApi-RejectedConnectionsAlarm', {
+                alarmName: `${alarmPrefix}-RestApi-RejectedConnections`,
+                alarmDescription: 'REST API ALB is rejecting connections, indicating the API is at maximum capacity.',
+                metric: new cloudwatch.Metric({
+                    namespace: 'AWS/ApplicationELB',
+                    metricName: 'RejectedConnectionCount',
+                    dimensionsMap: { LoadBalancer: restAlbFullName },
+                    statistic: 'Sum',
+                    period: Duration.minutes(5),
+                }),
+                threshold: 0,
+                comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+                evaluationPeriods: 2,
+                treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+            });
+        }
+
+    }
 
 }

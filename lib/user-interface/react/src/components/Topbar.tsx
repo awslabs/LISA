@@ -14,19 +14,22 @@
   limitations under the License.
 */
 
-import { ReactElement, useContext } from 'react';
+import { ReactElement, useContext, useEffect } from 'react';
 import { useAuth } from '../auth/useAuth';
 import { useHref, useNavigate } from 'react-router-dom';
 import { applyDensity, Density, Mode } from '@cloudscape-design/global-styles';
 import TopNavigation, { TopNavigationProps } from '@cloudscape-design/components/top-navigation';
-import { purgeStore, useAppSelector } from '@/config/store';
-import { selectCurrentUserIsAdmin, selectCurrentUserIsApiUser, selectCurrentUsername } from '../shared/reducers/user.reducer';
+import { useAppDispatch, useAppSelector } from '@/config/store';
+import { selectCurrentUserIsAdmin, selectCurrentUserIsApiUser, selectCurrentUserIsRagAdmin, selectCurrentUsername } from '../shared/reducers/user.reducer';
 import { IConfiguration } from '@/shared/model/configuration.model';
 import { ButtonDropdownProps } from '@cloudscape-design/components';
 import ColorSchemeContext from '@/shared/color-scheme.provider';
-import { OidcConfig } from '@/config/oidc.config';
+import { OidcConfig, getRedirectUri } from '@/config/oidc.config';
 import { getBrandingAssetPath } from '../shared/util/branding';
 import { getDisplayName } from '@/shared/util/branding';
+import { useDeleteAllSessionsForUserMutation } from '@/shared/reducers/session.reducer';
+import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
+import { useNotificationService } from '@/shared/util/hooks';
 
 applyDensity(Density.Comfortable);
 
@@ -37,10 +40,30 @@ export type TopbarProps = {
 function Topbar ({ configs }: TopbarProps): ReactElement {
     const navigate = useNavigate();
     const auth = useAuth();
+    const dispatch = useAppDispatch();
+    const notificationService = useNotificationService(dispatch);
     const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
+    const isUserRagAdmin = useAppSelector(selectCurrentUserIsRagAdmin);
     const isApiUser = useAppSelector(selectCurrentUserIsApiUser);
     const userName = useAppSelector(selectCurrentUsername);
     const { colorScheme, setColorScheme } = useContext(ColorSchemeContext);
+
+    const [deleteUserSessions, {
+        isSuccess: isDeleteUserSessionsSuccess,
+        isError: isDeleteUserSessionsError,
+        error: deleteUserSessionsError,
+        isLoading: isDeleteUserSessionsLoading,
+    }] = useDeleteAllSessionsForUserMutation();
+
+    useEffect(() => {
+        if (!isDeleteUserSessionsLoading && isDeleteUserSessionsSuccess) {
+            notificationService.generateNotification('Successfully deleted all user sessions', 'success');
+        } else if (!isDeleteUserSessionsLoading && isDeleteUserSessionsError) {
+            const errorMessage = 'message' in deleteUserSessionsError ? deleteUserSessionsError.message : 'Unknown error';
+            notificationService.generateNotification(`Error deleting user sessions: ${errorMessage}`, 'error');
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isDeleteUserSessionsSuccess, isDeleteUserSessionsError, deleteUserSessionsError, isDeleteUserSessionsLoading]);
 
     const libraryItems = [
         ...(configs?.configuration.enabledComponents?.modelLibrary ? [{
@@ -70,16 +93,19 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
             external: false,
             href: '/prompt-templates',
         } as ButtonDropdownProps.Item] : []),
-        ...(configs?.configuration.enabledComponents?.mcpConnections ? [{
-            id: 'mcp-connection',
-            type: 'button',
-            variant: 'link',
-            text: 'MCP Connections',
-            disableUtilityCollapse: false,
-            external: false,
-            href: '/mcp-connections',
-        } as ButtonDropdownProps.Item] : [])
+        ...((Boolean(configs?.configuration.enabledComponents?.mcpConnections)
+            || Boolean(configs?.configuration.enabledComponents?.bedrockAgents)) ? [{
+                id: 'mcp-connection',
+                type: 'button',
+                variant: 'link',
+                text: 'Agentic Connections',
+                disableUtilityCollapse: false,
+                external: false,
+                href: '/mcp-connections',
+            } as ButtonDropdownProps.Item] : [])
     ].sort((a,b) => a.text.localeCompare(b.text));
+
+    const showAdminDropdown = isUserAdmin || (isUserRagAdmin && window.env.RAG_ENABLED);
 
     return (
         <TopNavigation
@@ -112,7 +138,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                         items: libraryItems
                     }] as TopNavigationProps.Utility[] : []
                 ),
-                ...((isUserAdmin
+                ...((showAdminDropdown
                     ? [{
                         type: 'menu-dropdown',
                         text: 'Administration',
@@ -121,7 +147,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                             navigate(event.detail.href);
                         },
                         items: [
-                            {
+                            ...(isUserAdmin ? [{
                                 id: 'configuration',
                                 type: 'button',
                                 variant: 'link',
@@ -129,8 +155,8 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                 disableUtilityCollapse: false,
                                 external: false,
                                 href: '/configuration',
-                            } as ButtonDropdownProps.Item,
-                            {
+                            } as ButtonDropdownProps.Item] : []),
+                            ...(isUserAdmin ? [{
                                 id: 'model-management',
                                 type: 'button',
                                 variant: 'link',
@@ -138,8 +164,8 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                 disableUtilityCollapse: false,
                                 external: false,
                                 href: '/model-management',
-                            } as ButtonDropdownProps.Item,
-                            ...(window.env.RAG_ENABLED ? [{
+                            } as ButtonDropdownProps.Item] : []),
+                            ...(window.env.RAG_ENABLED && (isUserAdmin || isUserRagAdmin) ? [{
                                 id: 'repository-management',
                                 type: 'button',
                                 variant: 'link',
@@ -148,7 +174,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                 external: false,
                                 href: '/repository-management',
                             } as ButtonDropdownProps.Item] : []),
-                            {
+                            ...(isUserAdmin ? [{
                                 id: 'api-token-management',
                                 type: 'button',
                                 variant: 'link',
@@ -156,8 +182,8 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                 disableUtilityCollapse: false,
                                 external: false,
                                 href: '/api-token-management',
-                            } as ButtonDropdownProps.Item,
-                            ...(window.env.HOSTED_MCP_ENABLED ? [
+                            } as ButtonDropdownProps.Item] : []),
+                            ...(isUserAdmin && window.env.HOSTED_MCP_ENABLED ? [
                                 {
                                     id: 'mcp-management',
                                     type: 'button',
@@ -168,7 +194,25 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                     href: '/mcp-management',
                                 } as ButtonDropdownProps.Item,
                             ] : []),
-                            ...(configs?.configuration.enabledComponents?.showMcpWorkbench ? [{
+                            ...(isUserAdmin && Boolean(configs?.configuration.enabledComponents?.bedrockAgents) ? [{
+                                id: 'bedrock-agent-management',
+                                type: 'button',
+                                variant: 'link',
+                                text: 'Bedrock Agent Catalog',
+                                disableUtilityCollapse: false,
+                                external: false,
+                                href: '/bedrock-agent-management',
+                            } as ButtonDropdownProps.Item] : []),
+                            ...(isUserAdmin && configs?.configuration?.enabledComponents?.chatAssistantStacks ? [{
+                                id: 'chat-assistant-stacks',
+                                type: 'button',
+                                variant: 'link',
+                                text: 'Chat Assistant Stacks',
+                                disableUtilityCollapse: false,
+                                external: false,
+                                href: '/chat-assistant-stacks',
+                            } as ButtonDropdownProps.Item] : []),
+                            ...(isUserAdmin && configs?.configuration.enabledComponents?.showMcpWorkbench ? [{
                                 id: 'mcp-workbench',
                                 type: 'button',
                                 variant: 'link',
@@ -187,16 +231,25 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                             case 'api-token':
                                 navigate('/user-api-token');
                                 break;
+                            case 'delete-chat-history':
+                                dispatch(
+                                    setConfirmationModal({
+                                        action: 'Delete',
+                                        resourceName: 'All Sessions',
+                                        onConfirm: () => deleteUserSessions(),
+                                        description: 'This will delete all of your user sessions.'
+                                    })
+                                );
+                                break;
                             case 'signin':
-                                auth.signinRedirect({ redirect_uri: window.location.toString() });
+                                auth.signinRedirect({ redirect_uri: getRedirectUri() });
                                 break;
                             case 'signout':
-                                await purgeStore();
                                 await auth.removeUser();
                                 await auth.signoutRedirect({
                                     extraQueryParams: {
                                         client_id: OidcConfig.client_id,
-                                        redirect_uri: window.location.origin,
+                                        redirect_uri: getRedirectUri(),
                                         response_type: OidcConfig.response_type
                                     }
                                 });
@@ -214,6 +267,11 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                         ...(configs?.configuration.enabledComponents?.enableUserApiTokens && (isUserAdmin || isApiUser) ? [{
                             id: 'api-token',
                             text: 'API Token',
+                        }] : []),
+                        ...(configs?.configuration.enabledComponents?.deleteSessionHistory ? [{
+                            id: 'delete-chat-history',
+                            text: 'Delete Chat History',
+                            iconName: 'remove' as const,
                         }] : []),
                         {
                             id: 'color-mode', text: colorScheme === Mode.Light ? 'Dark mode' : 'Light mode', iconSvg: (

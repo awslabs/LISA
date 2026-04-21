@@ -494,10 +494,14 @@ export const LoadBalancerConfigSchema = z.object({
     .describe('Configuration for load balancer settings.');
 
 export const MetricConfigSchema = z.object({
-    albMetricName: z.string().default('RequestCountPerTarget').describe('Name of the ALB metric.'),
-    targetValue: z.number().default(30).describe('Target value for the metric.'),
+    albMetricName: z.string().default('RequestCountPerTarget')
+        .describe('ALB metric for scaling. Use "RequestCountPerTarget" for request volume scaling (good for embedding models) ' +
+            'or "TargetResponseTime" for latency-based scaling (recommended for text generation LLMs). ' +
+            'When using TargetResponseTime, set targetValue to the max acceptable p90 latency in seconds (e.g., 10).'),
+    targetValue: z.number().default(30).describe('Target value for the metric. For RequestCountPerTarget this is requests per target. ' +
+        'For TargetResponseTime this is the target p90 latency in seconds.'),
     duration: z.number().default(60).describe('Duration in seconds for metric evaluation.'),
-    estimatedInstanceWarmup: z.number().min(0).default(180).describe('Estimated warm-up time in seconds until a newly launched instance can send metrics to CloudWatch.'),
+    estimatedInstanceWarmup: z.number().min(0).max(3600).default(180).describe('Estimated warm-up time in seconds until a newly launched instance can send metrics to CloudWatch. Max 3600 (1 hour).'),
 })
     .describe('Metric configuration for ECS auto scaling.');
 
@@ -505,7 +509,7 @@ export const AutoScalingConfigSchema = z.object({
     blockDeviceVolumeSize: z.number().min(30).default(50),
     minCapacity: z.number().min(1).default(1).describe('Minimum capacity for auto scaling. Must be at least 1.'),
     maxCapacity: z.number().min(1).default(2).describe('Maximum capacity for auto scaling. Must be at least 1.'),
-    defaultInstanceWarmup: z.number().default(180).describe('Default warm-up time in seconds until a newly launched instance can'),
+    defaultInstanceWarmup: z.number().min(0).max(3600).default(180).describe('Default warm-up time in seconds until a newly launched instance can contribute to CloudWatch metrics. Max 3600 (1 hour). Larger models (e.g. gpt-oss-120b) may require values closer to the maximum.'),
     cooldown: z.number().min(1).default(420).describe('Cool down period in seconds between scaling activities.'),
     metricConfig: MetricConfigSchema,
 })
@@ -564,6 +568,8 @@ export type TaskDefinition = z.infer<typeof TaskDefinitionSchema>;
  */
 export const EcsBaseConfigSchema = z.object({
     amiHardwareType: z.enum(AmiHardwareType).describe('Name of the model.'),
+    amiId: z.string().optional()
+        .describe('Optional AMI ID for a custom ECS machine image (e.g. ami-0123456789abcdef0). If not provided, the default ECS-optimized AMI will be used (AL2 for ADC/iso regions, AL2023 otherwise).'),
     autoScalingConfig: AutoScalingConfigSchema.describe('Configuration for auto scaling settings.'),
     buildArgs: z.record(z.string(), z.string()).optional()
         .describe('Optional build args to be applied when creating the task container if containerConfig.image.type is ASSET'),
@@ -715,6 +721,7 @@ const AuthConfigSchema = z.object({
     adminGroup: z.string().default('').describe('Name of the admin group.'),
     userGroup: z.string().default('').describe('Name of the user group.'),
     apiGroup: z.string().default('').describe('Name of the API group for API token access.'),
+    ragAdminGroup: z.string().default('').describe('Name of the RAG admin group for RAG management access.'),
     jwtGroupsProperty: z.string().default('').describe('Name of the JWT groups property.'),
     additionalScopes: z.array(z.string()).default([]).describe('Additional JWT scopes to request.'),
 }).describe('Configuration schema for authorization.');
@@ -743,8 +750,46 @@ const FastApiContainerConfigSchema = z.object({
                     'APIs. Please do not define the dbHost field for the FastAPI container DB config.',
             },
         ),
+    rateLimitRpm: z.number().int().positive().default(60).describe(
+        'Per-user sustained request rate limit in requests per minute. Each ECS task enforces this independently.'
+    ),
+    rateLimitBurst: z.number().int().nonnegative().default(10).describe(
+        'Per-user burst allowance above the sustained rate limit. Allows short spikes without throttling.'
+    ),
+    rateLimitEnabled: z.boolean().default(true).describe(
+        'Enable or disable per-user rate limiting on the serve API.'
+    ),
+    rateLimitOverrides: z.record(
+        z.string(),
+        z.object({
+            rpm: z.number().int().positive().optional().describe('Override RPM for this user/token.'),
+            burst: z.number().int().nonnegative().optional().describe('Override burst for this user/token.'),
+        })
+    ).default({}).describe(
+        'Per-user rate limit overrides. Keys use the format "token:<tokenUUID>" for API tokens, ' +
+        '"oidc:<sub>" for OIDC users, or "user:<username>". Values can override "rpm" and/or "burst".'
+    ),
 }).describe('Configuration schema for REST API.');
 
+/** Custom domain / TLS for the MCP Workbench ALB only (separate from Serve’s `restApiConfig`). */
+const McpWorkbenchRestApiConfigSchema = z
+    .object({
+        domainName: z
+            .string()
+            .nullish()
+            .default(null)
+            .describe(
+                'Hostname for the MCP Workbench ALB (HTTPS listener and SSM …/mcpWorkbench/endpoint). Configure here for the same YAML shape as `restApiConfig.domainName` for LISA Serve.',
+            ),
+        sslCertIamArn: z
+            .string()
+            .nullish()
+            .default(null)
+            .describe(
+                'ACM certificate ARN for the MCP Workbench ALB. Same role as `restApiConfig.sslCertIamArn` for Serve; if omitted, falls back to `mcpWorkbenchEcsConfig.sslCertIamArn` then `restApiConfig.sslCertIamArn`.',
+            ),
+    })
+    .describe('Optional load balancer domain and TLS for MCP Workbench (parallel to `restApiConfig` for LISA Serve).');
 
 const RagFileProcessingConfigSchema = z.object({
     chunkSize: z.number().min(100).max(10000),
@@ -774,6 +819,29 @@ const ApiGatewayConfigSchema = z
     .optional()
     .describe('Configuration schema for API Gateway Endpoint');
 
+const AuditLoggingConfigSchema = z
+    .object({
+        enabled: z.boolean().default(false).describe('Whether to enable audit logging for opted-in API Gateway paths.'),
+        auditAll: z.boolean().default(false).describe('If true, enable audit logging for all API Gateway paths.'),
+        enabledPaths: z
+            .array(z.string().min(1))
+            .default([])
+            .describe('API Gateway path prefixes (e.g. "/session") to include in audit logging. Prefix match is used.'),
+        maxRequestBodyBytes: z
+            .number()
+            .int()
+            .min(1)
+            .default(20000)
+            .describe('Maximum request body bytes to include in audit logs (oversized bodies are replaced with a placeholder).'),
+        includeJsonBody: z
+            .boolean()
+            .default(false)
+            .describe(
+                'When true, emit AUDIT_API_GATEWAY_REQUEST_BODY for opted-in paths. When false (default), request bodies are never included in audit logs.'
+            ),
+    })
+    .describe('Audit logging configuration for API Gateway request auditing.');
+
 const LiteLLMConfig = z.object({
     db_key: z.string().refine(
         (key) => key.startsWith('sk-'), // key needed for model management actions
@@ -784,6 +852,9 @@ const LiteLLMConfig = z.object({
     litellm_settings: z.any().optional(),
     router_settings: z.any().optional(),
     environment_variables: z.any().optional(),
+    // LiteLLM callback-specific settings (e.g., OpenTelemetry message logging toggles).
+    // This must be allowed here so Zod doesn't strip it at deploy time.
+    callback_settings: z.any().optional(),
 })
     .describe('Core LiteLLM configuration - see https://litellm.vercel.app/docs/proxy/configs#all-settings for more details about each field.');
 
@@ -835,6 +906,9 @@ export const RawConfigObject = z.object({
     partition: z.string().default('aws').describe('AWS partition for deployment.'),
     domain: z.string().default('amazonaws.com').describe('AWS domain for deployment'),
     restApiConfig: FastApiContainerConfigSchema.describe('Image override for Rest API'),
+    mcpWorkbenchRestApiConfig: McpWorkbenchRestApiConfigSchema.optional().describe(
+        'Custom domain and certificate for the MCP Workbench ALB. Same usage as `restApiConfig.domainName` / `sslCertIamArn` for LISA Serve.',
+    ),
     mcpWorkbenchConfig: ImageAssetSchema.optional().describe('Image override for MCP Workbench'),
     mcpWorkbenchBuildConfig: z.object({
         S6_OVERLAY_NOARCH_SOURCE: z.string().optional().describe('Override the URL with a path relative to the build directory for the architecture independent S6 overlay tar.xz.'),
@@ -853,6 +927,7 @@ export const RawConfigObject = z.object({
     removalPolicy: z.enum([RemovalPolicy.DESTROY, RemovalPolicy.RETAIN])
         .default(RemovalPolicy.DESTROY)
         .describe('Removal policy for resources (destroy or retain).'),
+    maxAzs: z.int().optional().default(2).describe('Number of AZs that LISA will deploy to. This must be set before deploying the network stack.'),
     runCdkNag: z.boolean().default(false).describe('Whether to run CDK Nag checks.'),
     privateEndpoints: z.boolean().default(false).describe('Whether to use privateEndpoints for REST API.'),
     s3BucketModels: z.string().describe('S3 bucket for models.'),
@@ -873,9 +948,43 @@ export const RawConfigObject = z.object({
     useCustomBranding: z.boolean().optional().describe('Whether to use custom branding assets in the UI.'),
     customDisplayName: z.string().optional().describe('Custom display name to replace "LISA" branding in titles and descriptions. Requires "useCustomBranding" to be enabled.'),
     deployMetrics: z.boolean().default(true).describe('Whether to deploy Metrics stack.'),
+    deployHealthDashboard: z.boolean().default(true).describe('Whether to deploy the ECS Model Health CloudWatch dashboard for monitoring model container health, errors, latency, and resource utilization.'),
     deployMcp: z.boolean().default(true).describe('Whether to deploy LISA MCP stack.'),
     deployServe: z.boolean().default(true).describe('Whether to deploy LISA Serve stack.'),
     deployMcpWorkbench: z.boolean().default(true).describe('Whether to deploy MCP Workbench stack.'),
+    mcpWorkbenchEcsConfig: z
+        .object({
+            instanceType: z.enum(VALID_INSTANCE_KEYS).optional().describe('EC2 instance type for the MCP Workbench ECS cluster.'),
+            blockDeviceVolumeSize: z.number().min(30).optional().describe('Root volume size (GiB) for cluster instances.'),
+            minCapacity: z.number().min(1).optional().describe('Minimum ASG capacity for the MCP Workbench cluster.'),
+            maxCapacity: z.number().min(1).optional().describe('Maximum ASG capacity for the MCP Workbench cluster.'),
+            cooldown: z.number().min(1).optional().describe('Cooldown (seconds) between scaling activities.'),
+            domainName: z
+                .string()
+                .nullish()
+                .describe(
+                    'Optional hostname for the MCP Workbench ALB (same effect as `mcpWorkbenchRestApiConfig.domainName`; use that block for parity with `restApiConfig`). ' +
+                    'If omitted and restApiConfig.domainName is set, a default is derived (e.g. first label `lisa-serve` → `lisa-mcp-workbench`, or `serve` → `mcp-workbench`) so the workbench does not reuse the Serve API hostname. ' +
+                    'Otherwise the published endpoint uses this ALB’s DNS name. You must create DNS for the chosen or derived name pointing at the MCP Workbench ALB.',
+                ),
+            sslCertIamArn: z
+                .string()
+                .nullish()
+                .describe(
+                    'Optional ACM certificate ARN for the MCP Workbench ALB HTTPS listener (same effect as `mcpWorkbenchRestApiConfig.sslCertIamArn`). If omitted, inherits restApiConfig.sslCertIamArn when set; ' +
+                    'otherwise the workbench ALB uses HTTP on port 80 (browser MCP from an https UI will fail). Set explicitly when using a dedicated workbench hostname.',
+                ),
+        })
+        .optional()
+        .describe(
+            'Optional sizing and load-balancer settings for the MCP Workbench ECS cluster. The workbench HTTP server always runs on its own ECS cluster and ALB (separate from the Serve REST API).',
+        ),
+    mcpWorkbenchCorsOrigins: z
+        .string()
+        .default('*')
+        .describe(
+            'Comma-separated CORS allowed origins for the MCP Workbench HTTP server container (CORS_ORIGINS). Use * to allow any browser origin (typical when the UI is served from varying hosts or ports). More restrictive deployments can list explicit origins.',
+        ),
     logLevel: z.union([z.literal('DEBUG'), z.literal('INFO'), z.literal('WARNING'), z.literal('ERROR')])
         .default('DEBUG')
         .describe('Log level for application.'),
@@ -922,6 +1031,7 @@ export const RawConfigObject = z.object({
         })
         .optional()
         .describe('Configuration for local Lambda layer code'),
+    auditLoggingConfig: AuditLoggingConfigSchema.optional(),
     permissionsBoundaryAspect: z
         .object({
             permissionsBoundaryPolicyName: z.string(),

@@ -17,7 +17,8 @@
 import { Modal, Wizard } from '@cloudscape-design/components';
 import { ReactElement, useEffect, useMemo } from 'react';
 import { scrollToInvalid, useValidationReducer } from '../../../shared/validation';
-import { useAppDispatch } from '../../../config/store';
+import { useAppDispatch, useAppSelector } from '../../../config/store';
+import { selectCurrentUserIsAdmin, selectCurrentUserIsRagAdmin } from '../../../shared/reducers/user.reducer';
 import { useNotificationService } from '../../../shared/util/hooks';
 import { setConfirmationModal } from '../../../shared/reducers/modal.reducer';
 import { useCreateRagRepositoryMutation, useUpdateRagRepositoryMutation } from '../../../shared/reducers/rag.reducer';
@@ -73,6 +74,8 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
         metadata: { tags: [] }
     }) as RagRepositoryConfig;
     const dispatch = useAppDispatch();
+    const isAdmin = useAppSelector(selectCurrentUserIsAdmin);
+    const isRagAdmin = useAppSelector(selectCurrentUserIsRagAdmin);
     const notificationService = useNotificationService(dispatch);
 
     const {
@@ -94,6 +97,9 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
 
     const toSubmit = {
         ...state.form,
+        // Strip _isNew UI marker from pipelines so it doesn't appear in review or submission
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        pipelines: state.form.pipelines?.map(({ _isNew, ...pipeline }: any) => pipeline),
     };
 
     const changesDiff = useMemo(() => {
@@ -123,6 +129,11 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
             } else {
                 // For non-Bedrock repositories, remove bedrockKnowledgeBaseConfig
                 delete submissionData.bedrockKnowledgeBaseConfig;
+                // Strip _isNew marker from pipelines before submission
+                if (submissionData.pipelines) {
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    submissionData.pipelines = submissionData.pipelines.map(({ _isNew, ...pipeline }: any) => pipeline);
+                }
             }
 
             // Additional validation: ensure repositoryId is not empty
@@ -137,6 +148,11 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
                 const updates: any = { ...changesDiff };
                 if (submissionData.type === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE && submissionData.bedrockKnowledgeBaseConfig) {
                     updates.bedrockKnowledgeBaseConfig = submissionData.bedrockKnowledgeBaseConfig;
+                }
+                // Strip _isNew marker from pipelines in the diff
+                if (updates.pipelines) {
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    updates.pipelines = updates.pipelines.map(({ _isNew, ...pipeline }: any) => pipeline);
                 }
 
                 updateRepositoryMutation({
@@ -212,6 +228,7 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
                     isEdit={isEdit} />
             ),
             onEdit: true,
+            onRagAdminEdit: false,
         },
         {
             title: 'Pipeline Configuration',
@@ -228,6 +245,7 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
             ),
             isOptional: true,
             onEdit: true,
+            onRagAdminEdit: true,
         },
         {
             title: 'Metadata & Tags',
@@ -242,6 +260,7 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
             ),
             isOptional: true,
             onEdit: true,
+            onRagAdminEdit: false,
         },
         {
             title: `Review and ${isEdit ? 'Update' : 'Create'}`,
@@ -251,8 +270,13 @@ export function CreateRepositoryModal (props: CreateRepositoryModalProps): React
                     info={isEdit ? 'Any changes will cause a redeployment of the vector store, which may result in data loss of previously store RAG documents.' : undefined} />
             ),
             onEdit: state.form,
+            onRagAdminEdit: true,
         },
-    ].filter((step) => isEdit ? step.onEdit : true);
+    ].filter((step) => {
+        if (isEdit && !isAdmin && isRagAdmin) return step.onRagAdminEdit;
+        if (isEdit) return step.onEdit;
+        return true;
+    });
 
     function resetState () {
         setState({

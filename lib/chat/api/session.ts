@@ -26,6 +26,7 @@ import { Construct } from 'constructs';
 import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
 import { BaseProps, RemovalPolicy } from '../../schema';
 import { createLambdaRole } from '../../core/utils';
+import { getAuditLoggingEnv } from '../../api-base/auditEnv';
 import { Vpc } from '../../networking/vpc';
 import { LAMBDA_PATH } from '../../util';
 
@@ -48,16 +49,19 @@ type SessionApiProps = {
     securityGroups: ISecurityGroup[];
     vpc: Vpc;
     configTable: dynamodb.Table;
+    projectsTableName?: string;
 } & BaseProps;
 
 /**
  * API which Maintains sessions state in DynamoDB
  */
 export class SessionApi extends Construct {
+    public readonly sessionTable: dynamodb.Table;
+
     constructor (scope: Construct, id: string, props: SessionApiProps) {
         super(scope, id);
 
-        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc, configTable } = props;
+        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc, configTable, projectsTableName } = props;
 
         // Get common layer based on arn from SSM due to issues with cross stack references
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
@@ -74,7 +78,7 @@ export class SessionApi extends Construct {
         );
 
         // Create DynamoDB table to handle chat sessions
-        const sessionTable = new dynamodb.Table(this, 'SessionsTable', {
+        this.sessionTable = new dynamodb.Table(this, 'SessionsTable', {
             partitionKey: {
                 name: 'sessionId',
                 type: dynamodb.AttributeType.STRING,
@@ -89,13 +93,13 @@ export class SessionApi extends Construct {
             deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
         });
         const byUserIdIndex = 'byUserId';
-        sessionTable.addGlobalSecondaryIndex({
+        this.sessionTable.addGlobalSecondaryIndex({
             indexName: byUserIdIndex,
             partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
         });
 
         const byUserIdIndexSorted = 'byUserIdSorted';
-        sessionTable.addGlobalSecondaryIndex({
+        this.sessionTable.addGlobalSecondaryIndex({
             indexName: byUserIdIndexSorted,
             partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
             sortKey: { name: 'startTime', type: dynamodb.AttributeType.STRING },
@@ -132,19 +136,21 @@ export class SessionApi extends Construct {
         );
 
         const env = {
-            SESSIONS_TABLE_NAME: sessionTable.tableName,
+            SESSIONS_TABLE_NAME: this.sessionTable.tableName,
             SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
             GENERATED_IMAGES_S3_BUCKET_NAME: imagesBucketName,
             MODEL_TABLE_NAME: modelTableName,
             CONFIG_TABLE_NAME: configTable.tableName,
             SESSION_ENCRYPTION_KEY_ARN: sessionEncryptionKey.keyArn,
+            ...(projectsTableName ? { PROJECTS_TABLE_NAME: projectsTableName } : {}),
+            ...getAuditLoggingEnv(config),
         };
 
         const lambdaRole: IRole = createLambdaRole(
             this,
             config.deploymentName,
             'SessionApi',
-            sessionTable.tableArn,
+            this.sessionTable.tableArn,
             config.roles?.LambdaExecutionRole,
         );
 
@@ -165,6 +171,17 @@ export class SessionApi extends Construct {
                 resources: [configTable.tableArn]
             })
         );
+
+        // Add BatchGetItem permission on projects table for projectId validation in list_sessions
+        if (projectsTableName) {
+            lambdaRole.addToPrincipalPolicy(
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: ['dynamodb:BatchGetItem'],
+                    resources: [`arn:${config.partition}:dynamodb:${config.region}:${config.accountNumber}:table/${projectsTableName}`]
+                })
+            );
+        }
 
         // If metrics stack deployment is enabled
         if (config.deployMetrics) {
@@ -271,7 +288,7 @@ export class SessionApi extends Construct {
                 lambdaRole,
             );
             if (f.method === 'POST' || f.method === 'PUT') {
-                sessionTable.grantWriteData(lambdaFunction);
+                this.sessionTable.grantWriteData(lambdaFunction);
                 // Grant S3 read/write permissions for image/video operations
                 lambdaRole.addToPrincipalPolicy(
                     new PolicyStatement({
@@ -281,7 +298,7 @@ export class SessionApi extends Construct {
                     })
                 );
             } else if (f.method === 'GET') {
-                sessionTable.grantReadData(lambdaFunction);
+                this.sessionTable.grantReadData(lambdaFunction);
                 // Grant S3 read permissions
                 lambdaRole.addToPrincipalPolicy(
                     new PolicyStatement({
@@ -291,7 +308,7 @@ export class SessionApi extends Construct {
                     })
                 );
             } else if (f.method === 'DELETE') {
-                sessionTable.grantReadWriteData(lambdaFunction);
+                this.sessionTable.grantReadWriteData(lambdaFunction);
                 // Grant S3 list permission on bucket for prefix-based listing
                 lambdaRole.addToPrincipalPolicy(
                     new PolicyStatement({

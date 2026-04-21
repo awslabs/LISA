@@ -90,7 +90,7 @@ export class Vpc extends Construct {
             // Create VPC
             vpc = new ec2Vpc(this, 'VPC', {
                 vpcName: 'LISA-VPC',
-                maxAzs: 2,
+                maxAzs: config.maxAzs || 2,
                 ipAddresses: IpAddresses.cidr('10.0.0.0/22'),
                 natGatewayProvider: NatProvider.gateway(),
                 natGateways: 1,

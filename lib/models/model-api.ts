@@ -38,6 +38,7 @@ import { Provider } from 'aws-cdk-lib/custom-resources';
 import { Construct } from 'constructs';
 
 import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
+import { getAuditLoggingEnv, LISA_AUDIT_API_GATEWAY_BASE_PATH } from '../api-base/auditEnv';
 import { APP_MANAGEMENT_KEY, BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
 
@@ -47,10 +48,12 @@ import { DeleteModelStateMachine } from './state-machine/delete-model';
 import { AttributeType, BillingMode, ITable, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { CreateModelStateMachine } from './state-machine/create-model';
 import { UpdateModelStateMachine } from './state-machine/update-model';
+import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { createCdkId, createLambdaRole } from '../core/utils';
 import { Roles } from '../core/iam/roles';
 import { LAMBDA_PATH } from '../util';
+import { LiteLLMSyncConstruct } from './litellm-sync';
 
 /**
  * Properties for ModelsApi Construct.
@@ -62,6 +65,7 @@ import { LAMBDA_PATH } from '../util';
  */
 type ModelsApiProps = BaseProps & {
     authorizer?: IAuthorizer;
+    bucketAccessLogsBucket: IBucket;
     guardrailsTable?: ITable;
     lisaServeEndpointUrlPs?: StringParameter;
     restApiId: string;
@@ -77,7 +81,7 @@ export class ModelsApi extends Construct {
     constructor (scope: Construct, id: string, props: ModelsApiProps) {
         super(scope, id);
 
-        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
+        const { authorizer, bucketAccessLogsBucket, config, restApiId, rootResourceId, securityGroups, vpc } = props;
 
         // Use guardrailsTable passed from serve stack, or fall back to SSM parameter lookup for backward compatibility
         const guardrailsTable = props.guardrailsTable ?? (() => {
@@ -150,6 +154,7 @@ export class ModelsApi extends Construct {
         });
 
         const dockerImageBuilder = new DockerImageBuilder(this, 'docker-image-builder', {
+            bucketAccessLogsBucket,
             ecrUri: ecsModelBuildRepo.repositoryUri,
             mountS3DebUrl: config.mountS3DebUrl!,
             config: config,
@@ -286,6 +291,10 @@ export class ModelsApi extends Construct {
             SCHEDULE_MANAGEMENT_FUNCTION_NAME: scheduleManagementLambda.functionName,
             GUARDRAILS_TABLE_NAME: guardrailsTable.tableName,
             ADMIN_GROUP: config.authConfig?.adminGroup || '',
+            MODELS_BUCKET_NAME: config.s3BucketModels,
+            MANAGEMENT_KEY_NAME: managementKeyName,
+            ...getAuditLoggingEnv(config),
+            [LISA_AUDIT_API_GATEWAY_BASE_PATH]: '/models',
             // SSM parameter names for RAG tables (optional - only exist if RAG is deployed)
             ...(config.deployRag && {
                 LISA_RAG_VECTOR_STORE_TABLE_PS_NAME: `${config.deploymentPrefix}/ragVectorStoreTableName`,
@@ -448,6 +457,16 @@ export class ModelsApi extends Construct {
                         scheduleManagementLambda.functionArn,
                     ],
                 }),
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: ['s3:GetObject'],
+                    resources: [`arn:${config.partition}:s3:::${config.s3BucketModels}/*`],
+                }),
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: ['secretsmanager:GetSecretValue'],
+                    resources: [`${Secret.fromSecretNameV2(this, 'ModelApiManagementKeySecret', managementKeyName).secretArn}-??????`],
+                }),
                 ...(config.deployRag ? [
                     new PolicyStatement({
                         effect: Effect.ALLOW,
@@ -508,6 +527,53 @@ export class ModelsApi extends Construct {
                 // Only runs once - increment this version number if you need to run cleanup again
                 CleanupVersion: '1',
             },
+        });
+
+        // Context window backfill — runs exactly once.
+        // The static PhysicalResourceId returned by the Lambda handler ('context-window-backfill')
+        // combined with a stable CDK construct ID means CloudFormation will never trigger this
+        // Lambda again on subsequent deployments unless the resource is explicitly deleted.
+        const contextWindowBackfillLambda = new Function(this, 'ContextWindowBackfill', {
+            runtime: getPythonRuntime(),
+            handler: 'models.model_context_window_backfill.lambda_handler',
+            code: Code.fromAsset(lambdaPath),
+            layers: lambdaLayers,
+            environment: {
+                MODEL_TABLE_NAME: modelTable.tableName,
+                MODELS_BUCKET_NAME: config.s3BucketModels ?? '',
+                LISA_API_URL_PS_NAME: lisaServeEndpointUrlPs.parameterName,
+                MANAGEMENT_KEY_NAME: managementKeyName,
+                REST_API_VERSION: 'v2',
+                RESTAPI_SSL_CERT_ARN: config.restApiConfig?.sslCertIamArn ?? '',
+            },
+            role: stateMachinesLambdaRole,
+            vpc: vpc.vpc,
+            vpcSubnets: vpc.subnetSelection,
+            securityGroups: securityGroups,
+            timeout: Duration.minutes(15),
+            description: 'One-time backfill of context_window for existing model DynamoDB records',
+        });
+
+        const contextWindowBackfillProvider = new Provider(this, 'ContextWindowBackfillProvider', {
+            onEventHandler: contextWindowBackfillLambda,
+        });
+
+        // DO NOT change the logical ID 'ContextWindowBackfillResource' — changing it would
+        // cause CloudFormation to delete and re-create the resource, re-running the backfill.
+        new CustomResource(this, 'ContextWindowBackfillResource', {
+            serviceToken: contextWindowBackfillProvider.serviceToken,
+            // No mutable properties — keeping this object empty ensures CloudFormation
+            // never sends an Update event to the Lambda on subsequent deployments.
+            properties: {},
+        });
+
+        // Sync models from DynamoDB to LiteLLM on every deployment
+        new LiteLLMSyncConstruct(this, 'LiteLLMSync', {
+            config,
+            modelTable,
+            lambdaLayers,
+            vpc,
+            securityGroups,
         });
 
     }
@@ -606,6 +672,11 @@ export class ModelsApi extends Construct {
                                 'secretsmanager:GetSecretValue'
                             ],
                             resources: [`${Secret.fromSecretNameV2(this, 'ManagementKeySecret', managementKeyName).secretArn}-??????`],  // question marks required to resolve the ARN correctly
+                        }),
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: ['s3:GetObject'],
+                            resources: [`arn:${config.partition}:s3:::${config.s3BucketModels}/*`],
                         }),
                         new PolicyStatement({
                             effect: Effect.ALLOW,

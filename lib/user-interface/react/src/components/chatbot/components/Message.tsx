@@ -20,28 +20,23 @@ import ExpandableSection from '@cloudscape-design/components/expandable-section'
 import { ButtonDropdown, ButtonGroup, Grid, SpaceBetween, StatusIndicator } from '@cloudscape-design/components';
 import { JsonView, darkStyles, defaultStyles } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { LisaChatMessage, LisaChatMessageMetadata, MessageTypes } from '../../types';
 import { useAppSelector } from '@/config/store';
 import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
 import ChatBubble from '@cloudscape-design/chat-components/chat-bubble';
 import Avatar from '@cloudscape-design/chat-components/avatar';
 
-import remarkMath from 'remark-math';
-import remarkGfm from 'remark-gfm';
-import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import styles from './Message.module.css';
+import { getMarkdownComponents, markdownPlugins } from '../utils/markdownRenderer';
 
 import { MessageContent } from '@langchain/core/messages';
-import { base64ToBlob, fetchImage, getDisplayableMessage, messageContainsImage, messageContainsVideo } from '@/components/utils';
+import { base64ToBlob, fetchImage, getDisplayableMessage } from '@/components/utils';
 import React, { useEffect, useState, useMemo } from 'react';
 import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { downloadFile } from '@/shared/util/downloader';
 import Link from '@cloudscape-design/components/link';
 import ImageViewer from '@/components/chatbot/components/ImageViewer';
-import MermaidDiagram from '@/components/chatbot/components/MermaidDiagram';
 import UsageInfo from '@/components/chatbot/components/UsageInfo';
 import { merge } from 'lodash';
 import { useContext } from 'react';
@@ -62,11 +57,13 @@ type MessageProps = {
     showUsage?: boolean;
     onMermaidRenderComplete?: () => void;
     onVideoLoadComplete?: () => void;
+    onImageLoadComplete?: () => void;
     retryResponse?: () => Promise<void>
     errorState?: boolean;
+    onOpenDocument?: (document: any) => void;
 };
 
-export const Message = React.memo(({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration, callingToolName, showUsage = false, onMermaidRenderComplete, onVideoLoadComplete, retryResponse, errorState }: MessageProps) => {
+export const Message = React.memo(({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration, callingToolName, showUsage = false, onMermaidRenderComplete, onVideoLoadComplete, onImageLoadComplete, retryResponse, errorState, onOpenDocument }: MessageProps) => {
     const currentUser = useAppSelector(selectCurrentUsername);
     const ragCitations = !isStreaming && message?.metadata?.ragDocuments ? message?.metadata.ragDocuments : undefined;
     const [resend, setResend] = useState(false);
@@ -77,6 +74,23 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
     const { colorScheme } = useContext(ColorSchemeContext);
     const isDarkMode = colorScheme === Mode.Dark;
     const hasMessageContent = message?.content && typeof message.content === 'string' && message.content.trim() && message.content.trim() !== '\u00A0';
+
+    // Parse ragDocuments (arrays for Citations dropdown and strings for backward compatibility - inline)
+    const { ragDocuments, ragCitationsString } = useMemo(() => {
+        if (!ragCitations) return { ragDocuments: undefined, ragCitationsString: undefined };
+
+        // Array format - use for Citations section
+        if (Array.isArray(ragCitations)) {
+            return { ragDocuments: ragCitations, ragCitationsString: undefined };
+        }
+
+        // String format - only pass to getDisplayableMessage, don't show in Citations panel
+        if (typeof ragCitations === 'string') {
+            return { ragDocuments: undefined, ragCitationsString: ragCitations };
+        }
+
+        return { ragDocuments: undefined, ragCitationsString: undefined };
+    }, [ragCitations]);
 
     // Auto-expand reasoning when it first appears, then auto-collapse when message content starts arriving
     useEffect(() => {
@@ -96,160 +110,30 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
     }, [resend]);
 
     // Memoize the ReactMarkdown components to prevent re-creation on every render
-    const markdownComponents = useMemo(() => ({
-        code ({ className, children, ...props }: any) {
-            const match = /language-(\w+)/.exec(className || '');
-            const codeString = String(children).replace(/\n$/, '');
-
-            const CodeBlockWithCopyButton = ({ language, code }: { language: string, code: string }) => {
-                return (
-                    <div style={{ position: 'relative' }}>
-                        <div
-                            style={{
-                                position: 'absolute',
-                                top: '5px',
-                                right: '5px',
-                                zIndex: 10
-                            }}
-                        >
-                            <ButtonGroup
-                                onItemClick={() =>
-                                    navigator.clipboard.writeText(code)
-                                }
-                                ariaLabel='Chat actions'
-                                dropdownExpandToViewport
-                                items={[
-                                    {
-                                        type: 'icon-button',
-                                        id: 'copy code',
-                                        iconName: 'copy',
-                                        text: 'Copy Code',
-                                        popoverFeedback: (
-                                            <StatusIndicator type='success'>
-                                                Code copied
-                                            </StatusIndicator>
-                                        )
-                                    }
-                                ]}
-                                variant='icon'
-                            />
-                        </div>
-                        <SyntaxHighlighter
-                            style={isDarkMode ? oneDark : oneLight}
-                            language={language}
-                            PreTag='div'
-                            {...props}
-                        >
-                            {code}
-                        </SyntaxHighlighter>
-                    </div>
-                );
-            };
-            const CodeBlockWithoutLanguage = ({ code }: { code: string }) => {
-                return (
-                    <div style={{ position: 'relative' }}>
-                        <div
-                            style={{
-                                position: 'absolute',
-                                top: '5px',
-                                right: '5px',
-                                zIndex: 10,
-                            }}
-                        >
-                            <ButtonGroup
-                                onItemClick={() =>
-                                    navigator.clipboard.writeText(code)
-                                }
-                                ariaLabel='Chat actions'
-                                dropdownExpandToViewport
-                                items={[
-                                    {
-                                        type: 'icon-button',
-                                        id: 'copy code',
-                                        iconName: 'copy',
-                                        text: 'Copy Code',
-                                        popoverFeedback: (
-                                            <StatusIndicator type='success'>
-                                                Code copied
-                                            </StatusIndicator>
-                                        )
-                                    }
-                                ]}
-                                variant='icon'
-                            />
-                        </div>
-                        <pre
-                            style={{
-                                backgroundColor: isDarkMode ? '#1e1e1e' : '#f5f5f5',
-                                color: isDarkMode ? '#d4d4d4' : '#333333',
-                                padding: '16px',
-                                borderRadius: '6px',
-                                overflow: 'auto',
-                                fontFamily: 'Consolas, Monaco, "Courier New", monospace',
-                                fontSize: '14px',
-                                lineHeight: '1.45',
-                                margin: '0',
-                                textWrap: 'wrap'
-                            }}
-                        >
-                            <code style={{ backgroundColor: 'transparent', padding: '0', color: 'inherit' }}>
-                                {code}
-                            </code>
-                        </pre>
-                    </div>
-                );
-            };
-            // Check if this is inline code by examining the props
-            const isInlineCode = !props.node || props.node.position?.start?.line === props.node.position?.end?.line;
-
-            if (isInlineCode) {
-                return (
-                    <code
-                        className='bg-zinc-300/25 border-zinc-500/25 border-solid text-red-600 px-1 py-0.5 rounded text-sm font-mono'
-                        style={{
-                            backgroundColor: 'rgba(209, 213, 219, 0.25)',
-                            border: '1px solid rgba(107, 114, 128, 0.25)',
-                            color: '#dc2626',
-                            padding: '2px 4px',
-                            borderRadius: '4px',
-                            fontSize: '0.875rem',
-                            fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace'
-                        }}
-                        {...props}
-                    >
-                        {children}
-                    </code>
-                );
-            }
-            return match ? (
-                match[1] === 'mermaid' ? (
-                    <MermaidDiagram chart={codeString} isStreaming={isStreaming} onRenderComplete={onMermaidRenderComplete} />
-                ) : (
-                    <CodeBlockWithCopyButton
-                        language={match[1]}
-                        code={codeString}
-                    />
-                )
-            ) : (
-                <CodeBlockWithoutLanguage code={codeString} />
-            );
-        },
-    }), [isStreaming, onMermaidRenderComplete, isDarkMode]);
+    const markdownComponents = useMemo(
+        () => getMarkdownComponents(isDarkMode, isStreaming, onMermaidRenderComplete),
+        [isDarkMode, isStreaming, onMermaidRenderComplete]
+    );
 
     const renderContent = (content: MessageContent, metadata?: LisaChatMessageMetadata) => {
         if (Array.isArray(content)) {
             return content.map((item: any, index) => {
                 if (item.type === 'text' && typeof item.text === 'string') {
-                    if (item.text.startsWith('File context:')) return null;
+                    if (
+                        item.text.startsWith('File context:') ||
+                        item.text.startsWith('Context from document search:')
+                    ) {
+                        return null;
+                    }
 
-                    const displayableText = getDisplayableMessage(item.text, message.type === MessageTypes.AI ? ragCitations : undefined);
+                    const displayableText = getDisplayableMessage(item.text, message.type === MessageTypes.AI ? ragCitationsString : undefined);
 
                     return (
                         <div key={index} className={styles.messageContent} style={{ maxWidth: '60em' }}>
                             {markdownDisplay ? (
                                 <ReactMarkdown
-                                    remarkPlugins={[remarkMath, remarkGfm]}
-                                    rehypePlugins={[rehypeKatex]}
+                                    remarkPlugins={markdownPlugins.remarkPlugins}
+                                    rehypePlugins={markdownPlugins.rehypePlugins}
                                     children={displayableText}
                                     components={markdownComponents}
                                 />
@@ -260,14 +144,14 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                     );
                 } else if (item.type === 'image_url' && item.image_url?.url) {
                     return message.type === MessageTypes.HUMAN ?
-                        <img key={index} src={item.image_url.url} alt='User provided' style={{ maxWidth: '50%', maxHeight: '30em', marginTop: '8px' }} /> :
+                        <img key={index} src={item.image_url.url} alt='User provided' style={{ maxWidth: '50%', maxHeight: '30em', marginTop: '8px' }} onLoad={() => onImageLoadComplete?.()} /> :
                         <Grid key={`${index}-Grid`} gridDefinition={[{ colspan: 11 }, { colspan: 1 }]}>
                             <Link onClick={() => {
                                 setSelectedImage(item);
                                 setSelectedMetadata(metadata);
                                 setShowImageViewer(true);
                             }}>
-                                <img key={`${index}-Image`} src={item.image_url.url} alt='AI Generated' style={{ maxWidth: '100%', maxHeight: '30em', marginTop: '8px' }} />
+                                <img key={`${index}-Image`} src={item.image_url.url} alt='AI Generated' style={{ maxWidth: '100%', maxHeight: '30em', marginTop: '8px' }} onLoad={() => onImageLoadComplete?.()} />
                             </Link>
                             <ButtonDropdown
                                 items={[
@@ -363,20 +247,20 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
             <div className={styles.messageContent} style={{ maxWidth: '60em' }}>
                 {markdownDisplay ? (
                     <ReactMarkdown
-                        remarkPlugins={[remarkMath, remarkGfm]}
-                        rehypePlugins={[rehypeKatex]}
-                        children={getDisplayableMessage(content, message.type === MessageTypes.AI ? ragCitations : undefined)}
+                        remarkPlugins={markdownPlugins.remarkPlugins}
+                        rehypePlugins={markdownPlugins.rehypePlugins}
+                        children={getDisplayableMessage(content, message.type === MessageTypes.AI ? ragCitationsString : undefined)}
                         components={markdownComponents}
                     />
                 ) : (
-                    <div style={{ whiteSpace: 'pre-line' }}>{getDisplayableMessage(content, message.type === MessageTypes.AI ? ragCitations : undefined)}</div>
+                    <div style={{ whiteSpace: 'pre-line' }}>{getDisplayableMessage(content, message.type === MessageTypes.AI ? ragCitationsString : undefined)}</div>
                 )}
             </div>);
     };
 
     return (
         (message.type === MessageTypes.HUMAN || message.type === MessageTypes.AI || message.type === MessageTypes.TOOL) &&
-        <div className='mt-2' style={{ overflow: 'hidden' }} data-testid={`chat-message-${message.type}`}>
+        <div className='mt-2' style={{ overflow: 'auto' }} data-testid={`chat-message-${message.type}`}>
             <ImageViewer setVisible={setShowImageViewer} visible={showImageViewer} selectedImage={selectedImage} metadata={selectedMetadata} />
             {(isRunning && !callingToolName && !message?.metadata?.videoGeneration) && (
                 <ChatBubble
@@ -423,9 +307,10 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                     <ChatBubble
                         ariaLabel='Generative AI assistant'
                         type='incoming'
-                        showLoadingBar={isStreaming}
+                        showLoadingBar={isStreaming || (message?.metadata?.imageGeneration && message?.metadata?.imageGenerationStatus === 'processing')}
                         avatar={
                             <Avatar
+                                loading={message?.metadata?.imageGeneration && message?.metadata?.imageGenerationStatus === 'processing'}
                                 color='gen-ai'
                                 iconName='gen-ai'
                                 ariaLabel='Generative AI assistant'
@@ -449,7 +334,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                             <Box color='text-status-inactive' variant='small' padding={{ right: 'xl' }}>
                                                 <SpaceBetween direction='vertical' size='s'>
                                                     <div style={{ whiteSpace: 'pre-line' }}>{message.reasoningContent}</div>
-                                                    <hr/>
+                                                    <hr />
                                                 </SpaceBetween>
                                             </Box>
                                             <ButtonGroup
@@ -481,6 +366,32 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                             </Box>
                         )}
                         {message?.content && (typeof message.content === 'string' ? (message.content.trim() && message.content.trim() !== '\u00A0') : true) && renderContent(message.content, message.metadata)}
+                        {ragDocuments && ragDocuments.length > 0 && !isStreaming && (
+                            <Box margin={{ top: 's' }}>
+                                <ExpandableSection
+                                    variant='footer'
+                                    headerText={`Citations (${ragDocuments.length})`}
+                                >
+                                    <SpaceBetween direction='vertical' size='xs'>
+                                        {ragDocuments.map((doc, index) => (
+                                            <Box key={doc.documentId || index}>
+                                                {doc.documentId && onOpenDocument ? (
+                                                    <Link
+                                                        onFollow={() => onOpenDocument(doc)}
+                                                    >
+                                                        [{index + 1}] {doc.name}
+                                                    </Link>
+                                                ) : (
+                                                    <Box variant='span' color='text-status-inactive'>
+                                                        [{index + 1}] {doc.name} (preview unavailable)
+                                                    </Box>
+                                                )}
+                                            </Box>
+                                        ))}
+                                    </SpaceBetween>
+                                </ExpandableSection>
+                            </Box>
+                        )}
                         {showMetadata && !isStreaming &&
                             <ExpandableSection
                                 variant='footer'
@@ -491,9 +402,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                     ...(message.usage && { usage: message.usage })
                                 }} style={isDarkMode ? darkStyles : defaultStyles} />
                             </ExpandableSection>}
-                    </ChatBubble>
-                    {!isStreaming && !messageContainsImage(message.content) && !messageContainsVideo(message.content) && <div
-                        style={{ display: 'flex', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
+                        {!isStreaming && !isRunning && !message?.metadata?.imageGeneration && !message?.metadata?.videoGeneration &&
                         <ButtonGroup
                             onItemClick={({ detail }) =>
                                 ['copy'].includes(detail.id) &&
@@ -515,8 +424,8 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                 }
                             ]}
                             variant='icon'
-                        />
-                    </div>}
+                        />}
+                    </ChatBubble>
                 </SpaceBetween>
             )}
             {message?.type === 'human' && (
@@ -525,6 +434,13 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                         <ChatBubble
                             ariaLabel={currentUser}
                             type='outgoing'
+                            style={{
+                                bubble: {
+                                    background: isDarkMode ? '#1f2934' : '#ebebf0',
+                                    borderColor: errorState ? '#ff7a7a' : '',
+                                    borderWidth: errorState ? '1px' : '',
+                                }
+                            }}
                             avatar={
                                 <Avatar
                                     ariaLabel={currentUser}
@@ -536,45 +452,45 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                             <div className='message-content' style={{ maxWidth: '60em' }}>
                                 {renderContent(message.content)}
                             </div>
-                        </ChatBubble>
-                        <ButtonGroup
-                            onItemClick={async ({ detail }) => {
-                                if (detail.id === 'copy'){
-                                    navigator.clipboard.writeText(getDisplayableMessage(message.content));
-                                } else if (detail.id === 'retry'){
-                                    await retryResponse();
+                            <ButtonGroup
+                                onItemClick={async ({ detail }) => {
+                                    if (detail.id === 'copy') {
+                                        navigator.clipboard.writeText(getDisplayableMessage(message.content));
+                                    } else if (detail.id === 'retry') {
+                                        await retryResponse();
+                                    }
                                 }
-                            }
-                            }
-                            ariaLabel='Chat actions'
-                            dropdownExpandToViewport
-                            items={[
-                                {
-                                    type: 'icon-button',
-                                    id: 'copy',
-                                    iconName: 'copy',
-                                    text: 'Copy Input',
-                                    popoverFeedback: (
-                                        <StatusIndicator type='success'>
-                                            Input copied
-                                        </StatusIndicator>
-                                    )
-                                },
-                                ...(errorState ? [
+                                }
+                                ariaLabel='Chat actions'
+                                dropdownExpandToViewport
+                                items={[
                                     {
-                                        type: 'icon-button' as const,
-                                        id: 'retry' as const,
-                                        iconName: 'refresh' as const,
-                                        text: 'Retry Message' as const,
+                                        type: 'icon-button',
+                                        id: 'copy',
+                                        iconName: 'copy',
+                                        text: 'Copy Input',
                                         popoverFeedback: (
                                             <StatusIndicator type='success'>
-                                                Retrying Message
+                                                Input copied
                                             </StatusIndicator>
                                         )
-                                    }] : [])
-                            ]}
-                            variant='icon'
-                        />
+                                    },
+                                    ...(errorState ? [
+                                        {
+                                            type: 'icon-button' as const,
+                                            id: 'retry' as const,
+                                            iconName: 'refresh' as const,
+                                            text: 'Retry Message' as const,
+                                            popoverFeedback: (
+                                                <StatusIndicator type='success'>
+                                                    Retrying Message
+                                                </StatusIndicator>
+                                            )
+                                        }] : [])
+                                ]}
+                                variant='icon'
+                            />
+                        </ChatBubble>
                     </div>
                 </SpaceBetween>
             )}

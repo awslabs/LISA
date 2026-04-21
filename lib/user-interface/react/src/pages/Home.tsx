@@ -17,9 +17,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
+import { getRedirectUri } from '../config/oidc.config';
 
 import { Alert, Box, Button, Modal } from '@cloudscape-design/components';
-import { purgeStore } from '../config/store';
 import { getBrandingAssetPath } from '../shared/util/branding';
 
 export function Home ({ setNav }) {
@@ -38,16 +38,9 @@ export function Home ({ setNav }) {
     // eslint-disable-next-line
   }, [auth.isAuthenticated]);
 
-    useEffect(() => {
-        if (!auth.isAuthenticated && !window.location.href.includes('?')) {
-            purgeStore();
-        }
-        // eslint-disable-next-line
-    }, []);
-
     return (
         <Modal
-            visible={!auth.isAuthenticated}
+            visible={!auth.isAuthenticated && !auth.isLoading}
             onDismiss={() => setVisible(true)}
             header='Log in to start chatting'
             footer={
@@ -55,7 +48,7 @@ export function Home ({ setNav }) {
                     <Button
                         onClick={() =>
                             void auth.signinRedirect({
-                                redirect_uri: `${window.location.origin}${window.location.pathname}`,
+                                redirect_uri: getRedirectUri(),
                             })
                         }
                         variant='primary'

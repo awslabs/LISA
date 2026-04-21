@@ -17,7 +17,7 @@
 // ECS Cluster Construct.
 import { CfnOutput, Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { BlockDeviceVolume, GroupMetrics, Monitoring } from 'aws-cdk-lib/aws-autoscaling';
-import { Metric, Stats } from 'aws-cdk-lib/aws-cloudwatch';
+import { Alarm, ComparisonOperator, Metric, Stats, TreatMissingData } from 'aws-cdk-lib/aws-cloudwatch';
 import { InstanceType, ISecurityGroup, IVpc, SubnetSelection } from 'aws-cdk-lib/aws-ec2';
 import { Alias } from 'aws-cdk-lib/aws-kms';
 import {
@@ -27,7 +27,6 @@ import {
     Ec2Service,
     Ec2ServiceProps,
     Ec2TaskDefinition,
-    EcsOptimizedImage,
     HealthCheck,
     Host,
     LinuxParameters,
@@ -93,7 +92,7 @@ export class ECSCluster extends Construct {
         const cluster = new Cluster(this, createCdkId([identifier, 'Cl']), {
             clusterName: createCdkId([config.deploymentName, identifier], 32, 2),
             vpc: vpc,
-            containerInsightsV2: !config.region?.includes('iso') ? ContainerInsights.ENABLED : ContainerInsights.DISABLED,
+            containerInsightsV2: ContainerInsights.ENHANCED,
         });
 
         // SNS encryption key for ECS lifecycle hooks (AppSec Finding #5)
@@ -108,7 +107,7 @@ export class ECSCluster extends Construct {
         const autoScalingGroup = cluster.addCapacity(createCdkId([identifier, 'ASG']), {
             vpcSubnets: subnetSelection,
             instanceType: new InstanceType(ecsConfig.instanceType),
-            machineImage: EcsOptimizedImage.amazonLinux2023(ecsConfig.amiHardwareType),
+            machineImage: CodeFactory.getEcsMachineImage(config.region, ecsConfig.amiHardwareType, ecsConfig.amiId),
             minCapacity: ecsConfig.autoScalingConfig.minCapacity,
             maxCapacity: ecsConfig.autoScalingConfig.maxCapacity,
             groupMetrics: [GroupMetrics.all()],
@@ -149,7 +148,7 @@ export class ECSCluster extends Construct {
                 // EC2 user data to mount ephemeral NVMe drive
                 const MOUNT_PATH = config.nvmeHostMountPath ?? '/nvme';
                 const NVME_PATH = Ec2Metadata.get(ecsConfig.instanceType).nvmePath;
-                /* eslint-disable no-useless-escape */
+
                 const rawUserData = `#!/bin/bash
                     set -e
                     # Check if NVMe is already formatted
@@ -165,12 +164,28 @@ export class ECSCluster extends Construct {
                         echo ${NVME_PATH} ${MOUNT_PATH} xfs defaults,nofail 0 2 >> /etc/fstab
                     fi
 
-                    # Update Docker root location and restart Docker service
+                    # Configure Docker: set data-root on NVMe and ensure nvidia runtime is registered
                     mkdir -p ${MOUNT_PATH}/docker
-                    echo '{\"data-root\": \"${MOUNT_PATH}/docker\"}' | tee /etc/docker/daemon.json
+                    cat > /etc/docker/daemon.json <<'DOCKEREOF'
+{
+    "data-root": "${MOUNT_PATH}/docker",
+    "runtimes": {
+        "nvidia": {
+            "path": "nvidia-container-runtime",
+            "runtimeArgs": []
+        }
+    },
+    "default-runtime": "nvidia"
+}
+DOCKEREOF
+                    # Substitute the actual mount path
+                    sed -i "s|\${MOUNT_PATH}|${MOUNT_PATH}|g" /etc/docker/daemon.json
                     systemctl restart docker
+
+                    # Enable GPU support in ECS agent
+                    echo "ECS_ENABLE_GPU_SUPPORT=true" >> /etc/ecs/ecs.config
                     `;
-                /* eslint-enable no-useless-escape */
+
                 autoScalingGroup.addUserData(rawUserData);
 
                 // Create mount point for container
@@ -184,6 +199,11 @@ export class ECSCluster extends Construct {
                 };
                 volumes.push(nvmeVolume);
                 mountPoints.push(nvmeMountPoint);
+            }
+
+            // Enable GPU support in ECS agent for GPU instances without NVMe (NVMe path sets it in user data)
+            if (ecsConfig.amiHardwareType === AmiHardwareType.GPU && !Ec2Metadata.get(ecsConfig.instanceType).nvmePath) {
+                autoScalingGroup.addUserData('echo "ECS_ENABLE_GPU_SUPPORT=true" >> /etc/ecs/ecs.config');
             }
 
             // Add permissions to use SSM in dev environment for EC2 debugging purposes only
@@ -245,7 +265,11 @@ export class ECSCluster extends Construct {
             container = ec2TaskDefinition.addContainer(createCdkId([identifier, 'Container']), {
                 containerName: createCdkId([config.deploymentName, identifier], 32, 2),
                 image,
-                environment,
+                environment: {
+                    ...environment,
+                    // Required for NVIDIA container runtime when not using NVIDIA base images
+                    ...(ecsConfig.amiHardwareType === AmiHardwareType.GPU && { NVIDIA_DRIVER_CAPABILITIES: 'utility,compute' }),
+                },
                 logging: LogDriver.awsLogs({ streamPrefix: identifier }),
                 gpuCount: Ec2Metadata.get(ecsConfig.instanceType).gpuCount,
                 memoryReservationMiB: taskDefinition.containerConfig.memoryReservation ??
@@ -322,8 +346,10 @@ export class ECSCluster extends Construct {
             // This prevents 504 Gateway Timeout errors during model inference
             targetGroup.setAttribute('deregistration_delay.timeout_seconds', '30');
 
-            // ALB metric for ASG to use for auto scaling EC2 instances
-            // TODO: Update this to step scaling for embedding models??
+            // Scale ASG based on the configured ALB metric
+            // TargetResponseTime uses p90 statistic to scale on latency degradation (ideal for text gen LLMs)
+            // RequestCountPerTarget uses SampleCount to scale on request volume (good for embedding models)
+            const isLatencyMetric = ecsConfig.autoScalingConfig.metricConfig.albMetricName === 'TargetResponseTime';
             const requestCountPerTargetMetric = new Metric({
                 metricName: ecsConfig.autoScalingConfig.metricConfig.albMetricName,
                 namespace: 'AWS/ApplicationELB',
@@ -331,7 +357,7 @@ export class ECSCluster extends Construct {
                     TargetGroup: targetGroup.targetGroupFullName,
                     LoadBalancer: loadBalancer.loadBalancerFullName,
                 },
-                statistic: Stats.SAMPLE_COUNT,
+                statistic: isLatencyMetric ? Stats.p(90) : Stats.SAMPLE_COUNT,
                 period: Duration.seconds(ecsConfig.autoScalingConfig.metricConfig.duration),
             });
 
@@ -341,6 +367,80 @@ export class ECSCluster extends Construct {
                 targetValue: ecsConfig.autoScalingConfig.metricConfig.targetValue,
                 estimatedInstanceWarmup: Duration.seconds(ecsConfig.autoScalingConfig.metricConfig.duration),
             });
+
+            // Model ALB alarms — created only when the health dashboard is enabled.
+            // These use concrete ALB/TargetGroup dimensions (available here at deploy
+            // time) so the alarms actually receive datapoints. The dashboard uses
+            // SEARCH expressions for dynamic discovery; alarms cannot use SEARCH.
+            if (config.deployHealthDashboard) {
+                const alarmPrefix = `${config.deploymentName}-${config.deploymentStage}-LISA-${identifier}`;
+                const albDims = { LoadBalancer: loadBalancer.loadBalancerFullName };
+                const tgDims = { TargetGroup: targetGroup.targetGroupFullName, LoadBalancer: loadBalancer.loadBalancerFullName };
+
+                new Alarm(this, createCdkId([identifier, 'UnhealthyHostsAlarm']), {
+                    alarmName: `${alarmPrefix}-UnhealthyHosts`,
+                    alarmDescription: `Model ${identifier}: one or more containers are failing ALB health checks.`,
+                    metric: new Metric({
+                        namespace: 'AWS/ApplicationELB',
+                        metricName: 'UnHealthyHostCount',
+                        dimensionsMap: tgDims,
+                        statistic: 'Maximum',
+                        period: Duration.minutes(5),
+                    }),
+                    threshold: 0,
+                    comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
+                    evaluationPeriods: 2,
+                    treatMissingData: TreatMissingData.NOT_BREACHING,
+                });
+
+                new Alarm(this, createCdkId([identifier, 'Target5xxAlarm']), {
+                    alarmName: `${alarmPrefix}-Target5xxErrors`,
+                    alarmDescription: `Model ${identifier}: sustained HTTP 5xx errors from model container.`,
+                    metric: new Metric({
+                        namespace: 'AWS/ApplicationELB',
+                        metricName: 'HTTPCode_Target_5XX_Count',
+                        dimensionsMap: tgDims,
+                        statistic: 'Sum',
+                        period: Duration.minutes(5),
+                    }),
+                    threshold: 10,
+                    comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
+                    evaluationPeriods: 2,
+                    treatMissingData: TreatMissingData.NOT_BREACHING,
+                });
+
+                new Alarm(this, createCdkId([identifier, 'ConnectionErrorAlarm']), {
+                    alarmName: `${alarmPrefix}-TargetConnectionErrors`,
+                    alarmDescription: `Model ${identifier}: ALB cannot connect to container (crash/OOM).`,
+                    metric: new Metric({
+                        namespace: 'AWS/ApplicationELB',
+                        metricName: 'TargetConnectionErrorCount',
+                        dimensionsMap: tgDims,
+                        statistic: 'Sum',
+                        period: Duration.minutes(5),
+                    }),
+                    threshold: 5,
+                    comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
+                    evaluationPeriods: 2,
+                    treatMissingData: TreatMissingData.NOT_BREACHING,
+                });
+
+                new Alarm(this, createCdkId([identifier, 'HighLatencyAlarm']), {
+                    alarmName: `${alarmPrefix}-HighP99Latency`,
+                    alarmDescription: `Model ${identifier}: p99 response time exceeds 120s.`,
+                    metric: new Metric({
+                        namespace: 'AWS/ApplicationELB',
+                        metricName: 'TargetResponseTime',
+                        dimensionsMap: albDims,
+                        statistic: 'p99',
+                        period: Duration.minutes(5),
+                    }),
+                    threshold: 120,
+                    comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
+                    evaluationPeriods: 3,
+                    treatMissingData: TreatMissingData.NOT_BREACHING,
+                });
+            }
 
             const domain = loadBalancer.loadBalancerDnsName;
 

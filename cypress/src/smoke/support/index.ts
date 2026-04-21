@@ -17,6 +17,8 @@
 import './commands';
 import '../../support/adminHelpers';
 
+Cypress.on('uncaught:exception', (err) => !err.message.includes('ResizeObserver loop'));
+
 declare global {
     // eslint-disable-next-line @typescript-eslint/no-namespace
     namespace Cypress {
@@ -28,7 +30,7 @@ declare global {
              * @param role - The role to simulate ('admin' or 'user')
              * @example cy.session('admin', () => cy.loginAs('admin'))
              */
-            loginAs(role?: 'admin' | 'user'): Chainable<void>;
+            loginAs(role?: 'admin' | 'user' | 'rag-admin'): Chainable<void>;
 
             /**
              * Custom command to setup API stubs for a given role.
@@ -36,7 +38,7 @@ declare global {
              * @param role - The role to simulate ('admin' or 'user')
              * @example cy.setupStubs('admin')
              */
-            setupStubs(role?: 'admin' | 'user'): Chainable<void>;
+            setupStubs(role?: 'admin' | 'user' | 'rag-admin'): Chainable<void>;
         }
     }
 }

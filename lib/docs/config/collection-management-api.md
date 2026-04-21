@@ -714,7 +714,7 @@ fetch(hardDeleteUrl, {
 
 **Important Notes:**
 
-1. **Admin Access Required**: Only users with admin access to the collection can delete it
+1. **Admin or RAG Admin Access Required**: Only Admins or RAG Admins with group access to the repository can delete collections
 2. **Default Collection Protection**: The default collection (based on embedding model ID) cannot be deleted
 3. **Document Cleanup**: All documents in the collection will be removed from S3, DynamoDB, and the vector store
 4. **Irreversible Operation**: Hard delete is permanent and cannot be undone
@@ -1214,10 +1214,11 @@ Collections inherit configuration from their parent vector store:
 - **Admin**: Delete collection, modify access control
 
 ### Access Rules
-1. Admin users have full access to all collections
-2. Non-admin users must have group membership intersection with collection's allowed groups
-3. Private collections are only accessible to creator and admins
-4. Vector stores with `allowUserCollections: false` prevent non-admin collection creation
+1. Admin users have full access to all collections across all repositories
+2. RAG Admin users can create, update, and delete collections on repositories they have group access to; they cannot modify `allowedGroups` or repository-level settings
+3. Non-admin users must have group membership intersection with collection's allowed groups
+4. Private collections are only accessible to creator and admins
+5. Vector stores with `allowUserCollections: false` prevent non-admin collection creation
 
 ## Best Practices
 

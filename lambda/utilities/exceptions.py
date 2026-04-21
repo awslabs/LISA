@@ -29,14 +29,34 @@ class HTTPException(Exception):
 
 class NotFoundException(HTTPException):
     def __init__(self, detail: str = "Not Found"):
-        super().__init__(404, detail)  # flake8: noqa
+        super().__init__(404, detail)
 
 
 class UnauthorizedException(HTTPException):
     def __init__(self, detail: str = "Unauthorized"):
-        super().__init__(401, detail)  # flake8: noqa
+        super().__init__(401, detail)
 
 
 class ForbiddenException(HTTPException):
     def __init__(self, detail: str = "Forbidden"):
-        super().__init__(403, detail)  # flake8: noqa
+        super().__init__(403, detail)
+
+
+class BadRequestException(HTTPException):
+    def __init__(self, detail: str = "Bad Request"):
+        super().__init__(400, detail)
+
+
+class ConflictException(HTTPException):
+    def __init__(self, detail: str = "Conflict"):
+        super().__init__(409, detail)
+
+
+class InternalServerErrorException(HTTPException):
+    def __init__(self, detail: str = "Internal Server Error"):
+        super().__init__(500, detail)
+
+
+class ServiceUnavailableException(HTTPException):
+    def __init__(self, detail: str = "Service Unavailable"):
+        super().__init__(503, detail)

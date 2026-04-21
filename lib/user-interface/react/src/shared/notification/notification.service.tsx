@@ -28,16 +28,20 @@ function NotificationService (dispatch: ThunkDispatch<any, any, Action>): any {
         id: string = v4(),
         content: React.ReactNode = null,
         dismissible = true,
+        onDismiss?: () => void,
     ): string {
         dispatch(clearNotification(id));
-        dispatch(addNotification({ header: header, type: type, id: id, content: content, dismissible: dismissible }));
+        dispatch(addNotification({ header: header, type: type, id: id, content: content, dismissible: dismissible, onDismiss: onDismiss }));
         return id;
     }
 
     function createNotification (props: NotificationProp): FlashbarProps.MessageDefinition {
         return {
             ...props,
-            onDismiss: () => dispatch(clearNotification(props.id)),
+            onDismiss: () => {
+                props.onDismiss?.();
+                dispatch(clearNotification(props.id));
+            },
             dismissLabel: 'Dismiss notification',
         } as FlashbarProps.MessageDefinition;
     }

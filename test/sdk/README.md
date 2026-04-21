@@ -12,7 +12,7 @@ test/sdk/
 ├── test_model.py            # Tests for ModelMixin (model operations)
 ├── test_repository.py       # Tests for RepositoryMixin (repository operations)
 ├── test_collection.py       # Tests for CollectionMixin (collection operations)
-├── test_rag.py              # Tests for RagMixin (document and RAG operations)
+├── test_sdk_rag.py          # Tests for RagMixin (document and RAG operations)
 ├── test_config.py           # Tests for ConfigMixin (configuration operations)
 ├── test_session.py          # Tests for SessionMixin (session operations)
 └── test_docs.py             # Tests for DocsMixin (documentation operations)

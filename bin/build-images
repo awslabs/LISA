@@ -3,7 +3,7 @@
 set -e
 
 ROOT=$(pwd)
-OUTPUT_DIR=$ROOT/dist/images
+OUTPUT_DIR=${IMAGE_DIR:-$ROOT/dist/images}
 
 # Container runtime: Use CDK_DOCKER env var (same as CDK), default to docker
 DOCKER_CMD="${CDK_DOCKER:-docker}"
@@ -97,7 +97,8 @@ ecr_login() {
 # Function to check if a config parameter is enabled (defaults to true if not present)
 should_build_image() {
     local param="$1"
-    local value=$(yq ".${param}" "$ROOT/custom-config.yaml" 2>/dev/null)
+    local value
+    value=$(cd "$ROOT" && node scripts/config.mjs --get ".${param}" 2>/dev/null || true)
     [[ "$value" != "false" ]]
 }
 
@@ -140,23 +141,28 @@ build_all_images() {
         echo ""
     fi
 
-    # lisa-tei
-    build_image "Dockerfile" "lisa-tei" "latest" "./lib/serve/ecs-model/embedding/tei" \
-        "NODE_ENV=production" \
-        "BASE_IMAGE=ghcr.io/huggingface/text-embeddings-inference:latest" \
-        "MOUNTS3_DEB_URL=https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb"
+    ##################################################################################
+    # Note: Model-hosting images (lisa-tei, lisa-tgi, lisa-vllm) are not exported here
+    # as they exceed GitHub Release asset size limits (~2GB). These images are built
+    # at deploy time from their public base images. Uncomment to build.
+    ##################################################################################
+    # # lisa-tei
+    # build_image "embedding/tei/Dockerfile" "lisa-tei" "latest" "./lib/serve/ecs-model" \
+    #     "NODE_ENV=production" \
+    #     "BASE_IMAGE=ghcr.io/huggingface/text-embeddings-inference:latest" \
+    #     "MOUNTS3_DEB_URL=https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb"
 
-    # lisa-tgi
-    build_image "Dockerfile" "lisa-tgi" "latest" "./lib/serve/ecs-model/textgen/tgi" \
-        "NODE_ENV=production" \
-        "BASE_IMAGE=ghcr.io/huggingface/text-generation-inference:latest" \
-        "MOUNTS3_DEB_URL=https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb"
+    # # lisa-tgi
+    # build_image "textgen/tgi/Dockerfile" "lisa-tgi" "latest" "./lib/serve/ecs-model" \
+    #     "NODE_ENV=production" \
+    #     "BASE_IMAGE=ghcr.io/huggingface/text-generation-inference:latest" \
+    #     "MOUNTS3_DEB_URL=https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb"
 
-    # lisa-vllm
-    build_image "Dockerfile" "lisa-vllm" "latest" "./lib/serve/ecs-model/vllm" \
-        "NODE_ENV=production" \
-        "BASE_IMAGE=public.ecr.aws/deep-learning-containers/vllm:0.13-gpu-py312" \
-        "MOUNTS3_DEB_URL=https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb"
+    # # lisa-vllm
+    # build_image "vllm/Dockerfile" "lisa-vllm" "latest" "./lib/serve/ecs-model" \
+    #     "NODE_ENV=production" \
+    #     "BASE_IMAGE=public.ecr.aws/deep-learning-containers/vllm:0.17-gpu-py312-ec2" \
+    #     "MOUNTS3_DEB_URL=https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb"
 
     echo "All images built successfully!"
 }

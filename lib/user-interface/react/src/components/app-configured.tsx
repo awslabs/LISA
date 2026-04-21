@@ -24,8 +24,32 @@ import Spinner from '@cloudscape-design/components/spinner';
 
 import { OidcConfig } from '../config/oidc.config';
 import { User, UserProfile } from 'oidc-client-ts';
-import { purgeStore, useAppDispatch } from '../config/store';
+import { useAppDispatch } from '../config/store';
 import { updateUserState } from '../shared/reducers/user.reducer';
+import { useAuth } from '../auth/useAuth';
+
+function UserStateSync () {
+    const dispatch = useAppDispatch();
+    const auth = useAuth();
+
+    useEffect(() => {
+        if (auth.user) {
+            const userGroups = getGroups(auth.user.profile);
+            dispatch(updateUserState({
+                name: auth.user.profile.name,
+                preferred_username: auth.user.profile.preferred_username,
+                email: auth.user.profile.email,
+                groups: userGroups,
+                isAdmin: userGroups ? isAdmin(userGroups) : false,
+                isUser: window.env.USER_GROUP ? userGroups && isUser(userGroups) : true,
+                isApiUser: window.env.API_GROUP ? userGroups && isApiUser(userGroups) : false,
+                isRagAdmin: userGroups ? isRagAdmin(userGroups) : false,
+            }));
+        }
+    }, [auth.user, dispatch]);
+
+    return null;
+}
 
 function OAuthCallback () {
     useEffect(() => {
@@ -75,6 +99,10 @@ const isApiUser = (userGroups: any): boolean => {
     return window.env.API_GROUP ? userGroups.includes(window.env.API_GROUP) : false;
 };
 
+const isRagAdmin = (userGroups: any): boolean => {
+    return window.env.RAG_ADMIN_GROUP ? userGroups.includes(window.env.RAG_ADMIN_GROUP) : false;
+};
+
 function AppConfigured () {
     const dispatch = useAppDispatch();
     const [oidcUser, setOidcUser] = useState<User | void>();
@@ -91,6 +119,7 @@ function AppConfigured () {
                     isAdmin: userGroups ? isAdmin(userGroups) : false,
                     isUser: window.env.USER_GROUP ? userGroups && isUser(userGroups) : true,
                     isApiUser: window.env.API_GROUP ? userGroups && isApiUser(userGroups) : false,
+                    isRagAdmin: userGroups ? isRagAdmin(userGroups) : false,
                 }),
             );
         }
@@ -114,12 +143,12 @@ function AppConfigured () {
                     <AuthProvider
                         {...OidcConfig}
                         onSigninCallback={async (user: User | void) => {
-                            if ((window.env.USER_GROUP && user && isUser(getGroups(user.profile))) || !window.env.USER_GROUP) {
+                            const userGroups = user ? getGroups(user.profile) : undefined;
+                            const hasAccess = userGroups && (isUser(userGroups) || isRagAdmin(userGroups) || isAdmin(userGroups));
+                            if ((window.env.USER_GROUP && user && hasAccess) || !window.env.USER_GROUP) {
                                 window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.hash}`);
                                 setOidcUser(user);
                             } else {
-                                // User not authorized - purge store and remove user from OIDC storage
-                                await purgeStore();
                                 // Clear OIDC session storage to force re-authentication
                                 const oidcStorageKey = `oidc.user:${window.env.AUTHORITY}:${window.env.CLIENT_ID}`;
                                 sessionStorage.removeItem(oidcStorageKey);
@@ -127,6 +156,7 @@ function AppConfigured () {
                             }
                         }}
                     >
+                        <UserStateSync />
                         <App />
                     </AuthProvider>
                 } />

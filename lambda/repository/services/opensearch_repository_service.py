@@ -182,6 +182,8 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
         )
 
         opensearch_endpoint = f"https://{connection_info.get('endpoint')}"
+        if collection_id is not None:
+            collection_id = collection_id.lower()
 
         return OpenSearchVectorSearch(
             opensearch_url=opensearch_endpoint,
@@ -192,4 +194,5 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
             use_ssl=True,
             verify_certs=True,
             connection_class=RequestsHttpConnection,
+            engine="faiss",
         )

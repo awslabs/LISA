@@ -49,7 +49,16 @@ from repository.rag_document_repo import RagDocumentRepository
 from repository.s3_metadata_manager import S3MetadataManager
 from repository.services import RepositoryServiceFactory
 from repository.vector_store_repo import VectorStoreRepository
-from utilities.auth import admin_only, get_groups, get_user_context, get_username, is_admin, user_has_group_access
+from utilities.auth import (
+    admin_only,
+    get_groups,
+    get_user_context,
+    get_username,
+    is_admin,
+    is_rag_admin,
+    rag_admin_or_admin,
+    user_has_group_access,
+)
 from utilities.bedrock_kb import create_s3_scan_job
 from utilities.bedrock_kb_discovery import (
     build_pipeline_configs_from_kb_config,
@@ -58,8 +67,9 @@ from utilities.bedrock_kb_discovery import (
 )
 from utilities.bedrock_kb_validation import validate_bedrock_kb_exists
 from utilities.common_functions import api_wrapper, retry_config
-from utilities.exceptions import HTTPException
+from utilities.exceptions import ForbiddenException, NotFoundException
 from utilities.repository_types import RepositoryType
+from utilities.response_builder import DecimalEncoder
 from utilities.validation import ValidationError
 
 logger = logging.getLogger(__name__)
@@ -121,6 +131,54 @@ def list_status(event: dict, context: dict) -> dict[str, Any]:
     return cast(dict, vs_repo.get_repository_status())
 
 
+def enrich_metadata_with_document_id(
+    docs: list[dict[str, Any]], repository_id: str, search_collection_id: str
+) -> list[dict[str, Any]]:
+    """Enrich document metadata with document_id by looking up in RAG document table.
+
+    Works for both new documents (that have document_id in vector store) and
+    existing documents (that don't have it yet), ensuring backward compatibility.
+
+    Args:
+        docs: Documents from vector store similarity search
+        repository_id: Repository ID for scoping the lookup
+        search_collection_id: The actual collection ID used for the search (not from metadata)
+
+    Returns:
+        Documents with enriched metadata including document_id
+    """
+    for doc in docs:
+        metadata = doc.get("metadata", {})
+
+        # Look up document_id from RAG document table using source path
+        source = metadata.get("source")
+
+        if source and search_collection_id:
+            try:
+                # Query RAG document table by source using the ACTUAL collection_id from search
+                # Not the metadata's collectionId which may be "default" in vector store
+                rag_doc = doc_repo.find_one_by_source(
+                    repository_id=repository_id, collection_id=search_collection_id, source=source
+                )
+
+                if rag_doc:
+                    metadata["document_id"] = rag_doc.document_id
+                    logger.info(f"Enriched metadata with document_id: {rag_doc.document_id} for source: {source}")
+                else:
+                    logger.warning(
+                        f"No RAG document found for source: {source} "
+                        f"in repository: {repository_id}, collection: {search_collection_id}"
+                    )
+
+            except Exception as e:
+                logger.error(f"Failed to enrich metadata for source {source}: {e}")
+                # Continue without document_id - frontend will handle gracefully
+        else:
+            logger.debug(f"Missing source ({source}) or collection_id ({search_collection_id}), skipping enrichment")
+
+    return docs
+
+
 @api_wrapper
 def similarity_search(event: dict, context: dict) -> dict[str, Any]:
     """Return documents matching the query.
@@ -159,6 +217,7 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
 
     # Get user context for collection access
     username, is_admin, groups = get_user_context(event)
+    effective_admin = is_admin or is_rag_admin(event)
 
     is_default = collection_id is not None and collection_id == repository.get("embeddingModelId")
     # Determine embedding model
@@ -168,7 +227,7 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
             collection_id=collection_id if not is_default else None,  # type: ignore[arg-type]
             username=username,
             user_groups=groups,
-            is_admin=is_admin,
+            is_admin=effective_admin,
         )
         if collection_id
         else query_string_params.get("modelName")  # type: ignore[union-attr]
@@ -198,6 +257,10 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
         bedrock_agent_client=bedrock_client,
     )
 
+    # Enrich metadata with documentId for documents that don't have it
+    # Pass the actual search_collection_id (not the metadata's collectionId which may be "default")
+    docs = enrich_metadata_with_document_id(docs, repository_id, search_collection_id)  # type: ignore[arg-type]
+
     doc_content = [
         {
             "Document": {
@@ -214,7 +277,13 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
 
 
 def get_repository(event: dict[str, Any], repository_id: str) -> dict[str, Any]:
-    """Ensures a user has access to the repository or else raises an HTTPException."""
+    """Ensures a user has access to the repository or else raises an HTTPException.
+
+    Note: RAG admins are intentionally NOT given blanket repository access here.
+    They must have group membership via allowedGroups. This is the security boundary
+    that scopes RAG admin operations to their group-accessible repositories.
+    The @rag_admin_or_admin decorator gates role access; this function gates repo access.
+    """
     repo: dict[str, Any] = vs_repo.find_repository_by_id(repository_id)
 
     # Admins have access to all repositories
@@ -224,7 +293,7 @@ def get_repository(event: dict[str, Any], repository_id: str) -> dict[str, Any]:
     # Non-admins must have matching group access
     user_groups = get_groups(event)
     if not user_has_group_access(user_groups, repo.get("allowedGroups", [])):
-        raise HTTPException(status_code=403, message="User does not have permission to access this repository")
+        raise ForbiddenException("User does not have permission to access this repository")
 
     return repo
 
@@ -301,7 +370,7 @@ def create_bedrock_collection(event: dict, context: dict) -> dict[str, Any]:
                     logger.info(f"Collection {collection_id} already exists, skipping creation")
                     skipped_collections.append(existing_collection.model_dump(mode="json"))
                     continue
-            except (HTTPException, ValidationError):
+            except (NotFoundException, ValidationError):
                 # Collection doesn't exist, proceed with creation
                 pass
 
@@ -364,8 +433,53 @@ def create_bedrock_collection(event: dict, context: dict) -> dict[str, Any]:
         raise
 
 
+def create_default_collection(event: dict, context: dict) -> dict[str, Any]:
+    """Persist the default collection for a non-Bedrock repository after stack creation.
+    Called by the state machine for OpenSearch/PGVector repositories.
+    """
+    try:
+        rag_config = event.get("ragConfig", {})
+        repository_id = rag_config.get("repositoryId")
+        if not repository_id:
+            raise ValidationError("repositoryId is required in ragConfig")
+
+        repository = vs_repo.find_repository_by_id(repository_id)
+        service = RepositoryServiceFactory.create_service(repository)
+
+        if not service.should_create_default_collection():
+            return {"skipped": True, "reason": "repository type does not support default collections"}
+
+        default_collection = service.create_default_collection()
+        if not default_collection:
+            return {"skipped": True, "reason": "no embeddingModelId configured"}
+
+        try:
+            collection_service.create_collection(collection=default_collection, username="system")
+            logger.info(f"Persisted default collection {default_collection.collectionId} for {repository_id}")
+        except Exception as e:
+            if "already exists" in str(e).lower():
+                logger.info(f"Default collection already exists for {repository_id}, skipping")
+            else:
+                raise
+
+        pipelines = repository.get("pipelines") or []
+        updated_pipelines = [
+            {**p, "collectionId": default_collection.collectionId} if p.get("collectionId") == "default" else p
+            for p in pipelines
+        ]
+        if updated_pipelines != pipelines:
+            vs_repo.update(repository_id, {"pipelines": updated_pipelines})
+            logger.info(f"Updated pipeline collectionId to {default_collection.collectionId} for {repository_id}")
+
+        return {"collectionId": default_collection.collectionId, "repositoryId": repository_id}
+
+    except Exception as e:
+        logger.error(f"Error creating default collection: {str(e)}")
+        raise
+
+
 @api_wrapper
-@admin_only
+@rag_admin_or_admin
 def create_collection(event: dict, context: dict) -> dict[str, Any]:
     """
     Create a new collection within a vector store.
@@ -463,12 +577,20 @@ def get_collection(event: dict, context: dict) -> dict[str, Any]:
 
     # Get user context
     username, is_admin, groups = get_user_context(event)
+    effective_admin = is_admin or is_rag_admin(event)
 
     # Ensure repository exists and user has access
     repo = get_repository(event, repository_id=repository_id)
 
     if repo.get("embeddingModelId") == collection_id:
-        # Not a real collection - create virtual default collection
+        active_statuses = [
+            VectorStoreStatus.CREATE_COMPLETE,
+            VectorStoreStatus.UPDATE_COMPLETE,
+            VectorStoreStatus.UPDATE_COMPLETE_CLEANUP_IN_PROGRESS,
+            VectorStoreStatus.UPDATE_IN_PROGRESS,
+        ]
+        if repo.get("status") not in active_statuses:
+            raise NotFoundException(f"Repository '{repository_id}' is not active")
         service = RepositoryServiceFactory.create_service(repo)
         collection = service.create_default_collection()
     else:
@@ -478,13 +600,11 @@ def get_collection(event: dict, context: dict) -> dict[str, Any]:
             collection_id=collection_id,
             username=username,
             user_groups=groups,
-            is_admin=is_admin,
+            is_admin=effective_admin,
         )
 
     if collection is None:
-        raise HTTPException(
-            status_code=404, message=f"Collection '{collection_id}' not found in repository '{repository_id}'"
-        )
+        raise NotFoundException(f"Collection '{collection_id}' not found in repository '{repository_id}'")
 
     # Return collection configuration
     result: dict[str, Any] = collection.model_dump(mode="json")
@@ -492,7 +612,7 @@ def get_collection(event: dict, context: dict) -> dict[str, Any]:
 
 
 @api_wrapper
-@admin_only
+@rag_admin_or_admin
 def update_collection(event: dict, context: dict) -> dict[str, Any]:
     """
     Update a collection within a vector store.
@@ -525,6 +645,7 @@ def update_collection(event: dict, context: dict) -> dict[str, Any]:
 
     # Get user context
     username, is_admin, groups = get_user_context(event)
+    effective_admin = is_admin or is_rag_admin(event)
 
     # Ensure repository exists and user has access
     _ = get_repository(event, repository_id=repository_id)
@@ -546,7 +667,7 @@ def update_collection(event: dict, context: dict) -> dict[str, Any]:
         collection_data=request,
         username=username,
         user_groups=groups,
-        is_admin=is_admin,
+        is_admin=effective_admin,
     )
 
     result: dict[str, Any] = updated_collection.model_dump(mode="json")
@@ -554,7 +675,7 @@ def update_collection(event: dict, context: dict) -> dict[str, Any]:
 
 
 @api_wrapper
-@admin_only
+@rag_admin_or_admin
 def delete_collection(event: dict, context: dict) -> dict[str, Any]:
     """
     Delete a collection (regular or default) within a vector store.
@@ -592,6 +713,7 @@ def delete_collection(event: dict, context: dict) -> dict[str, Any]:
 
     # Get user context
     username, is_admin, groups = get_user_context(event)
+    effective_admin = is_admin or is_rag_admin(event)
 
     # Ensure repository exists and user has access
     repo = get_repository(event, repository_id=repository_id)
@@ -604,7 +726,7 @@ def delete_collection(event: dict, context: dict) -> dict[str, Any]:
         embedding_name=embedding_name if is_default_collection else None,  # None for regular collections
         username=username,
         user_groups=groups,
-        is_admin=is_admin,
+        is_admin=effective_admin,
     )
 
     return result
@@ -648,6 +770,7 @@ def list_collections(event: dict, context: dict) -> dict[str, Any]:
 
     # Get user context
     username, is_admin, groups = get_user_context(event)
+    effective_admin = is_admin or is_rag_admin(event)
 
     # Ensure repository exists and user has access
     _ = get_repository(event, repository_id=repository_id)
@@ -678,7 +801,7 @@ def list_collections(event: dict, context: dict) -> dict[str, Any]:
         repository_id=repository_id,
         username=username,
         user_groups=groups,
-        is_admin=is_admin,
+        is_admin=effective_admin,
         page_size=page_size,
         last_evaluated_key=last_evaluated_key,
     )
@@ -750,6 +873,10 @@ def list_user_collections(event: dict, context: dict) -> dict[str, Any]:
         HTTPException: If authentication fails
     """
     # Get user context
+    # RAG admins pass is_rag_admin=True so they get scoped-admin collection access
+    # within repos they have group access to (bypasses collection-level allowedGroups).
+    # is_admin remains the real flag so _get_accessible_repositories still filters
+    # repos by group membership — RAG admins do NOT see all repos.
     username, is_admin, groups = get_user_context(event)
     logger.info(f"list_user_collections called by user={username}, is_admin={is_admin}")
 
@@ -780,6 +907,7 @@ def list_user_collections(event: dict, context: dict) -> dict[str, Any]:
         username=username,
         user_groups=groups,
         is_admin=is_admin,
+        is_rag_admin=is_rag_admin(event),
         page_size=page_size,
         pagination_token=pagination_token,
         filter_text=filter_text,
@@ -816,9 +944,9 @@ def list_user_collections(event: dict, context: dict) -> dict[str, Any]:
 
 
 def _ensure_document_ownership(event: dict[str, Any], docs: list[RagDocument]) -> None:
-    """Verify ownership of documents"""
+    """Verify ownership of documents. Admins and RAG admins can delete any document."""
     username = get_username(event)
-    if is_admin(event) is False:
+    if not is_admin(event) and not is_rag_admin(event):
         for doc in docs:
             if not (doc.username == username):
                 raise ValueError(f"Document {doc.document_id} is not owned by {username}")
@@ -970,6 +1098,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
     handle_deprecated_chunking_strategy(request, query_params)
 
     username, is_admin, groups = get_user_context(event)
+    effective_admin = is_admin or is_rag_admin(event)
     repository = get_repository(event, repository_id=repository_id)
 
     # Get collection if specified
@@ -980,7 +1109,7 @@ def ingest_documents(event: dict, context: dict) -> dict:
             repository_id=repository_id,
             username=username,
             user_groups=groups,
-            is_admin=is_admin,
+            is_admin=effective_admin,
         ).model_dump()
 
     # For Bedrock KB repositories, upload metadata files BEFORE documents
@@ -1219,12 +1348,13 @@ def list_jobs(event: dict[str, Any], context: dict) -> dict[str, Any]:
 
     # Get user context
     username, is_admin_user, _ = get_user_context(event)
+    effective_admin = is_admin_user or is_rag_admin(event)
 
     # Fetch jobs from repository
     jobs, returned_last_evaluated_key = ingestion_job_repository.list_jobs_by_repository(
         repository_id=params.repository_id,
         username=username,
-        is_admin=is_admin_user,
+        is_admin=effective_admin,
         time_limit_hours=params.time_limit_hours,
         page_size=params.page_size,
         last_evaluated_key=params.last_evaluated_key,
@@ -1420,10 +1550,13 @@ def _validate_immutable_pipeline_fields(current_pipelines: list, new_pipelines: 
 
 
 @api_wrapper
-@admin_only
+@rag_admin_or_admin
 def update_repository(event: dict, context: dict) -> dict[str, Any]:
     """
-    Update a vector store configuration. This function is only accessible by administrators.
+    Update a vector store configuration. Accessible by administrators and RAG admins (with scoped access).
+
+    Admins can update all fields. RAG admins with group access can only update pipeline-related fields.
+    RAG admins cannot change allowedGroups or other repository-level settings.
 
     If the pipeline configuration has changed, this will trigger an infrastructure deployment
     using the state machine, similar to repository creation.
@@ -1450,12 +1583,22 @@ def update_repository(event: dict, context: dict) -> dict[str, Any]:
 
     # Parse request body
     try:
-        body = json.loads(event.get("body", {}))
+        body = json.loads(event.get("body", "{}"))
         request = UpdateVectorStoreRequest(**body)
     except json.JSONDecodeError as e:
         raise ValidationError(f"Invalid JSON in request body: {e}")
     except Exception as e:
         raise ValidationError(f"Invalid request: {e}")
+
+    # RAG admins: verify group access and restrict to pipeline-only updates
+    if not is_admin(event) and is_rag_admin(event):
+        # Verify group access to this repo
+        _ = get_repository(event, repository_id=repository_id)
+        # RAG admins can only update pipelines and bedrockKnowledgeBaseConfig
+        allowed_fields = {"pipelines", "bedrockKnowledgeBaseConfig"}
+        disallowed = set(body.keys()) - allowed_fields
+        if disallowed:
+            raise ForbiddenException(f"RAG admins cannot update the following fields: {', '.join(sorted(disallowed))}")
 
     # Get current repository configuration to check for pipeline changes
     current_repo = vs_repo.find_repository_by_id(repository_id, raw_config=True)
@@ -1464,6 +1607,12 @@ def update_repository(event: dict, context: dict) -> dict[str, Any]:
 
     # Build updates dictionary (only include fields that were provided)
     updates = request.model_dump(exclude_none=True, mode="json")
+
+    # Defense-in-depth: RAG admins can only update pipeline-related fields.
+    # This filters the serialized model output in case defaults were populated.
+    if not is_admin(event) and is_rag_admin(event):
+        allowed_fields = {"pipelines", "bedrockKnowledgeBaseConfig"}
+        updates = {k: v for k, v in updates.items() if k in allowed_fields}
 
     # Convert bedrockKnowledgeBaseConfig to pipelines for Bedrock KB repositories
     repository_type = current_config.get("type")
@@ -1601,7 +1750,8 @@ def update_repository(event: dict, context: dict) -> dict[str, Any]:
                 {
                     "body": input_data,
                     "config": {key: serializer.serialize(value) for key, value in rag_config.items()},
-                }
+                },
+                cls=DecimalEncoder,
             ),
         )
 

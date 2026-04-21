@@ -1,0 +1,16 @@
+diff --git a/node_modules/@langchain/openai/dist/converters/completions.js b/node_modules/@langchain/openai/dist/converters/completions.js
+--- a/node_modules/@langchain/openai/dist/converters/completions.js
++++ b/node_modules/@langchain/openai/dist/converters/completions.js
+@@ -174,2 +174,6 @@
+ 			if (includeRawResponse !== void 0) additional_kwargs.__raw_response = rawResponse;
++			if (message.reasoning_content) additional_kwargs.reasoning_content = message.reasoning_content;
++			// Extract thinking signature from thinking_blocks
++			const thinkingBlock = rawResponse?.choices?.[0]?.message?.thinking_blocks?.[0] || message.thinking_blocks?.[0];
++			if (thinkingBlock?.signature) additional_kwargs.thinking_signature = thinkingBlock.signature;
+ 			const response_metadata = {
+@@ -262,2 +262,5 @@
+ 	if (includeRawResponse) additional_kwargs.__raw_response = rawResponse;
++	if (delta.reasoning_content) additional_kwargs.reasoning_content = delta.reasoning_content;
++	const deltaThinkingBlock = delta.thinking_blocks?.[0];
++	if (deltaThinkingBlock?.signature) additional_kwargs.thinking_signature = deltaThinkingBlock.signature;
+ 	if (delta.audio) additional_kwargs.audio = {

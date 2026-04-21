@@ -16,16 +16,13 @@ import json
 import logging
 import os
 import secrets
-import sys
 from collections.abc import Callable
 from functools import wraps
 from typing import Any
 
 import boto3
 from botocore.config import Config
-from fastapi import HTTPException as FastAPIHTTPException
-from fastapi import Request
-from utilities.exceptions import HTTPException
+from utilities.exceptions import ForbiddenException
 
 from .auth_provider import get_authorization_provider
 
@@ -63,9 +60,29 @@ def is_admin(event: dict) -> bool:
     return result
 
 
+def is_rag_admin(event: dict) -> bool:
+    """Get RAG admin status from event using the configured authorization provider."""
+    username = get_username(event)
+    groups = get_groups(event)
+    auth_provider = get_authorization_provider()
+    result = auth_provider.check_rag_admin_access(username, groups)
+    return result
+
+
 def get_user_context(event: dict[str, Any]) -> tuple[str, bool, list[str]]:
     """Extract user context from event."""
     return get_username(event), is_admin(event), get_groups(event)
+
+
+def get_authorizer(event: Any) -> dict[str, Any]:
+    """Return the API Gateway Lambda authorizer context dict.
+
+    This is a small shared helper so other parts of the codebase don't need to
+    re-implement the same defensive extraction logic.
+    """
+    if not isinstance(event, dict):
+        return {}
+    return event.get("requestContext", {}).get("authorizer", {}) or {}
 
 
 def user_has_group_access(user_groups: list[str], allowed_groups: list[str]) -> bool:
@@ -93,65 +110,22 @@ def admin_only(func: Callable) -> Callable:
     @wraps(func)
     def wrapper(event: dict[str, Any], context: dict[str, Any], *args: Any, **kwargs: Any) -> Any:
         if not is_admin(event):
-            raise HTTPException(status_code=403, message="User does not have permission to access this repository")
+            raise ForbiddenException("User does not have permission to access this repository")
         return func(event, context, *args, **kwargs)
 
     return wrapper
 
 
-def require_admin(message: str = "User does not have permission to perform this action") -> Callable:
-    """
-    Decorator for FastAPI route handlers that require admin access.
+def rag_admin_or_admin(func: Callable) -> Callable:
+    """Decorator that allows access for users with admin or RAG admin privileges."""
 
-    Works with async FastAPI handlers that have a `request: Request` parameter.
-    The decorator extracts the AWS event from the request scope and checks admin status.
+    @wraps(func)
+    def wrapper(event: dict[str, Any], context: dict[str, Any], *args: Any, **kwargs: Any) -> Any:
+        if not is_admin(event) and not is_rag_admin(event):
+            raise ForbiddenException("User does not have permission to access this resource")
+        return func(event, context, *args, **kwargs)
 
-    Args:
-        message: Custom error message for non-admin users
-
-    Usage:
-        @app.post("/admin-endpoint")
-        @require_admin()
-        async def admin_endpoint(request: Request) -> Response:
-            ...
-
-        @app.delete("/models/{model_id}")
-        @require_admin("User does not have permission to delete models")
-        async def delete_model(model_id: str, request: Request) -> Response:
-            ...
-    """
-
-    def decorator(func: Callable) -> Callable:
-        @wraps(func)
-        async def wrapper(*args: Any, **kwargs: Any) -> Any:
-            # Find the Request object in kwargs
-            request = kwargs.get("request")
-            if request is None:
-                # Check positional args for Request type
-
-                for arg in args:
-                    if isinstance(arg, Request):
-                        request = arg
-                        break
-
-            if request is None:
-                raise FastAPIHTTPException(
-                    status_code=500, detail="Internal error: Request object not found in handler"
-                )
-
-            # Extract event from request scope
-            event = request.scope.get("aws.event", {})
-            # Look up is_admin from the module to allow patching in tests
-            auth_module = sys.modules.get("utilities.auth")
-            is_admin_func = getattr(auth_module, "is_admin", is_admin) if auth_module else is_admin
-            if not is_admin_func(event):
-                raise FastAPIHTTPException(status_code=403, detail=message)
-
-            return await func(*args, **kwargs)
-
-        return wrapper
-
-    return decorator
+    return wrapper
 
 
 def get_management_key() -> str:

@@ -1,6 +1,8 @@
 ARG BASE_IMAGE=public.ecr.aws/docker/library/python:3.13-slim
 FROM ${BASE_IMAGE}
 
+RUN apt-get update -y && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
+
 # Apply SSH security hardening - disable weak ciphers (3DES-CBC, etc.)
 RUN mkdir -p /etc/ssh && \
     echo "" >> /etc/ssh/ssh_config && \
@@ -48,8 +50,8 @@ RUN /opt/conda/bin/conda install s5cmd && \
 ARG LOCAL_CODE_PATH
 WORKDIR ${LOCAL_CODE_PATH}
 
-COPY src/inference.py src/requirements.txt ${LOCAL_CODE_PATH}/
-COPY src/entrypoint.sh entrypoint.sh
+COPY embedding/instructor/src/inference.py embedding/instructor/src/requirements.txt ${LOCAL_CODE_PATH}/
+COPY embedding/instructor/src/entrypoint.sh entrypoint.sh
 RUN chmod +x entrypoint.sh
 
 ENTRYPOINT ["./entrypoint.sh"]

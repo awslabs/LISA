@@ -7,7 +7,7 @@ This directory contains comprehensive unit tests for the LISA REST API (`lib/ser
 ```
 test/rest-api/
 ├── conftest.py              # Shared fixtures and test configuration
-├── test_utils.py            # Tests for utility modules (cache, decorators, resources)
+├── test_rest_api_utils.py   # Tests for utility modules (cache, decorators, resources)
 ├── test_auth.py             # Tests for authentication and authorization
 ├── test_request_utils.py    # Tests for request validation and processing
 ├── test_guardrails.py       # Tests for guardrails functionality
@@ -18,10 +18,8 @@ test/rest-api/
 
 ## Current Test Coverage
 
-### Utils Module (11 tests) ✅
-- **Cache Manager**: Set/get cache, persistence, updates
+### Utils Module (3 tests) ✅
 - **Singleton Decorator**: Single instance creation, state preservation
-- **Resources**: ModelType and RestApiResource enums
 
 ### Auth Module (22 tests) ✅
 - **AuthHeaders**: Enum values and methods
@@ -30,11 +28,8 @@ test/rest-api/
 - **JWT Group Extraction**: Various property paths and edge cases
 - **User Context**: API users, JWT users, group membership
 
-### Request Utils Module (5 tests) ✅
-- **Model Validation**: Registered models, unsupported models
-- **Stream Exception Handling**: Normal operation, error formatting
-
-Note: Full request_utils testing requires lisa_serve.registry which has external dependencies (text_generation, etc.) not available in the test environment.
+### Request Utils Module (3 tests) ✅
+- **Stream Exception Handling**: Normal operation, exception handling, error formatting
 
 ### Guardrails Module (18 tests) ✅
 - **Model Guardrails**: Retrieval, empty results, error handling
@@ -54,7 +49,7 @@ Note: Full request_utils testing requires lisa_serve.registry which has external
 
 Note: Full routes/middleware/lifespan testing requires the complete FastAPI application with all dependencies (aiobotocore, text_generation, etc.) which are not available in the unit test environment. These are covered by integration tests.
 
-**Total: 81 passing unit tests**
+**Total: 116 passing unit tests**
 
 These tests provide comprehensive coverage of the core business logic in the REST API while avoiding dependencies on external packages (text_generation, aiobotocore, etc.) that are not available in the test environment.
 
@@ -155,7 +150,6 @@ The `conftest.py` file provides shared fixtures:
 - `mock_admin_token_info`: Mock admin API token info
 - `mock_boto3_client`: Mock boto3 clients (DynamoDB, Secrets Manager, SSM, SQS)
 - `mock_guardrails`: Mock guardrails data
-- `mock_registered_models`: Mock registered models cache
 - `simple_fastapi_app`: Simple FastAPI app for testing
 - `test_client`: TestClient for FastAPI app
 
@@ -174,9 +168,9 @@ These are already included in the main project dependencies.
 
 These tests are included in:
 
-- `make test` - Run all unit tests
-- `make test-coverage` - Run with coverage reporting
-- `make test-rest-api` - Run only REST API tests
+- `npm run test` - Run all unit tests
+- `npm run test:coverage` - Run with coverage reporting
+- `npm run test:rest-api` - Run only REST API tests
 
 The tests are fast and have no external dependencies, making them ideal for CI/CD pipelines.
 
@@ -196,7 +190,6 @@ The test suite provides comprehensive coverage of:
 
 Potential improvements to the test suite:
 
-- [ ] Add tests for handler modules (embeddings, generation, models)
 - [ ] Add tests for RDS authentication utilities
 - [ ] Add tests for LiteLLM config generation
 - [ ] Add integration tests with real FastAPI TestClient

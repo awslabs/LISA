@@ -22,32 +22,32 @@ import { Stack } from 'aws-cdk-lib';
 
 const stackRolesOverrides: Record<string, number> = {
     'LisaApiBase': 5,
-    'LisaServe': 4,
+    'LisaServe': 2,
     'LisaUI': 1,
     'LisaDocs': 2,
-    'LisaRAG': 5,
+    'LisaRAG': 7,
     'LisaChat': 1,
     'LisaCore': 1,
-    'LisaModels': 3,
-    'LisaMcpWorkbench': 5,
+    'LisaModels': 6,
+    'LisaMcpWorkbench': 6,
     'LisaMcpApi': 6,
     'LisaMetrics': 1
 };
 
 const stackRoles: Record<string, number> = {
     'LisaApiBase': 6,
-    'LisaServe': 4,
+    'LisaServe': 2,
     'LisaUI': 3,
     'LisaNetworking': 0,
-    'LisaChat': 6,
+    'LisaChat': 8,
     'LisaCore': 1,
     'LisaApiDeployment': 0,
     'LisaIAM': 5,
     'LisaDocs': 4,
-    'LisaModels': 12,
-    'LisaRAG': 5,
+    'LisaModels': 15,
+    'LisaRAG': 7,
     'LisaMetrics': 2,
-    'LisaMcpWorkbench': 5,
+    'LisaMcpWorkbench': 6,
     'LisaMcpApi': 8,
 };
 
@@ -77,7 +77,6 @@ describe('Verify created roles', () => {
 
             it(`${stack} should contain ${expectedRoles} roles`, () => {
                 const template = Template.fromStack(stack);
-                console.log(stack.stackName);
                 template.resourceCountIs('AWS::IAM::Role', expectedRoles);
             });
         }

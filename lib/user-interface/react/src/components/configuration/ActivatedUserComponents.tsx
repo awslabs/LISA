@@ -20,6 +20,7 @@ import { SetFieldsFunction } from '../../shared/validation';
 
 const ragOptions = {
     uploadRagDocs: 'Document upload from Chat',
+    ragSelectionAvailable: 'RAG repository & collection selection',
     editNumOfRagDocument: 'Edit number of referenced documents',
 };
 
@@ -42,11 +43,15 @@ const advancedOptions = {
     editChatHistoryBuffer: 'Edit chat history buffer',
     enableModelComparisonUtility: 'Model Comparison Utility',
     encryptSession: 'Session Encryption',
+    chatAssistantStacks: 'Chat Assistant Stacks',
+    projectOrganization: 'Project Organization',
 };
 
 const mcpOptions = {
+    bedrockAgents: 'Amazon Bedrock agents',
     mcpConnections: 'MCP Server Connections',
-    showMcpWorkbench: 'MCP Workbench'
+    showMcpWorkbench: 'MCP Workbench',
+    awsSessions: 'MCP AWS Sessions'
 };
 
 const apiTokenOptions = {
@@ -73,7 +78,8 @@ const dependencies: DependencyMap<{
     apiTokenOptions: typeof apiTokenOptions;
 }> = {
     showMcpWorkbench: { prerequisites: ['mcpConnections'] },
-    mcpConnections: { dependents: ['showMcpWorkbench'] }
+    awsSessions: { prerequisites: ['mcpConnections'] },
+    mcpConnections: { dependents: ['showMcpWorkbench', 'awsSessions'] }
 };
 
 const configurableOperations = [{
@@ -174,7 +180,7 @@ export function ActivatedUserComponents (props: ActivatedComponentConfigurationP
                                                 }}
                                                 checked={isChecked}
                                                 disabled={isDisabled}
-                                                data-cy={`Toggle-${item}`}
+                                                data-testid={`Toggle-${item}`}
                                             >
                                                 {operation.items[item]}
                                             </Toggle>

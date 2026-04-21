@@ -190,24 +190,3 @@ def mock_guardrails():
             "markedForDeletion": False,
         },
     ]
-
-
-@pytest.fixture
-def mock_registered_models():
-    """Mock registered models cache."""
-    return {
-        "textgen": {"ecs.textgen.tgi": ["test-model", "other-model"]},
-        "embedding": {"ecs.embedding.tei": ["embedding-model"]},
-        "embeddings": {"ecs.embedding.tei": ["embedding-model"]},
-        "generate": {"ecs.textgen.tgi": ["test-model", "other-model"]},
-        "generateStream": {"ecs.textgen.tgi": ["test-model"]},
-        "metadata": {
-            "ecs.textgen.tgi.test-model": {
-                "provider": "ecs.textgen.tgi",
-                "modelName": "test-model",
-                "modelType": "textgen",
-                "modelKwargs": {},
-            }
-        },
-        "endpointUrls": {"ecs.textgen.tgi.test-model": "http://test-endpoint"},
-    }

@@ -1,0 +1,19 @@
+{
+  "agents": [
+    {
+      "agentId": "br-agent-discovered",
+      "agentName": "Discovered Only Agent",
+      "agentStatus": "PREPARED",
+      "suggestedAliasId": "DISCALIAS",
+      "aliases": [
+        {
+          "agentAliasId": "DISCALIAS",
+          "agentAliasStatus": "PREPARED"
+        }
+      ],
+      "invokeReady": true,
+      "actionTools": []
+    }
+  ],
+  "totalAgents": 1
+}

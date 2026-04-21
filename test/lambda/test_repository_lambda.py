@@ -138,11 +138,13 @@ mock_common.get_username.return_value = "test-user"
 mock_common.retry_config = retry_config
 mock_common.get_groups.return_value = ["test-group"]
 mock_common.is_admin.return_value = False
+mock_common.is_rag_admin.return_value = False
 mock_common.get_user_context.return_value = ("test-user", False, ["test-group"])
 mock_common.api_wrapper = mock_api_wrapper
 mock_common.get_id_token.return_value = "test-token"
 mock_common.get_cert_path.return_value = None
 mock_common.admin_only = mock_admin_only
+mock_common.rag_admin_or_admin = mock_admin_only
 
 # Create mock modules for missing dependencies
 mock_langchain_community = MagicMock()
@@ -255,18 +257,41 @@ patch.dict(
 patch("utilities.auth.get_username", mock_common.get_username).start()
 patch("utilities.auth.get_groups", mock_common.get_groups).start()
 patch("utilities.auth.is_admin", mock_common.is_admin).start()
+patch("utilities.auth.is_rag_admin", mock_common.is_rag_admin).start()
 patch("utilities.auth.get_user_context", mock_common.get_user_context).start()
 patch("utilities.common_functions.retry_config", retry_config).start()
 patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()
 patch("utilities.common_functions.get_id_token", mock_common.get_id_token).start()
 patch("utilities.common_functions.get_cert_path", mock_common.get_cert_path).start()
-patch("utilities.auth.admin_only", mock_admin_only).start()
+_admin_only_patch = patch("utilities.auth.admin_only", mock_admin_only)
+_admin_only_patch.start()
+_rag_admin_or_admin_patch = patch("utilities.auth.rag_admin_or_admin", mock_admin_only)
+_rag_admin_or_admin_patch.start()
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _admin_only_patch_fixture():
+    """Ensure admin_only and rag_admin_or_admin patches are stopped when this module's tests complete.
+
+    The patches must be started at import time so repository.lambda_functions
+    imports with the mocked decorators. This fixture cleans them up to avoid
+    leaking into other test modules and order-dependent failures.
+    """
+    yield
+    _admin_only_patch.stop()
+    _rag_admin_or_admin_patch.stop()
+    _is_rag_admin_patch.stop()
+
 
 # Note: boto3.client will be patched per-test to avoid global conflicts
 # Global boto3.client patch removed to prevent interference with other test modules
 
 # Only now import the lambda functions to ensure they use our mocked dependencies
 from repository.lambda_functions import _ensure_document_ownership, get_repository, presigned_url
+
+# is_rag_admin is imported by name in lambda_functions, so patch it on the module after import
+_is_rag_admin_patch = patch("repository.lambda_functions.is_rag_admin", mock_common.is_rag_admin)
+_is_rag_admin_patch.start()
 
 
 @pytest.fixture(autouse=True)
@@ -1271,7 +1296,7 @@ def test_pipeline_embeddings_embed_documents_mismatch():
 
         embeddings = RagEmbeddings("test-model", "test-token")
 
-        with pytest.raises(Exception, match="Number of embeddings does not match number of input texts"):
+        with pytest.raises(Exception, match="Embedding count mismatch: expected 2, got 1"):
             embeddings.embed_documents(["text1", "text2"])
 
 
@@ -1912,6 +1937,91 @@ def test_ensure_document_ownership_edge_cases():
     assert _ensure_document_ownership(event, []) is None
 
 
+def test_enrich_metadata_with_document_id():
+    """Test enrich_metadata_with_document_id function"""
+    from repository.lambda_functions import enrich_metadata_with_document_id
+
+    with patch("repository.lambda_functions.doc_repo") as mock_doc_repo:
+        # Mock RAG document lookup
+        mock_rag_doc = MagicMock()
+        mock_rag_doc.document_id = "enriched-doc-id-123"
+        mock_doc_repo.find_one_by_source.return_value = mock_rag_doc
+
+        # Test documents without document_id in metadata
+        docs = [
+            {"page_content": "Test content", "metadata": {"source": "s3://bucket/doc1.pdf"}},
+            {"page_content": "More content", "metadata": {"source": "s3://bucket/doc2.pdf"}},
+        ]
+
+        # Enrich metadata
+        enriched_docs = enrich_metadata_with_document_id(docs, "test-repo", "test-collection")
+
+        # Verify document_id was added to metadata
+        assert enriched_docs[0]["metadata"]["document_id"] == "enriched-doc-id-123"
+        assert enriched_docs[1]["metadata"]["document_id"] == "enriched-doc-id-123"
+
+        # Verify find_one_by_source was called correctly
+        assert mock_doc_repo.find_one_by_source.call_count == 2
+        mock_doc_repo.find_one_by_source.assert_any_call(
+            repository_id="test-repo", collection_id="test-collection", source="s3://bucket/doc1.pdf"
+        )
+
+
+def test_enrich_metadata_with_document_id_missing_source():
+    """Test enrich_metadata_with_document_id with missing source"""
+    from repository.lambda_functions import enrich_metadata_with_document_id
+
+    with patch("repository.lambda_functions.doc_repo") as mock_doc_repo:
+        # Test documents without source in metadata
+        docs = [
+            {"page_content": "Test content", "metadata": {}},
+        ]
+
+        # Enrich metadata (should skip docs without source)
+        enriched_docs = enrich_metadata_with_document_id(docs, "test-repo", "test-collection")
+
+        # Verify no lookup was attempted
+        mock_doc_repo.find_one_by_source.assert_not_called()
+        # Document should be returned unchanged
+        assert "document_id" not in enriched_docs[0]["metadata"]
+
+
+def test_enrich_metadata_with_document_id_not_found():
+    """Test enrich_metadata_with_document_id when RAG document not found"""
+    from repository.lambda_functions import enrich_metadata_with_document_id
+
+    with patch("repository.lambda_functions.doc_repo") as mock_doc_repo:
+        # Mock RAG document lookup returning None
+        mock_doc_repo.find_one_by_source.return_value = None
+
+        # Test document
+        docs = [{"page_content": "Test content", "metadata": {"source": "s3://bucket/doc1.pdf"}}]
+
+        # Enrich metadata (should handle missing gracefully)
+        enriched_docs = enrich_metadata_with_document_id(docs, "test-repo", "test-collection")
+
+        # Verify no document_id was added (handled gracefully)
+        assert "document_id" not in enriched_docs[0]["metadata"]
+
+
+def test_enrich_metadata_with_document_id_exception():
+    """Test enrich_metadata_with_document_id handles exceptions gracefully"""
+    from repository.lambda_functions import enrich_metadata_with_document_id
+
+    with patch("repository.lambda_functions.doc_repo") as mock_doc_repo:
+        # Mock RAG document lookup raising exception
+        mock_doc_repo.find_one_by_source.side_effect = Exception("Database error")
+
+        # Test document
+        docs = [{"page_content": "Test content", "metadata": {"source": "s3://bucket/doc1.pdf"}}]
+
+        # Enrich metadata (should handle exception gracefully)
+        enriched_docs = enrich_metadata_with_document_id(docs, "test-repo", "test-collection")
+
+        # Verify no document_id was added (error handled gracefully)
+        assert "document_id" not in enriched_docs[0]["metadata"]
+
+
 def test_real_similarity_search_bedrock_kb_function():
     """Test the actual similarity_search function for Bedrock Knowledge Base repositories"""
     from repository.lambda_functions import similarity_search
@@ -1920,7 +2030,9 @@ def test_real_similarity_search_bedrock_kb_function():
         "repository.lambda_functions.bedrock_client"
     ) as mock_bedrock, patch("utilities.auth.get_groups") as mock_get_groups, patch(
         "repository.lambda_functions.collection_service"
-    ) as mock_collection_service:
+    ) as mock_collection_service, patch(
+        "repository.lambda_functions.enrich_metadata_with_document_id"
+    ) as mock_enrich:
 
         mock_get_groups.return_value = ["test-group"]
         mock_vs_repo.find_repository_by_id.return_value = {
@@ -1950,6 +2062,9 @@ def test_real_similarity_search_bedrock_kb_function():
             ]
         }
 
+        # Mock enrichment to return docs unchanged (enrichment tested separately)
+        mock_enrich.side_effect = lambda docs, repo_id, coll_id: docs
+
         event = {
             "requestContext": {
                 "authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["test-group"])}
@@ -1972,6 +2087,9 @@ def test_real_similarity_search_bedrock_kb_function():
         first_doc = body["docs"][0]["Document"]
         assert first_doc["page_content"] == "KB doc content"
         assert first_doc["metadata"]["source"] == "s3://bucket/path/doc1.pdf"
+
+        # Verify enrichment was called
+        mock_enrich.assert_called_once()
 
 
 @mock_aws()

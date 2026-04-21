@@ -27,11 +27,17 @@ const APIS = [
     { pattern: '**/api-tokens*', alias: 'getApiTokens' },
     { pattern: '**/repository*', alias: 'getRepositories', chat: true },
     { pattern: '**/collection*', alias: 'getCollections' },
+    { pattern: '**/bedrock-agents/approvals*', alias: 'getBedrockApprovals' },
+    { pattern: '**/bedrock-agents/discovery*', alias: 'getBedrockDiscovery' },
+    { pattern: '**/bedrock-agents/invoke*', alias: 'invokeBedrockAgent' },
+    { pattern: '**/bedrock-agents*', alias: 'getBedrockAgents' },
+    { pattern: '**/mcp-server*', alias: 'getMcpServers' },
     { pattern: '**/mcp*', alias: 'getMcp' },
-    { pattern: '**/mcp-management*', alias: 'getMcpServers' },
+    { pattern: '**/mcp-management*', alias: 'getHostedMcpManagement' },
     { pattern: '**/mcp-workbench*', alias: 'getMcpWorkbench' },
     { pattern: '**/prompt-templates*', alias: 'getPromptTemplates' },
     { pattern: '**/user-preferences*', alias: 'getUserPreferences' },
+    { pattern: '**/project*', alias: 'getProjects' },
 ];
 
 /**
@@ -58,7 +64,7 @@ function waitForCriticalApis () {
  */
 function waitForAppReady () {
     // Wait for "Loading configuration..." to disappear
-    cy.contains('Loading configuration...', { timeout: 15000 }).should('not.exist');
+    cy.contains('Loading configuration...', { timeout: 30000 }).should('not.exist');
 
     // Wait for any loading spinners to complete
     cy.get('body').then(($body) => {
@@ -80,7 +86,7 @@ function waitForAppReady () {
 Cypress.Commands.add('loginAs', (role = 'user') => {
     const log = Cypress.log({
         displayName: 'Cognito Login',
-        message: [`🔐 Authenticating | ${role}`],
+        message: [`Authenticating | ${role}`],
         autoEnd: false,
     });
 
@@ -126,20 +132,47 @@ Cypress.Commands.add('loginAs', (role = 'user') => {
                         cy.get('@usernameInput').clear({ force: true });
                         cy.get('@usernameInput').type(username, { force: true });
 
-                        // Fill password
-                        cy.get('input[name="password"]')
-                            .filter(':visible')
-                            .type(password, { force: true, log: false });
+                        // Handle both single-page and two-step login flows
+                        // Check if password field is already visible (single-page flow)
+                        cy.get('body').then(($body) => {
+                            const passwordVisible = $body.find('input[name="password"]:visible').length > 0;
 
-                        // Submit
-                        cy.get('input[type="submit"], input[aria-label="submit"], button[type="submit"]')
-                            .filter(':visible')
-                            .first()
-                            .click({ force: true });
+                            if (!passwordVisible) {
+                                // Two-step flow: click Next/Continue button to proceed to password
+                                cy.get('input[type="submit"], button[type="submit"], button:contains("Next"), button:contains("Continue"), input[value="Next"], input[name="signInSubmitButton"]')
+                                    .filter(':visible')
+                                    .first()
+                                    .click({ force: true });
+
+                                // Wait for password field to appear
+                                cy.get('input[name="password"]', { timeout: 10000 })
+                                    .should('be.visible');
+                            }
+
+                            // Fill password
+                            cy.get('input[name="password"]')
+                                .filter(':visible')
+                                .type(password, { force: true, log: false });
+
+                            // Submit the form
+                            cy.get('input[type="submit"], button[type="submit"], input[name="signInSubmitButton"]')
+                                .filter(':visible')
+                                .first()
+                                .click({ force: true });
+                        });
                     });
 
-                    // Wait for redirect back to app and allow configuration to load
-                    cy.wait(2000);
+                    // Wait for redirect back to app and OIDC token to be stored
+                    // The app needs time to process the auth callback and store tokens
+                    cy.url({ timeout: 30000 }).should('not.include', 'amazoncognito.com');
+
+                    // Wait for OIDC token to appear in sessionStorage
+                    cy.window({ timeout: 15000 }).should((win) => {
+                        const hasOidcToken = Object.keys(win.sessionStorage).some((key) =>
+                            key.startsWith('oidc.user:')
+                        );
+                        expect(hasOidcToken, 'OIDC token should be stored after login').to.equal(true);
+                    });
                 });
             });
         },
@@ -149,10 +182,9 @@ Cypress.Commands.add('loginAs', (role = 'user') => {
                 // The key format is: oidc.user:<authority>:<client_id>
                 // We check for any key starting with 'oidc.user:' since we don't have the exact values here
                 cy.window().then((win) => {
-                    const hasOidcToken = Object.keys(win.sessionStorage).some((key) =>
-                        key.startsWith('oidc.user:')
-                    );
-                    expect(hasOidcToken).to.equal(true);
+                    const sessionKeys = Object.keys(win.sessionStorage);
+                    const oidcKey = sessionKeys.find((key) => key.startsWith('oidc.user:'));
+                    expect(oidcKey, 'OIDC token should exist in sessionStorage').to.not.equal(undefined);
                 });
             },
             cacheAcrossSpecs: false,

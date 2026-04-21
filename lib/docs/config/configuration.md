@@ -14,6 +14,7 @@ authConfig:
   clientId:
   adminGroup:
   userGroup:
+  ragAdminGroup:   # optional: IDP group for RAG Admin role
   jwtGroupsProperty:
 ```
 

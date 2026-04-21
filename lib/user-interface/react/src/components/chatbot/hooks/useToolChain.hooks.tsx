@@ -26,6 +26,9 @@ export const useToolChain = ({
     notificationService,
     toolToServerMap,
     mcpPreferences,
+    shouldAutoApproveBedrockTool,
+    bedrockOverrideAllApprovals,
+    isBedrockManagedTool,
 }: {
     callTool: (toolName: string, args: any) => Promise<any>;
     generateResponse: (params: GenerateLLMRequestParams) => Promise<void>;
@@ -34,6 +37,9 @@ export const useToolChain = ({
     notificationService: any;
     toolToServerMap: Map<string, string>,
     mcpPreferences: McpPreferences,
+    shouldAutoApproveBedrockTool?: (toolName: string, toolArgs: Record<string, unknown> | undefined) => boolean;
+    bedrockOverrideAllApprovals?: boolean;
+    isBedrockManagedTool?: (toolName: string) => boolean;
 }) => {
     const isProcessingChain = useRef(false);
     const stopRequested = useRef(false);
@@ -52,7 +58,7 @@ export const useToolChain = ({
     }, [callTool]);
 
     const formatToolResult = useCallback((result: any) => {
-        let toolResultContent = '';
+        let toolResultContent: string;
         if (Array.isArray(result)) {
             toolResultContent = result.map((item) => {
                 if (item.type === 'text') {
@@ -69,16 +75,27 @@ export const useToolChain = ({
     }, []);
 
     const executeToolWithApproval = useCallback(async (tool: any): Promise<any> => {
-        const checkOverriddenApproval = (toolName: string): boolean => {
+        const checkOverriddenApproval = (toolName: string, toolArgs: Record<string, unknown> | undefined): boolean => {
             if (mcpPreferences?.overrideAllApprovals) {
                 return true;
-            } else {
-                const serverName = toolToServerMap.get(toolName);
-                return mcpPreferences?.enabledServers.find((server: any) => server.name === serverName)?.autoApprovedTools?.includes(toolName) ?? false;
             }
+            if (
+                bedrockOverrideAllApprovals
+                && (toolName === 'invoke_bedrock_agent' || isBedrockManagedTool?.(toolName))
+            ) {
+                return true;
+            }
+            if (
+                shouldAutoApproveBedrockTool?.(toolName, toolArgs)
+                && (toolName === 'invoke_bedrock_agent' || isBedrockManagedTool?.(toolName))
+            ) {
+                return true;
+            }
+            const serverName = toolToServerMap.get(toolName);
+            return mcpPreferences?.enabledServers.find((server: any) => server.name === serverName)?.autoApprovedTools?.includes(toolName) ?? false;
         };
 
-        if (checkOverriddenApproval(tool.name)) {
+        if (checkOverriddenApproval(tool.name, tool.args)) {
             return await callTool(tool.name, tool.args);
         } else {
             return new Promise((resolve, reject) => {
@@ -90,7 +107,7 @@ export const useToolChain = ({
                 });
             });
         }
-    }, [callTool, mcpPreferences, toolToServerMap]);
+    }, [callTool, mcpPreferences, toolToServerMap, shouldAutoApproveBedrockTool, bedrockOverrideAllApprovals, isBedrockManagedTool]);
 
     const handleToolApproval = useCallback(async () => {
         if (!toolApprovalModal) return;

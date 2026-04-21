@@ -34,9 +34,15 @@ type RagControlProps = {
     setUseRag: React.Dispatch<React.SetStateAction<boolean>>;
     setRagConfig: React.Dispatch<React.SetStateAction<RagConfig>>;
     ragConfig: RagConfig;
+    /** When false, hide the repository/collection selection UI but keep stack-driven defaults working */
+    selectionAvailable?: boolean;
+    /** When set (e.g. from Chat Assistant stack), only these repositories are shown */
+    allowedRepositoryIds?: string[];
+    /** When set (e.g. from Chat Assistant stack), only these collection IDs are shown */
+    allowedCollectionIds?: string[];
 };
 
-export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragConfig }: RagControlProps) {
+export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragConfig, selectionAvailable, allowedRepositoryIds, allowedCollectionIds }: RagControlProps) {
     const { data: repositories, isLoading: isLoadingRepositories } = useListRagRepositoriesQuery(undefined, {
         refetchOnMountOrArgChange: 5
     });
@@ -66,21 +72,28 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
 
     const filteredRepositories = useMemo(() => {
         if (!repositories) return [];
-        return repositories.filter((repo) =>
+        const statusFiltered = repositories.filter((repo) =>
             repo.status === VectorStoreStatus.CREATE_COMPLETE || repo.status === VectorStoreStatus.UPDATE_COMPLETE
         );
-    }, [repositories]);
+        if (allowedRepositoryIds !== undefined) {
+            return statusFiltered.filter((repo) => allowedRepositoryIds.includes(repo.repositoryId));
+        }
+        return statusFiltered;
+    }, [repositories, allowedRepositoryIds]);
 
     const collectionOptions = useMemo(() => {
         if (!collections) return [];
-        // Filter to only show ACTIVE collections
-        return collections
+        const active = collections
             .filter((collection) => collection.status === CollectionStatus.ACTIVE)
             .map((collection) => ({
                 value: collection.collectionId,
                 label: collection.name,
             }));
-    }, [collections]);
+        if (allowedCollectionIds !== undefined) {
+            return active.filter((opt) => allowedCollectionIds.includes(opt.value));
+        }
+        return active;
+    }, [collections, allowedCollectionIds]);
 
     // Update useRag flag based on repository type and configuration
     useEffect(() => {
@@ -104,19 +117,21 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
         // Update tracking when repository changes
         if (repositoryHasChanged) {
             lastRepositoryIdRef.current = currentRepositoryId;
-
-            setUserHasSelectedCollection(false);
+            queueMicrotask(() => setUserHasSelectedCollection(false));
         }
 
         if (currentRepositoryId && filteredRepositories && allModels && (!userHasSelectedCollection || repositoryHasChanged)) {
             const repository = filteredRepositories.find((repo) => repo.repositoryId === currentRepositoryId);
             const isNonBedrockRepo = repository?.type !== RagRepositoryType.BEDROCK_KNOWLEDGE_BASE;
 
-            // For non-bedrock repositories, auto-select the first available collection if it exists
-            if (isNonBedrockRepo && collections && collections.length > 0 && !ragConfig?.collection) {
+            // For non-bedrock repositories, auto-select the first available collection if it exists (skip when stack allows none)
+            const maySelectCollection = allowedCollectionIds === undefined || allowedCollectionIds.length > 0;
+            if (maySelectCollection && isNonBedrockRepo && collections && collections.length > 0 && !ragConfig?.collection) {
                 const activeCollections = collections.filter((c) => c.status === CollectionStatus.ACTIVE);
                 if (activeCollections.length > 0) {
-                    const defaultCollection = activeCollections[0];
+                    const defaultCollection = allowedCollectionIds?.length
+                        ? activeCollections.find((c) => c.collectionId === allowedCollectionIds[0]) ?? activeCollections.find((c) => allowedCollectionIds.includes(c.collectionId)) ?? activeCollections[0]
+                        : activeCollections[0];
                     const embeddingModel = allModels.find((model) => model.modelId === defaultCollection.embeddingModel);
 
                     setRagConfig((config) => ({
@@ -148,7 +163,8 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
         allModels,
         collections,
         userHasSelectedCollection,
-        setRagConfig
+        setRagConfig,
+        allowedCollectionIds,
     ]);
 
     const handleRepositoryChange = ({ detail }) => {
@@ -214,42 +230,46 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
 
     return (
         <SpaceBetween size='l' direction='vertical'>
-            <Grid
-                gridDefinition={[
-                    { colspan: { default: 6 } },
-                    { colspan: { default: 6 } },
-                ]}
-            >
-                <Autosuggest
-                    disabled={isRunning}
-                    statusType={isLoadingRepositories ? 'loading' : 'finished'}
-                    loadingText='Loading repositories (might take few seconds)...'
-                    placeholder='Select a RAG Repository'
-                    empty={<div className='text-zinc-500'>No repositories available.</div>}
-                    filteringType='auto'
-                    value={selectedRepositoryOption}
-                    enteredTextLabel={(text) => `Use: "${text}"`}
-                    onChange={handleRepositoryChange}
-                    options={filteredRepositories?.map((repository) => ({
-                        value: repository.repositoryId,
-                        label: repository?.repositoryName?.length ? repository?.repositoryName : repository.repositoryId
-                    })) || []}
-                    controlId='rag-repository-autosuggest'
-                />
-                <Autosuggest
-                    disabled={!selectedRepositoryOption || isRunning}
-                    statusType={isLoadingCollections ? 'loading' : 'finished'}
-                    loadingText='Loading collections...'
-                    placeholder='Select a collection (optional)'
-                    empty={<div className='text-zinc-500'>No collections available.</div>}
-                    filteringType='auto'
-                    value={selectedCollectionOption}
-                    enteredTextLabel={(text) => `Use: "${text}"`}
-                    onChange={handleCollectionChange}
-                    options={collectionOptions}
-                    controlId='rag-collection-autosuggest'
-                />
-            </Grid>
+            {selectionAvailable === false ? null : (
+                <Grid
+                    gridDefinition={[
+                        { colspan: { default: 6 } },
+                        { colspan: { default: 6 } },
+                    ]}
+                >
+                    <Autosuggest
+                        data-testid='rag-repository-autosuggest'
+                        disabled={isRunning}
+                        statusType={isLoadingRepositories ? 'loading' : 'finished'}
+                        loadingText='Loading repositories (might take few seconds)...'
+                        placeholder='Select a RAG Repository'
+                        empty={<div className='text-zinc-500'>No repositories available.</div>}
+                        filteringType='auto'
+                        value={selectedRepositoryOption}
+                        enteredTextLabel={(text) => `Use: "${text}"`}
+                        onChange={handleRepositoryChange}
+                        options={filteredRepositories?.map((repository) => ({
+                            value: repository.repositoryId,
+                            label: repository?.repositoryName?.length ? repository?.repositoryName : repository.repositoryId
+                        })) || []}
+                        controlId='rag-repository-autosuggest'
+                    />
+                    <Autosuggest
+                        data-testid='rag-collection-autosuggest'
+                        disabled={!selectedRepositoryOption || isRunning}
+                        statusType={isLoadingCollections ? 'loading' : 'finished'}
+                        loadingText='Loading collections...'
+                        placeholder='Select a collection (optional)'
+                        empty={<div className='text-zinc-500'>No collections available.</div>}
+                        filteringType='auto'
+                        value={selectedCollectionOption}
+                        enteredTextLabel={(text) => `Use: "${text}"`}
+                        onChange={handleCollectionChange}
+                        options={collectionOptions}
+                        controlId='rag-collection-autosuggest'
+                    />
+                </Grid>
+            )}
         </SpaceBetween>
     );
 }

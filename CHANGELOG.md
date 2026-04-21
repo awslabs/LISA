@@ -1,3 +1,224 @@
+# v6.5.0
+
+## Key Features
+
+### Self-Service RAG Administration
+
+A new RAG Admin role gives designated users full control over RAG repository operations, document ingestion, collection management, and pipeline configuration without granting full system administrator privileges. This reduces the operational bottleneck where every RAG change required a system administrator. Self-service RAG is especially useful in multi-tenant environments.
+
+### Operations Metrics Dashboard
+
+New dashboard reports track metrics across models and clusters, including inference latency, token usage, and batch ingestion job status. For example, customers can use the new input/output token reports to derive costs across users, groups, and models. This is useful for multi-tenant environments with a variety of end-user orgs. Also, model containers publish Prometheus metrics for vLLM, TEI, and TGI, and batch ingestion jobs report totals and failures for RAG document ingestion.
+
+### Integrating Externally Deployed Models
+
+Administrators can register deployed models that are not LISA-managed by providing a URL that can be accessed from the LiteLLM ECS cluster. These models appear and behave like other models in the platform.
+
+### AWS Session Credentials
+
+LISA now lets you attach AWS credentials to a chat session. While that session is active, MCP tools can use those credentials to call AWS APIs, so tool-based workflows can reach AWS resources in the same context as the conversation instead of requiring separate per-tool setup.
+
+An example of a tool using this can be seen: lib/serve/mcp-workbench/src/examples/sample_tools/aws_operator_tools.py
+
+## Other Key Changes
+
+- Updated OpenSearch for new RAG collections to the latest supported version and indexing engine (existing collections continue to work as before)
+- Introduced optional audit logging for input/output from requests to LISA with opt-in and filtering
+- Implemented a deployment Lambda to ensure configured models are present in LiteLLM
+- Split Cypress E2E workflows into nightly health checks and weekly full suite runs, with API-based resource cleanup between runs
+- Updated LiteLLM to version 1.82.4
+
+## Acknowledgements
+* @bedanley
+* @drduhe
+* @Ernest-Gray
+* @estohlmann
+* @gingerknight
+* @jmharold
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v6.4.0..v6.5.0
+
+# v6.4.0
+
+## Key Features
+
+### Project Organization for Chat Sessions
+
+Customers can organize chat sessions into Projects, providing a structured way to manage and navigate conversation history. Projects allow users to group related sessions together, making it easier to find and revisit past conversations across different topics.
+
+### Chat Assistant Stacks
+
+Chat Assistant Stacks allow administrators to define preconfigured assistants that bundle models, RAG repositories and collections, MCP servers and tools, and prompt templates into a single package. Users can browse available assistants and start chat sessions with everything preconfigured, eliminating the need for manual setup. Access to each stack is controlled through enterprise user groups, allowing administrators to tailor assistant availability to specific teams or roles.
+
+### Other Features
+
+- Added context window inference step to model creation state machine for LISA-hosted and third-party models
+- Added announcements banner feature to Configuration UI for administrators to set global messages for all users
+- Added support for editing pipelines after repository creation
+- Added secret rotation support for PGVector database credentials
+
+## UI Updates
+
+- Stopped models now appear in model dropdown but are properly disabled to indicate unavailability
+- Prompt area buttons are now properly disabled when prompt is disabled (e.g., when model is stopped)
+
+## Other Key Changes
+
+- Batch ingestion job definition now uses static resource ID to prevent failures from definition drift during deployments
+- REST containers now scale based on ECS metrics instead of ASG metrics for more reliable scaling
+- Added support for additional text-based file types for RAG uploads including:
+  - Javascript
+  - HTML
+  - Markdown
+  - JSON
+  - CSS
+  - XML
+
+## Bug Fixes
+
+- Fixed a liteLLM configuration issue that double prefixed openAI models, this resolves an issue with LISA hosted models integrating with Claude Code
+- Fixed pipeline event handling issues
+- Fixed RAG collection ID resolution
+
+## Documentation
+
+- Added new API Reference documentation section to make it easier for developers to know where the various entity API documentation exists within our doc site.
+- Added suggestions on self-hosted model performance scaling settings.
+
+## Dependency Updates
+
+- Updated `actions/setup-node` and `actions/upload-artifact` GitHub Actions to latest versions
+- Upgraded various dependencies across the platform for security and compatibility
+
+## Acknowledgements
+* @bedanley
+* @Ernest-Gray
+* @estohlmann
+* @gingerknight
+* @jmharold
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v6.3.0..v6.4.0
+
+
+# v6.3.0
+
+## UI Updates
+- Added RAG citation document preview side panel in Chat UI
+- Exposed the document preview panel in the document library for viewing documents
+- Added "Dismiss all" button for notification stacks
+- Fixed "Loading Configuration..." text styling to match LISA UI using Cloudscape components
+- Added last updated date/time to session displays
+
+## Other Key Changes
+- Updated VLLM image to latest AWS deep-learning base with GPU settings for ECS, memory reservation, and tensor parallelization from GPU count
+- Dockerfiles for embedding (instructor, tei), text generation (tgi), and VLLM now run OS package upgrades during build
+- Removed deprecated LISA Serve V1 endpoints and supporting infrastructure
+- Updated dependencies across the codebase
+
+## Bug Fixes
+- Fixed RAG pipeline collection ID resolution (find_by_id_or_name fallback) and EventBus update mismatches on deployment
+- Resolved max_tokens handling for non-Anthropic models on Anthropic routes
+- Improved RAG PDF parsing quality (excessive whitespace and invisible Unicode characters)
+- Addressed consistency of UI validation warnings for field format and required fields
+- Added missing required role for batch ingestion
+- Added cache clearing at login to prevent cache corruption issues
+
+## Documentation
+- Added Claude Code setup guide for LISA Serve integration
+- Updated deployment guide
+
+## Acknowledgements
+* @bedanley
+* @Ernest-Gray
+* @estohlmann
+* @gingerknight
+* @jmharold
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v6.2.1..v6.3.0
+
+# v6.2.1
+
+## Bug Fixes
+- Removed FastAPI import from auth handler preventing lambdas without FastAPI in the layer dependencies from working
+- Updated Session model to account for session configuration data types to allow resuming old stored sessions
+- Made exception handling more uniform and consistent across the application
+
+## UI Updates
+- Cleaned up the MCP approval modal
+- Removed borders around all tables for a consistent theme across the UI
+- Added markdown preview toggle to prompt input
+- Moved delete all sessions button under user profile and added back the refresh button to session panel
+
+## Documentation Updates
+- Cleared up the vLLM variables LISA supports
+- Updated deployment guide to account for new cognito updates
+
+## Acknowledgements
+* @bedanley
+* @Ernest-Gray
+* @estohlmann
+* @jmharold
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v6.2.0..v6.2.1
+
+# v6.2.0
+
+## Key Features
+
+### Custom Branding
+LISA supports custom branding capabilities, allowing customers to tailor the user interface with specific logos and color schemes. The feature provides three key customization areas:
+
+1. **Visual Assets** - Replace logos (favicon, top navigation logo, login image) in `lib/user-interface/react/public/branding/custom/`
+2. **Display Name** - Change "LISA" brand name to your organization's product name via `customDisplayName` in `config-custom.yaml`
+3. **Theme Customization** - Modify colors, fonts, and visual styling through the [Cloudscape theming system](https://cloudscape.design/foundation/visual-foundation/theming/)
+
+### Video Generation Models
+LISA supports video generation.
+
+- Adding new VideoGen model type that admins can create in the model management
+- Proxying routes to LiteLLM for video generation
+- Saving generated videos in S3 and allowing users to download and share video links
+- Exporting all videos from a selected session as a zip
+
+### Interactive Configuration Generator CLI
+LISA offers an interactive CLI tool that guides customers through creating a valid `config-custom.yaml` file for deployment. Instead of manually editing YAML and referencing `example_config.yaml`, customers can now run:
+
+> awslabs-lisa@6.2.0 generate-config
+> tsx scripts/generate-config.ts
+
+╔════════════════════════════════════════════════════════════════╗
+║           LISA Configuration Generator                         ║
+║   Generate a config-custom.yaml for LISA deployment            ║
+╚════════════════════════════════════════════════════════════════╝
+
+The generator prompts for and validates:
+- Core Configuration: AWS account, region, partition, deployment stage/name, S3 bucket
+- Partition Support: additional partition configurations
+
+### Reasoning Model Support
+Admins can mark models as "reasoning-capable," which enables those models to output reasoning content alongside their responses. Customers can then configure the level of reasoning effort to be included, and the reasoning content is displayed in LISA Chat and exported with the session data.
+
+## Other Key Changes
+- **Image Editing Support**: Users can now upload reference images during image generation, allowing the model to create precise edits and updates based on the provided visual reference
+- **Security**: Enabled encryption at rest for all S3 buckets, enforced SSL/TLS traffic only to S3, and encrypted all EBS volumes
+- **Deployment**: Updated container source to use AWS ECR, upgraded host EC2 image to use AL2023
+- **Usability**: Added loading/refresh icons across pages to better inform users when a refresh is taking place
+- **Database**: Enabled IAM-based authentication for RDS connections, removed the need for storing master passwords
+- **Accessibility**: Added a retry button next to failed user prompts, made the delete session dropdown button only appear if the config allows it
+- **Bugfixes**: Addressed several IAM permission issues, CDK warnings, and model deployment healthiness checks
+- **UI Quality of Life**: Continued to make subtle UI improvements by:
+  - Adding various highlighting and background updates throughout the UI to make sections and errors stand out and more obvious
+  - Adding loading indicators to various MCP toggles / checkboxes to display that calls are happening in the background
+  - Updated various iconography, logos, and buttons to have a more uniform and clean feel
+
+## Acknowledgements
+* @bedanley
+* @Ernest-Gray
+* @estohlmann
+* @jmharold
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v6.1.1..v6.2.0
+
 # v6.1.1
 
 ##  UI Cleanup

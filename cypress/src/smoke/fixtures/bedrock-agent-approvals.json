@@ -1,0 +1,10 @@
+{
+  "approvals": [
+    {
+      "agentId": "br-agent-1",
+      "agentAliasId": "TSTALIASID",
+      "agentName": "Smoke Test Agent",
+      "groups": []
+    }
+  ]
+}

@@ -19,6 +19,7 @@ export type SystemConfiguration = {
     systemBanner: ISystemBannerConfiguration,
     enabledComponents: IEnabledComponents,
     global: IGlobalConfiguration,
+    announcement: IAnnouncementConfiguration,
 };
 
 export type IEnabledComponents = {
@@ -29,16 +30,21 @@ export type IEnabledComponents = {
     editNumOfRagDocument: boolean;
     editChatHistoryBuffer: boolean;
     uploadRagDocs: boolean;
+    ragSelectionAvailable: boolean;
     uploadContextDocs: boolean;
     documentSummarization: boolean;
     showRagLibrary: boolean;
     showPromptTemplateLibrary: boolean;
     enableModelComparisonUtility: boolean;
     mcpConnections: boolean;
+    bedrockAgents?: boolean;
+    awsSessions: boolean;
     showMcpWorkbench: boolean;
     modelLibrary: boolean;
     encryptSession: boolean;
     enableUserApiTokens: boolean;
+    chatAssistantStacks: boolean;
+    projectOrganization: boolean;
 };
 
 export type ISystemBannerConfiguration = {
@@ -48,6 +54,11 @@ export type ISystemBannerConfiguration = {
     backgroundColor: string;
 };
 
+export type IAnnouncementConfiguration = {
+    isEnabled: boolean;
+    message: string;
+};
+
 export type IGlobalConfiguration = {
     defaultModel: string;
 };
@@ -55,13 +66,13 @@ export type IGlobalConfiguration = {
 export type BaseConfiguration = {
     configScope: string;
     versionId: number;
-    createdAt?: number;
+    createdAt?: string;
     changedBy: string;
     changeReason: string;
 };
 
 export type IConfiguration = BaseConfiguration & {
-    configuration: SystemConfiguration;
+    configuration: SystemConfiguration & { maxProjectsPerUser: number };
 };
 
 export const systemBannerConfigSchema = z.object({
@@ -82,23 +93,38 @@ export const enabledComponentsSchema = z.object({
     editChatHistoryBuffer: z.boolean().default(true),
     editNumOfRagDocument: z.boolean().default(true),
     uploadRagDocs: z.boolean().default(true),
+    ragSelectionAvailable: z.boolean().default(true),
     uploadContextDocs: z.boolean().default(true),
     documentSummarization: z.boolean().default(true),
     showRagLibrary: z.boolean().default(true),
     showPromptTemplateLibrary: z.boolean().default(true),
     mcpConnections: z.boolean().default(true),
+    bedrockAgents: z.boolean().default(false),
+    awsSessions: z.boolean().default(false),
     modelLibrary: z.boolean().default(true),
     enableModelComparisonUtility: z.boolean().default(false),
     encryptSession: z.boolean().default(false),
     enableUserApiTokens: z.boolean().default(false),
+    chatAssistantStacks: z.boolean().default(false),
+    projectOrganization: z.boolean().default(false),
 });
 
 export const globalConfigSchema = z.object({
     defaultModel: z.string().optional()
 });
 
+export const announcementConfigSchema = z.object({
+    isEnabled: z.boolean().default(false),
+    message: z.string().default(''),
+}).refine((data) => !data.isEnabled || data.message.length >= 1, {
+    message: 'Message is required when announcement is enabled.',
+    path: ['message'],
+});
+
 export const SystemConfigurationSchema = z.object({
     systemBanner: systemBannerConfigSchema.default(systemBannerConfigSchema.parse({})),
     enabledComponents: enabledComponentsSchema.default(enabledComponentsSchema.parse({})),
     global: globalConfigSchema.default(globalConfigSchema.parse({})),
+    maxProjectsPerUser: z.number().default(50),
+    announcement: announcementConfigSchema.default(announcementConfigSchema.parse({})),
 });

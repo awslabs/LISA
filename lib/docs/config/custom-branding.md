@@ -1,6 +1,6 @@
 # Custom Branding
 
-LISA supports custom branding capabilities, allowing organizations to customize the user interface with their own logos and color schemes. This feature enables you to replace LISA branding with your organization's own branding while maintaining all functionality.
+LISA supports custom branding, allowing customers to tailor the user interface with specific logos and color schemes. This feature enables you to replace LISA branding with your organization's own branding while maintaining all functionality.
 
 ## Overview
 
@@ -32,7 +32,7 @@ customDisplayName: "YourProductName"
 
 When `useCustomBranding: true` is set, LISA looks for your custom assets in the following location:
 
-```
+```text
 lib/user-interface/react/public/branding/custom/
 ```
 
@@ -48,7 +48,7 @@ Create a `custom` directory and provide these three files:
 
 ### Directory Structure
 
-```
+```text
 lib/user-interface/react/public/branding/
 ├── base/              # Default LISA branding (don't modify)
 │   ├── favicon.ico
@@ -63,16 +63,19 @@ lib/user-interface/react/public/branding/
 ### Asset Guidelines
 
 **Favicon (`favicon.ico`)**
+
 - Standard browser icon format
 - Appears in browser tabs and bookmarks
 - Should be simple and recognizable at small sizes
 
 **Logo (`logo.svg`)**
+
 - Vector format for optimal rendering at any size
 - Used in the top navigation bar
 - Recommended: Display size: ~120-200px wide
 
 **Login Image (`login.png`)**
+
 - Displayed on the authentication page
 
 ## Display Name Customization
@@ -92,6 +95,7 @@ customDisplayName: "YourProductName"
 ```
 
 With this configuration:
+
 - The page title changes from "AWS LISA AI Chat Assistant" to "YourProductName AI Chat Assistant"
 - All references to "LISA" in the UI become "YourProductName"
 - Your custom logo, favicon, and login image are used
@@ -105,20 +109,25 @@ Beyond assets and names, you can customize the visual theme by creating a custom
 LISA contains two theme files:
 
 **Base Theme (Default):**
-```
+
+```text
 lib/user-interface/react/src/theme.ts
 ```
+
 This file contains a minimal theme with an empty token configuration and should not be modified directly.
 
 This theme serves as a fallback if no custom theme is defined and will load the Cloudscape default theming.
 
 **Custom Theme (Optional):**
-```
+
+```text
 lib/user-interface/react/src/theme-custom.ts
 ```
+
 Create this file to define your custom theme. This file is gitignored, allowing you to maintain organization-specific branding without committing it to version control.
 
 When `useCustomBranding: true` is configured, LISA will automatically:
+
 1. Look for `theme-custom.ts` first
 2. Fall back to `theme.ts` if the custom file doesn't exist
 3. Use Cloudscape's default theme if neither contains customizations
@@ -128,10 +137,12 @@ When `useCustomBranding: true` is configured, LISA will automatically:
 The [Cloudscape theming system](https://cloudscape.design/foundation/visual-foundation/theming/) allows you to customize various visual aspects of the default Cloudscape theme such as:
 
 **Typography**
+
 - Font families
 - Font sizes and weights
 
 **Colors**
+
 - Background colors (layout, containers, inputs)
 - Text colors (body, headings, links)
 - Button colors (primary, secondary, hover states)
@@ -140,11 +151,13 @@ The [Cloudscape theming system](https://cloudscape.design/foundation/visual-foun
 - Selection/highlight colors
 
 **Layout**
+
 - Border radius for buttons and containers
 - Spacing and padding
 - Component sizing
 
 **Context-Specific Styling**
+
 - Top navigation appearance
 - Dropdown menus
 - Flashbar notifications
@@ -155,6 +168,7 @@ The [Cloudscape theming system](https://cloudscape.design/foundation/visual-foun
 1. **Create Custom Theme File**
 
    Copy the example custom theme to create your own:
+
    ```bash
    cp lib/user-interface/react/src/theme-custom.ts.example \
       lib/user-interface/react/src/theme-custom.ts
@@ -163,6 +177,7 @@ The [Cloudscape theming system](https://cloudscape.design/foundation/visual-foun
 2. **Edit Theme Variables**
 
    Open `theme-custom.ts` and customize the theme variables at the top of the file:
+
    ```typescript
    // THEME VARIABLES - Edit these to customize the entire theme
 
@@ -179,6 +194,7 @@ The [Cloudscape theming system](https://cloudscape.design/foundation/visual-foun
 3. **Configure Branding**
 
    Enable custom branding in `config-custom.yaml`:
+
    ```yaml
    useCustomBranding: true
    customDisplayName: "YourProductName"
@@ -189,12 +205,14 @@ The [Cloudscape theming system](https://cloudscape.design/foundation/visual-foun
    For local development testing:
 
    a. Update `lib/user-interface/react/public/env.js`:
+
    ```js
    "USE_CUSTOM_BRANDING": true,
    "CUSTOM_DISPLAY_NAME": "YourProductName"
    ```
 
    b. Start the development server:
+
    ```bash
    npm run dev
    ```
@@ -204,8 +222,9 @@ The [Cloudscape theming system](https://cloudscape.design/foundation/visual-foun
 5. **Deploy**
 
    Deploy your changes:
+
    ```bash
-   make deploy
+   npm run deploy
    ```
 
 > [!NOTE]
@@ -237,6 +256,7 @@ if (window.env?.USE_CUSTOM_BRANDING) {
 ```
 
 **How it works:**
+
 1. When `USE_CUSTOM_BRANDING` is true, LISA scans for theme files
 2. If `theme-custom.ts` exists, it loads that file
 3. Otherwise, it falls back to `theme.ts` (the base theme)
@@ -268,6 +288,7 @@ export function getDisplayName(): string {
 ```
 
 These utilities ensure:
+
 - Assets are loaded from the correct directory
 - The correct display name is used throughout the application
 - Fallback to default LISA branding if custom assets are missing
@@ -277,6 +298,7 @@ These utilities ensure:
 ### Complete Custom Branding Setup
 
 1. **Update Configuration**
+
    ```yaml
    # config-custom.yaml
    useCustomBranding: true
@@ -284,11 +306,13 @@ These utilities ensure:
    ```
 
 2. **Create Custom Assets Directory**
+
    ```bash
    mkdir -p lib/user-interface/react/public/branding/custom
    ```
 
 3. **Add Your Assets**
+
    ```bash
    # Copy your branded assets
    cp /path/to/your/favicon.ico lib/user-interface/react/public/branding/custom/
@@ -297,6 +321,7 @@ These utilities ensure:
    ```
 
 4. **Customize Theme (Optional)**
+
    ```bash
    # Create and edit theme-custom.ts with your color scheme
    cp lib/user-interface/react/src/theme-custom.ts.example \
@@ -307,8 +332,9 @@ These utilities ensure:
    ```
 
 5. **Deploy**
+
    ```bash
-   make deploy
+   npm run deploy
    ```
 
 ### Verification
@@ -336,6 +362,7 @@ After deployment, verify your branding:
 **Issue**: Custom assets don't appear after deployment
 
 **Solutions**:
+
 - Verify files exist in `lib/user-interface/react/public/branding/custom/`
 - Check file names match exactly: `favicon.ico`, `logo.svg`, `login.png`
 - Ensure `useCustomBranding: true` in config
@@ -347,6 +374,7 @@ After deployment, verify your branding:
 **Issue**: "LISA" still appears instead of custom name
 
 **Solutions**:
+
 - Verify `customDisplayName` is set in `config-custom.yaml`
 - Ensure config changes were deployed
 - Check `{LISA_URL}/{STAGE}/env.js` path for `CUSTOM_DISPLAY_NAME` and `USE_CUSTOM_BRANDING`
@@ -357,6 +385,7 @@ After deployment, verify your branding:
 **Issue**: Custom theme colors don't appear
 
 **Solutions**:
+
 - Verify `useCustomBranding: true` (theme is only applied when branding is enabled)
 - Ensure `theme-custom.ts` exists in `lib/user-interface/react/src/`
 - Verify theme variables are properly defined in `theme-custom.ts`
@@ -368,6 +397,7 @@ After deployment, verify your branding:
 **Issue**: Changes to theme-custom.ts not appearing
 
 **Solutions**:
+
 - Restart the development server (`npm run dev`)
 - Clear browser cache
 - Check for TypeScript errors in the theme file
@@ -378,6 +408,7 @@ After deployment, verify your branding:
 **Issue**: Some assets are custom, others are default
 
 **Solutions**:
+
 - Ensure all three asset files are present in the `custom` directory
 - Check file permissions are readable
 - Verify no typos in file names (case-sensitive on Linux)
@@ -388,6 +419,7 @@ After deployment, verify your branding:
 **Issue**: Some components are not showing the color they were configured with in `theme-custom.ts`
 
 **Solutions**:
+
 - Restart the development server
 - Clear browser cache
 - Change the value of the component (e.g. `#0054E3` -> `#0054E2`). Reuse of the same values can occasionally be problematic in the Cloudscape theming system.
@@ -399,6 +431,7 @@ After deployment, verify your branding:
 Here's a complete example showing all aspects of custom branding:
 
 ### config-custom.yaml
+
 ```yaml
 accountNumber: 123456789012
 region: us-east-1
@@ -418,7 +451,8 @@ authConfig:
 ```
 
 ### Assets Prepared
-```
+
+```text
 lib/user-interface/react/public/branding/custom/
 ├── favicon.ico      # Acme company icon
 ├── logo.svg         # Acme company logo
@@ -426,6 +460,7 @@ lib/user-interface/react/public/branding/custom/
 ```
 
 ### Custom Theme
+
 ```typescript
 // lib/user-interface/react/src/theme-custom.ts (excerpt)
 const FONT_FAMILY = 'Roboto, Arial, sans-serif';
@@ -436,7 +471,9 @@ const LIGHT_TOPNAV_BACKGROUND = '#0A3D62';
 ```
 
 ### Result
+
 After deployment, users see:
+
 - Browser tab: "Acme AI Chat Assistant" with Acme favicon
 - Top navigation: Acme logo and "Acme" branding
 - Login page: Acme welcome image

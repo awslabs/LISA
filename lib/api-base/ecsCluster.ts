@@ -16,9 +16,8 @@
 
 // ECS Cluster Construct.
 import { Duration, RemovalPolicy, Tags } from 'aws-cdk-lib';
-import { AdjustmentType, AutoScalingGroup, BlockDeviceVolume, GroupMetrics, Monitoring, UpdatePolicy, CfnScheduledAction } from 'aws-cdk-lib/aws-autoscaling';
+import { AutoScalingGroup, BlockDeviceVolume, GroupMetrics, Monitoring, UpdatePolicy, CfnScheduledAction } from 'aws-cdk-lib/aws-autoscaling';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
-import { Metric } from 'aws-cdk-lib/aws-cloudwatch';
 import { InstanceType, ISecurityGroup, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Alias } from 'aws-cdk-lib/aws-kms';
 import {
@@ -31,7 +30,6 @@ import {
     Ec2Service,
     Ec2ServiceProps,
     Ec2TaskDefinition,
-    EcsOptimizedImage,
     HealthCheck,
     Host,
     LinuxParameters,
@@ -142,7 +140,7 @@ export class ECSCluster extends Construct {
     ): { taskDefinition: Ec2TaskDefinition, container: ContainerDefinition } {
         const ec2TaskDefinition = new Ec2TaskDefinition(this, createCdkId([taskDefinitionName, 'Ec2TaskDefinition']), {
             family: createCdkId([config.deploymentName, taskDefinitionName], 32, 2),
-            networkMode: NetworkMode.AWS_VPC,
+            networkMode: NetworkMode.BRIDGE,
             volumes,
             ...(taskRole && { taskRole }),
             ...(executionRole && { executionRole }),
@@ -231,8 +229,9 @@ export class ECSCluster extends Construct {
             }),
             gpuCount: Ec2Metadata.get(ecsConfig.instanceType).gpuCount,
             memoryReservationMiB: taskDefinition.containerMemoryReservationMiB,
-            memoryLimitMiB: ecsConfig.containerMemoryBuffer,
-            portMappings: [{ containerPort: taskDefinition.applicationTarget?.port ?? 8080, protocol: Protocol.TCP }],
+            // Use per-container memory limit if specified, otherwise fall back to shared containerMemoryBuffer
+            memoryLimitMiB: taskDefinition.memoryLimitMiB ?? (ecsConfig.containerMemoryBuffer || undefined),
+            portMappings: [{ hostPort: 0, containerPort: taskDefinition.applicationTarget?.port ?? 8080, protocol: Protocol.TCP }],
             healthCheck: containerHealthCheck,
             // Model containers need to run with privileged set to true
             privileged: taskDefinition.containerConfig.privileged ?? ecsConfig.amiHardwareType === AmiHardwareType.GPU,
@@ -257,7 +256,7 @@ export class ECSCluster extends Construct {
         const cluster = new Cluster(this, createCdkId([config.deploymentName, config.deploymentStage, 'Cl']), {
             clusterName: createCdkId([config.deploymentName, config.deploymentStage, identifier], 32, 2),
             vpc: vpc.vpc,
-            containerInsightsV2: !config.region.includes('iso') ? ContainerInsights.ENABLED : ContainerInsights.DISABLED,
+            containerInsightsV2: ContainerInsights.ENHANCED,
         });
 
         const asgSecurityGroup = new SecurityGroup(this, 'RestAsgSecurityGroup', {
@@ -272,7 +271,7 @@ export class ECSCluster extends Construct {
             vpc: vpc.vpc,
             vpcSubnets: vpc.subnetSelection,
             instanceType: new InstanceType(ecsConfig.instanceType),
-            machineImage: EcsOptimizedImage.amazonLinux2023(ecsConfig.amiHardwareType),
+            machineImage: CodeFactory.getEcsMachineImage(config.region, ecsConfig.amiHardwareType, ecsConfig.amiId),
             minCapacity: ecsConfig.autoScalingConfig.minCapacity,
             maxCapacity: ecsConfig.autoScalingConfig.maxCapacity,
             groupMetrics: [GroupMetrics.all()],
@@ -303,51 +302,17 @@ export class ECSCluster extends Construct {
         const asgCapacityProvider = new AsgCapacityProvider(this, createCdkId([config.deploymentName, config.deploymentStage, 'AsgCapacityProvider']), {
             autoScalingGroup,
             // Managed scaling tracks cluster reservation to add/remove instances automatically
-            // when services want more tasks than the cluster can fit.
-            // targetCapacityPercent ~ how "full" you want the cluster (by CPU/memory reservation).
-            // 90 means try to keep instances ~90% reserved before adding more.
-            // capacityProviderName: [config.deploymentName, config.deploymentStage, 'cp-ec2'].join('-'),
-
-            // disable managed scaling because we are going to setup rules to do it
-            enableManagedScaling: false,
-            enableManagedTerminationProtection: false,
+            // when ECS services want more tasks than the cluster can fit.
+            // targetCapacityPercent controls how "full" the cluster should be (by CPU/memory reservation)
+            // before adding more instances. 100 means only add instances when fully reserved.
+            enableManagedScaling: true,
+            targetCapacityPercent: 100,
+            enableManagedTerminationProtection: true,
 
             // Encrypt SNS topic used for lifecycle hook notifications
             topicEncryptionKey: snsEncryptionKey,
         });
         cluster.addAsgCapacityProvider(asgCapacityProvider);
-
-        const reservationMetric = new Metric({
-            namespace: 'AWS/ECS/CapacityProvider',
-            metricName: 'CapacityProviderReservation',
-            // The dimensions are crucial to target the specific cluster and capacity provider
-            dimensionsMap: {
-                ClusterName: cluster.clusterName,
-                CapacityProviderName: asgCapacityProvider.capacityProviderName,
-            },
-            statistic: 'Average',
-            period: Duration.minutes(1),
-        });
-
-        autoScalingGroup.scaleOnMetric(createCdkId(['ASG', identifier, 'ScaleIn']), {
-            metric: reservationMetric,
-            scalingSteps: [
-                { lower: 60, change: 1 },
-                { lower: 40, change: 2 }
-            ],
-            evaluationPeriods: 5,
-            adjustmentType: AdjustmentType.CHANGE_IN_CAPACITY,
-        });
-
-        autoScalingGroup.scaleOnMetric(createCdkId(['ASG', identifier, 'ScaleOut']), {
-            metric: reservationMetric,
-            scalingSteps: [
-                { upper: 80, change: 1 },
-                { upper: 90, change: 2 }
-            ],
-            evaluationPeriods: 2,
-            adjustmentType: AdjustmentType.CHANGE_IN_CAPACITY,
-        });
 
         // Tag Auto Scaling Group for schedule management
         Tags.of(autoScalingGroup).add('ScheduleManaged', 'true');
@@ -641,11 +606,12 @@ export class ECSCluster extends Construct {
         this.containers[taskName] = container;
         this.taskRoles[taskName] = taskRole;
 
-        // Create ECS service
+        // Create ECS service with desired count matching ASG min capacity
         const serviceProps: Ec2ServiceProps = {
             cluster: this.cluster,
             serviceName: createCdkId([taskName], 32, 2),
             taskDefinition: ec2TaskDefinition,
+            desiredCount: this.ecsConfig.autoScalingConfig.minCapacity,
             circuitBreaker: !this.config.region.includes('iso') ? { rollback: true } : undefined,
             capacityProviderStrategies: [
                 { capacityProvider: this.asgCapacityProvider.capacityProviderName, weight: 1 }
@@ -680,6 +646,11 @@ export class ECSCluster extends Construct {
             },
             port: 80,
             targets: [service],
+            // Enable ALB sticky sessions when rate limiting is active so that per-user
+            // in-memory token buckets are consistently hit on the same ECS task.
+            stickinessCookieDuration: this.config.restApiConfig.rateLimitEnabled
+                ? Duration.days(1)
+                : undefined,
             ...(taskDefinition.applicationTarget?.priority && {
                 priority: taskDefinition.applicationTarget.priority,
                 conditions: taskDefinition.applicationTarget.conditions?.map(({ type, values }) => {
@@ -689,6 +660,27 @@ export class ECSCluster extends Construct {
                     }
                 })
             })
+        });
+
+        // Configure ECS service auto-scaling
+        // Use ASG min/max capacity as the bounds for task count scaling
+        const scalableTaskCount = service.autoScaleTaskCount({
+            minCapacity: this.ecsConfig.autoScalingConfig.minCapacity,
+            maxCapacity: this.ecsConfig.autoScalingConfig.maxCapacity,
+        });
+
+        // Scale on ALB request count per target — sole scaling metric.
+        // Memory-based scaling was removed because AWS target tracking treats missing data as
+        // "breaching" on the AlarmHigh (scale-out) side. When ECS isn't emitting memory metrics
+        // (during deployment, task cycling, or startup), the alarm sees missing data → treats it
+        // as breaching → triggers phantom scale-out. The hard memory limits (memoryLimitMiB) on
+        // each container already protect against OOM at the container level.
+        const { metricConfig } = this.ecsConfig.autoScalingConfig;
+        scalableTaskCount.scaleOnRequestCount(createCdkId([taskName, 'ReqScaling']), {
+            requestsPerTarget: metricConfig.targetValue,
+            targetGroup,
+            scaleInCooldown: Duration.seconds(this.ecsConfig.autoScalingConfig.cooldown),
+            scaleOutCooldown: Duration.seconds(metricConfig.estimatedInstanceWarmup),
         });
 
         return { service, targetGroup };

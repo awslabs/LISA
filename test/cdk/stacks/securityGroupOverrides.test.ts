@@ -20,13 +20,13 @@ import ConfigParser from '../mocks/ConfigParser';
 import { Stack } from 'aws-cdk-lib';
 
 const stackGroupOverrides: Record<string, number> = {
-    LisaServe: 3,
+    LisaServe: 1,
     LisaRAG: 6,
     LisaMcpWorkbench: 1
 };
 
 const stackGroups: Record<string, number> = {
-    LisaServe: 4,
+    LisaServe: 2,
     LisaNetworking: 3,
     LisaRAG: 8,
     LisaMcpWorkbench: 1

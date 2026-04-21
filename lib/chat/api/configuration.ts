@@ -24,6 +24,7 @@ import { Construct } from 'constructs';
 import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
 import { BaseProps } from '../../schema';
 import { createLambdaRole } from '../../core/utils';
+import { getAuditLoggingEnv } from '../../api-base/auditEnv';
 import { Vpc } from '../../networking/vpc';
 import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
 import { IRole } from 'aws-cdk-lib/aws-iam';
@@ -118,16 +119,22 @@ export class ConfigurationApi extends Construct {
                                         'editChatHistoryBuffer': { 'BOOL': 'True' },
                                         'editNumOfRagDocument': { 'BOOL': 'True' },
                                         'uploadRagDocs': { 'BOOL': config.deployRag ? 'True' : 'False' },
+                                        'ragSelectionAvailable': { 'BOOL': config.deployRag ? 'True' : 'False' },
                                         'uploadContextDocs': { 'BOOL': 'True' },
                                         'documentSummarization': { 'BOOL': 'True' },
                                         'showRagLibrary': { 'BOOL': config.deployRag ? 'True' : 'False' },
                                         'showMcpWorkbench': { 'BOOL': config.deployMcpWorkbench ? 'True' : 'False' },
                                         'showPromptTemplateLibrary': { 'BOOL': 'True' },
                                         'mcpConnections': { 'BOOL': config.deployMcp ? 'True' : 'False' },
+                                        'bedrockAgents': { 'BOOL': config.deployMcp ? 'True' : 'False' },
+                                        'awsSessions': { 'BOOL': 'False' },
                                         'modelLibrary': { 'BOOL': 'True' },
                                         'encryptSession': { 'BOOL': 'False' },
+                                        'chatAssistantStacks': { 'BOOL': 'False' },
+                                        'projectOrganization': { 'BOOL': 'False' },
                                     }
                                 },
+                                'maxProjectsPerUser': { 'N': '50' },
                                 'systemBanner': {
                                     'M': {
                                         'isEnabled': { 'BOOL': 'False' },
@@ -151,11 +158,19 @@ export class ConfigurationApi extends Construct {
 
         const fastApiEndpoint = StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/serve/endpoint`);
 
-        let environment = {
+        let environment: Record<string, string> = {
             CONFIG_TABLE_NAME: this.configTable.tableName,
             FASTAPI_ENDPOINT: fastApiEndpoint,
             ADMIN_GROUP: config.authConfig?.adminGroup || '',
+            ...getAuditLoggingEnv(config),
         };
+
+        if (config.deployMcpWorkbench) {
+            environment.MCP_WORKBENCH_ENDPOINT = StringParameter.valueForStringParameter(
+                this,
+                `${config.deploymentPrefix}/mcpWorkbench/endpoint`,
+            );
+        }
 
         if (mcpApi) {
             this.createMcpApiTable(mcpApi, lambdaRole, environment);

@@ -24,16 +24,20 @@ import { dump as yamlDump } from 'js-yaml';
 import { ECSCluster, ECSTasks } from './ecsCluster';
 import { BaseProps, Ec2Metadata, ECSConfig, EcsSourceType } from '../schema';
 import { Vpc } from '../networking/vpc';
-import { REST_API_PATH } from '../util';
+import { REST_API_PATH, ROOT_PATH } from '../util';
 import * as child_process from 'child_process';
 import * as path from 'path';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 
-// This is the amount of memory to buffer (or subtract off) from the total instance memory, if we don't include this,
-// the container can have a hard time finding available RAM resources to start and the tasks will fail deployment
-const INSTANCE_MEMORY_RESERVATION = 1024;
-const SERVE_CONTAINER_MEMORY_RESERVATION = 1024 * 2;
-const WORKBENCH_CONTAINER_MEMORY_RESERVATION = 1024;
+// Memory reservations (soft limits) - what ECS uses for task placement decisions
+// Sized so that one REST + one Workbench task fully reserves the instance (~14 GiB usable on m5.xlarge)
+const SERVE_CONTAINER_MEMORY_RESERVATION = 1024 * 4; // 4 GiB soft reservation for REST/LiteLLM
+export const WORKBENCH_CONTAINER_MEMORY_RESERVATION = 1024 * 8; // 8 GiB soft reservation for MCP Workbench
+
+// Memory hard limits - maximum memory each container can use before being OOM killed
+// Sized for 1 task pair per m5.xlarge (16 GiB), leaving ~2 GiB for OS/ECS agent
+const SERVE_CONTAINER_MEMORY_LIMIT = 1024 * 4; // 4 GiB hard limit for REST/LiteLLM proxy
+export const WORKBENCH_CONTAINER_MEMORY_LIMIT = 1024 * 8; // 8 GiB hard limit for MCP Workbench (user code)
 
 
 /**
@@ -71,7 +75,7 @@ export class FastApiContainer extends Construct {
 
         const { config, securityGroup, tokenTable, vpc, managementKeyName} = props;
 
-        const instanceType = 'm5.large';
+        const instanceType = 'm5.xlarge';
 
         const buildArgs: Record<string, string> | undefined = {
             BASE_IMAGE: config.baseImage,
@@ -105,8 +109,14 @@ export class FastApiContainer extends Construct {
             CLIENT_ID: config.authConfig!.clientId,
             ADMIN_GROUP: config.authConfig!.adminGroup,
             USER_GROUP: config.authConfig!.userGroup,
+            RAG_ADMIN_GROUP: config.authConfig!.ragAdminGroup,
             JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
-            MANAGEMENT_KEY_NAME: managementKeyName
+            MANAGEMENT_KEY_NAME: managementKeyName,
+            // Per-user rate limiting (in-process token bucket)
+            RATE_LIMIT_RPM: (config.restApiConfig.rateLimitRpm ?? 60).toString(),
+            RATE_LIMIT_BURST: (config.restApiConfig.rateLimitBurst ?? 10).toString(),
+            RATE_LIMIT_ENABLED: (config.restApiConfig.rateLimitEnabled ?? true).toString(),
+            RATE_LIMIT_OVERRIDES: JSON.stringify(config.restApiConfig.rateLimitOverrides ?? {}),
         };
 
         if (tokenTable) {
@@ -128,7 +138,8 @@ export class FastApiContainer extends Construct {
             // Skip tiktoken cache generation in test environment
             if (process.env.NODE_ENV !== 'test') {
                 try {
-                    child_process.execSync(`python3 scripts/cache-tiktoken-for-offline.py ${cache_dir}`, { stdio: 'inherit' });
+                    const scriptPath = path.join(ROOT_PATH, 'scripts', 'cache-tiktoken-for-offline.py');
+                    child_process.execSync(`python3 ${scriptPath} ${cache_dir}`, { stdio: 'inherit' });
                 } catch (error) {
                     console.warn('Failed to generate tiktoken cache:', error);
                     // Continue execution even if cache generation fails
@@ -166,8 +177,10 @@ export class FastApiContainer extends Construct {
             },
             buildArgs,
             tasks: {},
-            // reserve at least enough memory for each task and a buffer for the instance to use
-            containerMemoryBuffer: Ec2Metadata.get(instanceType).memory - (INSTANCE_MEMORY_RESERVATION + SERVE_CONTAINER_MEMORY_RESERVATION + (config.deployMcpWorkbench ? WORKBENCH_CONTAINER_MEMORY_RESERVATION : 0)),
+            // containerMemoryBuffer is no longer used as a shared memoryLimitMiB across containers.
+            // Each container now specifies its own memoryLimitMiB via the task definition.
+            // This value is kept for backward compatibility but is not applied to containers.
+            containerMemoryBuffer: 0,
             instanceType,
             internetFacing: config.restApiConfig.internetFacing,
             loadBalancerConfig: {
@@ -206,6 +219,7 @@ export class FastApiContainer extends Construct {
                 sharedMemorySize: 0
             },
             containerMemoryReservationMiB: SERVE_CONTAINER_MEMORY_RESERVATION,
+            memoryLimitMiB: SERVE_CONTAINER_MEMORY_LIMIT,
             applicationTarget: {
                 port: 8080
             }

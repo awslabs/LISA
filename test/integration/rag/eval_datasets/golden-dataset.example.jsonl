@@ -1,0 +1,5 @@
+{"query": "How can I reduce computational cost of non-parametric regression on large datasets?", "expected": ["doc1", "doc2"], "relevance": {"doc1": 3, "doc2": 2}, "type": "semantic"}
+{"query": "What theoretical guarantees exist for local prediction methods?", "expected": ["doc1", "doc3"], "relevance": {"doc1": 3, "doc3": 2}, "type": "semantic"}
+{"query": "How to construct prediction intervals for time series data?", "expected": ["doc2"], "relevance": {"doc2": 3}, "type": "semantic"}
+{"query": "document1.pdf", "expected": ["doc1"], "relevance": {"doc1": 3}, "type": "exact"}
+{"query": "research paper methodology section", "expected": ["doc3"], "relevance": {"doc3": 3}, "type": "keyword"}

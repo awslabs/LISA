@@ -78,6 +78,7 @@ async def auth_middleware(request: Request, call_next: Callable[[Request], Respo
     if os.getenv("USE_AUTH", "true").lower() != "true":
         request.state.authenticated = True
         request.state.jwt_data = None
+        request.state.is_management_token = False
         request.state.is_admin = True
         request.state.username = "anonymous"
         request.state.groups = []
@@ -93,6 +94,7 @@ async def auth_middleware(request: Request, call_next: Callable[[Request], Respo
         # Set authentication context on request state
         request.state.authenticated = True
         request.state.jwt_data = jwt_data
+        request.state.is_management_token = False
 
         # Determine admin status based on auth type
         if jwt_data:
@@ -115,6 +117,7 @@ async def auth_middleware(request: Request, call_next: Callable[[Request], Respo
             request.state.groups = token_info.get("groups", [])
         else:
             # Management token - full admin access
+            request.state.is_management_token = True
             request.state.is_admin = True
             request.state.username = "management-token"
             request.state.groups = []

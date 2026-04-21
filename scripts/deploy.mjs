@@ -21,19 +21,52 @@
  */
 
 import { execSync, spawnSync } from 'node:child_process';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 
+/**
+ * Match scripts/run-pytest.sh: prefer explicit PYTHON (if path-like), else .venv, else system.
+ * Ensures `npm run build` / package-lambda's `python3` resolves to the venv when present.
+ */
+function repoPythonEnv() {
+  const env = { ...process.env };
+  const py = process.env.PYTHON?.trim();
+  if (py) {
+    if (path.isAbsolute(py) || py.startsWith('.')) {
+      const binDir = path.dirname(path.resolve(ROOT, py));
+      env.PATH = `${binDir}${path.delimiter}${env.PATH ?? ''}`;
+    }
+    return env;
+  }
+  const venvPython = path.join(ROOT, '.venv', 'bin', 'python');
+  try {
+    fs.accessSync(venvPython, fs.constants.X_OK);
+  } catch {
+    return env;
+  }
+  const binDir = path.join(ROOT, '.venv', 'bin');
+  env.PATH = `${binDir}${path.delimiter}${env.PATH ?? ''}`;
+  env.VIRTUAL_ENV = path.join(ROOT, '.venv');
+  return env;
+}
+
 function exec(cmd, opts = {}) {
-  return execSync(cmd, { cwd: ROOT, stdio: 'inherit', ...opts });
+  const { env: optsEnv, ...rest } = opts;
+  const env = optsEnv ? { ...repoPythonEnv(), ...optsEnv } : repoPythonEnv();
+  return execSync(cmd, { cwd: ROOT, stdio: 'inherit', env, ...rest });
 }
 
 function getConfigValue(pathStr) {
   try {
-    const out = execSync(`node scripts/config.mjs --get ${pathStr}`, { cwd: ROOT, encoding: 'utf8' });
+    const out = execSync(`node scripts/config.mjs --get ${pathStr}`, {
+      cwd: ROOT,
+      encoding: 'utf8',
+      env: repoPythonEnv(),
+    });
     return out.trim();
   } catch {
     return '';
@@ -42,7 +75,11 @@ function getConfigValue(pathStr) {
 
 function getConfigArray(pathStr) {
   try {
-    const out = execSync(`node scripts/config.mjs --get ${pathStr}`, { cwd: ROOT, encoding: 'utf8' });
+    const out = execSync(`node scripts/config.mjs --get ${pathStr}`, {
+      cwd: ROOT,
+      encoding: 'utf8',
+      env: repoPythonEnv(),
+    });
     return out.trim() ? out.trim().split('\n') : [];
   } catch {
     return [];
@@ -90,8 +127,17 @@ async function main() {
 
   console.log('Checking Docker...');
   const dockerCmd = process.env.CDK_DOCKER || 'docker';
-  execSync(`command -v ${dockerCmd} >/dev/null 2>&1 || { echo "Error: docker not found"; exit 1; }`, { shell: true });
-  execSync(`${dockerCmd} ps >/dev/null 2>&1 || { echo "Error: Docker not running"; exit 1; }`, { shell: true });
+  const shellEnv = repoPythonEnv();
+  execSync(`command -v ${dockerCmd} >/dev/null 2>&1 || { echo "Error: docker not found"; exit 1; }`, {
+    cwd: ROOT,
+    shell: true,
+    env: shellEnv,
+  });
+  execSync(`${dockerCmd} ps >/dev/null 2>&1 || { echo "Error: Docker not running"; exit 1; }`, {
+    cwd: ROOT,
+    shell: true,
+    env: shellEnv,
+  });
 
   console.log('Logging into ECR...');
   const maxRetries = 3;
@@ -100,7 +146,7 @@ async function main() {
   let lastErr;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      execSync(ecrLoginCmd, { cwd: ROOT, stdio: 'inherit', shell: true });
+      execSync(ecrLoginCmd, { cwd: ROOT, stdio: 'inherit', shell: true, env: repoPythonEnv() });
       lastErr = null;
       break;
     } catch (err) {
@@ -115,7 +161,7 @@ async function main() {
   if (lastErr) throw lastErr;
 
   console.log('Cleaning misc...');
-  execSync('rm -f .hf_token_cache', { cwd: ROOT, stdio: 'inherit' });
+  execSync('rm -f .hf_token_cache', { cwd: ROOT, stdio: 'inherit', env: repoPythonEnv() });
 
   if (modelIds.length > 0 && modelBucket) {
     console.log('Checking models...');
@@ -127,6 +173,7 @@ async function main() {
       const result = spawnSync('node', args, {
         cwd: ROOT,
         stdio: 'inherit',
+        env: repoPythonEnv(),
       });
       if (result.status !== 0) {
         console.log(`Model ${modelId} not found in bucket. Run prepare-and-upload-model.sh manually if needed.`);

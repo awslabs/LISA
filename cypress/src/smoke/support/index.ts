@@ -17,6 +17,8 @@
 import './commands';
 import '../../support/adminHelpers';
 
+Cypress.on('uncaught:exception', (err) => !err.message.includes('ResizeObserver loop'));
+
 declare global {
     // eslint-disable-next-line @typescript-eslint/no-namespace
     namespace Cypress {

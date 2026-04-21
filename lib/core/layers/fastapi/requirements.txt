@@ -1,7 +1,7 @@
 # boto3==1.40.76 // Provided by Lambda
 # requests==2.32.5 // provided by Common Layer
-fastapi==0.135.1
+fastapi==0.136.0
 mangum==0.21.0
-pydantic==2.12.5
-cryptography==46.0.5
-starlette==0.52.1
+pydantic==2.13.3
+cryptography==46.0.7
+starlette==1.0.0

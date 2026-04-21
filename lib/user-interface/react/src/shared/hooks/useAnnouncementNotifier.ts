@@ -42,10 +42,6 @@ export function useAnnouncementNotifier (config: IConfiguration | undefined): vo
     const createdAt = config?.createdAt;
 
     useEffect(() => {
-        if (!config) {
-            return;
-        }
-
         if (!isEnabled || !message) {
             lastAnnouncementRef.current = null;
             clearAnnouncement();
@@ -78,5 +74,5 @@ export function useAnnouncementNotifier (config: IConfiguration | undefined): vo
             true,
             onDismiss,
         );
-    }, [config, isEnabled, message, createdAt, clearAnnouncement, notificationService]);
+    }, [isEnabled, message, createdAt, clearAnnouncement, notificationService]);
 }

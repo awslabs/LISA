@@ -63,6 +63,7 @@ export class ECSModelDeployer extends Construct {
             's3BucketModels': props.config.s3BucketModels,
             'mountS3DebUrl': props.config.mountS3DebUrl,
             'permissionsBoundaryAspect': props.config.permissionsBoundaryAspect,
+            'convertInlinePoliciesToManaged': props.config.convertInlinePoliciesToManaged,
             'subnets': props.config.subnets,
             'taskRole': props.config.roles?.ECSModelTaskRole,
             'certificateAuthorityBundle': props.config.certificateAuthorityBundle,

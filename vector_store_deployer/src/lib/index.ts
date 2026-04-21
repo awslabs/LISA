@@ -64,11 +64,11 @@ if (ragConfig.type === RagRepositoryType.OPENSEARCH) {
 }
 
 
-if (stack && config.permissionsBoundaryAspect) {
+if (config.permissionsBoundaryAspect) {
     Aspects.of(stack).add(new AddPermissionBoundary(config.permissionsBoundaryAspect!));
 }
 
-if (stack && config.convertInlinePoliciesToManaged) {
+if (config.convertInlinePoliciesToManaged) {
     Aspects.of(stack).add(new ConvertInlinePoliciesToManaged());
 }
 

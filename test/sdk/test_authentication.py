@@ -12,92 +12,80 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""Unit tests for LISA SDK authentication."""
+"""Unit tests for authentication helpers."""
 
-import sys
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-# Add SDK to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "lisa-sdk"))
-
-from lisapy.authentication import get_cognito_token
+from botocore.exceptions import ClientError
+from lisapy.authentication import get_management_key, setup_authentication
 
 
-@patch("lisapy.authentication.boto3.client")
-@patch("lisapy.authentication.getpass.getpass")
-def test_get_cognito_token_success(mock_getpass, mock_boto_client):
-    """Test getting Cognito token successfully."""
-    mock_getpass.return_value = "test-password"
-
-    mock_cognito = MagicMock()
-    mock_cognito.initiate_auth.return_value = {
-        "AuthenticationResult": {
-            "AccessToken": "access-token",
-            "IdToken": "id-token",
-            "RefreshToken": "refresh-token",
-        }
-    }
-    mock_boto_client.return_value = mock_cognito
-
-    result = get_cognito_token("test-client-id", "test-user", "us-east-1")
-
-    assert "AuthenticationResult" in result
-    assert result["AuthenticationResult"]["AccessToken"] == "access-token"
-
-    mock_cognito.initiate_auth.assert_called_once_with(
-        AuthFlow="USER_PASSWORD_AUTH",
-        ClientId="test-client-id",
-        AuthParameters={
-            "USERNAME": "test-user",
-            "PASSWORD": "test-password",
-        },
-    )
+def _client_error(code: str = "ResourceNotFoundException") -> ClientError:
+    """Build a botocore ClientError."""
+    return ClientError({"Error": {"Code": code, "Message": "not found"}}, "GetSecretValue")
 
 
-@patch("lisapy.authentication.boto3.client")
-@patch("lisapy.authentication.getpass.getpass")
-def test_get_cognito_token_default_region(mock_getpass, mock_boto_client):
-    """Test getting Cognito token with default region."""
-    mock_getpass.return_value = "test-password"
+class TestGetManagementKey:
+    """Tests for get_management_key exception handling."""
 
-    mock_cognito = MagicMock()
-    mock_cognito.initiate_auth.return_value = {"AuthenticationResult": {}}
-    mock_boto_client.return_value = mock_cognito
+    @patch("lisapy.authentication.boto3.client")
+    def test_client_error_falls_through_to_next_pattern(self, mock_boto_client):
+        """ClientError on first pattern should try the next pattern."""
+        mock_sm = MagicMock()
+        mock_boto_client.return_value = mock_sm
+        mock_sm.get_secret_value.side_effect = [
+            _client_error(),
+            {"SecretString": "the-key"},
+        ]
+        key = get_management_key("myapp", region="us-east-1")
+        assert key == "the-key"
+        assert mock_sm.get_secret_value.call_count == 2
 
-    get_cognito_token("test-client-id", "test-user")
+    @patch("lisapy.authentication.boto3.client")
+    def test_non_client_error_reraises_immediately(self, mock_boto_client):
+        """Non-ClientError (e.g., RuntimeError) should re-raise, not try next pattern."""
+        mock_sm = MagicMock()
+        mock_boto_client.return_value = mock_sm
+        mock_sm.get_secret_value.side_effect = RuntimeError("unexpected")
+        with pytest.raises(RuntimeError, match="Unexpected error"):
+            get_management_key("myapp", region="us-east-1")
+        # Should have stopped after the first call, not tried all patterns
+        assert mock_sm.get_secret_value.call_count == 1
 
-    mock_boto_client.assert_called_once_with("cognito-idp", region_name="us-east-1")
+    @patch("lisapy.authentication.boto3.client")
+    def test_success_on_second_pattern(self, mock_boto_client):
+        """First pattern fails with ClientError, second succeeds."""
+        mock_sm = MagicMock()
+        mock_boto_client.return_value = mock_sm
+        mock_sm.get_secret_value.side_effect = [
+            _client_error(),
+            _client_error(),
+            {"SecretString": "found-it"},
+        ]
+        key = get_management_key("myapp", region="us-east-1")
+        assert key == "found-it"
 
 
-@patch("lisapy.authentication.boto3.client")
-@patch("lisapy.authentication.getpass.getpass")
-def test_get_cognito_token_custom_region(mock_getpass, mock_boto_client):
-    """Test getting Cognito token with custom region."""
-    mock_getpass.return_value = "test-password"
+class TestSetupAuthentication:
+    """Tests for setup_authentication exception handling."""
 
-    mock_cognito = MagicMock()
-    mock_cognito.initiate_auth.return_value = {"AuthenticationResult": {}}
-    mock_boto_client.return_value = mock_cognito
+    @patch("lisapy.authentication.create_api_token")
+    @patch("lisapy.authentication.get_management_key")
+    def test_dynamo_client_error_continues(self, mock_get_key, mock_create_token):
+        """ClientError from DynamoDB token creation should not block auth."""
+        mock_get_key.return_value = "the-key"
+        mock_create_token.side_effect = _client_error("AccessDeniedException")
+        headers = setup_authentication("myapp", region="us-east-1")
+        assert headers["Api-Key"] == "the-key"
+        assert headers["Authorization"] == "the-key"
 
-    get_cognito_token("test-client-id", "test-user", "eu-west-1")
-
-    mock_boto_client.assert_called_once_with("cognito-idp", region_name="eu-west-1")
-
-
-@patch("lisapy.authentication.boto3.client")
-@patch("lisapy.authentication.getpass.getpass")
-def test_get_cognito_token_auth_failure(mock_getpass, mock_boto_client):
-    """Test getting Cognito token with authentication failure."""
-    mock_getpass.return_value = "wrong-password"
-
-    mock_cognito = MagicMock()
-    mock_cognito.initiate_auth.side_effect = Exception("NotAuthorizedException")
-    mock_boto_client.return_value = mock_cognito
-
-    with pytest.raises(Exception) as exc_info:
-        get_cognito_token("test-client-id", "test-user")
-
-    assert "NotAuthorizedException" in str(exc_info.value)
+    @patch("lisapy.authentication.create_api_token")
+    @patch("lisapy.authentication.get_management_key")
+    def test_dynamo_non_client_error_continues(self, mock_get_key, mock_create_token):
+        """Non-ClientError from DynamoDB should also not block auth (non-fatal)."""
+        mock_get_key.return_value = "the-key"
+        mock_create_token.side_effect = RuntimeError("unexpected dynamo failure")
+        headers = setup_authentication("myapp", region="us-east-1")
+        assert headers["Api-Key"] == "the-key"
+        assert headers["Authorization"] == "the-key"

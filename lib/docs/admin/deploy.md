@@ -430,12 +430,15 @@ baseImage: <adc-registry>/python:3.13-slim
 restApiConfig:
   buildConfig:
     PRISMA_CACHE_DIR: "./PRISMA_CACHE"  # Path relative to lib/serve/rest-api/
+    PRISMA_PLATFORM: "debian-openssl-3.0.x"  # Must match container base image OS (default)
 
 # Configure offline build dependencies for MCP Workbench (S6 Overlay and rclone)
 mcpWorkbenchBuildConfig:
   S6_OVERLAY_NOARCH_SOURCE: "./s6-overlay-noarch.tar.xz"  # Path relative to lib/serve/mcp-workbench/
   S6_OVERLAY_ARCH_SOURCE: "./s6-overlay-x86_64.tar.xz"    # Path relative to lib/serve/mcp-workbench/
   RCLONE_SOURCE: "./rclone-linux-amd64.zip"                # Path relative to lib/serve/mcp-workbench/
+# During synthesis, this will predownload tiktoken and prisma caches for rest-api. The folder will be added into the container, removing the need to download during the container build process
+prepareDockerOffline: true
 ```
 
 You'll also want any model hosting base containers available, e.g. vllm/vllm-openai:latest and ghcr.io/huggingface/text-embeddings-inference:latest
@@ -446,31 +449,37 @@ For environments without internet access during Docker builds, you can pre-cache
 
 **REST API Prisma cache** (required by prisma-client-py):
 
-The `prisma-client-py` package requires platform-specific binaries and a Node.js environment to function. When Prisma runs for the first time, it downloads these dependencies to `~/.cache/prisma/` and `~/.cache/prisma-python/`. For offline deployments, you need to pre-populate this cache.
+The `prisma-client-py` package requires platform-specific engine binaries to function. For offline deployments, you need to pre-download these binaries so the Docker build doesn't need internet access.
 
-Below is an example workflow using an Amazon Linux 2023 instance with Python 3.12:
+LISA includes a helper script that downloads the correct engine binaries for the target container platform, regardless of what OS your build machine runs:
 
 ```bash
-# Ensure Pip is up-to-date
+# Ensure pip is up-to-date
 pip3 install --upgrade pip
 
-# Install Prisma Python package
+# Install Prisma Python package (needed to determine the engine version)
 pip3 install prisma
 
-# Trigger Prisma to download all required binaries and create its Node.js environment
-# This populates ~/.cache/prisma/ and ~/.cache/prisma-python/
-prisma version
-
-# Copy the complete Prisma cache to your build context
-# The wildcard captures both 'prisma' and 'prisma-python' directories
-cp -r ~/.cache/prisma* lib/serve/rest-api/PRISMA_CACHE/
+# Download Prisma engine binaries for the target container platform
+# Defaults to debian-openssl-3.0.x (matches python:3.13-slim)
+python3 scripts/generate-prisma-cache.py lib/serve/rest-api/PRISMA_CACHE/
 ```
 
-**Important Notes:**
+The script downloads `query-engine` and `schema-engine` binaries directly from `binaries.prisma.sh` for the target platform. This is preferred over running `prisma version` (which downloads binaries for your *current* host OS) because the build machine often differs from the container OS — e.g. building on Amazon Linux or macOS while the container uses Debian-based `python:3.13-slim`.
 
-* The cache is platform-specific. Generate it on a system matching your Docker base image (e.g., for `public.ecr.aws/docker/library/python:3.13-slim` which is Debian-based, so you may want to use a Debian-based system)
-* The `prisma version` command downloads binaries for your current platform
-* Both `prisma/` and `prisma-python/` directories are required for offline operation
+To target a different container base image, use the `--platform` flag:
+
+```bash
+# For Amazon Linux 2023 / RHEL 9 based containers
+python3 scripts/generate-prisma-cache.py lib/serve/rest-api/PRISMA_CACHE/ --platform rhel-openssl-3.0.x
+
+# For Alpine based containers
+python3 scripts/generate-prisma-cache.py lib/serve/rest-api/PRISMA_CACHE/ --platform linux-musl-openssl-3.0.x
+```
+
+You can also set `PRISMA_ENGINES_MIRROR` to use an internal mirror if `binaries.prisma.sh` is not accessible from your network.
+
+When using `prepareDockerOffline: true`, the platform can be configured in `config-custom.yaml` via `restApiConfig.buildConfig.PRISMA_PLATFORM` (defaults to `debian-openssl-3.0.x`).
 
 **MCP Workbench dependencies** (S6 Overlay and rclone):
 

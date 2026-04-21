@@ -4,7 +4,20 @@ FROM ${BASE_IMAGE}
 ARG PRISMA_CACHE_DIR=PRISMA_CACHE
 ENV PRISMA_CACHE_DIR=$PRISMA_CACHE_DIR
 
+# Install build dependencies for madoka package and Node.js for prisma-client-py.
+# prisma-client-py requires a Node.js runtime to execute the Prisma CLI. Without a global
+# node binary, it falls back to nodeenv which downloads Node.js from the internet — breaking
+# airgapped builds. Installing nodejs here ensures prisma works offline.
+RUN if command -v apt-get >/dev/null 2>&1; then \
+        apt-get update -y && apt-get upgrade -y && apt-get install -y gcc g++ make procps nodejs libatomic1 && rm -rf /var/lib/apt/lists/*; \
+    elif command -v yum >/dev/null 2>&1; then \
+        yum install -y gcc gcc-c++ make procps-ng nodejs libatomic && yum clean all; \
+    elif command -v apk >/dev/null 2>&1; then \
+        apk add --no-cache gcc g++ make musl-dev procps nodejs libatomic; \
+    fi
+
 # Apply SSH security hardening - disable weak ciphers (3DES-CBC, etc.)
+# This runs AFTER apt-get upgrade to avoid conffile conflicts with openssh-client upgrades.
 RUN mkdir -p /etc/ssh && \
     echo "" >> /etc/ssh/ssh_config && \
     echo "# LISA Security Hardening - Disable weak ciphers" >> /etc/ssh/ssh_config && \
@@ -18,15 +31,6 @@ RUN mkdir -p /etc/ssh && \
         echo "Ciphers aes128-ctr,aes192-ctr,aes256-ctr,aes128-gcm@openssh.com,aes256-gcm@openssh.com,chacha20-poly1305@openssh.com" >> /etc/ssh/sshd_config && \
         echo "MACs hmac-sha2-256,hmac-sha2-512,hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com" >> /etc/ssh/sshd_config && \
         echo "KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521,diffie-hellman-group-exchange-sha256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512" >> /etc/ssh/sshd_config; \
-    fi
-
-# Install build dependencies for madoka package
-RUN if command -v apt-get >/dev/null 2>&1; then \
-        apt-get update -y && apt-get upgrade -y && apt-get install -y gcc g++ make procps && rm -rf /var/lib/apt/lists/*; \
-    elif command -v yum >/dev/null 2>&1; then \
-        yum install -y gcc gcc-c++ make procps-ng && yum clean all; \
-    elif command -v apk >/dev/null 2>&1; then \
-        apk add --no-cache gcc g++ make musl-dev procps; \
     fi
 
 # Copy LiteLLM config directly out of the LISA config.yaml file
@@ -49,18 +53,35 @@ RUN pip install --no-cache-dir --upgrade -r requirements.txt
 # Copy prisma cache directory (always exists, may be empty or populated)
 COPY ${PRISMA_CACHE_DIR} /tmp/prisma-cache/
 
-# Pre-cache prisma for prisma-client-py
-# If the copied directory has content, use it (for offline environments)
-# Otherwise, download it during build (requires internet)
-RUN mkdir -p /root/.cache && \
-    if [ -d "/tmp/prisma-cache" ] && [ -n "$(ls /tmp/prisma-cache 2>/dev/null)" ]; then \
-        echo "Using pre-cached Prisma dependencies from host" && \
-        cp -r /tmp/prisma-cache/prisma* /root/.cache && \
-        rm -rf /tmp/prisma-cache; \
-    else \
-        echo "Fetching Prisma Dependencies (requires internet)" && \
-        prisma version; \
-    fi
+# Generate Prisma Python client at build time following LiteLLM's approach:
+# 1. Copy LiteLLM's schema.prisma to the working directory
+# 2. If PRISMA_CACHE has pre-downloaded engine binaries (for offline/airgap builds),
+#    set env vars to point directly at the binaries — this bypasses platform detection
+#    and prevents any download attempts from binaries.prisma.sh
+# 3. Run prisma generate — this produces the Python client code
+# This ensures prisma generate NEVER runs at runtime.
+RUN SCHEMA_PATH=$(python3 -c "import litellm, os; print(os.path.join(os.path.dirname(litellm.__file__), 'proxy', 'schema.prisma'))") && \
+    echo "LiteLLM schema: ${SCHEMA_PATH}" && \
+    cp "${SCHEMA_PATH}" /app/schema.prisma && \
+    mkdir -p /root/.cache && \
+    if [ -d "/tmp/prisma-cache" ] && [ -n "$(ls -A /tmp/prisma-cache 2>/dev/null | grep -v '^\.gitkeep$')" ]; then \
+        echo "Using pre-cached Prisma binaries from host" && \
+        cp -r /tmp/prisma-cache/* /root/.cache/ && \
+        rm -rf /tmp/prisma-cache && \
+        QE=$(find /root/.cache -name 'query-engine-*' -not -name '*.sha256' -type f | head -1) && \
+        SE=$(find /root/.cache -name 'schema-engine-*' -not -name '*.sha256' -type f | head -1) && \
+        LQE=$(find /root/.cache -name 'libquery_engine-*' -o -name 'libquery-engine' -type f | head -1) && \
+        echo "  Query engine: ${QE}" && \
+        echo "  Schema engine: ${SE}" && \
+        echo "  Lib query engine: ${LQE}" && \
+        export PRISMA_QUERY_ENGINE_BINARY="${QE}" && \
+        export PRISMA_SCHEMA_ENGINE_BINARY="${SE}" && \
+        export PRISMA_QUERY_ENGINE_LIBRARY="${LQE}" && \
+        export PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1; \
+    fi && \
+    prisma generate --schema /app/schema.prisma && \
+    echo "Prisma client generated successfully" && \
+    python3 -c "from prisma import Prisma; print('Prisma client import verified')"
 
 # Copy the source code into the container
 COPY src/ ./src

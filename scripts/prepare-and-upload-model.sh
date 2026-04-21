@@ -105,12 +105,12 @@ download_hf_model() {
     export HF_TOKEN="${ACCESS_TOKEN}"
   fi
 
-  python3 - <<PY
+  _HF_MODEL_ID="$model_id" _HF_OUTPUT_DIR="$output_dir" python3 - <<'PY'
 import os
 from huggingface_hub import snapshot_download
 
-model_id = ${model_id@Q}
-output_dir = ${output_dir@Q}
+model_id = os.environ['_HF_MODEL_ID']
+output_dir = os.environ['_HF_OUTPUT_DIR']
 token = os.environ.get("HUGGINGFACE_HUB_TOKEN") or os.environ.get("HF_TOKEN")
 
 snapshot_download(
@@ -149,7 +149,7 @@ convert_to_safetensors() {
 
   echo "Converting model to safetensors in: ${model_path}"
 
-  python3 - <<PY
+  _HF_MODEL_PATH="$model_path" python3 - <<'PY'
 import os
 import shutil
 from pathlib import Path
@@ -158,7 +158,7 @@ from transformers import AutoModelForCausalLM, AutoModel, AutoConfig
 from safetensors.torch import save_file
 import torch
 
-model_path = Path(${model_path@Q})
+model_path = Path(os.environ['_HF_MODEL_PATH'])
 
 def save_state_dict_as_safetensors(state_dict, out_file):
     contiguous = {}

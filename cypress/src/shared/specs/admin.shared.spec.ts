@@ -23,9 +23,12 @@
 
 import {
     navigateAndVerifyAdminPage,
+    navigateToAdminPage,
     expandAdminMenu,
     collapseAdminMenu,
+    navigateViaLibraries,
 } from '../../support/adminHelpers';
+import { waitForContentToLoad, verifyCloudscapeTableHasData } from '../../support/dataHelpers';
 
 export function runAdminTests (options: {
     expectMinItems?: boolean;
@@ -41,12 +44,11 @@ export function runAdminTests (options: {
     });
 
     it('Admin can access Configuration page', () => {
-        navigateAndVerifyAdminPage(
-            'Configuration',
-            '/configuration',
-            'Configuration',
-            'custom'
-        );
+        navigateToAdminPage('Configuration');
+        cy.url().should('include', '/configuration');
+
+        // Check for the submit button which is always visible
+        cy.get('[data-testid="configuration-submit"]').should('be.visible');
     });
 
     it('Model Management page loads and shows model cards', () => {
@@ -114,6 +116,48 @@ export function runAdminTests (options: {
             cy.get('li[data-testid="bad_actors_db.py"]').should('be.visible');
             cy.get('li[data-testid="calculator.py"]').should('be.visible');
             cy.get('li[data-testid="weather.py"]').should('be.visible');
+        }
+    });
+
+    it('Bedrock Agent Catalog page loads; Add to catalog opens scan modal', () => {
+        const minRows = expectMinItems ? 1 : 0;
+        navigateToAdminPage('Bedrock Agent Catalog');
+        cy.url().should('include', '/bedrock-agent-management');
+        waitForContentToLoad();
+        cy.wait('@getBedrockApprovals', { timeout: 30000 });
+        cy.contains('h2', 'LISA catalog').should('be.visible');
+        if (verifyFixtureData) {
+            cy.contains('Smoke Test Agent').should('be.visible');
+        }
+        verifyCloudscapeTableHasData(minRows);
+
+        cy.contains('button', 'Add to catalog').click();
+        cy.wait('@getBedrockDiscovery', { timeout: 30000 });
+        if (verifyFixtureData) {
+            cy.contains('Add agent to catalog').should('be.visible');
+            cy.contains('Discovered Only Agent').should('be.visible');
+        }
+    });
+
+    it('Agentic Connections shows MCP and Bedrock tabs; agent details page loads', () => {
+        navigateViaLibraries('Agentic Connections');
+        cy.url().should('include', '/mcp-connections');
+        waitForContentToLoad();
+
+        // Chat prefetches MCP servers and user preferences after login, so those APIs may not fire again here.
+        cy.contains('[role="tab"]', 'MCP servers').should('be.visible');
+        cy.contains('MCP connections').should('be.visible');
+
+        cy.contains('[role="tab"]', 'Bedrock agents').should('be.visible').click();
+        cy.wait('@getBedrockAgents', { timeout: 30000 });
+
+        cy.contains('Amazon Bedrock agents').should('be.visible');
+        if (verifyFixtureData) {
+            cy.contains('Smoke Test Agent').should('be.visible').click();
+            cy.url().should('match', /bedrock\//);
+            cy.contains('h1', 'Smoke Test Agent').should('be.visible');
+            cy.contains('Agent tools').should('be.visible');
+            cy.contains('bedrock_smoke_tool').should('be.visible');
         }
     });
 }

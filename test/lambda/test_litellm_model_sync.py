@@ -238,7 +238,17 @@ class TestHandler:
         result = handler(event, None)
 
         assert result["Status"] == "SUCCESS"
-        assert result["PhysicalResourceId"] == "LiteLLMModelSync"
+
+    def test_delete_preserves_incoming_physical_resource_id(self):
+        """Delete should echo back the incoming PhysicalResourceId to avoid CFN rejection."""
+        handler = self._import_handler()
+        event = self._build_event("Delete")
+        event["PhysicalResourceId"] = "8dc0026d-e0f2-4559-b9d0-1841c544767c"
+
+        result = handler(event, None)
+
+        assert result["Status"] == "SUCCESS"
+        assert result["PhysicalResourceId"] == "8dc0026d-e0f2-4559-b9d0-1841c544767c"
 
     @patch("models.litellm_model_sync._run_sync")
     def test_create_request_runs_sync(self, mock_run_sync):

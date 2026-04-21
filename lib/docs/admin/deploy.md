@@ -248,73 +248,7 @@ litellmConfig:
 >
 > Privacy note: enabling JSON body audit logging may include sensitive user data; ensure your organization’s compliance requirements are met.
 
-### Step 7: Set Up SSL Certificates (Development Only)
-
-LISA requires SSL certificates for secure communication. Choose the appropriate method based on your deployment environment.
-
-#### AWS Certificate Manager
-
-Use AWS Certificate Manager to create and manage certificates:
-
-1. **Create a Certificate in AWS Certificate Manager**:
-   * Navigate to the [AWS Certificate Manager Console](https://console.aws.amazon.com/acm)
-   * Request a public certificate
-   * For internal AWS deployments, use the domain pattern: `<alias>.people.aws.dev`
-   * Follow the DNS validation process to verify domain ownership
-   * Note: You may need access to specific AWS bindles or Route 53 hosted zones
-
-2. **Configure Custom Domains** in your `config-custom.yaml`:
-
-```yaml
-restApiConfig:
-  sslCertIamArn: arn:aws:acm:<region>:<account-id>:certificate/<certificate-id>
-  domainName: serve.<alias>.people.aws.dev
-
-apiGatewayConfig:
-  domainName: chat.<alias>.people.aws.dev
-```
-
-* For `sslCertIamArn` copy the arn from your ssl certificate from the AWS Certificate Manager.  Otherwise you can manually fill it in.
-* For `domainName` replace `<alias>` with your chosen subdomain.
-
-1. **Set Up Route 53 and Custom Domains**:
-
-After configuring your certificate and custom domains in `config-custom.yaml`, you need to set up DNS routing:
-
-**Create Route 53 Hosted Zone**:
-
-* Navigate to Route 53 in the AWS Console
-* Create a hosted zone for your domain (if it does not already exists)
-* Note the hosted zone ID and name servers
-
-**Configure API Gateway Custom Domain** (after LISA deployment):
-
-* Navigate to API Gateway → Custom domain names
-* Create a custom domain for your chat endpoint: `chat.<alias>.people.aws.dev`
-* Associate it with your API Gateway stage
-
-**Create DNS Records**:
-
-* In Route 53, create an A record for `chat.<alias>.people.aws.dev`:
-  * Type: A record (Alias)
-  * Alias target: Your API Gateway custom domain
-* Create a CNAME record for `serve.<alias>.people.aws.dev`:
-  * Type: CNAME
-  * Value: Your LisaServe REST API Application Load Balancer DNS name (found in EC2 → Load Balancers)
-
-**For Internal AWS Deployments**:
-
-* Register your DNS name using Supernova at <https://supernova.amazon.dev/>
-* Follow the guide at <https://w.amazon.com/bin/view/SuperNova/PreOnboardingSteps/>
-* Use the pattern: `{username}.people.aws.dev`
-* Associate with the appropriate AWS bindle for access control
-
-**Redeploy LISA**:
-
-* Redeploy LISA for the changes to take effect
-* After completing these steps and redeploying LISA, your application will be accessible via custom domains with valid SSL certificates, eliminating the need to accept self-signed certificates in your browser.
-
-### Step 8a: Customize Model Deployment (If Using LISA Serve)
+### Step 7a: Customize Model Deployment (If Using LISA Serve)
 
 In the `ecsModels` section of `config-custom.yaml`, allow our deployment process to pull the model weights for you.
 
@@ -330,7 +264,7 @@ ecsModels:
     baseImage: vllm/vllm-openai:latest
 ```
 
-### Step 8b: Stage Model Weights
+### Step 7b: Stage Model Weights
 
 LISA requires model weights to be staged in the S3 bucket specified in your `config-custom.yaml` file, assuming the S3 bucket follows this structure:
 

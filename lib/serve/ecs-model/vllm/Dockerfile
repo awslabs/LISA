@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=public.ecr.aws/deep-learning-containers/vllm:0.15-gpu-py312-ec2
+ARG BASE_IMAGE=public.ecr.aws/deep-learning-containers/vllm:0.17-gpu-py312-ec2
 FROM ${BASE_IMAGE}
 
 # Apply SSH security hardening - disable weak ciphers (3DES-CBC, etc.)
@@ -38,6 +38,11 @@ RUN if command -v apt-get >/dev/null 2>&1; then \
         apk add --allow-untrusted ./mount-s3.apk && rm mount-s3.apk; \
     fi
 
+##### OFFLINE MODE FOR LOCAL MODEL LOADING
+# Prevents vLLM/HuggingFace Hub from attempting network calls when loading local models.
+# Replaces the deprecated --repo-type CLI flag removed in newer vLLM versions.
+ENV HF_HUB_OFFLINE=1
+
 ##### PRE-DOWNLOAD TIKTOKEN CACHE FOR OFFLINE/AIRGAPPED DEPLOYMENTS
 # This fixes the "error downloading or loading vocab file" issue for OpenAI models
 # Reference: https://huggingface.co/openai/gpt-oss-120b/discussions/39
@@ -51,7 +56,10 @@ import tiktoken; \
 [tiktoken.get_encoding(enc) for enc in tiktoken.list_encoding_names()]" && \
     chmod -R 755 ${TIKTOKEN_CACHE_DIR}
 
-COPY src/entrypoint.sh ./entrypoint.sh
+# Metrics publisher for CloudWatch (scrapes Prometheus /metrics endpoint)
+COPY metrics_publisher.py /opt/metrics_publisher.py
+
+COPY vllm/src/entrypoint.sh ./entrypoint.sh
 RUN chmod +x entrypoint.sh
 
 ENTRYPOINT ["./entrypoint.sh"]

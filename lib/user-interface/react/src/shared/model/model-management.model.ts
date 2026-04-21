@@ -48,6 +48,12 @@ export enum InferenceContainer {
     INSTRUCTOR = 'instructor',
 }
 
+export enum ModelHostingType {
+    THIRD_PARTY = 'third_party',
+    LISA_HOSTED = 'lisa_hosted',
+    INTERNAL_HOSTED = 'internal_hosted',
+}
+
 export enum ScheduleType {
     NONE = 'NONE',
     DAILY = 'DAILY',
@@ -196,6 +202,7 @@ export type IModel = {
     loadBalancerConfig: ILoadBalancerConfig;
     allowedGroups?: string[];
     contextWindow?: number;
+    hostingType?: ModelHostingType;
 };
 
 export type IModelListResponse = {
@@ -217,6 +224,7 @@ export type IModelRequest = {
     autoScalingConfig: IAutoScalingConfig;
     loadBalancerConfig: ILoadBalancerConfig;
     lisaHostedModel: boolean;
+    hostingType: ModelHostingType;
     allowedGroups?: string[];
     apiKey?: string;
     guardrailsConfig?: IGuardrailsConfig;
@@ -413,6 +421,7 @@ export const ModelRequestBaseSchema = z.object({
         overview: z.string()
     })).default([]),
     lisaHostedModel: z.boolean().default(false),
+    hostingType: z.nativeEnum(ModelHostingType).default(ModelHostingType.THIRD_PARTY),
     modelType: z.nativeEnum(ModelType).default(ModelType.textgen),
     instanceType: z.string().default(''),
     inferenceContainer: z.nativeEnum(InferenceContainer).optional(),
@@ -425,7 +434,9 @@ export const ModelRequestBaseSchema = z.object({
 
 // Full schema with refinements - use this for validation
 export const ModelRequestSchema = ModelRequestBaseSchema.superRefine((value, context) => {
-    if (value.lisaHostedModel) {
+    const isLisaHosted = value.hostingType === ModelHostingType.LISA_HOSTED || value.lisaHostedModel;
+
+    if (isLisaHosted) {
         const instanceTypeValidator = z.string().min(1, {message: 'Required for LISA hosted models.'});
         const instanceTypeResult = instanceTypeValidator.safeParse(value.instanceType);
         if (instanceTypeResult.success === false) {
@@ -456,6 +467,33 @@ export const ModelRequestSchema = ModelRequestBaseSchema.superRefine((value, con
                     ...error,
                     path: ['containerConfig', 'image', 'baseImage']
                 });
+            }
+        }
+    }
+
+    if (value.hostingType === ModelHostingType.INTERNAL_HOSTED) {
+        const modelUrlValidator = z.string().url('Model URL is required for internal hosted models.');
+        const modelUrlResult = modelUrlValidator.safeParse(value.modelUrl);
+        if (modelUrlResult.success === false) {
+            for (const error of modelUrlResult.error.issues) {
+                context.addIssue({
+                    ...error,
+                    path: ['modelUrl']
+                });
+            }
+        } else {
+            const internalAlbHostValidator = z.string().regex(/\.elb\.amazonaws\.com$/i, {
+                message: 'Internal hosted model URL must target an AWS load balancer hostname.'
+            });
+            const host = new URL(value.modelUrl).hostname;
+            const hostResult = internalAlbHostValidator.safeParse(host);
+            if (hostResult.success === false) {
+                for (const error of hostResult.error.issues) {
+                    context.addIssue({
+                        ...error,
+                        path: ['modelUrl']
+                    });
+                }
             }
         }
     }

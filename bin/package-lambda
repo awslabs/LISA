@@ -119,7 +119,6 @@ echo "Platform: $PLATFORM"
 echo "Use Docker: $USE_DOCKER"
 echo "Python version: $PYTHON_VERSION"
 
-
 install_requirements() {
     echo "Installing requirements"
     rm -rf "$TMP_DIR"
@@ -131,12 +130,15 @@ install_requirements() {
             # Use Docker to install dependencies for correct platform (linux/amd64)
             # This handles packages that need compilation from source
             echo "Using Docker with platform $PLATFORM for cross-platform compatibility"
+            # chown after pip: bind-mounted /output is root-owned inside the container on Linux CI
+            host_uid=$(id -u)
+            host_gid=$(id -g)
             $DOCKER_CMD run --rm --platform $PLATFORM \
                 -v "$PWD:/workspace" \
                 -v "$TMP_DIR:/output" \
                 -w /workspace \
                 public.ecr.aws/docker/library/python:${PYTHON_VERSION}-slim \
-                pip install -r "$SRC/requirements.txt" --force-reinstall --no-cache-dir --target /output --index-url $PYPI_URL --trusted-host $TRUSTED_HOST
+                sh -c "pip install -r \"$SRC/requirements.txt\" --force-reinstall --no-cache-dir --target /output --index-url \"$PYPI_URL\" --trusted-host \"$TRUSTED_HOST\" && chown -R ${host_uid}:${host_gid} /output"
         else
             # Try pip with --platform flag first (faster, no Docker needed)
             # This only works for packages with pre-built wheels
@@ -164,12 +166,14 @@ install_requirements() {
                 mkdir -p "$TMP_DIR"
 
                 if [ -n "$DOCKER_CMD" ]; then
+                    host_uid=$(id -u)
+                    host_gid=$(id -g)
                     $DOCKER_CMD run --rm --platform $PLATFORM \
                         -v "$PWD:/workspace" \
                         -v "$TMP_DIR:/output" \
                         -w /workspace \
                         public.ecr.aws/docker/library/python:${PYTHON_VERSION}-slim \
-                        pip install -r "$SRC/requirements.txt" --force-reinstall --no-cache-dir --target /output --index-url $PYPI_URL --trusted-host $TRUSTED_HOST
+                        sh -c "pip install -r \"$SRC/requirements.txt\" --force-reinstall --no-cache-dir --target /output --index-url \"$PYPI_URL\" --trusted-host \"$TRUSTED_HOST\" && chown -R ${host_uid}:${host_gid} /output"
                 else
                     echo "ERROR: No container runtime available and pip --platform failed (some packages need compilation)"
                     echo "Install Docker, Finch, or set CDK_DOCKER environment variable"

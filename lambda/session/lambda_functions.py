@@ -249,6 +249,16 @@ def _map_session(
     )
 
 
+def _strip_context_from_display_text(text: str) -> str:
+    cleaned = text.strip()
+    context_prefixes = ("File context:", "Context from document search:")
+
+    if any(cleaned.startswith(prefix) for prefix in context_prefixes):
+        return ""
+
+    return cleaned
+
+
 def _find_first_human_message(session: dict, user_id: str | None = None) -> str:
     # Check if session is encrypted
     if session.get("is_encrypted", False):
@@ -274,13 +284,17 @@ def _find_first_human_message(session: dict, user_id: str | None = None) -> str:
         if msg.get("type") == "human":
             content = msg.get("content")
             if isinstance(content, str):
-                return content
+                cleaned = _strip_context_from_display_text(content)
+                if cleaned:
+                    return cleaned
             elif isinstance(content, list):
                 for item in content:
                     if isinstance(item, dict):
                         text: str = item.get("text", "")
-                        if text and not text.startswith("File context:"):
-                            return text
+                        if text:
+                            cleaned = _strip_context_from_display_text(text)
+                            if cleaned:
+                                return cleaned
             else:
                 logger.warning(f"Unhandled human message content in session {session.get('sessionId', 'unknown')}")
     return ""

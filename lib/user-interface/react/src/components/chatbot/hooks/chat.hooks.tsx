@@ -86,6 +86,15 @@ const processReasoningContent = (
 };
 
 /**
+* Checks whether caught exceptions are due to a guardrail
+ * being triggered so that they can be handled gracefully.
+ */
+const isGuardrailError = (error: any): boolean => {
+    const msg = error?.error?.message || error?.message || '';
+    return typeof msg === 'string' && msg.toLowerCase().includes('violated guardrail policy');
+};
+
+/**
  * Parses accumulated tool call data into final tool call objects.
  */
 const finalizeToolCalls = (toolCallsAccumulator: { [index: number]: any }): any[] => {
@@ -902,11 +911,30 @@ export const useChatGeneration = ({
                         await memory.saveContext({ input: params.input }, { output: finalCleanedContent });
                         setIsStreaming(false);
                     } catch (exception) {
-                        setSession((prev) => ({
-                            ...prev,
-                            history: prev.history.slice(0, -1),
-                        }));
-                        throw exception;
+                        if (isGuardrailError(exception)) {
+                            // Handle gracefully — same as the in-stream guardrail path
+                            setSession((prev) => {
+                                const lastMessage = prev.history[prev.history.length - 1];
+                                if (lastMessage?.type === MessageTypes.AI) {
+                                    let updatedHistory = [...prev.history.slice(0, -1),
+                                        new LisaChatMessage({
+                                            ...lastMessage,
+                                            guardrailTriggered: true,
+                                        })
+                                    ];
+                                    updatedHistory = markLastUserMessageAsGuardrailTriggered(updatedHistory);
+                                    return { ...prev, history: updatedHistory };
+                                }
+                                return prev;
+                            });
+                            // Do NOT rethrow — fall through to finally block
+                        } else {
+                            setSession((prev) => ({
+                                ...prev,
+                                history: prev.history.slice(0, -1),
+                            }));
+                            throw exception;
+                        }
                     }
                 } else {
                     const response = await llmClient.invoke(messages, { tools: modelSupportsTools ? openAiTools : undefined });

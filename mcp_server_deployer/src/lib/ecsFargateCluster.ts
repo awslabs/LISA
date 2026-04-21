@@ -113,7 +113,7 @@ export class ECSFargateCluster extends Construct {
         const cluster = new Cluster(this, createCdkId([identifier, 'Cl']), {
             clusterName: createCdkId([config.deploymentName, identifier], 32, 2),
             vpc: vpc,
-            containerInsightsV2: !config.region?.includes('iso') ? ContainerInsights.ENABLED : ContainerInsights.DISABLED,
+            containerInsightsV2: ContainerInsights.ENHANCED,
         });
 
         // Create Fargate task definition

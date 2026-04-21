@@ -131,9 +131,9 @@ def api_token(pytestconfig: pytest.Config, api_key: str) -> Generator:
         current_time = int(time.time())
         expiration_time = current_time + 3600  # 3600 seconds = 1 hour
         item = {"token": api_key, "tokenExpiration": expiration_time}
-        logging.info(f"Creating new auth token: {item}")
+        logging.info(f"Creating auth token with expiration={expiration_time}")
         table.put_item(Item=item)
-        logging.info(f"Auth token created: {item}")
+        logging.info("Auth token created")
         yield
         table.delete_item(Key={"token": api_key})
     except Exception as e:

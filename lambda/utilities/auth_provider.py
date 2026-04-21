@@ -46,6 +46,24 @@ class AuthorizationProvider(ABC):
         pass
 
     @abstractmethod
+    def check_rag_admin_access(self, username: str, groups: list[str] | None = None) -> bool:
+        """Check if a user has RAG admin access.
+
+        Parameters
+        ----------
+        username : str
+            The username to check RAG admin access for
+        groups : list[str] | None
+            Optional list of groups the user belongs to (used by group-based providers)
+
+        Returns
+        -------
+        bool
+            True if user has RAG admin access, False otherwise
+        """
+        pass
+
+    @abstractmethod
     def check_app_access(self, username: str, groups: list[str] | None = None) -> bool:
         """Check if a user has general application access.
 
@@ -70,7 +88,9 @@ class OIDCAuthorizationProvider(AuthorizationProvider):
     Uses JWT group claims to determine admin and app access.
     """
 
-    def __init__(self, admin_group: str | None = None, user_group: str | None = None):
+    def __init__(
+        self, admin_group: str | None = None, user_group: str | None = None, rag_admin_group: str | None = None
+    ):
         """Initialize the OIDC authorization provider.
 
         Parameters
@@ -79,9 +99,12 @@ class OIDCAuthorizationProvider(AuthorizationProvider):
             The admin group name. If not provided, uses ADMIN_GROUP env var at check time.
         user_group : str | None
             The user group name. If not provided, uses USER_GROUP env var at check time.
+        rag_admin_group : str | None
+            The RAG admin group name. If not provided, uses RAG_ADMIN_GROUP env var at check time.
         """
         self._admin_group = admin_group
         self._user_group = user_group
+        self._rag_admin_group = rag_admin_group
 
     @property
     def admin_group(self) -> str:
@@ -92,6 +115,11 @@ class OIDCAuthorizationProvider(AuthorizationProvider):
     def user_group(self) -> str:
         """Get user group, reading from env if not explicitly set."""
         return self._user_group if self._user_group is not None else os.environ.get("USER_GROUP", "")
+
+    @property
+    def rag_admin_group(self) -> str:
+        """Get RAG admin group, reading from env if not explicitly set."""
+        return self._rag_admin_group if self._rag_admin_group is not None else os.environ.get("RAG_ADMIN_GROUP", "")
 
     def check_admin_access(self, username: str, groups: list[str] | None = None) -> bool:
         """Check if user has admin access based on group membership.
@@ -115,6 +143,19 @@ class OIDCAuthorizationProvider(AuthorizationProvider):
         is_admin = self.admin_group in groups
         logger.info(f"User groups: {groups} and admin: {self.admin_group}")
         return is_admin
+
+    def check_rag_admin_access(self, username: str, groups: list[str] | None = None) -> bool:
+        """Check if user has RAG admin access based on group membership."""
+        if not self.rag_admin_group:
+            return False
+
+        if not groups:
+            logger.debug(f"No groups provided for user {username}")
+            return False
+
+        is_rag_admin = self.rag_admin_group in groups
+        logger.info(f"User groups: {groups} and rag_admin: {self.rag_admin_group}")
+        return is_rag_admin
 
     def check_app_access(self, username: str, groups: list[str] | None = None) -> bool:
         """Check if user has app access based on group membership.

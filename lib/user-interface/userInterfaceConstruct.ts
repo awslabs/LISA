@@ -191,6 +191,7 @@ export class UserInterfaceConstruct extends Construct {
             ADMIN_GROUP: config.authConfig!.adminGroup,
             USER_GROUP: config.authConfig!.userGroup,
             API_GROUP: config.authConfig!.apiGroup,
+            RAG_ADMIN_GROUP: config.authConfig!.ragAdminGroup,
             JWT_GROUPS_PROP: config.authConfig!.jwtGroupsProperty,
             CUSTOM_SCOPES: config.authConfig!.additionalScopes,
             RESTAPI_URI: StringParameter.fromStringParameterName(
@@ -199,6 +200,15 @@ export class UserInterfaceConstruct extends Construct {
                 `${config.deploymentPrefix}/lisaServeRestApiUri`,
             ).stringValue,
             RESTAPI_VERSION: 'v2',
+            ...(config.deployMcpWorkbench
+                ? {
+                    MCP_WORKBENCH_URI: StringParameter.fromStringParameterName(
+                        scope,
+                        createCdkId(['LisaMcpWorkbenchHostedUri', 'StringParameter']),
+                        `${config.deploymentPrefix}/mcpWorkbench/endpoint`,
+                    ).stringValue,
+                }
+                : {}),
             RAG_ENABLED: config.deployRag,
             HOSTED_MCP_ENABLED: config.deployMcp,
             API_BASE_URL: config.apiGatewayConfig?.domainName ? '/' : `/${config.deploymentStage}/`,

@@ -24,6 +24,7 @@ from typing import Any
 import boto3
 from models.clients.litellm_client import LiteLLMClient
 from models.domain_objects import GuardrailsTableEntry, ModelStatus, ModelType
+from models.state_machine.failure_utils import extract_model_failure_details
 from utilities.common_functions import get_cert_path, get_rest_api_container_endpoint, retry_config
 from utilities.time import now
 
@@ -1121,3 +1122,27 @@ def handle_poll_ecs_deployment(event: dict[str, Any], context: Any) -> dict[str,
         output_dict["should_continue_ecs_polling"] = False
 
     return output_dict
+
+
+def handle_failure(event: dict[str, Any], context: Any) -> dict[str, Any]:
+    """Set model status to Failed for any unrecoverable update workflow error."""
+    logger.error(f"Handling update-model state machine failure: {event}")
+
+    model_id, error_reason = extract_model_failure_details(
+        event=event,
+        default_reason="Update model state machine failed.",
+    )
+    if not model_id:
+        logger.error("Unable to determine model id from update failure event; skipping DDB status update.")
+        return event
+
+    model_table.update_item(
+        Key={"model_id": model_id},
+        UpdateExpression="SET model_status = :ms, last_modified_date = :lm, failure_reason = :fr",
+        ExpressionAttributeValues={
+            ":ms": ModelStatus.FAILED,
+            ":lm": now(),
+            ":fr": error_reason[:1000],
+        },
+    )
+    return event

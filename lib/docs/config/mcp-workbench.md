@@ -24,6 +24,18 @@ The integrated browser-based editor allows administrators to write Python code a
 
 ## Configuration
 
+### Deployment infrastructure
+
+The MCP Workbench **HTTP server** (streamable MCP and AWS session routes) always runs on **its own** ECS cluster and Application Load Balancer, separate from the LISA Serve REST API. The container still serves `/v2/mcp/*` and `/api/aws/*` on that load balancer’s default listener.
+
+The hosted MCP base URL is stored in SSM at `…/mcpWorkbench/endpoint` (and used by configuration Lambdas). It must target the **MCP Workbench** ALB, not the Serve API ALB. When you set `restApiConfig.domainName`, LISA derives a separate workbench hostname by default (for example `lisa-serve.<suffix>` becomes `lisa-mcp-workbench.<suffix>`, and `serve.<suffix>` becomes `mcp-workbench.<suffix>`) unless you override it with `mcpWorkbenchEcsConfig.domainName`. Create a DNS record for that hostname pointing at the **MCP Workbench** load balancer in EC2.
+
+Optional `mcpWorkbenchEcsConfig` in your deployment configuration lets you tune instance type, ASG minimum and maximum capacity, root volume size, and scaling cooldown for the workbench cluster.
+
+**CORS:** The browser calls the workbench from the **UI origin** (custom domain, ALB URL, or local dev), which changes with deployment and app configuration. By default, `mcpWorkbenchCorsOrigins` is `*` so the workbench container allows any origin (`CORS_ORIGINS`). Set `mcpWorkbenchCorsOrigins` in your deployment config to a comma-separated list if you need to restrict origins. The workbench hostname may still differ from the Serve API hostname; verify OIDC flows for your setup.
+
+**CDK:** The workbench stack is deployed in the same account and VPC as the rest of LISA. In the current stage layout it is created when `deployMcpWorkbench` is enabled (alongside the Serve stack when `deployServe` is enabled).
+
 ### Step 1: Enable the MCP Workbench Menu
 
 1. **Access Admin Configuration**
@@ -62,19 +74,82 @@ Once the MCP Workbench connection is activated, all custom enabled tools become 
 
 ### Programmatic API Access
 
-LISA automatically hosts an MCP Server containing all MCP Workbench tools. The server is accessible through the following endpoints:
+LISA automatically hosts an MCP Server containing all MCP Workbench tools. The server is accessible on the **MCP Workbench** load balancer (see SSM `…/mcpWorkbench/endpoint`), for example:
 
-**AWS Load Balancer URL:**
-```
+**AWS Load Balancer URL (example):**
+
+```text
 https://abc-rest-<account-number>.<region>.elb.amazonaws.com/v2/mcp/
 ```
 
-**Custom Domain URL (if configured):**
-```
+**Custom Domain URL (if configured on that load balancer):**
+
+```text
 https://<your-custom-domain>/v2/mcp/
 ```
 
 > **Authentication Required:** API access requires [Programmatic API Tokens](./api-tokens.md) for authentication.
+
+## API Reference
+
+The MCP Workbench includes a REST API for managing tool source files and syntax validation in addition to hosted MCP runtime access.
+
+Base path: `/mcp-workbench`
+
+### List Tools
+
+- Method: `GET`
+- Path: `/mcp-workbench`
+- Description: Lists MCP Workbench tools available to the caller.
+
+### Create Tool
+
+- Method: `POST`
+- Path: `/mcp-workbench`
+- Description: Creates a new MCP Workbench tool.
+
+### Get Tool
+
+- Method: `GET`
+- Path: `/mcp-workbench/{toolId}`
+- Description: Retrieves a single MCP Workbench tool.
+
+Path parameters:
+
+- `toolId` (string, required): Tool identifier
+
+### Update Tool
+
+- Method: `PUT`
+- Path: `/mcp-workbench/{toolId}`
+- Description: Updates an existing MCP Workbench tool.
+
+Path parameters:
+
+- `toolId` (string, required): Tool identifier
+
+### Delete Tool
+
+- Method: `DELETE`
+- Path: `/mcp-workbench/{toolId}`
+- Description: Deletes an MCP Workbench tool.
+
+Path parameters:
+
+- `toolId` (string, required): Tool identifier
+
+### Validate Python Syntax
+
+- Method: `POST`
+- Path: `/mcp-workbench/validate-syntax`
+- Description: Validates Python code syntax before creating or updating tools.
+
+Example:
+
+```bash
+curl -X GET "https://<api-gateway-domain>/<stage>/mcp-workbench" \
+  -H "Authorization: Bearer <token>"
+```
 
 ## Development Guidelines
 
@@ -160,7 +235,7 @@ To create a tool that uses AWS credentials:
 3. Call `get_aws_session_for_user(user_id, session_id)` to retrieve the `AwsSessionRecord` (or handle `AwsSessionMissingError` if the user has not connected credentials).
 4. Use the record's `aws_access_key_id`, `aws_secret_access_key`, `aws_session_token`, and `aws_region` to construct boto3 clients.
 
-See `lib/serve/mcp-workbench/src/examples/sample_tools/aws_s3_tools.py` for a complete example. Without tools that leverage these credentials, the AWS Sessions feature has no effect.
+See `lib/serve/mcp-workbench/src/examples/sample_tools/aws_operator_tools.py` for a complete example. Without tools that leverage these credentials, the AWS Sessions feature has no effect.
 
 ### Adding Python Dependencies
 

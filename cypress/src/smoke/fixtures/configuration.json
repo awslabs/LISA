@@ -23,6 +23,7 @@
         "showRagLibrary": true,
         "showPromptTemplateLibrary": true,
         "mcpConnections": true,
+        "bedrockAgents": true,
         "awsSessions": false,
         "showMcpWorkbench": true,
         "projectOrganization": true

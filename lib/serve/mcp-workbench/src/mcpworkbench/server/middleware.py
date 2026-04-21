@@ -20,11 +20,13 @@ from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 
+from starlette.datastructures import MutableHeaders
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware as StarletteCORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from ..config.models import CORSConfig
 from ..core.tool_discovery import ToolDiscovery
@@ -46,6 +48,79 @@ class CORSMiddleware(StarletteCORSMiddleware):
             expose_headers=cors_config.expose_headers,
             max_age=cors_config.max_age,
         )
+
+
+def _parse_request_origin(scope: Scope) -> str | None:
+    if scope["type"] != "http":
+        return None
+    for key, value in scope.get("headers") or []:
+        if key.lower() == b"origin" and isinstance(value, bytes):
+            return value.decode("latin-1")
+    return None
+
+
+def _access_control_allow_origin_value(cors_config: CORSConfig, request_origin: str | None) -> str | None:
+    origins = cors_config.allow_origins
+    empty_origin_wildcard = "" in origins
+
+    if cors_config.allow_credentials:
+        # "" in allow_origins means "reflect any request Origin" (cannot use * with credentials).
+        if empty_origin_wildcard:
+            return request_origin if request_origin else None
+        if request_origin and request_origin in origins:
+            return request_origin
+        fallback = origins[0] if origins else "*"
+        return None if fallback == "" else fallback
+    if "*" in origins:
+        return "*"
+    if request_origin and request_origin in origins:
+        return request_origin
+    return origins[0] if origins else "*"
+
+
+def _merge_vary_origin(headers: MutableHeaders) -> None:
+    existing = headers.get("vary")
+    if existing:
+        parts = [p.strip() for p in existing.split(",") if p.strip()]
+        if "Origin" not in parts:
+            headers["vary"] = f"{existing}, Origin"
+    else:
+        headers["vary"] = "Origin"
+
+
+def wrap_asgi_with_cors_headers(app: ASGIApp, cors_config: CORSConfig) -> ASGIApp:
+    """Outer ASGI wrapper: ensure CORS headers on every HTTP response when missing.
+
+    Starlette's outer ``ServerErrorMiddleware`` can emit error responses that bypass inner
+    ``CORSMiddleware``'s ``send`` wrapper, so browsers see 500 without
+    ``Access-Control-Allow-Origin`` and block the response body.
+    """
+
+    async def asgi(scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await app(scope, receive, send)
+            return
+
+        origin = _parse_request_origin(scope)
+
+        async def send_wrapper(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(scope=message)
+                if "access-control-allow-origin" not in headers:
+                    acao = _access_control_allow_origin_value(cors_config, origin)
+                    if acao is not None:
+                        headers["access-control-allow-origin"] = acao
+                        if origin and acao == origin:
+                            _merge_vary_origin(headers)
+                if cors_config.allow_headers and "*" in cors_config.allow_headers:
+                    if "access-control-allow-headers" not in headers:
+                        headers["access-control-allow-headers"] = "*"
+
+            await send(message)
+
+        await app(scope, receive, send_wrapper)
+
+    return asgi
 
 
 class ExitRouteMiddleware(BaseHTTPMiddleware):

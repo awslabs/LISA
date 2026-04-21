@@ -20,10 +20,6 @@
       "Type": "AWS::SSM::Parameter::Value<String>",
       "Default": "/dev/test-lisa/lisa/layerVersion/cdk"
     },
-    "SsmParameterValuedevtestlisalisabucketbucketaccesslogsC96584B6F00A464EAD1953AFF4B05118Parameter": {
-      "Type": "AWS::SSM::Parameter::Value<String>",
-      "Default": "/dev/test-lisa/lisa/bucket/bucket-access-logs"
-    },
     "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter": {
       "Type": "AWS::SSM::Parameter::Value<String>",
       "Default": "/dev/test-lisa/lisa/appManagementKeySecretName"
@@ -824,7 +820,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1ebc9d3ac2033816c4abb63e4afd69d350b4aba8704cc9236b82ea520b74f4b0.zip"
+          "S3Key": "0923a42b14789c47e7ebbc904e15c44e3d3bc692a4437e51579d1bb6773a13ad.zip"
         },
         "Environment": {
           "Variables": {
@@ -868,6 +864,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -890,27 +889,7 @@
         },
         "LoggingConfiguration": {
           "DestinationBucketName": {
-            "Fn::Select": [
-              0,
-              {
-                "Fn::Split": [
-                  "/",
-                  {
-                    "Fn::Select": [
-                      5,
-                      {
-                        "Fn::Split": [
-                          ":",
-                          {
-                            "Ref": "SsmParameterValuedevtestlisalisabucketbucketaccesslogsC96584B6F00A464EAD1953AFF4B05118Parameter"
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
+            "Fn::ImportValue": "LisaCore:ExportsOutputRefBucketAccessLogsBucket91990836CA73FE19"
           },
           "LogFilePrefix": "logs/docker-image-builder-bucket/"
         },
@@ -1062,7 +1041,7 @@
           "cdk-hnb659fds-assets-012345678901-us-iso-east-1"
         ],
         "SourceObjectKeys": [
-          "b3afcc4ca240b341fc36c5ad6ea5e46ddeba20df712f44db2c407ebc5f06e510.zip"
+          "447c5b79023ff1265d184068d90a051ce27759ea38878f9c5f2e4af014197b7e.zip"
         ],
         "DestinationBucketName": {
           "Ref": "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderec2bucketA3074A95"
@@ -1261,7 +1240,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -1349,6 +1328,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -1618,7 +1600,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Description": "Manages Auto Scaling scheduled actions for LISA model scheduling",
         "Environment": {
@@ -1657,6 +1639,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -1670,7 +1655,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Description": "Processes Auto Scaling Group CloudWatch events to update model status",
         "Environment": {
@@ -1715,6 +1700,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -1800,7 +1788,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -1873,6 +1861,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -1886,7 +1877,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -1959,6 +1950,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -1972,7 +1966,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -2045,6 +2039,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -2058,7 +2055,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -2131,6 +2128,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -2144,7 +2144,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -2217,6 +2217,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -2230,7 +2233,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -2303,6 +2306,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -2316,7 +2322,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -2389,6 +2395,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -2402,7 +2411,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -2478,6 +2487,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -2491,7 +2503,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -2564,6 +2576,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -2577,7 +2592,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -2650,6 +2665,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -2663,7 +2681,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -2736,6 +2754,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -2835,58 +2856,6 @@
                       {
                         "Fn::GetAtt": [
                           "ModelsApiCreateModelWorkflowCreateScheduleFuncBB684C18",
-                          "Arn"
-                        ]
-                      },
-                      ":*"
-                    ]
-                  ]
-                }
-              ]
-            },
-            {
-              "Action": "lambda:InvokeFunction",
-              "Effect": "Allow",
-              "Resource": [
-                {
-                  "Fn::GetAtt": [
-                    "ModelsApiCreateModelWorkflowEnrichContextWindowFunc118E1479",
-                    "Arn"
-                  ]
-                },
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      {
-                        "Fn::GetAtt": [
-                          "ModelsApiCreateModelWorkflowEnrichContextWindowFunc118E1479",
-                          "Arn"
-                        ]
-                      },
-                      ":*"
-                    ]
-                  ]
-                }
-              ]
-            },
-            {
-              "Action": "lambda:InvokeFunction",
-              "Effect": "Allow",
-              "Resource": [
-                {
-                  "Fn::GetAtt": [
-                    "ModelsApiCreateModelWorkflowAddGuardrailsToLitellmFunc539E23C4",
-                    "Arn"
-                  ]
-                },
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      {
-                        "Fn::GetAtt": [
-                          "ModelsApiCreateModelWorkflowAddGuardrailsToLitellmFunc539E23C4",
                           "Arn"
                         ]
                       },
@@ -3051,6 +3020,58 @@
                   ]
                 }
               ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiCreateModelWorkflowEnrichContextWindowFunc118E1479",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiCreateModelWorkflowEnrichContextWindowFunc118E1479",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiCreateModelWorkflowAddGuardrailsToLitellmFunc539E23C4",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiCreateModelWorkflowAddGuardrailsToLitellmFunc539E23C4",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
             }
           ],
           "Version": "2012-10-17"
@@ -3070,7 +3091,7 @@
           "Fn::Join": [
             "",
             [
-              "{\"StartAt\":\"SetModelToCreating\",\"States\":{\"SetModelToCreating\":{\"Next\":\"CreateModelInfraChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              "{\"StartAt\":\"SetModelToCreating\",\"States\":{\"SetModelToCreating\":{\"Next\":\"CreateModelInfraChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
               {
                 "Ref": "AWS::Partition"
               },
@@ -3081,7 +3102,7 @@
                   "Arn"
                 ]
               },
-              "\",\"Payload.$\":\"$\"}},\"CreateModelInfraChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.create_infra\",\"BooleanEquals\":true,\"Next\":\"StartCopyDockerImage\"}],\"Default\":\"AddModelToLitellm\"},\"AddModelToLitellm\":{\"Next\":\"EnrichContextWindow\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              "\",\"Payload.$\":\"$\"}},\"CreateModelInfraChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.create_infra\",\"BooleanEquals\":true,\"Next\":\"StartCopyDockerImage\"}],\"Default\":\"AddModelToLitellm\"},\"AddModelToLitellm\":{\"Next\":\"EnrichContextWindow\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
               {
                 "Ref": "AWS::Partition"
               },
@@ -3092,7 +3113,7 @@
                   "Arn"
                 ]
               },
-              "\",\"Payload.$\":\"$\"}},\"CreateSchedule\":{\"Next\":\"AddModelToLitellm\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              "\",\"Payload.$\":\"$\"}},\"CreateSchedule\":{\"Next\":\"AddModelToLitellm\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
               {
                 "Ref": "AWS::Partition"
               },
@@ -3100,28 +3121,6 @@
               {
                 "Fn::GetAtt": [
                   "ModelsApiCreateModelWorkflowCreateScheduleFuncBB684C18",
-                  "Arn"
-                ]
-              },
-              "\",\"Payload.$\":\"$\"}},\"EnrichContextWindow\":{\"Next\":\"CheckGuardrailsChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
-              {
-                "Ref": "AWS::Partition"
-              },
-              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
-              {
-                "Fn::GetAtt": [
-                  "ModelsApiCreateModelWorkflowEnrichContextWindowFunc118E1479",
-                  "Arn"
-                ]
-              },
-              "\",\"Payload.$\":\"$\"}},\"CheckGuardrailsChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.guardrailsConfig\",\"IsPresent\":true,\"Next\":\"AddGuardrailsToLitellm\"}],\"Default\":\"CreateSuccess\"},\"CreateSuccess\":{\"Type\":\"Succeed\"},\"AddGuardrailsToLitellm\":{\"Next\":\"CreateSuccess\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.TaskFailed\"],\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
-              {
-                "Ref": "AWS::Partition"
-              },
-              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
-              {
-                "Fn::GetAtt": [
-                  "ModelsApiCreateModelWorkflowAddGuardrailsToLitellmFunc539E23C4",
                   "Arn"
                 ]
               },
@@ -3136,7 +3135,7 @@
                   "Arn"
                 ]
               },
-              "\",\"Payload.$\":\"$\"}},\"StartCopyDockerImage\":{\"Next\":\"CheckImageTypeChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.TaskFailed\"],\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              "\",\"Payload.$\":\"$\"}},\"StartCopyDockerImage\":{\"Next\":\"CheckImageTypeChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
               {
                 "Ref": "AWS::Partition"
               },
@@ -3147,7 +3146,7 @@
                   "Arn"
                 ]
               },
-              "\",\"Payload.$\":\"$\"}},\"CheckImageTypeChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.image_info.image_status\",\"StringEquals\":\"prebuilt\",\"Next\":\"StartCreateStack\"}],\"Default\":\"PollDockerImageAvailable\"},\"PollDockerImageAvailable\":{\"Next\":\"PollDockerImageChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"MaxPollsExceededException\"],\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              "\",\"Payload.$\":\"$\"}},\"CheckImageTypeChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.image_info.image_status\",\"StringEquals\":\"prebuilt\",\"Next\":\"StartCreateStack\"}],\"Default\":\"PollDockerImageAvailable\"},\"PollDockerImageAvailable\":{\"Next\":\"PollDockerImageChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
               {
                 "Ref": "AWS::Partition"
               },
@@ -3158,7 +3157,7 @@
                   "Arn"
                 ]
               },
-              "\",\"Payload.$\":\"$\"}},\"WaitBeforePollingDockerImage\":{\"Type\":\"Wait\",\"Seconds\":60,\"Next\":\"PollDockerImageAvailable\"},\"PollDockerImageChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.continue_polling_docker\",\"BooleanEquals\":true,\"Next\":\"WaitBeforePollingDockerImage\"}],\"Default\":\"StartCreateStack\"},\"StartCreateStack\":{\"Next\":\"PollCreateStack\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"StackFailedToCreateException\"],\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              "\",\"Payload.$\":\"$\"}},\"WaitBeforePollingDockerImage\":{\"Type\":\"Wait\",\"Seconds\":60,\"Next\":\"PollDockerImageAvailable\"},\"PollDockerImageChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.continue_polling_docker\",\"BooleanEquals\":true,\"Next\":\"WaitBeforePollingDockerImage\"}],\"Default\":\"StartCreateStack\"},\"StartCreateStack\":{\"Next\":\"PollCreateStack\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
               {
                 "Ref": "AWS::Partition"
               },
@@ -3169,7 +3168,7 @@
                   "Arn"
                 ]
               },
-              "\",\"Payload.$\":\"$\"}},\"PollCreateStack\":{\"Next\":\"PollCreateStackChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"MaxPollsExceededException\",\"UnexpectedCloudFormationStateException\"],\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              "\",\"Payload.$\":\"$\"}},\"PollCreateStack\":{\"Next\":\"PollCreateStackChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
               {
                 "Ref": "AWS::Partition"
               },
@@ -3180,7 +3179,7 @@
                   "Arn"
                 ]
               },
-              "\",\"Payload.$\":\"$\"}},\"WaitBeforePollingCreateStack\":{\"Type\":\"Wait\",\"Seconds\":60,\"Next\":\"PollCreateStack\"},\"PollCreateStackChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.continue_polling_stack\",\"BooleanEquals\":true,\"Next\":\"WaitBeforePollingCreateStack\"}],\"Default\":\"PollModelReady\"},\"PollModelReady\":{\"Next\":\"PollModelReadyChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              "\",\"Payload.$\":\"$\"}},\"WaitBeforePollingCreateStack\":{\"Type\":\"Wait\",\"Seconds\":60,\"Next\":\"PollCreateStack\"},\"PollCreateStackChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.continue_polling_stack\",\"BooleanEquals\":true,\"Next\":\"WaitBeforePollingCreateStack\"}],\"Default\":\"PollModelReady\"},\"PollModelReady\":{\"Next\":\"PollModelReadyChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
               {
                 "Ref": "AWS::Partition"
               },
@@ -3191,7 +3190,29 @@
                   "Arn"
                 ]
               },
-              "\",\"Payload.$\":\"$\"}},\"WaitBeforePollingModelReady\":{\"Type\":\"Wait\",\"Seconds\":60,\"Next\":\"PollModelReady\"},\"PollModelReadyChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.continue_polling_capacity\",\"BooleanEquals\":true,\"Next\":\"WaitBeforePollingModelReady\"}],\"Default\":\"CreateSchedule\"},\"CreateFailed\":{\"Type\":\"Fail\"}}}"
+              "\",\"Payload.$\":\"$\"}},\"WaitBeforePollingModelReady\":{\"Type\":\"Wait\",\"Seconds\":60,\"Next\":\"PollModelReady\"},\"PollModelReadyChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.continue_polling_capacity\",\"BooleanEquals\":true,\"Next\":\"WaitBeforePollingModelReady\"}],\"Default\":\"CreateSchedule\"},\"EnrichContextWindow\":{\"Next\":\"CheckGuardrailsChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiCreateModelWorkflowEnrichContextWindowFunc118E1479",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"CheckGuardrailsChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.guardrailsConfig\",\"IsPresent\":true,\"Next\":\"AddGuardrailsToLitellm\"}],\"Default\":\"CreateSuccess\"},\"CreateSuccess\":{\"Type\":\"Succeed\"},\"AddGuardrailsToLitellm\":{\"Next\":\"CreateSuccess\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiCreateModelWorkflowAddGuardrailsToLitellmFunc539E23C4",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"CreateFailed\":{\"Type\":\"Fail\"}}}"
             ]
           ]
         },
@@ -3214,7 +3235,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -3262,6 +3283,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -3275,7 +3299,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -3323,6 +3347,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -3336,7 +3363,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -3384,6 +3411,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -3397,7 +3427,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -3445,6 +3475,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -3458,7 +3491,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -3506,6 +3539,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -3519,7 +3555,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -3567,6 +3603,73 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiDeleteModelWorkflowHandleFailureFunc31640E22": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "REST_API_VERSION": "v2",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev"
+          }
+        },
+        "Handler": "models.state_machine.delete_model.handle_failure",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -3707,6 +3810,32 @@
               "Resource": [
                 {
                   "Fn::GetAtt": [
+                    "ModelsApiDeleteModelWorkflowHandleFailureFunc31640E22",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiDeleteModelWorkflowHandleFailureFunc31640E22",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
                     "ModelsApiDeleteModelWorkflowDeleteStackFunc0B8E2D75",
                     "Arn"
                   ]
@@ -3771,7 +3900,7 @@
           "Fn::Join": [
             "",
             [
-              "{\"StartAt\":\"SetModelToDeleting\",\"States\":{\"SetModelToDeleting\":{\"Next\":\"DeleteFromLitellm\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              "{\"StartAt\":\"SetModelToDeleting\",\"States\":{\"SetModelToDeleting\":{\"Next\":\"DeleteFromLitellm\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"ResultPath\":\"$.error\",\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
               {
                 "Ref": "AWS::Partition"
               },
@@ -3782,7 +3911,7 @@
                   "Arn"
                 ]
               },
-              "\",\"Payload.$\":\"$\"}},\"DeleteFromLitellm\":{\"Next\":\"DeleteGuardrails\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              "\",\"Payload.$\":\"$\"}},\"DeleteFromLitellm\":{\"Next\":\"DeleteGuardrails\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"ResultPath\":\"$.error\",\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
               {
                 "Ref": "AWS::Partition"
               },
@@ -3793,7 +3922,7 @@
                   "Arn"
                 ]
               },
-              "\",\"Payload.$\":\"$\"}},\"DeleteGuardrails\":{\"Next\":\"DeleteStackChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              "\",\"Payload.$\":\"$\"}},\"DeleteGuardrails\":{\"Next\":\"DeleteStackChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"ResultPath\":\"$.error\",\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
               {
                 "Ref": "AWS::Partition"
               },
@@ -3804,7 +3933,7 @@
                   "Arn"
                 ]
               },
-              "\",\"Payload.$\":\"$\"}},\"DeleteStackChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.cloudformation_stack_arn\",\"IsNull\":false,\"Next\":\"DeleteStack\"}],\"Default\":\"DeleteFromDdb\"},\"DeleteFromDdb\":{\"Next\":\"DeleteSuccess\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              "\",\"Payload.$\":\"$\"}},\"DeleteStackChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.cloudformation_stack_arn\",\"IsNull\":false,\"Next\":\"DeleteStack\"}],\"Default\":\"DeleteFromDdb\"},\"DeleteFromDdb\":{\"Next\":\"DeleteSuccess\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"ResultPath\":\"$.error\",\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
               {
                 "Ref": "AWS::Partition"
               },
@@ -3815,7 +3944,18 @@
                   "Arn"
                 ]
               },
-              "\",\"Payload.$\":\"$\"}},\"DeleteSuccess\":{\"Type\":\"Succeed\"},\"DeleteStack\":{\"Next\":\"MonitorDeleteStack\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              "\",\"Payload.$\":\"$\"}},\"DeleteSuccess\":{\"Type\":\"Succeed\"},\"HandleFailure\":{\"Next\":\"DeleteFailed\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiDeleteModelWorkflowHandleFailureFunc31640E22",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"DeleteStack\":{\"Next\":\"MonitorDeleteStack\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"ResultPath\":\"$.error\",\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
               {
                 "Ref": "AWS::Partition"
               },
@@ -3826,7 +3966,7 @@
                   "Arn"
                 ]
               },
-              "\",\"Payload.$\":\"$\"}},\"MonitorDeleteStack\":{\"Next\":\"PollDeleteStackChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              "\",\"Payload.$\":\"$\"}},\"MonitorDeleteStack\":{\"Next\":\"PollDeleteStackChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"ResultPath\":\"$.error\",\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
               {
                 "Ref": "AWS::Partition"
               },
@@ -3837,7 +3977,7 @@
                   "Arn"
                 ]
               },
-              "\",\"Payload.$\":\"$\"}},\"WaitBeforePollDeleteStack\":{\"Type\":\"Wait\",\"Seconds\":60,\"Next\":\"MonitorDeleteStack\"},\"PollDeleteStackChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.continue_polling\",\"BooleanEquals\":true,\"Next\":\"WaitBeforePollDeleteStack\"}],\"Default\":\"DeleteFromDdb\"}}}"
+              "\",\"Payload.$\":\"$\"}},\"WaitBeforePollDeleteStack\":{\"Type\":\"Wait\",\"Seconds\":60,\"Next\":\"MonitorDeleteStack\"},\"PollDeleteStackChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.continue_polling\",\"BooleanEquals\":true,\"Next\":\"WaitBeforePollDeleteStack\"}],\"Default\":\"DeleteFromDdb\"},\"DeleteFailed\":{\"Type\":\"Fail\"}}}"
             ]
           ]
         },
@@ -3860,7 +4000,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -3909,6 +4049,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -3922,7 +4065,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -3971,6 +4114,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -3984,7 +4130,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -4033,6 +4179,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -4046,7 +4195,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -4095,6 +4244,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -4108,7 +4260,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -4157,6 +4309,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -4170,7 +4325,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Environment": {
           "Variables": {
@@ -4219,6 +4374,74 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiModelsSfnLambdaRoleF400F0BC"
+      ]
+    },
+    "ModelsApiUpdateModelWorkflowHandleFailureFunc6FB84CB9": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "GUARDRAILS_TABLE_NAME": {
+              "Ref": "ModelsApiGuardrailsTableNameParameterParameter9338827B"
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "REST_API_VERSION": "v2",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
+            "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}"
+          }
+        },
+        "Handler": "models.state_machine.update_model.handle_failure",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiModelsSfnLambdaRoleF400F0BC",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 60,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -4307,7 +4530,7 @@
               "Resource": [
                 {
                   "Fn::GetAtt": [
-                    "ModelsApiUpdateModelWorkflowHandleFinishUpdateFunc92E550FB",
+                    "ModelsApiUpdateModelWorkflowHandleFailureFunc6FB84CB9",
                     "Arn"
                   ]
                 },
@@ -4317,33 +4540,7 @@
                     [
                       {
                         "Fn::GetAtt": [
-                          "ModelsApiUpdateModelWorkflowHandleFinishUpdateFunc92E550FB",
-                          "Arn"
-                        ]
-                      },
-                      ":*"
-                    ]
-                  ]
-                }
-              ]
-            },
-            {
-              "Action": "lambda:InvokeFunction",
-              "Effect": "Allow",
-              "Resource": [
-                {
-                  "Fn::GetAtt": [
-                    "ModelsApiUpdateModelWorkflowHandlePollCapacityFunc5376513F",
-                    "Arn"
-                  ]
-                },
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      {
-                        "Fn::GetAtt": [
-                          "ModelsApiUpdateModelWorkflowHandlePollCapacityFunc5376513F",
+                          "ModelsApiUpdateModelWorkflowHandleFailureFunc6FB84CB9",
                           "Arn"
                         ]
                       },
@@ -4404,6 +4601,58 @@
                   ]
                 }
               ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiUpdateModelWorkflowHandlePollCapacityFunc5376513F",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiUpdateModelWorkflowHandlePollCapacityFunc5376513F",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiUpdateModelWorkflowHandleFinishUpdateFunc92E550FB",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiUpdateModelWorkflowHandleFinishUpdateFunc92E550FB",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
             }
           ],
           "Version": "2012-10-17"
@@ -4423,7 +4672,7 @@
           "Fn::Join": [
             "",
             [
-              "{\"StartAt\":\"HandleJobIntake\",\"States\":{\"HandleJobIntake\":{\"Next\":\"HasEcsUpdateChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              "{\"StartAt\":\"HandleJobIntake\",\"States\":{\"HandleJobIntake\":{\"Next\":\"HasEcsUpdateChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"ResultPath\":\"$.error\",\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
               {
                 "Ref": "AWS::Partition"
               },
@@ -4434,7 +4683,7 @@
                   "Arn"
                 ]
               },
-              "\",\"Payload.$\":\"$\"}},\"HasEcsUpdateChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.needs_ecs_update\",\"BooleanEquals\":true,\"Next\":\"HandleEcsUpdate\"}],\"Default\":\"HasGuardrailsUpdateChoice\"},\"HasGuardrailsUpdateChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.needs_guardrails_update\",\"BooleanEquals\":true,\"Next\":\"HandleUpdateGuardrails\"}],\"Default\":\"HasCapacityUpdateChoice\"},\"HasCapacityUpdateChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.has_capacity_update\",\"BooleanEquals\":true,\"Next\":\"HandlePollCapacity\"}],\"Default\":\"HandleFinishUpdate\"},\"HandleUpdateGuardrails\":{\"Next\":\"HasCapacityUpdateChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              "\",\"Payload.$\":\"$\"}},\"HasEcsUpdateChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.needs_ecs_update\",\"BooleanEquals\":true,\"Next\":\"HandleEcsUpdate\"}],\"Default\":\"HasGuardrailsUpdateChoice\"},\"HasGuardrailsUpdateChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.needs_guardrails_update\",\"BooleanEquals\":true,\"Next\":\"HandleUpdateGuardrails\"}],\"Default\":\"HasCapacityUpdateChoice\"},\"HasCapacityUpdateChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.has_capacity_update\",\"BooleanEquals\":true,\"Next\":\"HandlePollCapacity\"}],\"Default\":\"HandleFinishUpdate\"},\"HandleUpdateGuardrails\":{\"Next\":\"HasCapacityUpdateChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"ResultPath\":\"$.error\",\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
               {
                 "Ref": "AWS::Partition"
               },
@@ -4445,29 +4694,18 @@
                   "Arn"
                 ]
               },
-              "\",\"Payload.$\":\"$\"}},\"HandleFinishUpdate\":{\"Next\":\"UpdateSuccess\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              "\",\"Payload.$\":\"$\"}},\"HandleFailure\":{\"Next\":\"UpdateFailed\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
               {
                 "Ref": "AWS::Partition"
               },
               ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
               {
                 "Fn::GetAtt": [
-                  "ModelsApiUpdateModelWorkflowHandleFinishUpdateFunc92E550FB",
+                  "ModelsApiUpdateModelWorkflowHandleFailureFunc6FB84CB9",
                   "Arn"
                 ]
               },
-              "\",\"Payload.$\":\"$\"}},\"WaitBeforeModelAvailable\":{\"Type\":\"Wait\",\"SecondsPath\":\"$.model_warmup_seconds\",\"Next\":\"HandleFinishUpdate\"},\"UpdateSuccess\":{\"Type\":\"Succeed\"},\"HandlePollCapacity\":{\"Next\":\"PollAsgChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
-              {
-                "Ref": "AWS::Partition"
-              },
-              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
-              {
-                "Fn::GetAtt": [
-                  "ModelsApiUpdateModelWorkflowHandlePollCapacityFunc5376513F",
-                  "Arn"
-                ]
-              },
-              "\",\"Payload.$\":\"$\"}},\"WaitBeforePollAsg\":{\"Type\":\"Wait\",\"Seconds\":60,\"Next\":\"HandlePollCapacity\"},\"PollAsgChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.should_continue_capacity_polling\",\"BooleanEquals\":true,\"Next\":\"WaitBeforePollAsg\"}],\"Default\":\"WaitBeforeModelAvailable\"},\"HandleEcsUpdate\":{\"Next\":\"HandlePollEcsDeployment\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              "\",\"Payload.$\":\"$\"}},\"HandleEcsUpdate\":{\"Next\":\"HandlePollEcsDeployment\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"ResultPath\":\"$.error\",\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
               {
                 "Ref": "AWS::Partition"
               },
@@ -4478,7 +4716,7 @@
                   "Arn"
                 ]
               },
-              "\",\"Payload.$\":\"$\"}},\"HandlePollEcsDeployment\":{\"Next\":\"PollEcsDeploymentChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              "\",\"Payload.$\":\"$\"}},\"HandlePollEcsDeployment\":{\"Next\":\"PollEcsDeploymentChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"ResultPath\":\"$.error\",\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
               {
                 "Ref": "AWS::Partition"
               },
@@ -4489,7 +4727,29 @@
                   "Arn"
                 ]
               },
-              "\",\"Payload.$\":\"$\"}},\"WaitBeforePollEcsDeployment\":{\"Type\":\"Wait\",\"Seconds\":60,\"Next\":\"HandlePollEcsDeployment\"},\"PollEcsDeploymentChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.should_continue_ecs_polling\",\"BooleanEquals\":true,\"Next\":\"WaitBeforePollEcsDeployment\"}],\"Default\":\"HasGuardrailsUpdateChoice\"}}}"
+              "\",\"Payload.$\":\"$\"}},\"WaitBeforePollEcsDeployment\":{\"Type\":\"Wait\",\"Seconds\":60,\"Next\":\"HandlePollEcsDeployment\"},\"PollEcsDeploymentChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.should_continue_ecs_polling\",\"BooleanEquals\":true,\"Next\":\"WaitBeforePollEcsDeployment\"}],\"Default\":\"HasGuardrailsUpdateChoice\"},\"HandlePollCapacity\":{\"Next\":\"PollAsgChoice\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"ResultPath\":\"$.error\",\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiUpdateModelWorkflowHandlePollCapacityFunc5376513F",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"WaitBeforePollAsg\":{\"Type\":\"Wait\",\"Seconds\":60,\"Next\":\"HandlePollCapacity\"},\"PollAsgChoice\":{\"Type\":\"Choice\",\"Choices\":[{\"Variable\":\"$.should_continue_capacity_polling\",\"BooleanEquals\":true,\"Next\":\"WaitBeforePollAsg\"}],\"Default\":\"WaitBeforeModelAvailable\"},\"WaitBeforeModelAvailable\":{\"Type\":\"Wait\",\"SecondsPath\":\"$.model_warmup_seconds\",\"Next\":\"HandleFinishUpdate\"},\"HandleFinishUpdate\":{\"Next\":\"UpdateSuccess\",\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Catch\":[{\"ErrorEquals\":[\"States.ALL\"],\"ResultPath\":\"$.error\",\"Next\":\"HandleFailure\"}],\"Type\":\"Task\",\"OutputPath\":\"$.Payload\",\"Resource\":\"arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":states:::lambda:invoke\",\"Parameters\":{\"FunctionName\":\"",
+              {
+                "Fn::GetAtt": [
+                  "ModelsApiUpdateModelWorkflowHandleFinishUpdateFunc92E550FB",
+                  "Arn"
+                ]
+              },
+              "\",\"Payload.$\":\"$\"}},\"UpdateSuccess\":{\"Type\":\"Succeed\"},\"UpdateFailed\":{\"Type\":\"Fail\"}}}"
             ]
           ]
         },
@@ -4631,7 +4891,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Description": "Manage model",
         "Environment": {
@@ -4662,6 +4922,12 @@
             "MANAGEMENT_KEY_NAME": {
               "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
+            "LISA_AUDIT_API_GATEWAY_BASE_PATH": "/models",
             "LISA_RAG_VECTOR_STORE_TABLE_PS_NAME": "/dev/test-lisa/lisa/ragVectorStoreTableName",
             "LISA_RAG_COLLECTIONS_TABLE_PS_NAME": "/dev/test-lisa/lisa/ragCollectionsTableName"
           }
@@ -4697,6 +4963,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -4753,7 +5022,7 @@
         ]
       }
     },
-    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandlerf03aF6539147": {
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler868c6BA28232": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
@@ -4792,7 +5061,7 @@
         }
       }
     },
-    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler65809D677E70": {
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandlerdff1221C7EA1": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
@@ -4836,7 +5105,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Description": "Manage model",
         "Environment": {
@@ -4867,6 +5136,12 @@
             "MANAGEMENT_KEY_NAME": {
               "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
+            "LISA_AUDIT_API_GATEWAY_BASE_PATH": "/models",
             "LISA_RAG_VECTOR_STORE_TABLE_PS_NAME": "/dev/test-lisa/lisa/ragVectorStoreTableName",
             "LISA_RAG_COLLECTIONS_TABLE_PS_NAME": "/dev/test-lisa/lisa/ragCollectionsTableName"
           }
@@ -4902,6 +5177,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -4934,7 +5212,7 @@
         "RetentionInDays": 30
       }
     },
-    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandlerae5d7BABF7C0": {
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler5a4a47590EFC": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
@@ -5150,7 +5428,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Description": "Remove api_key from existing Bedrock models to fix Invalid API Key format errors",
         "Environment": {
@@ -5192,6 +5470,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -5339,7 +5620,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f71966dbba5fe7df6f098e4808336e7fdb7e6e2acc2b956377d827b666136124.zip"
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
         },
         "Description": "One-time backfill of context_window for existing model DynamoDB records",
         "Environment": {
@@ -5385,6 +5666,9 @@
             },
             {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
             }
           ]
         }
@@ -5522,6 +5806,289 @@
             "Arn"
           ]
         }
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
+    "ModelsApiLiteLLMSyncLiteLLMModelSyncRoleD581AB58": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    "ModelsApiLiteLLMSyncLiteLLMModelSyncRoleDefaultPolicy5D1B9A53": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "dynamodb:Scan",
+                "dynamodb:GetItem",
+                "dynamodb:UpdateItem"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "ModelsApiModelTable72B9582E",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": "ssm:GetParameter",
+              "Effect": "Allow",
+              "Resource": "arn:aws:ssm:us-iso-east-1:012345678901:parameter/dev/test-lisa/lisa/*"
+            },
+            {
+              "Action": "secretsmanager:GetSecretValue",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:aws:secretsmanager:us-iso-east-1:012345678901:secret:",
+                    {
+                      "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+                    },
+                    "*"
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": "iam:GetServerCertificate",
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "ModelsApiLiteLLMSyncLiteLLMModelSyncRoleDefaultPolicy5D1B9A53",
+        "Roles": [
+          {
+            "Ref": "ModelsApiLiteLLMSyncLiteLLMModelSyncRoleD581AB58"
+          }
+        ]
+      }
+    },
+    "ModelsApiLiteLLMSyncLiteLLMModelSyncD3E7D40E": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "f004364792c08d9b9e1290372f6535dd0bac234960e73ad42a9ff69b5ab6855b.zip"
+        },
+        "Description": "Sync all models from DynamoDB to LiteLLM when the LiteLLM database is created or updated",
+        "Environment": {
+          "Variables": {
+            "MODEL_TABLE_NAME": {
+              "Ref": "ModelsApiModelTable72B9582E"
+            },
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "REST_API_VERSION": "v2",
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev"
+          }
+        },
+        "Handler": "models.litellm_model_sync.handler",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiLiteLLMSyncLiteLLMModelSyncRoleD581AB58",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 600,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ModelsApiLiteLLMSyncLiteLLMModelSyncRoleDefaultPolicy5D1B9A53",
+        "ModelsApiLiteLLMSyncLiteLLMModelSyncRoleD581AB58"
+      ]
+    },
+    "ModelsApiLiteLLMSyncLiteLLMModelSyncProviderframeworkonEventServiceRole1125FD41": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    "ModelsApiLiteLLMSyncLiteLLMModelSyncProviderframeworkonEventServiceRoleDefaultPolicy9FC75DE2": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ModelsApiLiteLLMSyncLiteLLMModelSyncD3E7D40E",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "ModelsApiLiteLLMSyncLiteLLMModelSyncD3E7D40E",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "lambda:GetFunction",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "ModelsApiLiteLLMSyncLiteLLMModelSyncD3E7D40E",
+                  "Arn"
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "ModelsApiLiteLLMSyncLiteLLMModelSyncProviderframeworkonEventServiceRoleDefaultPolicy9FC75DE2",
+        "Roles": [
+          {
+            "Ref": "ModelsApiLiteLLMSyncLiteLLMModelSyncProviderframeworkonEventServiceRole1125FD41"
+          }
+        ]
+      }
+    },
+    "ModelsApiLiteLLMSyncLiteLLMModelSyncProviderframeworkonEvent9C05E234": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "07a90cc3efdfc34da22208dcd9d211f06f5b0e01b21e778edc7c3966b1f61d57.zip"
+        },
+        "Description": "AWS CDK resource provider framework - onEvent (LisaModels/ModelsApi/LiteLLMSync/LiteLLMModelSyncProvider)",
+        "Environment": {
+          "Variables": {
+            "USER_ON_EVENT_FUNCTION_ARN": {
+              "Fn::GetAtt": [
+                "ModelsApiLiteLLMSyncLiteLLMModelSyncD3E7D40E",
+                "Arn"
+              ]
+            }
+          }
+        },
+        "Handler": "framework.onEvent",
+        "LoggingConfig": {
+          "ApplicationLogLevel": "FATAL",
+          "LogFormat": "JSON"
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "ModelsApiLiteLLMSyncLiteLLMModelSyncProviderframeworkonEventServiceRole1125FD41",
+            "Arn"
+          ]
+        },
+        "Runtime": "nodejs22.x",
+        "Timeout": 900
+      },
+      "DependsOn": [
+        "ModelsApiLiteLLMSyncLiteLLMModelSyncProviderframeworkonEventServiceRoleDefaultPolicy9FC75DE2",
+        "ModelsApiLiteLLMSyncLiteLLMModelSyncProviderframeworkonEventServiceRole1125FD41"
+      ]
+    },
+    "ModelsApiLiteLLMSyncLiteLLMModelSyncResource683F524E": {
+      "Type": "AWS::CloudFormation::CustomResource",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "ModelsApiLiteLLMSyncLiteLLMModelSyncProviderframeworkonEvent9C05E234",
+            "Arn"
+          ]
+        },
+        "timestamp": "2026-04-04T07:23:14.272Z"
       },
       "UpdateReplacePolicy": "Delete",
       "DeletionPolicy": "Delete"

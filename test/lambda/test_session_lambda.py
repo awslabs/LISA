@@ -868,6 +868,47 @@ def test_find_first_human_message_unencrypted_list_content_with_file_context():
     assert result == "Actual question"
 
 
+def test_find_first_human_message_with_rag_context():
+    """Test _find_first_human_message with RAG context in separate text items (modern sessions)."""
+    session = {
+        "sessionId": "test-session",
+        "is_encrypted": False,
+        "history": [
+            {
+                "type": "human",
+                "content": [
+                    {"text": "Context from document search:\nDocument 1 content\nDocument 2 content"},
+                    {"text": "What is the answer to my question?"},
+                ],
+            }
+        ],
+    }
+
+    result = _find_first_human_message(session, "test-user")
+    assert result == "What is the answer to my question?"
+
+
+def test_find_first_human_message_with_rag_and_file_context():
+    """Test _find_first_human_message with both file context and RAG context."""
+    session = {
+        "sessionId": "test-session",
+        "is_encrypted": False,
+        "history": [
+            {
+                "type": "human",
+                "content": [
+                    {"text": "File context: uploaded_file.txt\nFile content here"},
+                    {"text": "Context from document search:\nRAG document content"},
+                    {"text": "User's actual prompt here"},
+                ],
+            }
+        ],
+    }
+
+    result = _find_first_human_message(session, "test-user")
+    assert result == "User's actual prompt here"
+
+
 def test_find_first_human_message_unencrypted_unhandled_content():
     """Test _find_first_human_message with unencrypted session and unhandled content type."""
     session = {
@@ -1526,6 +1567,41 @@ def test_map_session_encrypted():
         # Result is a SessionSummary model - use property access
         assert result.isEncrypted is True
         assert result.firstHumanMessage == "Decrypted message"
+
+
+def test_map_session_strips_merged_context_from_string_message():
+    """Session summary should skip context-prefixed string entirely."""
+    session = {
+        "sessionId": "test-session",
+        "history": [
+            {
+                "type": "human",
+                "content": ("Context from document search:\n" "Some retrieved content\n\n" "who is dustin?"),
+            }
+        ],
+    }
+
+    result = _map_session(session, "test-user")
+    assert result.firstHumanMessage == ""
+
+
+def test_map_session_strips_context_from_list_message_items():
+    """Session summary should skip context list items and show user prompt item."""
+    session = {
+        "sessionId": "test-session",
+        "history": [
+            {
+                "type": "human",
+                "content": [
+                    {"type": "text", "text": "File context:\nSome file text"},
+                    {"type": "text", "text": "who is dustin?"},
+                ],
+            }
+        ],
+    }
+
+    result = _map_session(session, "test-user")
+    assert result.firstHumanMessage == "who is dustin?"
 
 
 # Delete Session with Video Cleanup Tests

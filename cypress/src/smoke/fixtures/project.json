@@ -2,13 +2,13 @@
   {
     "projectId": "proj-001",
     "name": "Research",
-    "createTime": "2026-01-15T10:00:00.000000+00:00",
-    "lastUpdated": "2026-01-15T10:00:00.000000+00:00"
+    "_createDaysAgo": 45,
+    "_updatedDaysAgo": 30
   },
   {
     "projectId": "proj-002",
     "name": "Product Dev",
-    "createTime": "2026-01-10T14:30:00.000000+00:00",
-    "lastUpdated": "2026-01-20T09:15:00.000000+00:00"
+    "_createDaysAgo": 50,
+    "_updatedDaysAgo": 35
   }
 ]

@@ -27,6 +27,8 @@ export type IChatAssistantStack = {
     collectionIds: string[];
     mcpServerIds: string[];
     mcpToolIds: string[];
+    /** When missing (legacy stacks), treat as []. */
+    bedrockAgentIds?: string[];
     personaPromptId?: string | null;
     directivePromptIds: string[];
     allowedGroups: string[];
@@ -43,6 +45,7 @@ export type IChatAssistantStackRequest = {
     collectionIds: string[];
     mcpServerIds: string[];
     mcpToolIds: string[];
+    bedrockAgentIds: string[];
     personaPromptId?: string | null;
     directivePromptIds: string[];
     allowedGroups: string[];
@@ -56,6 +59,7 @@ export const ChatAssistantStackRequestSchema = z.object({
     collectionIds: z.array(z.string()).default([]),
     mcpServerIds: z.array(z.string()).default([]),
     mcpToolIds: z.array(z.string()).default([]),
+    bedrockAgentIds: z.array(z.string()).default([]),
     personaPromptId: z.string().nullable().optional(),
     directivePromptIds: z.array(z.string()).default([]),
     allowedGroups: z.array(z.string()).default([]),
@@ -63,6 +67,9 @@ export const ChatAssistantStackRequestSchema = z.object({
     if (data.mcpServerIds.length > 0 && data.modelIds.length > 0) {
         // AS-9: When at least one MCP Server is selected, at least one model must support MCP tools.
         // We cannot validate "model supports MCP" here without model list; validation is done in UI.
+    }
+    if (data.bedrockAgentIds.length > 0 && data.modelIds.length > 0) {
+        // Same as MCP: Bedrock tools require a text-generation (tool-capable) model; validated in UI.
     }
 });
 

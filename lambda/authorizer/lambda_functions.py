@@ -113,9 +113,10 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         # Use auth provider for access checks (consistent with auth.py)
         auth_provider = get_authorization_provider()
         is_admin_user = auth_provider.check_admin_access(username, user_groups)
+        is_rag_admin_user = auth_provider.check_rag_admin_access(username, user_groups)
         has_app_access = auth_provider.check_app_access(username, user_groups)
 
-        if not is_admin_user and not has_app_access:
+        if not is_admin_user and not is_rag_admin_user and not has_app_access:
             logger.info(f"User {username} denied access - no valid authorization found")
             if audit_area:
                 _log_audit(decision="Deny", username=username, auth_type="jwt")

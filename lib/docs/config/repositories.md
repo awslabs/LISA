@@ -33,7 +33,7 @@ The repository-collection model provides a two-tier organizational structure ana
 Customers have two methods to load files into repositories configured with LISA:
 
 1. **Manual Upload**: Load files via the chat assistant user interface (UI), or API
-2. **Automated Pipeline**: (Admins-only) Configure LISA's ingestion pipelines for automated document processing
+2. **Automated Pipeline**: (Admins and RAG Admins) Configure LISA's ingestion pipelines for automated document processing. Admins can configure pipelines on any repository; RAG Admins can configure pipelines on repositories they have group access to. This role is especially useful in multi-tenant environments.
 
 ## Configuration
 
@@ -128,6 +128,7 @@ Collection access is controlled through user groups:
 - **Repository-level Groups**: Collections inherit allowed groups from their parent repository by default
 - **Collection-level Groups**: Collections can override with their own group restrictions for finer control
 - **Admin Access**: Administrators have full access to all collections across all repositories
+- **RAG Admin Access**: RAG Admins can create, update, and delete collections on repositories they have group access to. They cannot modify repository-level settings or `allowedGroups`. This role is especially useful in multi-tenant environments.
 - **User Collection Creation**: Repositories can be configured to allow or restrict user-created collections via the `allowUserCollections` flag
 
 ## Configuration Examples
@@ -248,16 +249,22 @@ curl -s -H 'Authorization: Bearer <your_token>' \
 
 ## UI Components
 
-### RAG Repository Management (Admin)
+### RAG Repository Management (Admin and RAG Admin)
 
-Administrators access repository management through the Admin Configurations page. This interface provides:
+Administrators and RAG Admins access repository management through the Administration menu. The capabilities available depend on the user's role:
 
+**Administrators** have full access, including:
 - Create, update, and delete repositories
 - Configure vector store implementation (OpenSearch, PGVector, Bedrock Knowledge Base)
 - Set default embedding models and chunking strategies
-- Define repository-level access controls
+- Define repository-level access controls (`allowedGroups`)
 - Configure metadata tags
 - Enable or disable user-created collections
+
+**RAG Admins** have scoped access on repositories they belong to via group membership:
+- Create, update, and delete collections
+- Update ingestion pipelines
+- Cannot create or delete repositories, or modify `allowedGroups`
 
 ### RAG Collection Library
 

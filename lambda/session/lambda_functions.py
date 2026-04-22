@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Lambda functions for managing sessions."""
+
 import base64
 import json
 import logging

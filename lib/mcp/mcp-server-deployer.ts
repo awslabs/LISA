@@ -69,6 +69,8 @@ export class McpServerDeployer extends Construct {
             'taskRole': props.config.roles?.ECSModelTaskRole,
             'certificateAuthorityBundle': props.config.certificateAuthorityBundle,
             'pypiConfig': props.config.pypiConfig,
+            'permissionsBoundaryAspect': props.config.permissionsBoundaryAspect,
+            'convertInlinePoliciesToManaged': props.config.convertInlinePoliciesToManaged,
         };
 
         // Get CDK layer for deployer Lambda

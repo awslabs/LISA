@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """APIGW endpoints for managing models."""
+
 import logging
 import os
 from typing import Annotated

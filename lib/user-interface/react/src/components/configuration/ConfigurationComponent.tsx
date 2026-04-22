@@ -102,17 +102,18 @@ export function ConfigurationComponent (): ReactElement {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [initialForm, state.form]);
 
+    const configVersionId = config?.[0]?.versionId;
+
     useEffect(() => {
         if (!isFetchingConfig && config != null) {
             setState({
-                ...state,
                 form: {
                     ...config[0]?.configuration,
                 },
             });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [config, isFetchingConfig]);
+    }, [configVersionId, isFetchingConfig]);
 
     useEffect(() => {
         if (!isUpdating && isUpdateSuccess) {

@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Middleware modules."""
+
 from .auth_middleware import auth_middleware, require_admin, require_auth
 from .exception_handlers import register_exception_handlers
 from .input_validation import validate_input_middleware

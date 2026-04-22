@@ -24,6 +24,7 @@ New code should import from the specific utility modules:
 - aws_helpers: get_cert_path, get_rest_api_container_endpoint, get_lambda_role_name, get_account_and_partition
 - dict_helpers: merge_fields, get_property_path, get_item
 """
+
 import logging
 from collections.abc import Callable
 from typing import Any, TypeVar

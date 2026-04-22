@@ -78,7 +78,7 @@ export const useSession = (sessionId: string, getSessionById: any) => {
         } finally {
             setLoadingSession(false);
         }
-    }, [getSessionById, auth.user?.profile.sub]);
+    }, [getSessionById, auth.user]);
 
     const createNewSession = useCallback(() => {
         const newSessionId = uuidv4();

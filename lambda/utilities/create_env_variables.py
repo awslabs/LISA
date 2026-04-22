@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Module to create and set environment variables for Lambda functions."""
+
 import os
 
 import boto3

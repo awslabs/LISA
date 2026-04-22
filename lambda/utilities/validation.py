@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Validation utilities for Lambda functions."""
+
 import logging
 from typing import Any
 

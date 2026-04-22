@@ -185,11 +185,13 @@ export class VectorStoreCreatorStack extends Construct {
             ...pickFields(props.config, [
                 'accountNumber',
                 'appName',
+                'convertInlinePoliciesToManaged',
                 'deploymentName',
                 'deploymentStage',
                 'deploymentPrefix',
                 'iamRdsAuth',
                 'partition',
+                'permissionsBoundaryAspect',
                 'region',
                 'removalPolicy',
                 'subnets',

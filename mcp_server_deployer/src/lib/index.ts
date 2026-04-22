@@ -15,7 +15,7 @@
 */
 
 import { App, Aspects } from 'aws-cdk-lib';
-import { AddPermissionBoundary } from '@cdklabs/cdk-enterprise-iac';
+import { AddPermissionBoundary, ConvertInlinePoliciesToManaged } from '@cdklabs/cdk-enterprise-iac';
 import { PartialConfigSchema } from '../../../lib/schema';
 import { LisaMcpStack } from './lisa-mcp-stack';
 import { McpServerConfig } from './utils';
@@ -66,6 +66,10 @@ const stack = new LisaMcpStack(app, stackName!, mcpServerProps);
 
 if (config.permissionsBoundaryAspect) {
     Aspects.of(stack).add(new AddPermissionBoundary(config.permissionsBoundaryAspect!));
+}
+
+if (config.convertInlinePoliciesToManaged) {
+    Aspects.of(stack).add(new ConvertInlinePoliciesToManaged());
 }
 
 app.synth();

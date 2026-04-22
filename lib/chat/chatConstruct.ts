@@ -31,6 +31,7 @@ import { McpApi } from './api/mcp';
 import { UserPreferencesApi } from './api/user-preferences';
 import { ChatAssistantStacksApi } from './api/chat-assistant-stacks-api';
 import { ProjectsApi } from './api/projects';
+import { WorkflowOrchestrationApi } from './api/workflow-orchestration-api';
 
 export type LisaChatProps = {
     authorizer: IAuthorizer;
@@ -129,6 +130,15 @@ export class LisaChatApplicationConstruct extends Construct {
         });
 
         new ChatAssistantStacksApi(scope, 'ChatAssistantStacksApi', {
+            authorizer,
+            config,
+            restApiId,
+            rootResourceId,
+            securityGroups,
+            vpc,
+        });
+
+        new WorkflowOrchestrationApi(scope, 'WorkflowOrchestrationApi', {
             authorizer,
             config,
             restApiId,

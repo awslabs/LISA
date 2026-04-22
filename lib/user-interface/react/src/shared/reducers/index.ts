@@ -31,11 +31,13 @@ import { userPreferencesApi } from '@/shared/reducers/user-preferences.reducer';
 import { apiTokenApi } from './api-token.reducer';
 import { chatAssistantStacksApi } from './chat-assistant-stacks.reducer';
 import { projectApi } from './project.reducer';
+import workflowReducer from './workflow.reducer';
 
 const rootReducer: ReducersMapObject = {
     user: userReducer,
     notification: notificationReducer,
     modal: modalReducer,
+    workflow: workflowReducer,
     breadcrumbGroup: breadcrumbGroup,
     [modelManagementApi.reducerPath]: modelManagementApi.reducer,
     [configurationApi.reducerPath]: configurationApi.reducer,

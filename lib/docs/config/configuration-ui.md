@@ -49,6 +49,20 @@ The Chat Features section contains toggles that control which capabilities are a
 | MCP Workbench | Provides an experimentation workbench for MCP tools. See [MCP Workbench](/config/mcp-workbench). Requires MCP Server Connections to be enabled first. |
 | MCP AWS Sessions | Enables the [AWS Sessions](/config/mcp#aws-sessions) feature, allowing users to connect AWS credentials per chat session for use by MCP tools. Requires MCP Server Connections to be enabled first. |
 
+### Workflow Orchestration
+
+| Flag | Description |
+|------|-------------|
+| `workflowOrchestrationEnabled` | Enables Workflow Management pages, workflow APIs, and workflow execution entry points in Chat. |
+| `workflowApprovalRequiredByDefault` | Requires approval gates by default for workflow steps that can trigger external actions. Users can still approve/reject each gate at runtime. |
+| `workflowScheduleEnabled` | Enables scheduled workflow runs through EventBridge-backed scheduling. If disabled, workflows can only be run manually or by direct API invocation. |
+
+> [!NOTE]
+> `workflowScheduleEnabled` depends on `workflowOrchestrationEnabled`. If orchestration is disabled, schedule controls are not available.
+
+> [!CAUTION]
+> Keep `workflowApprovalRequiredByDefault` enabled in shared or production environments unless you have an explicit risk acceptance process and strict workflow scoping controls.
+
 ### API Tokens
 
 | Toggle | Description |

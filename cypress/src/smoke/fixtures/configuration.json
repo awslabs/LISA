@@ -26,7 +26,8 @@
         "bedrockAgents": true,
         "awsSessions": false,
         "showMcpWorkbench": true,
-        "projectOrganization": true
+        "projectOrganization": true,
+        "workflowManagement": true
       },
       "maxProjectsPerUser": 50
     },

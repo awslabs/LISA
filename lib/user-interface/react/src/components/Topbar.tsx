@@ -212,6 +212,15 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                 external: false,
                                 href: '/chat-assistant-stacks',
                             } as ButtonDropdownProps.Item] : []),
+                            ...(isUserAdmin && configs?.configuration?.enabledComponents?.workflowManagement ? [{
+                                id: 'workflow-management',
+                                type: 'button',
+                                variant: 'link',
+                                text: 'Workflow Templates',
+                                disableUtilityCollapse: false,
+                                external: false,
+                                href: '/workflow-management',
+                            } as ButtonDropdownProps.Item] : []),
                             ...(isUserAdmin && configs?.configuration.enabledComponents?.showMcpWorkbench ? [{
                                 id: 'mcp-workbench',
                                 type: 'button',

@@ -8,6 +8,28 @@ This repository include an example chatbot web application. The react based web 
 
 When enabled by an administrator, the Chat UI shows a **Chat Assistants** section in the left pane (above History). Each assistant is a preconfigured stack of models, RAG repositories and collections, MCP servers and tools, and prompts. Clicking an assistant starts a new session with that configuration. Sessions appear in History and follow the same behavior as other chats (e.g. you can rename them; the model cannot be changed after selection). See [Chat Assistant Stacks](/config/chat-assistant-stacks) for administrator and user details.
 
+### Workflow Orchestration
+
+When `workflowOrchestrationEnabled` is active, users can run configured workflows that execute multi-step tool and LLM actions. Some runs can pause for approval and resume after approval is recorded.
+
+#### Approval model
+
+- If `workflowApprovalRequiredByDefault` is enabled, workflow steps that call external tools require explicit approval before execution.
+- Approval gates are evaluated per run. Approving one run does not auto-approve future runs unless a workflow is configured to do so by policy.
+- Approvals should be handled by authorized operators with the context needed to verify the requested action.
+
+#### Scheduling limitations
+
+- Scheduled runs require `workflowScheduleEnabled` and are intended for deterministic, repeatable workflows.
+- Scheduled execution does not bypass approval requirements. Runs still pause when a gated step requires approval.
+- If scheduling is disabled, existing workflow definitions remain available but must be started manually.
+
+#### Security considerations
+
+- Prefer least-privilege identities for tools invoked by workflows, especially for workflows that can modify external systems.
+- Review workflow definitions for high-impact tool actions before enabling schedules.
+- Keep audit visibility enabled so workflow approvals, rejections, and executions are traceable during incident response.
+
 ### Document Summarization Feature
 
 The Document Summarization feature enables efficient document processing through LISA's non-RAG context functionality. Users can streamline their workflow via an intuitive modal interface that facilitates document upload, LLM selection, and customized summarization template configuration. The system generates comprehensive document summaries tailored to specific requirements.

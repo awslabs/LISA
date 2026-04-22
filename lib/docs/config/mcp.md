@@ -150,4 +150,18 @@ When **AWS Sessions** is enabled (Administration → Configuration → MCP secti
 >
 > AWS Sessions requires MCP Server Connections to be enabled. Administrators can disable AWS Sessions independently if they do not want users connecting AWS credentials in chat.
 
+## Workflow Orchestration Interactions
+
+Workflow orchestration can invoke MCP tools when workflow steps are configured for MCP-backed actions. The following configuration flags control rollout behavior for this integration:
+
+- `workflowOrchestrationEnabled`: Enables workflow orchestration APIs and workflow execution from Chat.
+- `workflowApprovalRequiredByDefault`: Requires approval checkpoints before external actions are executed.
+- `workflowScheduleEnabled`: Enables scheduled workflow runs; disabled means MCP-backed workflows run only when manually triggered.
+
+### Guardrails and security
+
+- Keep `workflowApprovalRequiredByDefault` enabled for MCP-integrated workflows unless your environment has explicit compensating controls.
+- Scheduled workflows should only use stable MCP tools and scoped credentials to reduce unintended repeated actions.
+- Validate server-level and tool-level opt-in settings before enabling scheduling so users do not unintentionally execute broad MCP capabilities.
+
 ![MCP Example](../assets/mcp_toolchain.gif)

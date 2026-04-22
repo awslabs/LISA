@@ -45,6 +45,7 @@ export type IEnabledComponents = {
     enableUserApiTokens: boolean;
     chatAssistantStacks: boolean;
     projectOrganization: boolean;
+    workflowManagement: boolean;
 };
 
 export type ISystemBannerConfiguration = {
@@ -107,6 +108,7 @@ export const enabledComponentsSchema = z.object({
     enableUserApiTokens: z.boolean().default(false),
     chatAssistantStacks: z.boolean().default(false),
     projectOrganization: z.boolean().default(false),
+    workflowManagement: z.boolean().default(false),
 });
 
 export const globalConfigSchema = z.object({

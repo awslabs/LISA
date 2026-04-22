@@ -53,6 +53,7 @@ const ModelComparisonPage = lazy(() => import('./pages/ModelComparison'));
 const McpWorkbench = lazy(() => import('./pages/McpWorkbench'));
 const ChatAssistantStacks = lazy(() => import('./pages/ChatAssistantStacks'));
 const BedrockAgentManagement = lazy(() => import('./pages/BedrockAgentManagement'));
+const WorkflowManagement = lazy(() => import('./pages/WorkflowManagement'));
 
 export type RouteProps = {
     children: ReactElement[] | ReactElement;
@@ -331,6 +332,14 @@ function App () {
                                     element={
                                         <AdminRoute>
                                             <ChatAssistantStacks setNav={setNav} />
+                                        </AdminRoute>
+                                    }
+                                />}
+                                {config?.configuration?.enabledComponents?.workflowManagement && <Route
+                                    path='workflow-management'
+                                    element={
+                                        <AdminRoute>
+                                            <WorkflowManagement setNav={setNav} />
                                         </AdminRoute>
                                     }
                                 />}

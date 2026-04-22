@@ -197,6 +197,33 @@ describe('Topbar', () => {
         expect(screen.queryByText('Administration')).not.toBeInTheDocument();
     });
 
+    it('shows workflow templates link for admins when enabled', async () => {
+        const storeModule = await import('@/config/store');
+        (storeModule.useAppSelector as any).mockImplementation((selector: any) => {
+            if (selector === selectCurrentUserIsAdmin) return true;
+            if (selector === selectCurrentUserIsRagAdmin) return false;
+            if (selector === selectCurrentUserIsApiUser) return false;
+            if (selector === selectCurrentUsername) return 'Admin User';
+            return null;
+        });
+        const user = userEvent.setup();
+
+        renderTopbar({
+            configs: {
+                configuration: {
+                    enabledComponents: {
+                        workflowManagement: true,
+                    },
+                },
+            } as any
+        });
+
+        const adminDropdowns = screen.getAllByText('Administration');
+        await user.click(adminDropdowns[0]);
+
+        expect(screen.getByText('Workflow Templates')).toBeInTheDocument();
+    });
+
     it('calls signinRedirect when sign in is clicked for unauthenticated user', async () => {
         const user = userEvent.setup();
 

@@ -27,7 +27,8 @@ const ragOptions = {
 const libraryOptions = {
     modelLibrary: 'Model Library',
     showRagLibrary: 'Document Library',
-    showPromptTemplateLibrary: 'Prompt Template Library'
+    showPromptTemplateLibrary: 'Prompt Template Library',
+    workflowManagement: 'Workflow Templates'
 };
 
 const inContextOptions = {

@@ -243,11 +243,12 @@ class TestRagMixin:
 
         logging.disable(logging.CRITICAL)
 
-        docs = lisa_api.similarity_search(repo_id=repo_id, query=query, k=5, collection_id=collection_id)
+        result = lisa_api.similarity_search(repo_id=repo_id, query=query, k=5, collection_id=collection_id)
 
         # Re-enable logging
         logging.disable(logging.NOTSET)
 
+        docs = result["docs"]
         assert len(docs) == 2
         assert docs[0]["score"] == 0.95
         assert "machine learning" in docs[0]["Document"]["page_content"].lower()
@@ -272,11 +273,66 @@ class TestRagMixin:
             responses.GET, f"{api_url}/repository/{repo_id}/similaritySearch", json=expected_response, status=200
         )
 
-        docs = lisa_api.similarity_search(repo_id=repo_id, query=query, model_name=model_name)
+        result = lisa_api.similarity_search(repo_id=repo_id, query=query, model_name=model_name)
 
-        assert len(docs) == 0
+        assert len(result["docs"]) == 0
         # Verify model_name was sent
         assert responses.calls[0].request.params["modelName"] == model_name
+
+    @responses.activate
+    def test_similarity_search_with_search_mode(self, lisa_api: LisaApi, api_url: str):
+        """Test similarity search with search_mode=hybrid returns docs and metadata."""
+        repo_id = "bedrock-kb-repo"
+        collection_id = "ds-123"
+        query = "What is machine learning?"
+
+        expected_response = {
+            "docs": [
+                {
+                    "Document": {
+                        "page_content": "ML is a subset of AI...",
+                        "metadata": {"source": "s3://bucket/doc.pdf"},
+                    }
+                }
+            ],
+            "metadata": {
+                "search_mode": "hybrid",
+                "actual_mode_used": "hybrid",
+                "backend": "bedrock_knowledge_base",
+                "hybrid_supported": True,
+            },
+        }
+
+        responses.add(
+            responses.GET, f"{api_url}/repository/{repo_id}/similaritySearch", json=expected_response, status=200
+        )
+
+        result = lisa_api.similarity_search(
+            repo_id=repo_id, query=query, collection_id=collection_id, search_mode="hybrid"
+        )
+
+        assert len(result["docs"]) == 1
+        assert result["metadata"]["search_mode"] == "hybrid"
+        assert result["metadata"]["hybrid_supported"] is True
+        assert responses.calls[0].request.params["searchMode"] == "hybrid"
+
+    @responses.activate
+    def test_similarity_search_default_no_metadata(self, lisa_api: LisaApi, api_url: str):
+        """Test similarity search without search_mode omits searchMode param and metadata."""
+        repo_id = "pgvector-rag"
+        query = "test"
+
+        expected_response = {"docs": []}
+
+        responses.add(
+            responses.GET, f"{api_url}/repository/{repo_id}/similaritySearch", json=expected_response, status=200
+        )
+
+        result = lisa_api.similarity_search(repo_id=repo_id, query=query, model_name="test-model")
+
+        assert result == {"docs": []}
+        assert "metadata" not in result
+        assert "searchMode" not in responses.calls[0].request.params
 
     @responses.activate
     def test_list_documents_error(self, lisa_api: LisaApi, api_url: str):

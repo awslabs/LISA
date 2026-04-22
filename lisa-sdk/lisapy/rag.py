@@ -186,8 +186,15 @@ class RagMixin(BaseMixin):
             raise parse_error(response.status_code, response)
 
     def similarity_search(
-        self, repo_id: str, query: str, k: int = 3, collection_id: str | None = None, model_name: str | None = None
-    ) -> list[dict]:
+        self,
+        repo_id: str,
+        query: str,
+        k: int = 3,
+        collection_id: str | None = None,
+        model_name: str | None = None,
+        search_mode: str | None = None,
+        include_score: bool = False,
+    ) -> dict:
         """Perform similarity search.
 
         Args:
@@ -196,6 +203,11 @@ class RagMixin(BaseMixin):
             k: Number of results
             collection_id: Optional collection id (will use collection's embedding model)
             model_name: Optional model name (required if collection_id not provided)
+            search_mode: Optional search mode ('vector' or 'hybrid')
+            include_score: Include similarity scores in results
+
+        Returns:
+            Dict with 'docs' list and optional 'metadata' (present for hybrid requests)
         """
         url = f"{self.url}/repository/{repo_id}/similaritySearch"
         params: dict[str, str | int] = {"query": query, "repositoryType": repo_id, "topK": k}
@@ -206,6 +218,12 @@ class RagMixin(BaseMixin):
         if model_name:
             params["modelName"] = model_name
 
+        if search_mode:
+            params["searchMode"] = search_mode
+
+        if include_score:
+            params["score"] = "true"
+
         response = self._session.get(url, params=params)
         if response.status_code == 200:
             results = response.json()
@@ -215,7 +233,10 @@ class RagMixin(BaseMixin):
                 logging.debug(f"Metadata: {doc['Document']['metadata']}")
                 logging.debug("---")
 
-            return docs
+            result: dict = {"docs": docs}
+            if "metadata" in results:
+                result["metadata"] = results["metadata"]
+            return result
         else:
             logging.info(f"Error: {response.status_code}")
             logging.info(response.text)

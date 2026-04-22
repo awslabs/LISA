@@ -1470,7 +1470,7 @@ export default function Chat ({ sessionId, initialStack }) {
                 )}
             </div>
 
-            <div className='sticky mt-2'>
+            <div className='sticky bottom-8 mt-2'>
                 <form onSubmit={(e) => e.preventDefault()}>
                     <Form>
                         <SpaceBetween size='xs' direction='vertical'>

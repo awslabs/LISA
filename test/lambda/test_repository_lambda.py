@@ -4193,3 +4193,251 @@ class TestRepositoryTagPreservation:
 
         custom_fields = config["pipelines"][0]["metadata"]["customFields"]
         assert custom_fields["owner"] == "new-owner"
+
+
+# ---------------------------------------------------------------------------
+# Story 1.4: Search mode routing tests (hybrid search)
+# ---------------------------------------------------------------------------
+
+# Shared helpers for hybrid search tests
+
+
+def _bedrock_kb_repo():
+    """Return a standard Bedrock KB repository dict for hybrid search tests."""
+    return {
+        "repositoryId": "test-repo",
+        "type": "bedrock_knowledge_base",
+        "allowedGroups": ["test-group"],
+        "bedrockKnowledgeBaseConfig": {
+            "bedrockKnowledgeBaseId": "kb-123",
+            "dataSources": [{"id": "ds-123"}],
+        },
+        "status": "active",
+    }
+
+
+def _opensearch_repo():
+    """Return a standard OpenSearch repository dict for hybrid search tests."""
+    return {
+        "repositoryId": "test-repo",
+        "type": "opensearch",
+        "allowedGroups": ["test-group"],
+        "status": "active",
+    }
+
+
+def _similarity_search_event(extra_query_params=None):
+    """Build a standard similarity_search event with optional extra query params."""
+    query_params = {
+        "query": "test query",
+        "topK": "3",
+        "collectionId": "ds-123",
+    }
+    if extra_query_params:
+        query_params.update(extra_query_params)
+    return {
+        "requestContext": {"authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["test-group"])}},
+        "pathParameters": {"repositoryId": "test-repo"},
+        "queryStringParameters": query_params,
+    }
+
+
+def _mock_service(supports_hybrid=True):
+    """Create a mock RepositoryService with configurable hybrid support."""
+    service = MagicMock()
+    service.supports_hybrid_search.return_value = supports_hybrid
+    service.retrieve_documents.return_value = [
+        {"page_content": "semantic result", "metadata": {"source": "s3://bucket/doc1.pdf"}}
+    ]
+    service.hybrid_retrieve.return_value = [
+        {"page_content": "hybrid result", "metadata": {"source": "s3://bucket/doc1.pdf", "retrieval_method": "hybrid"}}
+    ]
+    return service
+
+
+def _hybrid_search_patches(is_admin_val=False, is_rag_admin_val=False, groups=None):
+    """Context manager combining all patches needed for hybrid search tests.
+
+    Patches auth functions at the repository.lambda_functions module level
+    to avoid test-ordering issues (local imports bind at module load time).
+    """
+    from contextlib import ExitStack
+
+    if groups is None:
+        groups = ["test-group"]
+
+    stack = ExitStack()
+
+    class Patches:
+        pass
+
+    p = Patches()
+
+    def setup():
+        p.vs_repo = stack.enter_context(patch("repository.lambda_functions.vs_repo"))
+        p.factory = stack.enter_context(patch("repository.lambda_functions.RepositoryServiceFactory"))
+        p.cs = stack.enter_context(patch("repository.lambda_functions.collection_service"))
+        p.enrich = stack.enter_context(patch("repository.lambda_functions.enrich_metadata_with_document_id"))
+        stack.enter_context(patch("repository.lambda_functions.is_admin", return_value=is_admin_val))
+        stack.enter_context(patch("repository.lambda_functions.is_rag_admin", return_value=is_rag_admin_val))
+        stack.enter_context(patch("repository.lambda_functions.get_groups", return_value=groups))
+        stack.enter_context(
+            patch(
+                "repository.lambda_functions.get_user_context",
+                return_value=("test-user", is_admin_val, groups),
+            )
+        )
+        p.enrich.side_effect = lambda docs, repo_id, coll_id: docs
+        return p
+
+    return stack, setup
+
+
+def test_search_mode_vector_default(mock_auth):
+    """No searchMode param → calls retrieve_documents(), no metadata in response."""
+    from repository.lambda_functions import similarity_search
+
+    mock_auth.set_user("test-user", ["test-group"], is_admin=True)
+
+    stack, setup = _hybrid_search_patches(is_admin_val=True)
+    with stack:
+        p = setup()
+        p.vs_repo.find_repository_by_id.return_value = _bedrock_kb_repo()
+        p.cs.get_collection_model.return_value = "test-model"
+        service = _mock_service()
+        p.factory.create_service.return_value = service
+
+        result = similarity_search(_similarity_search_event(), SimpleNamespace())
+
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert "docs" in body
+        assert "metadata" not in body
+        service.retrieve_documents.assert_called_once()
+        service.hybrid_retrieve.assert_not_called()
+
+
+def test_search_mode_hybrid_supported(mock_auth):
+    """searchMode=hybrid + backend supports it → calls hybrid_retrieve()."""
+    from repository.lambda_functions import similarity_search
+
+    mock_auth.set_user("test-user", ["test-group"], is_rag_admin=True)
+
+    stack, setup = _hybrid_search_patches(is_rag_admin_val=True)
+    with stack:
+        p = setup()
+        p.vs_repo.find_repository_by_id.return_value = _bedrock_kb_repo()
+        p.cs.get_collection_model.return_value = "test-model"
+        service = _mock_service(supports_hybrid=True)
+        p.factory.create_service.return_value = service
+
+        event = _similarity_search_event({"searchMode": "hybrid"})
+        result = similarity_search(event, SimpleNamespace())
+
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert "docs" in body
+        assert "metadata" in body
+        assert body["metadata"]["search_mode"] == "hybrid"
+        assert body["metadata"]["actual_mode_used"] == "hybrid"
+        assert body["metadata"]["hybrid_supported"] is True
+        assert body["metadata"]["backend"] == "bedrock_knowledge_base"
+        service.hybrid_retrieve.assert_called_once()
+        service.retrieve_documents.assert_not_called()
+
+
+def test_search_mode_hybrid_unsupported(mock_auth):
+    """searchMode=hybrid + backend doesn't support it → retrieve_documents() + fallback metadata."""
+    from repository.lambda_functions import similarity_search
+
+    mock_auth.set_user("test-user", ["test-group"], is_rag_admin=True)
+
+    stack, setup = _hybrid_search_patches(is_rag_admin_val=True)
+    with stack:
+        p = setup()
+        p.vs_repo.find_repository_by_id.return_value = _opensearch_repo()
+        p.cs.get_collection_model.return_value = "test-model"
+        service = _mock_service(supports_hybrid=False)
+        p.factory.create_service.return_value = service
+
+        event = _similarity_search_event({"searchMode": "hybrid", "modelName": "test-model"})
+        result = similarity_search(event, SimpleNamespace())
+
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert "docs" in body
+        assert "metadata" in body
+        assert body["metadata"]["search_mode"] == "hybrid"
+        assert body["metadata"]["actual_mode_used"] == "vector"
+        assert body["metadata"]["hybrid_supported"] is False
+        assert body["metadata"]["backend"] == "opensearch"
+        service.retrieve_documents.assert_called_once()
+        service.hybrid_retrieve.assert_not_called()
+
+
+def test_search_mode_invalid(mock_auth):
+    """Invalid searchMode → 400 ValidationError."""
+    from repository.lambda_functions import similarity_search
+
+    mock_auth.set_user("test-user", ["test-group"], is_admin=True)
+
+    stack, setup = _hybrid_search_patches(is_admin_val=True)
+    with stack:
+        p = setup()
+        p.vs_repo.find_repository_by_id.return_value = _bedrock_kb_repo()
+        p.cs.get_collection_model.return_value = "test-model"
+        p.factory.create_service.return_value = _mock_service()
+
+        event = _similarity_search_event({"searchMode": "foobar"})
+        result = similarity_search(event, SimpleNamespace())
+
+        assert result["statusCode"] == 400
+        body = json.loads(result["body"])
+        assert "searchMode" in body.get("error", "").lower() or "searchmode" in body.get("error", "").lower()
+
+
+def test_response_metadata_present(mock_auth):
+    """Hybrid request returns metadata dict with all expected fields."""
+    from repository.lambda_functions import similarity_search
+
+    mock_auth.set_user("test-user", ["test-group"], is_rag_admin=True)
+
+    stack, setup = _hybrid_search_patches(is_rag_admin_val=True)
+    with stack:
+        p = setup()
+        p.vs_repo.find_repository_by_id.return_value = _bedrock_kb_repo()
+        p.cs.get_collection_model.return_value = "test-model"
+        service = _mock_service(supports_hybrid=True)
+        p.factory.create_service.return_value = service
+
+        event = _similarity_search_event({"searchMode": "hybrid"})
+        result = similarity_search(event, SimpleNamespace())
+
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        metadata = body["metadata"]
+        assert set(metadata.keys()) == {"search_mode", "actual_mode_used", "backend", "hybrid_supported"}
+
+
+def test_backward_compatible_response(mock_auth):
+    """Vector-only request response format identical to current — no metadata key."""
+    from repository.lambda_functions import similarity_search
+
+    mock_auth.set_user("test-user", ["test-group"], is_admin=True)
+
+    stack, setup = _hybrid_search_patches(is_admin_val=True)
+    with stack:
+        p = setup()
+        p.vs_repo.find_repository_by_id.return_value = _bedrock_kb_repo()
+        p.cs.get_collection_model.return_value = "test-model"
+        service = _mock_service()
+        p.factory.create_service.return_value = service
+
+        event = _similarity_search_event({"searchMode": "vector"})
+        result = similarity_search(event, SimpleNamespace())
+
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert "docs" in body
+        assert "metadata" not in body
+        assert body.keys() == {"docs"}

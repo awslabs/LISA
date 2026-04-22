@@ -201,6 +201,7 @@ export type IModel = {
     autoScalingConfig: IAutoScalingConfig;
     loadBalancerConfig: ILoadBalancerConfig;
     allowedGroups?: string[];
+    contextWindow?: number;
     hostingType?: ModelHostingType;
 };
 

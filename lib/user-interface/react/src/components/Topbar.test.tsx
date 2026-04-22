@@ -15,12 +15,14 @@
 */
 
 import { render, screen } from '@testing-library/react';
+import { act } from 'react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useAuth } from '../auth/useAuth';
 import { MemoryRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
+import createWrapper from '@cloudscape-design/components/test-utils/dom';
 
 import Topbar from './Topbar';
 import ColorSchemeContext from '@/shared/color-scheme.provider';
@@ -78,6 +80,29 @@ const renderTopbar = (props = {}) => {
     );
 };
 
+/**
+ * In jsdom, Cloudscape TopNavigation collapses all utilities into an overflow menu
+ * (zero-width viewport). This helper opens the overflow menu, navigates into the
+ * user-profile sub-menu, and clicks the specified menu item by ID.
+ */
+const clickUserMenuItem = (itemId: string) => {
+    const wrapper = createWrapper();
+    const topNav = wrapper.findTopNavigation()!;
+    act(() => {
+        topNav.findOverflowMenuButton()!.click();
+    });
+    const overflowMenu = topNav.findOverflowMenu()!;
+    // The user-profile dropdown is the last utility in the overflow menu.
+    // Navigate into its sub-menu by clicking its button.
+    const userProfileBtn = overflowMenu.getElement().querySelector('[data-testid="__1"]') as HTMLButtonElement;
+    act(() => {
+        userProfileBtn.click();
+    });
+    act(() => {
+        overflowMenu.findMenuDropdownItemById(itemId)!.click();
+    });
+};
+
 describe('Topbar', () => {
     beforeEach(async () => {
         vi.clearAllMocks();
@@ -101,15 +126,13 @@ describe('Topbar', () => {
     });
 
     it('calls signoutRedirect when sign out is clicked', async () => {
-        const user = userEvent.setup();
-
         renderTopbar();
-
-        const userButton = screen.getByRole('button', { expanded: false });
-        await user.click(userButton);
-        await user.click(screen.getByText('Sign out'));
-
-        expect(mockAuth.signoutRedirect).toHaveBeenCalledOnce();
+        clickUserMenuItem('signout');
+        // The signout handler is async (removeUser then signoutRedirect).
+        // Wait for the promises to resolve.
+        await vi.waitFor(() => {
+            expect(mockAuth.signoutRedirect).toHaveBeenCalledOnce();
+        });
     });
 
     it('shows Administration with only RAG Management for rag-admin user', async () => {
@@ -198,8 +221,6 @@ describe('Topbar', () => {
     });
 
     it('calls signinRedirect when sign in is clicked for unauthenticated user', async () => {
-        const user = userEvent.setup();
-
         // Mock unauthenticated state
         (useAuth as any).mockReturnValue({
             ...mockAuth,
@@ -207,13 +228,7 @@ describe('Topbar', () => {
         });
 
         renderTopbar();
-
-        // Click the user profile dropdown button
-        const userButton = screen.getByRole('button', { expanded: false });
-        await user.click(userButton);
-
-        // Click the sign in option
-        await user.click(screen.getByText('Sign in'));
+        clickUserMenuItem('signin');
 
         // Verify that signinRedirect was called with correct redirect_uri (no hash, per OAuth spec)
         const { getRedirectUri } = await import('@/config/oidc.config');

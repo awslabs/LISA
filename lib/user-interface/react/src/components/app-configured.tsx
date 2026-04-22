@@ -52,14 +52,58 @@ function UserStateSync () {
 }
 
 function OAuthCallback () {
+    const [oauthError, setOauthError] = useState<string | null>(null);
+
     useEffect(() => {
-        // Handle MCP OAuth authorization
-        try {
-            onMcpAuthorization();
-        } catch (error) {
-            console.error('OAuth callback error:', error);
+        // Check for OAuth error params before delegating to the library.
+        // This prevents the use-mcp library from injecting unsanitized
+        // query params into innerHTML (XSS mitigation — covers the
+        // "error" and "error_description" vectors).
+        const queryParams = new URLSearchParams(window.location.search);
+        const error = queryParams.get('error');
+        const errorDescription = queryParams.get('error_description');
+
+        if (error) {
+            const safeMessage = `OAuth error: ${error} - ${errorDescription || 'No description provided.'}`;
+            console.error('[OAuthCallback]', safeMessage);
+            setOauthError(safeMessage);
+            return;
         }
+
+        // Validate the state parameter before the library can inject it
+        // into innerHTML. When code is present but state doesn't match
+        // a stored OAuth flow, the library throws an error containing
+        // the raw state value and renders it via innerHTML (XSS vector).
+        const code = queryParams.get('code');
+        const state = queryParams.get('state');
+        if (code && state) {
+            const stateKey = `mcp:auth:state_${state}`;
+            if (!localStorage.getItem(stateKey)) {
+                console.error('[OAuthCallback] Invalid or expired state parameter');
+                setOauthError('Invalid or expired OAuth state parameter. No matching state found in storage.');
+                return;
+            }
+        }
+
+        // All params look safe — proceed with normal authorization flow.
+        // onMcpAuthorization is async; catch any unexpected rejections.
+        onMcpAuthorization().catch((err) => {
+            console.error('OAuth callback error:', err);
+            setOauthError(err instanceof Error ? err.message : String(err));
+        });
     }, []);
+
+    if (oauthError) {
+        return (
+            <div style={{ fontFamily: 'sans-serif', padding: '20px' }}>
+                <h1>Authentication Error</h1>
+                <p style={{ color: 'red', backgroundColor: '#ffebeb', border: '1px solid red', padding: '10px', borderRadius: '4px' }}>
+                    {oauthError}
+                </p>
+                <p>You can close this window or try again.</p>
+            </div>
+        );
+    }
 
     return (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>

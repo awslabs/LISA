@@ -54,6 +54,7 @@ import { LisaApiTokensStack } from './api-tokens';
 import fs from 'node:fs';
 import { VERSION_PATH } from './util';
 import { AdcLambdaCABundleAspect } from './util/adcCertBundleAspect';
+import { CorsOriginAspect } from './util/corsOriginAspect';
 
 
 export const VERSION: string = fs.readFileSync(VERSION_PATH, 'utf8').trim();
@@ -498,6 +499,10 @@ export class LisaServeApplicationStage extends Stage {
             const adcCABundleAspect = new AdcLambdaCABundleAspect();
             this.stacks.forEach((stack) => Aspects.of(stack).add(adcCABundleAspect));
         }
+
+        // Inject CORS_ALLOWED_ORIGIN env var into all Lambda functions
+        const corsOriginAspect = new CorsOriginAspect(config.corsAllowedOrigins.join(','));
+        this.stacks.forEach((stack) => Aspects.of(stack).add(corsOriginAspect));
 
         // Set resource tags if not isolated region
         if (!config.region.includes('iso')) {

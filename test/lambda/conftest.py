@@ -135,6 +135,7 @@ def setup_auth_patches(request, mock_auth, aws_credentials):
         "test_projects_lambda",
         "test_metrics_lambda",
         "test_mcp_server_lambda",
+        "test_mcp_workbench_lambda",
         "test_bedrock_agent_discovery",
         "test_s3_event_handler",
     )

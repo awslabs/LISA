@@ -182,11 +182,13 @@ class OIDCHTTPBearer(BaseHTTPMiddleware):
                     break
 
         if not valid:
+            # Use configured CORS origins; fall back to wildcard for backward compatibility
+            cors_origin = os.environ.get("CORS_ALLOWED_ORIGIN", "*")
             return JSONResponse(
                 status_code=HTTP_401_UNAUTHORIZED,
                 content={"detail": "Unauthorized"},
                 headers={
-                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Origin": cors_origin,
                     "Access-Control-Allow-Methods": "*",
                     "Access-Control-Allow-Headers": "*",
                 },

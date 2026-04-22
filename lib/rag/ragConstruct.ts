@@ -94,7 +94,7 @@ export class LisaRagConstruct extends Construct {
                 {
                     allowedMethods: [HttpMethods.GET, HttpMethods.POST],
                     allowedHeaders: ['*'],
-                    allowedOrigins: ['*'],
+                    allowedOrigins: config.corsAllowedOrigins,
                     exposedHeaders: ['Access-Control-Allow-Origin'],
                 },
             ],

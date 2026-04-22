@@ -69,6 +69,7 @@ import { useToolChain } from './hooks/useToolChain.hooks';
 import { useDynamicMaxRows } from './hooks/useDynamicMaxRows';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { buildMessageContent, buildMessageMetadata } from './utils/messageBuilder.utils';
+import { formatContextWindow } from '../model-management/ModelManagementUtils';
 import { getButtonItems, useButtonActions } from './config/buttonConfig';
 import PromptPreview from './components/PromptPreview';
 import ChatPromptInput from './components/ChatPromptInput';
@@ -93,7 +94,6 @@ import { useListMcpToolsQuery } from '@/shared/reducers/mcp-tools.reducer';
 import ConfirmationModal from '@/shared/modal/confirmation-modal';
 import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
 import { conditionalDeps, isWorkbenchMcpServer } from '../utils';
-import { formatDate } from '@/shared/util/formats';
 import DocumentSidePanel from './components/DocumentSidePanel';
 import { useDocumentSidePanel } from '@/shared/hooks/useDocumentSidePanel';
 
@@ -1390,7 +1390,7 @@ export default function Chat ({ sessionId, initialStack }) {
                 display: 'grid',
                 gridTemplateColumns: showDocSidePanel ? '1fr 1fr' : '1fr',
                 gap: '0',
-                height: 'calc(100vh - 20rem)',
+                height: 'calc(100vh - 21rem)',
                 overflow: 'hidden'
             }}>
                 {/* Chat messages area */}
@@ -1470,10 +1470,10 @@ export default function Chat ({ sessionId, initialStack }) {
                 )}
             </div>
 
-            <div className='sticky bottom-8 mt-2'>
+            <div className='sticky mt-2'>
                 <form onSubmit={(e) => e.preventDefault()}>
                     <Form>
-                        <SpaceBetween size='m' direction='vertical'>
+                        <SpaceBetween size='xs' direction='vertical'>
                             <Grid
                                 gridDefinition={[
                                     { colspan: { default: 4 } },
@@ -1543,11 +1543,31 @@ export default function Chat ({ sessionId, initialStack }) {
                                                 <Icon name='gen-ai' variant='disabled' /> This model does not have Tool Calling enabled
                                             </Box>)}
                                     <Box textAlign='center'>
-                                        {!loadingSession && session.history.length > 0 && (currentSessionSummary?.lastUpdated) && (
-                                            <Box variant='small' color='text-status-inactive'>
-                                                Last updated: {formatDate(currentSessionSummary?.lastUpdated)}
-                                            </Box>
-                                        )}
+                                        {(() => {
+                                            // Look up contextWindow from the model list
+                                            const contextWindow = allModelsRaw?.find(
+                                                (m) => m.modelId === selectedModel?.modelId
+                                            )?.contextWindow;
+
+                                            if (!contextWindow || session.history.length === 0) return null;
+                                            // Sum live in-memory tokens for immediate UI updates after
+                                            // each response. Fall back to the DDB value on reload.
+                                            // Coerce to Number() because DDB Decimal values deserialize
+                                            // as strings, which cause string concatenation bugs.
+                                            const liveTokens = session.history.reduce((sum, msg) => {
+                                                const u = (msg as any).usage;
+                                                return sum + (Number(u?.completionTokens) || 0) + (Number(u?.promptTokens) || 0);
+                                            }, 0);
+
+                                            const usedTokens = liveTokens > 0
+                                                ? liveTokens
+                                                : (currentSessionSummary?.totalTokensUsed ?? 0);
+                                            if (!usedTokens) return null;
+
+                                            return (
+                                                `${formatContextWindow(usedTokens)} - Tokens Used`
+                                            );
+                                        })()}
                                     </Box>
                                     <Box float='right' variant='div'>
                                         <StatusIndicator type={isConnected ? 'success' : 'error'}>

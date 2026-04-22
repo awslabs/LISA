@@ -1,0 +1,3 @@
+config:
+  # Disable line-length rule — markdown prose doesn't benefit from hard wrapping
+  line-length: false

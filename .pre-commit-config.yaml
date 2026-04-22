@@ -31,10 +31,18 @@ repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: v6.0.0
   hooks:
+    - id: check-added-large-files
+      args: ['--maxkb=500']
+    - id: check-ast
     - id: check-json
       exclude: ^test/cdk/stacks/__baselines__/
+    - id: check-toml
     - id: check-yaml
     - id: check-case-conflict
+    - id: check-executables-have-shebangs
+    - id: check-shebang-scripts-are-executable
+    - id: check-symlinks
+    - id: debug-statements
     - id: mixed-line-ending
       args: ['--fix=lf']
       exclude: ^test/cdk/stacks/__baselines__/
@@ -45,6 +53,42 @@ repos:
     - id: end-of-file-fixer
       exclude: ^test/cdk/stacks/__baselines__/
     - id: trailing-whitespace
+      exclude: ^test/cdk/stacks/__baselines__/
+    - id: name-tests-test
+      args: ['--pytest-test-first']
+      files: ^test/.*\.py$
+      exclude: (^test/cdk/|^test/integration/|__init__\.py$|README|conftest\.py$|integration_definitions\.py$|integration_test_utils\.py$|config_loader\.py$|list-integ-models\.py$|integration-setup-test\.py$)
+    - id: no-commit-to-branch
+      args: ['--branch', 'main', '--branch', 'mainline']
+
+- repo: https://github.com/pre-commit/pygrep-hooks
+  rev: v1.10.0
+  hooks:
+    - id: python-check-blanket-noqa
+    - id: python-check-blanket-type-ignore
+    - id: python-check-mock-methods
+    - id: python-no-eval
+    - id: python-no-log-warn
+    - id: python-use-type-annotations
+
+# NOTE: shellcheck-py fails to install in environments with custom CA certs
+# (SSL: CERTIFICATE_VERIFY_FAILED). Install shellcheck locally and uncomment,
+# or use `apt install shellcheck` / `brew install shellcheck` first.
+# - repo: https://github.com/shellcheck-py/shellcheck-py
+#   rev: v0.11.0.1
+#   hooks:
+#     - id: shellcheck
+#       args: ['--severity=warning']
+
+- repo: https://github.com/PyCQA/docformatter
+  rev: v1.7.8
+  hooks:
+    - id: docformatter
+      args:
+        - --in-place
+        - --wrap-summaries=120
+        - --wrap-descriptions=120
+        - --style=google
       exclude: ^test/cdk/stacks/__baselines__/
 
 - repo: https://github.com/codespell-project/codespell
@@ -119,6 +163,20 @@ repos:
         - --max-warnings=40
         - --no-warn-ignored
         - --fix
+
+- repo: https://github.com/DavidAnson/markdownlint-cli2
+  rev: v0.17.2
+  hooks:
+    - id: markdownlint-cli2
+      args: ['--fix']
+      exclude: (^node_modules/|^test/cdk/stacks/__baselines__/|CHANGELOG\.md$)
+
+- repo: https://github.com/oxipng/oxipng
+  rev: v10.1.0
+  hooks:
+    - id: oxipng
+      args: ['-o', '4', '--strip', 'safe']
+      exclude: ^(node_modules/|lib/core/layers/)
 
 # - repo: https://github.com/Lucas-C/pre-commit-hooks-safety
 #   rev: v1.3.2

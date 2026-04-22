@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useAppDispatch } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
 import { clearNotification } from '@/shared/reducers/notification.reducer';
@@ -30,31 +30,38 @@ const ANNOUNCEMENT_NOTIFICATION_ID = 'announcement-notification';
 export function useAnnouncementNotifier (config: IConfiguration | undefined): void {
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
+    const lastAnnouncementRef = useRef<string | null>(null);
 
     const clearAnnouncement = useCallback(() => {
         dispatch(clearNotification(ANNOUNCEMENT_NOTIFICATION_ID));
     }, [dispatch]);
 
+    // Extract stable primitive values to avoid re-running the effect on object reference changes
+    const isEnabled = config?.configuration?.announcement?.isEnabled ?? false;
+    const message = config?.configuration?.announcement?.message ?? '';
+    const createdAt = config?.createdAt;
+
     useEffect(() => {
-        if (!config) {
-            return;
-        }
-
-        const announcement = config.configuration.announcement ?? { isEnabled: false, message: '' };
-        const { isEnabled, message } = announcement;
-
         if (!isEnabled || !message) {
+            lastAnnouncementRef.current = null;
             clearAnnouncement();
             return;
         }
 
-        if (!shouldShowAnnouncement(config.createdAt)) {
+        if (!shouldShowAnnouncement(createdAt)) {
             return;
         }
 
+        // Avoid re-dispatching the same announcement notification
+        const announcementKey = `${message}:${createdAt}`;
+        if (lastAnnouncementRef.current === announcementKey) {
+            return;
+        }
+        lastAnnouncementRef.current = announcementKey;
+
         const onDismiss = () => {
-            if (config.createdAt !== undefined) {
-                setDismissedTimestamp(config.createdAt);
+            if (createdAt !== undefined) {
+                setDismissedTimestamp(createdAt);
             }
             clearAnnouncement();
         };
@@ -67,5 +74,5 @@ export function useAnnouncementNotifier (config: IConfiguration | undefined): vo
             true,
             onDismiss,
         );
-    }, [config, clearAnnouncement, notificationService]);
+    }, [isEnabled, message, createdAt, clearAnnouncement, notificationService]);
 }

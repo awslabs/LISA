@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Input validation middleware for FastAPI REST API."""
+
 from collections.abc import Callable
 from typing import Any
 

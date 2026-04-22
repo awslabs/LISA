@@ -87,7 +87,7 @@ VLLM_METRICS = {
 }
 
 # Histogram metrics — we extract the _sum and _count to compute averages
-VLLM_HISTOGRAM_METRICS = {
+VLLM_HISTOGRAM_METRICS = {  # nosec B105 - metric names, not passwords
     "vllm:e2e_request_latency_seconds": "E2ERequestLatencySeconds",
     "vllm:time_to_first_token_seconds": "TimeToFirstTokenSeconds",
     "vllm:inter_token_latency_seconds": "InterTokenLatencySeconds",
@@ -105,7 +105,7 @@ TGI_METRICS = {
     "tgi_request_failure": "RequestFailure",
 }
 
-TGI_HISTOGRAM_METRICS = {
+TGI_HISTOGRAM_METRICS = {  # nosec B105 - metric names, not passwords
     "tgi_request_duration": "RequestDurationSeconds",
     "tgi_request_queue_duration": "QueueDurationSeconds",
     "tgi_request_inference_duration": "InferenceDurationSeconds",

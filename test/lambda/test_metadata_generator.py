@@ -14,7 +14,6 @@
 
 """Unit tests for MetadataGenerator."""
 
-
 import pytest
 from models.domain_objects import CollectionMetadata, RagCollectionConfig
 from repository.metadata_generator import MetadataGenerator

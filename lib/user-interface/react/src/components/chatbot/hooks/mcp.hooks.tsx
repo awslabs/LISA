@@ -92,7 +92,9 @@ export const McpConnection = ({ server, onToolsChange, onConnectionChange, sessi
 
     const connection = useMcp(mcpOptions);
     const listToolsRef = useRef<(() => Promise<void>) | undefined>(undefined);
-    listToolsRef.current = (connection as { listTools?: () => Promise<void> }).listTools;
+    useEffect(() => {
+        listToolsRef.current = (connection as { listTools?: () => Promise<void> }).listTools;
+    });
 
     const prevCallToolRef = useRef<any>(null);
 

@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Factory pattern for creating chunking strategies."""
+
 import logging
 import os
 from abc import ABC, abstractmethod

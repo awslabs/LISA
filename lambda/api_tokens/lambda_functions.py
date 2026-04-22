@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """APIGW endpoints for managing API tokens."""
+
 import logging
 import os
 from typing import Annotated

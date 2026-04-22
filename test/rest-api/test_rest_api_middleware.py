@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Tests for request middleware."""
+
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch

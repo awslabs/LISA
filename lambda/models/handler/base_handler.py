@@ -14,7 +14,6 @@
 
 """Base Handler definition for model management API definitions."""
 
-
 from typing import Any
 
 

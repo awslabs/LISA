@@ -14,7 +14,6 @@
 
 """Configuration models for MCP Workbench."""
 
-
 from pydantic import BaseModel, Field
 
 

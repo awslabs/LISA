@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Custom errors."""
+
 from typing import Protocol, runtime_checkable, Union
 
 

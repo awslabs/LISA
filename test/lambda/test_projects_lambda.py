@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Unit tests for the GET /project (list_projects) pathway."""
+
 import functools
 import json
 import os

@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Utility functions for handling request data."""
+
 import json
 import os
 import sys

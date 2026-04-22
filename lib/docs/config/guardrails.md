@@ -124,6 +124,7 @@ POST /{deploymentStage}/models
 ```
 
 **Notes:**
+
 - The guardrail key (e.g., "guardrail-1") is an internal identifier
 - `guardrailIdentifier` must match an existing AWS Bedrock Guardrail
 - Empty `allowedGroups` means the guardrail applies to all users
@@ -188,6 +189,7 @@ PUT /{deploymentStage}/models/{modelId}
 ```
 
 This operation:
+
 1. Removes the guardrail from LiteLLM
 2. Deletes all associated guardrails from DynamoDB
 3. Removes guardrail configurations from LiteLLM
@@ -212,7 +214,7 @@ This operation:
    - **Allowed Groups** (optional): Add group names that should have this guardrail
 7. Click **Add** to add groups, or press Enter after typing a group name
 8. Repeat steps 6-8 to add multiple guardrails
-9.  Finish remaining configuration steps
+9. Finish remaining configuration steps
 10. Click **Create Model** to finalize
 
 ### Viewing Guardrails
@@ -263,6 +265,7 @@ This operation:
 **Symptom**: Requests are not being filtered as expected
 
 **Possible Causes**:
+
 1. Guardrail doesn't exist in AWS Bedrock
 2. Guardrail identifier is incorrect
 3. Guardrail is not attached to model
@@ -271,6 +274,7 @@ This operation:
 5. AWS Bedrock Guardrail is not accessible from LISA VPC
 
 **Resolution**:
+
 1. Verify guardrail exists in AWS Bedrock Console
 2. Check guardrail identifier configured in LISA matches AWS Bedrock Console
 3. Verify user group memberships
@@ -283,11 +287,13 @@ This operation:
 **Symptom**: Updated guardrail configuration not being applied
 
 **Possible Causes**:
+
 1. Model update did not complete successfully
 2. Guardrail changes made in AWS Bedrock but version not updated in LISA
 3. Cache issues with model configuration
 
 **Resolution**:
+
 1. Check model status (should be "In Service")
 2. Verify `guardrailVersion` in LISA matches the version in AWS Bedrock
 3. Check state machine execution logs
@@ -298,11 +304,13 @@ This operation:
 **Symptom**: Error during model creation or update mentioning invalid guardrail
 
 **Possible Causes**:
+
 1. Guardrail doesn't exist in AWS Bedrock
 2. Incorrect guardrail ID or ARN
 3. Guardrail in different AWS region
 
 **Resolution**:
+
 1. Verify guardrail exists in AWS Bedrock Console in the correct region
 2. Copy guardrail identifier directly from AWS Console
 
@@ -311,10 +319,12 @@ This operation:
 **Symptom**: Requests take significantly longer with guardrails enabled
 
 **Possible Causes**:
+
 1. Too many guardrails configured
 2. Complex guardrail rules in AWS Bedrock
 
 **Resolution**:
+
 1. Reduce number of guardrails where possible
 2. Optimize guardrail rules in AWS Bedrock Console
 3. Consider using only critical guardrails for performance-sensitive applications

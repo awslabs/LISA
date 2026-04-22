@@ -1,9 +1,11 @@
 # Security Group Overrides User Guide
 
 ## Overview
+
 This guide explains how to configure security group overrides in your environment. When you enable security group overrides, you'll need to override all security groups that are deployed across your stacks.
 
 ## Prerequisites
+
 Before configuring security groups, you'll need the following values ready:
 
 - Private VPC ID `[PRIVATE_VPC_ID]`

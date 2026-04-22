@@ -14,8 +14,8 @@ LISA Serve and LISA MCP are standalone, core solutions with APIs for customers n
   * Model management API supports deploying, updating, and deleting third party and internally hosted models.
   * MCP API supports deploying, updating, deleting, and calling internally hosted MCP tools.
 
-
 ## LISA Serve
+
 ![LISA Serve Architecture](../assets/LisaServe.png)
 
 LISA Serve provides model self-hosting and integration with compatible external model providers. Serve supports text generation, image generation, video generation, and embedding models. Serve’s components are designed for scale and reliability. Serve can be accessed via LISA’s REST APIs, or through LISA’s chat
@@ -34,6 +34,7 @@ Self-hosted model traffic is directed to model specific ALBs, which enable autos
 * LISA supports OpenAI's API spec, which means LISA can be easily configured with the Continue plugin for use with Jetbrains or VS Code integrated development environments (IDE).
 
 ### Model Management
+
 ![LISA Model Management Architecture](../assets/LisaModelManagement.png)
 
 Use Model Management for managing the entire lifecycle of models configured or hosted with LISA. This includes creation, updating,
@@ -68,8 +69,8 @@ security, networking, and infrastructure components are automatically deployed a
 * ECS Cluster: ECS cluster and task definitions are located in `ecs_model_deployer/src/lib/ecsCluster.ts`, with model
   containers specified in `ecs_model_deployer/src/lib/ecs-model.ts`.
 
-
 ## LISA MCP
+
 ![LISA MCP Architecture](../assets/LisaMcp.png)
 
 LISA MCP is a standalone product that provides scalable infrastructure for deploying and hosting Model Context Protocol (MCP) servers. It allows customers to self-host MCP servers for enterprise use. LISA MCP can be deployed independently of LISA Serve or configured to work seamlessly with LISA Serve and the Chat UI.
@@ -77,11 +78,13 @@ LISA MCP is a standalone product that provides scalable infrastructure for deplo
 Each MCP server deployed via LISA MCP is provisioned on AWS Fargate via Amazon ECS, fronted by Application Load Balancers (ALBs) and Network Load Balancers (NLBs), and published through the existing API Gateway. This architecture allows chat sessions to securely invoke MCP tools without leaving your VPC. All routes remain protected by the same API Gateway Lambda authorizer patterns that guards the rest of LISA, ensuring API Keys, IDP lockdown, and JWT group enforcement continue to apply automatically.
 
 **Server Types:** LISA MCP supports all MCP server types:
+
 * **STDIO servers:** Automatically wrapped with `mcp-proxy` and exposed over HTTP on port 8080
 * **HTTP servers:** Direct HTTP endpoints using the configured port (default 8000)
 * **SSE servers:** Server-Sent Events endpoints for streaming responses
 
 **Networking Architecture:** The networking follows a layered approach:
+
 * **API Gateway** receives MCP traffic on `/mcp/{serverId}` routes
 * **Network Load Balancer (NLB)** terminates the API Gateway VPC Link and forwards to the Application Load Balancer
 * **Application Load Balancer (ALB)** provides HTTP features including health checks, routing, and load balancing
@@ -90,6 +93,7 @@ Each MCP server deployed via LISA MCP is provisioned on AWS Fargate via Amazon E
 **Lifecycle Management:** AWS Step Functions orchestrate the complete lifecycle of MCP servers, handling creation, update, deletion, start, and stop workflows. Each workflow provisions the required resources using CloudFormation templates, which manage infrastructure components like ECS Fargate services, load balancers, VPC Links, and auto-scaling configurations.
 
 **Key Features:**
+
 * Turn-key hosting for STDIO, HTTP, or SSE MCP servers with a single API/UI workflow
 * Dynamic container builds from pre-built images or S3 artifacts synced at deploy time
 * Auto-scaling with configurable Fargate min/max capacity, custom metrics, and scaling targets per server
@@ -105,8 +109,8 @@ Each MCP server deployed via LISA MCP is provisioned on AWS Fargate via Amazon E
 * Authentication: API Gateway enforces the same Lambda authorizer used across LISA (JWT validation + optional API key checks). The `{LISA_BEARER_TOKEN}` placeholder in connection details is automatically replaced with the user's bearer token at connection time.
 * Data Storage: Server metadata is stored in the `MCP_SERVERS_TABLE` DynamoDB table. When `DEPLOYMENT_PREFIX` is configured, completed servers are published to `McpConnectionsTable` so the chat application can surface them alongside externally hosted connections.
 
-
 ## Chat UI
+
 ![LISA Chatbot Architecture](../assets/LisaChat.png)
 
 LISA provides a configurable chat user interface (UI). The UI is hosted as a static website in Amazon S3, and is fronted

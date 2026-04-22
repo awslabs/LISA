@@ -223,31 +223,37 @@ Response (truncated):
 ## Troubleshooting
 
 ### Create API returns *“CREATE_MCP_SERVER_SFN_ARN not configured”*
+
 - **Cause:** Environment variables were not set when the MCP API Lambda was deployed.
 - **Resolution:** Re-run `deploylisa` or manually set `CREATE_MCP_SERVER_SFN_ARN`, `DELETE_MCP_SERVER_SFN_ARN`, and
   `UPDATE_MCP_SERVER_SFN_ARN` on the MCP API Lambda, then retry.
 
 ### Error *“Server name conflicts with existing server”*
+
 - **Cause:** Another record normalizes to the same alphanumeric identifier (e.g., `Docs-MCP` vs `docs_mcp`).
 - **Resolution:** Choose a different name or delete the prior server before re-creating it.
 
 ### Stack stuck in `CREATING`
+
 - **Cause:** CloudFormation deployment failed (missing IAM roles, invalid container image, unreachable S3 path).
 - **Resolution:** Inspect the `CreateMcpServer` Step Functions execution, then open the CloudFormation stack events to
   identify the failing resource. Fix the underlying issue and re-run the create workflow.
 
 ### Hosted server is `IN_SERVICE` but unreachable
+
 - **Cause:** Incorrect `port`, health check, or security group settings.
 - **Resolution:** Verify the ALB target group health, container logs, and that the application is listening on the
   expected port. For STDIO servers, ensure the `startCommand` launches an MCP-compatible process that `mcp-proxy` can wrap.
 
 ### Bearer token placeholder not replaced
+
 - **Cause:** Custom headers still show `{LISA_BEARER_TOKEN}`.
 - **Resolution:** The placeholder is replaced at connection time. Make sure the consuming application sends an
   `Authorization` header when invoking the MCP connection. The API automatically replaces the placeholder right before
   returning connection details.
 
 ### Update API rejects payload
+
 - **Cause:** The `UpdateHostedMcpServerRequest` validator requires at least one field; it also blocks simultaneous
   enable/disable and auto scaling changes.
 - **Resolution:** Split enable/disable operations from scaling updates, and include only the fields you intend to change.

@@ -13,12 +13,14 @@ When enabled by an administrator, the Chat UI shows a **Chat Assistants** sectio
 The Document Summarization feature enables efficient document processing through LISA's non-RAG context functionality. Users can streamline their workflow via an intuitive modal interface that facilitates document upload, LLM selection, and customized summarization template configuration. The system generates comprehensive document summaries tailored to specific requirements.
 
 #### Core Components
+
 - Document upload interface
 - Environment-specific LLM integration
 - Configurable summarization templates with customizable parameters
 - Context-preserving file processing
 
 #### Operational Workflow
+
 1. Initiate summarization from active chat session
 2. Upload target document for processing
 3. Select appropriate LLM based on requirements
@@ -28,12 +30,14 @@ The Document Summarization feature enables efficient document processing through
 7. Review generated summary in chat interface
 
 #### Key Benefits
+
 - Efficient information extraction and processing
 - Flexible summarization parameters for diverse use cases
 - Intuitive user interface optimized for accessibility
 - Enhanced contextual accuracy through preserved document integrity
 
 #### Administrative Configuration
+
 LLM availability within the summarization modal requires summarization flagging and proper model configuration during initial setup. Selected LLMs must meet minimum requirements for:
 
 - Context window capacity

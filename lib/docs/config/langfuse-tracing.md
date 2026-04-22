@@ -117,6 +117,7 @@ Access the Langfuse tracing interface to view collected traces.
 Non-streamed responses generate traces with the following structure:
 
 **Input:**
+
 ```json
 {
     "args": [],
@@ -128,6 +129,7 @@ Non-streamed responses generate traces with the following structure:
 ```
 
 **Output:**
+
 ```json
 {
     "status_code": 200,
@@ -176,6 +178,7 @@ Non-streamed responses generate traces with the following structure:
 Streamed responses maintain identical input structure to non-streamed responses but the output differs.
 
 The default trace output for streamed responses are:
+
 ```xml
 <starlette.responses.StreamingResponse object at 0x7fd112d31b50>
 ```
@@ -207,10 +210,12 @@ For enhanced troubleshooting and integration support, Langfuse provides:
 ### Reference Documentation
 
 **LiteLLM Integration:**
+
 - [Langfuse Logging with LiteLLM](https://docs.litellm.ai/docs/proxy/logging#langfuse)
 - [OpenTelemetry Integration with LiteLLM Proxy](https://litellm.vercel.app/docs/observability/langfuse_otel_integration#with-litellm-proxy)
 
 **Langfuse Documentation:**
+
 - [LiteLLM Proxy with @observe Decorator](https://langfuse.com/guides/cookbook/integration_litellm_proxy)
 - [LiteLLM SDK Integration Guide](https://langfuse.com/integrations/frameworks/litellm-sdk)
 - [Python SDK Documentation](https://python.reference.langfuse.com/langfuse)

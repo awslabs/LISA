@@ -5,6 +5,7 @@ The Collection Management API provides endpoints for creating, reading, updating
 ## Base URL Structure
 
 All collection endpoints are accessed through LISA's main API Gateway with the following structure:
+
 ```
 https://{API-GATEWAY-DOMAIN}/{STAGE}/repository/{repositoryId}/collection
 ```
@@ -22,6 +23,7 @@ Create a new collection within a vector store.
 **Endpoint:** `POST /repository/{repositoryId}/collection`
 
 **Path Parameters:**
+
 - `repositoryId` (string, required): The parent vector store repository ID
 
 **Request Body:**
@@ -67,6 +69,7 @@ Create a new collection within a vector store.
 **Chunking Strategy Types:**
 
 1. **FIXED**: Fixed-size chunks with overlap
+
    ```json
    {
      "type": "fixed",
@@ -78,6 +81,7 @@ Create a new collection within a vector store.
    ```
 
 2. **SEMANTIC**: Semantic-based chunking
+
    ```json
    {
      "type": "SEMANTIC",
@@ -88,6 +92,7 @@ Create a new collection within a vector store.
    ```
 
 3. **RECURSIVE**: Recursive text splitting with custom separators
+
    ```json
    {
      "type": "RECURSIVE",
@@ -253,6 +258,7 @@ Retrieve a collection by ID within a vector store.
 **Endpoint:** `GET /repository/{repositoryId}/collection/{collectionId}`
 
 **Path Parameters:**
+
 - `repositoryId` (string, required): The parent vector store repository ID
 - `collectionId` (string, required): The collection ID (UUID)
 
@@ -358,6 +364,7 @@ Update a collection's configuration within a vector store. Supports partial upda
 **Endpoint:** `PUT /repository/{repositoryId}/collection/{collectionId}`
 
 **Path Parameters:**
+
 - `repositoryId` (string, required): The parent vector store repository ID
 - `collectionId` (string, required): The collection ID (UUID)
 
@@ -406,6 +413,7 @@ All fields are optional. Only include fields you want to update.
 **Immutable Fields:**
 
 The following fields cannot be modified after creation and will be ignored if included in the request:
+
 - `collectionId`
 - `repositoryId`
 - `embeddingModel`
@@ -587,6 +595,7 @@ When updating the chunking strategy on a collection that already has documents, 
 ```
 
 This warning indicates that:
+
 1. New documents uploaded after the change will use the new chunking strategy
 2. Existing documents will keep their original chunking
 3. You may want to re-ingest existing documents to apply the new strategy
@@ -598,6 +607,7 @@ Delete a collection within a vector store. This operation requires admin access 
 **Endpoint:** `DELETE /repository/{repositoryId}/collection/{collectionId}`
 
 **Path Parameters:**
+
 - `repositoryId` (string, required): The parent vector store repository ID
 - `collectionId` (string, required): The collection ID (UUID)
 
@@ -795,6 +805,7 @@ List collections in a repository with pagination, filtering, and sorting.
 **Endpoint:** `GET /repository/{repositoryId}/collections`
 
 **Path Parameters:**
+
 - `repositoryId` (string, required): The parent vector store repository ID
 
 **Query Parameters:**
@@ -1134,36 +1145,45 @@ getAllCollections('repo-123')
 **Filtering Examples:**
 
 1. **Filter by name/description:**
+
    ```
    GET /repository/repo-123/collections?filter=legal
    ```
+
    Returns collections with "legal" in name or description
 
 2. **Filter by status:**
+
    ```
    GET /repository/repo-123/collections?status=ACTIVE
    ```
+
    Returns only active collections
 
 3. **Combined filters:**
+
    ```
    GET /repository/repo-123/collections?filter=legal&status=ACTIVE
    ```
+
    Returns active collections with "legal" in name or description
 
 **Sorting Examples:**
 
 1. **Sort by name (ascending):**
+
    ```
    GET /repository/repo-123/collections?sortBy=name&sortOrder=asc
    ```
 
 2. **Sort by creation date (newest first):**
+
    ```
    GET /repository/repo-123/collections?sortBy=createdAt&sortOrder=desc
    ```
 
 3. **Sort by last update (oldest first):**
+
    ```
    GET /repository/repo-123/collections?sortBy=updatedAt&sortOrder=asc
    ```
@@ -1187,21 +1207,25 @@ Collections inherit configuration from their parent vector store:
 ## Validation Rules
 
 ### Collection Name
+
 - Required for creation
 - Maximum 100 characters
 - Must be unique within repository
 - Allowed characters: alphanumeric, spaces, hyphens, underscores
 
 ### Allowed Groups
+
 - Must be subset of parent repository's allowed groups
 - Empty array inherits from parent
 
 ### Chunking Strategy Parameters
+
 - `chunkSize`: 100-10000
 - `chunkOverlap`: 0 to chunkSize/2
 - `separators`: non-empty array for RECURSIVE strategy
 
 ### Metadata Tags
+
 - Maximum 50 tags per collection
 - Each tag maximum 50 characters
 - Allowed characters: alphanumeric, hyphens, underscores
@@ -1209,11 +1233,13 @@ Collections inherit configuration from their parent vector store:
 ## Access Control
 
 ### Permission Levels
+
 - **Read**: View collection configuration, query documents
 - **Write**: Upload documents, update collection metadata
 - **Admin**: Delete collection, modify access control
 
 ### Access Rules
+
 1. Admin users have full access to all collections across all repositories
 2. RAG Admin users can create, update, and delete collections on repositories they have group access to; they cannot modify `allowedGroups` or repository-level settings
 3. Non-admin users must have group membership intersection with collection's allowed groups
@@ -1237,20 +1263,24 @@ Collections inherit configuration from their parent vector store:
 ### Common Errors
 
 **"Collection name must be unique within repository"**
+
 - Solution: Choose a different name or check existing collections
 
 **"User does not have write access to repository"**
+
 - Solution: Ensure user is in one of the repository's allowed groups or is an admin
 
 **"Allowed groups must be subset of parent repository groups"**
+
 - Solution: Only specify groups that exist in the parent repository's allowed groups
 
 **"Chunk size must be between 100 and 10000"**
+
 - Solution: Adjust chunk size to be within the valid range
 
 **"Cannot create collection: allowUserCollections is false"**
-- Solution: Contact an administrator to enable user collections or have an admin create the collection
 
+- Solution: Contact an administrator to enable user collections or have an admin create the collection
 
 ### List User Collections (Cross-Repository)
 
@@ -1373,6 +1403,7 @@ The endpoint automatically selects an appropriate pagination strategy based on d
 The pagination token is a JSON string with two possible formats:
 
 **V1 Token (Simple Strategy):**
+
 ```json
 {
   "version": "v1",
@@ -1386,6 +1417,7 @@ The pagination token is a JSON string with two possible formats:
 ```
 
 **V2 Token (Scalable Strategy):**
+
 ```json
 {
   "version": "v2",

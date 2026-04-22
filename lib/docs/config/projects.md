@@ -27,6 +27,7 @@ The `maxProjectsPerUser` limit can be adjusted based on your organization's need
 ### Switching Between Views
 
 When the Projects feature is activated, a toggle appears in the chat sidebar with two options:
+
 - **History** — The default chronological view of all sessions
 - **Projects** — A folder-based view showing Projects and their assigned sessions
 

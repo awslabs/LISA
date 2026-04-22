@@ -5,7 +5,6 @@ is an open-source, infrastructure-as-code product. Customers deploy it directly 
 account. While LISA is specially designed for ADC regions that support government customers' most sensitive workloads,
 it is also compatible in any region. LISA is scalable and ready to support production use cases.
 
-
 LISA accelerates GenAI adoption by offering built-in configurability with [Amazon Bedrock](https://aws.amazon.com/bedrock/) models, Knowledge Bases, and Guardrails. LISA also offers advanced capabilities like an optional enterprise-ready chat user interface (UI) with configurable features, authentication, resource access control, centralized model orchestration via LiteLLM, model self-hosting via Amazon ECS, retrieval augmented generation (RAG), APIs, and broad model context protocol (MCP) support and features. LISA is also compatible with OpenAI’s API specification making it easily configurable with supporting solutions. For example, the Continue plugin for VSCode and JetBrains integrated development environments (IDE).
 
 LISA's roadmap is customer-driven, with new capabilities launching monthly. Reach out to the product team to ask questions, provide feedback, and send feature requests via the "Contact Us" button above.
@@ -87,7 +86,6 @@ built in model orchestration, added model flexibility, and model context protoco
 flexibility for different use cases.
 * Leverages AWS services that are FedRAMP High compliant.
 
-
 *The below screenshot showcases LISA’s optional chat assistant user interface. On the left is the user’s Chat History. In the center, the user can start a new chat session and prompt a model. Up top, the user can select from four libraries: Model, Document, Prompt, and MCP Connections. As an Administrator, this user also can access the Administration menu. Here they configure application features and manage available models. See the next screenshot for more details.* *See the next screenshot for more details.*
 ![LISA UI](../assets/LISA_UI.png)
 
@@ -105,36 +103,36 @@ LISA Roles and Enterprise Groups control access to features and resources.
 
 `AdminGroup` and `UserGroup` properties in the configuration are used to control tiers of application access, not resource access.
 
-- **AdminGroup**: The IDP group that distinguishes which users have access to create and manage restricted resource configuration within the UI, including:
-  - Activating application features
-  - Configuring models via Model Management
-  - Creating and deleting repositories, and configuring group access via RAG management
-  - Managing all collections across all repositories
-  - MCP server management
-  - MCP Workbench code editor
+* **AdminGroup**: The IDP group that distinguishes which users have access to create and manage restricted resource configuration within the UI, including:
+  * Activating application features
+  * Configuring models via Model Management
+  * Creating and deleting repositories, and configuring group access via RAG management
+  * Managing all collections across all repositories
+  * MCP server management
+  * MCP Workbench code editor
 
-- **RagAdminGroup** (optional): The IDP group for users who need to manage RAG content without full Admin privileges. This is especially useful in multi-tenant environments. RAG Admins can:
-  - Access the RAG Management page
-  - Create, update, and delete collections on repositories they have group access to
-  - Update ingestion pipelines on repositories they have group access to
-  - Delete documents in accessible repositories
-  - RAG Admins **cannot** create or delete repositories, change repository `allowedGroups`, or access any other Admin-only pages (Model Management, Configuration, MCP, API Tokens)
+* **RagAdminGroup** (optional): The IDP group for users who need to manage RAG content without full Admin privileges. This is especially useful in multi-tenant environments. RAG Admins can:
+  * Access the RAG Management page
+  * Create, update, and delete collections on repositories they have group access to
+  * Update ingestion pipelines on repositories they have group access to
+  * Delete documents in accessible repositories
+  * RAG Admins **cannot** create or delete repositories, change repository `allowedGroups`, or access any other Admin-only pages (Model Management, Configuration, MCP, API Tokens)
 
-- **UserGroup** (optional): If provided, this is required when the IDP is used for multiple systems and you want to control which users in the IDP have access to LISA.
+* **UserGroup** (optional): If provided, this is required when the IDP is used for multiple systems and you want to control which users in the IDP have access to LISA.
 
-- **API Management** (v6.1+): A new role that allows users to manage their API tokens within LISA, but does not grant full Admin privileges.
+* **API Management** (v6.1+): A new role that allows users to manage their API tokens within LISA, but does not grant full Admin privileges.
 
 ## Groups
 
 Access to resources can be constrained by Enterprise Groups, including:
 
-- LISA models
-- Prompt templates
-- RAG repos
-- RAG collections
-- MCP Connections
-- LISA MCP servers
-- API tokens
+* LISA models
+* Prompt templates
+* RAG repos
+* RAG collections
+* MCP Connections
+* LISA MCP servers
+* API tokens
 
 You can create or bring any number of Enterprise Groups in your IDP, which can then be used in LISA to lock down resources at creation/update. When you create/update any resource, you can assign 0, 1, or many Groups to that resource.
 
@@ -143,15 +141,17 @@ You can create or bring any number of Enterprise Groups in your IDP, which can t
 For example, let's say your IDP has the following groups: **Team Red**, **Team White**, and **Team Blue**. Below shows how you can use Groups to lock down access to Models, and then RAG repos and their Collections:
 
 **Models:**
-- Model 1: Teams Red and White
-- Model 2: none (Global)
-- Model 3: Team Blue
+
+* Model 1: Teams Red and White
+* Model 2: none (Global)
+* Model 3: Team Blue
 
 **RAG Repositories and Collections:**
-- RAG Repo 1: Teams Red, White, Blue
-  - Collection A: Team Red
-  - Collection B: Team White
-  - Collection C: Teams White and Blue
-- RAG Repo 2: none (Global)
-  - Collection X: Team Blue
-  - Collection Y: none (Global)
+
+* RAG Repo 1: Teams Red, White, Blue
+  * Collection A: Team Red
+  * Collection B: Team White
+  * Collection C: Teams White and Blue
+* RAG Repo 2: none (Global)
+  * Collection X: Team Blue
+  * Collection Y: none (Global)

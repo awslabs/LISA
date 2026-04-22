@@ -3,12 +3,12 @@
 ## Configuring Models
 
 LISA's Model Management UI allows Administrators to configure models for use with LISA. LISA supports:
+
 - third-party models hosted externally to LISA that are compatible with LiteLLM,
 - customer internal hosted models exposed by an internal AWS load balancer URL, and
 - self-hosted models running on LISA-managed Amazon ECS infrastructure.
 
 LISA's Model Management wizard walks Administrators through configuration steps.
-
 
 ## Scaling Models
 
@@ -60,23 +60,27 @@ LISA supports two ALB-based scaling metrics. The metric determines what signal t
 ### Scaling Recommendations
 
 #### Text Generation Models
+
 - Use `TargetResponseTime` as the scaling metric
 - Set `targetValue` to your acceptable p90 latency (e.g., 10 seconds)
 - These models are compute-intensive with longer inference times, so latency-based scaling reacts to actual user impact
 - Consider a higher `defaultInstanceWarmup` (300–3600s) since large models take time to load
 
 #### Embedding Models
+
 - Use `RequestCountPerTarget` as the scaling metric
 - Embedding requests are typically fast and uniform, so request volume is a reliable scaling signal
 - A lower `targetValue` (e.g., 20–50) keeps latency consistent under load
 
 #### Cost Optimization
+
 - Set `minCapacity` to 0 or 1 depending on whether you need always-on availability
 - Use [Model Scheduling](#model-scheduling) to automatically stop models during off-hours
 - Monitor actual utilization through CloudWatch to right-size `maxCapacity`
 - Increase `cooldown` to avoid unnecessary scaling churn during bursty traffic
 
 #### High Availability
+
 - Set `minCapacity` to at least 2 for production workloads to survive a single instance failure
 - Ensure `maxCapacity` provides enough headroom for peak traffic
 - Keep `defaultInstanceWarmup` accurate to avoid premature traffic routing to cold instances
@@ -140,33 +144,40 @@ Updated models automatically become available in the Chat UI once updates comple
 ### Update Process Flow
 
 #### 1. Validation Phase
+
 The system validates update requests against current model state:
+
 - Ensures model is in `InService` or `Stopped` state
 - Validates configuration conflicts
 - Checks capacity constraints against existing auto-scaling groups
 - Verifies container configuration compatibility
 
 #### 2. State Machine Orchestration
+
 Updates are processed through a multi-step state machine:
 
 **Step 1 - Job Intake**:
+
 - Processes update payload
 - Determines required update types
 - Sets model status to `Updating`
 - Prepares infrastructure changes
 
 **Step 2 - ECS Updates** (if needed):
+
 - Creates new task definition with updated container config
 - Updates ECS service
 - Monitors deployment progress
 - Handles rollback on failures
 
 **Step 3 - Capacity Updates** (if needed):
+
 - Updates auto-scaling group parameters
 - Monitors instance health and availability
 - Waits for capacity stabilization
 
 **Step 4 - Finalization**:
+
 - Updates model metadata in database
 - Restores model to `InService` status
 - Registers model with inference endpoint if needed
@@ -174,15 +185,18 @@ Updates are processed through a multi-step state machine:
 #### 3. Safety Mechanisms
 
 **State Validation**:
+
 - Models cannot be updated during transitional states
 - Updates requiring a container restart require explicit acknowledgment
 
 **Rollback Protection**:
+
 - Failed deployments automatically scale down to prevent resource waste
 - ECS updates include deployment monitoring with timeout protection
 - Database state is preserved during failures
 
 **Resource Limits**:
+
 - Polling timeouts prevent infinite waiting
 - Capacity changes validate against AWS account limits
 - Container updates respect ECS service constraints
@@ -190,6 +204,7 @@ Updates are processed through a multi-step state machine:
 ### Performing Model Updates
 
 #### Prerequisites
+
 - Administrator access to LISA Model Management
 - Target model is in `InService` or `Stopped` state
 - Understanding of update impact (restart requirements)
@@ -219,16 +234,19 @@ Updates are processed through a multi-step state machine:
 #### Common Update Failures
 
 **Validation Errors**:
+
 - Model in wrong state for updates
 - Configuration conflicts (e.g., min > max capacity)
 - Invalid container configurations
 
 **Deployment Issues**:
+
 - ECS deployment timeouts
 - Health check failures
 - Resource constraints
 
 **Capacity Problems**:
+
 - Auto-scaling group update failures
 - Instance launch issues
 - Load balancer target group problems
@@ -256,6 +274,7 @@ LISA supports two scheduling types. One type may be applied to each self-hosted 
 ### Schedule Configuration
 
 #### Prerequisites
+
 - Administrator access to LISA Model Management
 - Target model must be a LISA-hosted model
 - Model must be in `InService` or `Stopped` state
@@ -299,11 +318,13 @@ LISA supports two scheduling types. One type may be applied to each self-hosted 
 #### Schedule Configuration Examples
 
 **Daily Schedule Example**:
+
 - Monday-Friday: 09:00 to 17:00 (business hours)
 - Saturday: 10:00 to 14:00 (reduced hours)
 - Sunday: No schedule (model is in `Stopped` state)
 
 **Recurring Schedule Example**:
+
 - Every day: 08:00 to 20:00
 - Applies consistently across all days of the week
 
@@ -355,18 +376,21 @@ Model Management displays schedule information:
 ### Schedule Behavior and Rules
 
 #### Time Format Requirements
+
 - All times must be in 24-hour format (HH:MM)
 - Valid range: 00:00 to 23:59
 - Start time must be before stop time within the same day
 - Stop time must be at least 2 hours after start time
 
 #### Schedule Execution
+
 - **Automatic Actions**: Models are automatically started and stopped according to configured schedules
 - **Immediate Effect**: Schedule updates take effect immediately and recalculate next actions
 - **Manual Override**: Manual start/stop operations work independently and don't affect scheduling
 - **State Preservation**: Unscheduled days maintain the model's current state
 
 #### Timezone Handling
+
 - Schedules respect the configured timezone for all calculations
 - Supports all IANA timezone identifiers (e.g., "UTC", "America/New_York", "Europe/London")
 - Automatically handles daylight saving time transitions
@@ -385,11 +409,13 @@ The UI provides several indicators for schedule health:
 #### Common Scheduling Issues
 
 **Schedule Configuration Errors**:
+
 - Invalid timezone selection
 - Stop time less than 2 hours after start time
 - No days configured for daily schedules
 
 **Schedule Execution Failures**:
+
 - Model in invalid state during scheduled action
 - AWS service limits preventing scaling operations
 - Network connectivity issues affecting schedule execution
@@ -405,18 +431,21 @@ The UI provides several indicators for schedule health:
 ### Best Practices
 
 #### Cost Optimization
+
 - Configure schedules to match actual usage patterns
 - Use daily scheduling for models with varying weekday/weekend usage
 - Consider time zone alignment with primary user base
 - Monitor actual vs. scheduled usage to refine schedules
 
 #### Operational Considerations
+
 - Allow sufficient warmup time after scheduled starts before peak usage
 - Coordinate scheduled actions with maintenance windows
 - Test schedule configurations in non-production environments first
 - Document schedule configurations for operational handoff
 
 #### Schedule Design
+
 - Use meaningful time buffers like a minimum of 2-hours between starting and stopping within a single day
 - For operations spanning midnight, split schedules across consecutive days (e.g., Monday 21:00-23:59, Tuesday 00:00-03:00)
 - Plan for holiday and special event schedule modifications

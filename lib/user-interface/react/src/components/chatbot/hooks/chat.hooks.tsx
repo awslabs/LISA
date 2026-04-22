@@ -693,6 +693,8 @@ export const useChatGeneration = ({
                         let reasoningContentAccumulator = '';
                         let reasoningSignatureAccumulator = '';
                         let rawContentAccumulator = ''; // Accumulate raw content to parse thinking blocks
+                        let streamCompletionTokens: number | undefined;
+                        let streamPromptTokens: number | undefined;
 
                         let guardrailTriggered = false;
 
@@ -715,6 +717,13 @@ export const useChatGeneration = ({
 
                             if (isGuardrailTriggered) {
                                 guardrailTriggered = true;
+                            }
+
+                            // Capture token usage from the final streaming chunk (usage_metadata)
+                            const chunkUsage = (chunk as any).usage_metadata;
+                            if (chunkUsage) {
+                                if (chunkUsage.output_tokens != null) streamCompletionTokens = chunkUsage.output_tokens;
+                                if (chunkUsage.input_tokens != null) streamPromptTokens = chunkUsage.input_tokens;
                             }
 
                             // Accumulate reasoning content from additional_kwargs
@@ -887,7 +896,9 @@ export const useChatGeneration = ({
                                         content: finalCleanedContent,
                                         usage: {
                                             ...lastMessage.usage,
-                                            responseTime
+                                            responseTime,
+                                            ...(streamCompletionTokens != null ? { completionTokens: streamCompletionTokens } : {}),
+                                            ...(streamPromptTokens != null ? { promptTokens: streamPromptTokens } : {}),
                                         },
                                         guardrailTriggered: guardrailTriggered,
                                         reasoningContent: finalReasoningContent,

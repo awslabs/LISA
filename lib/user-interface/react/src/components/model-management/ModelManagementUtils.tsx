@@ -110,6 +110,13 @@ const formatScheduleDetails = (model: IModel) => {
     );
 };
 
+export function formatContextAndTokenCount (tokens?: number | null): string {
+    if (!tokens) return '-';
+    if (tokens >= 1_000_000) return `${+(tokens / 1_000_000).toFixed(1)}M`;
+    if (tokens >= 1_000) return `${+(tokens / 1_000).toFixed(1)}K`;
+    return tokens.toString();
+}
+
 export const createCardDefinitions = (defaultModelId?: string) => ({
     header: (model: IModel) => <div data-testid={`model-card-${model.modelId}`}>{model.modelId} {model.modelId === defaultModelId && <Badge>DEFAULT</Badge>}</div>,
     sections: [
@@ -149,6 +156,11 @@ export const createCardDefinitions = (defaultModelId?: string) => ({
             content: (model: IModel) => model.instanceType ?  model.instanceType : '-',
         },
         {
+            id: 'contextWindow',
+            header: 'Context Window',
+            content: (model: IModel) => formatContextAndTokenCount(model.contextWindow),
+        },
+        {
             id: 'scheduleType',
             header: 'Schedule type',
             content: (model: IModel) => formatScheduleType(model),
@@ -185,7 +197,7 @@ export const PAGE_SIZE_OPTIONS = DEFAULT_PAGE_SIZE_OPTIONS('Models');
 
 export const DEFAULT_PREFERENCES: CollectionPreferencesProps.Preferences = {
     pageSize: 12,
-    visibleContent: ['modelName', 'modelFeatures', 'modelType', 'modelUrl', 'streaming', 'hosting', 'instanceType', 'scheduleType', 'scheduleDetails', 'modelDescription', 'allowedGroups', 'modelStatus'],
+    visibleContent: ['modelName', 'modelFeatures', 'modelType', 'modelUrl', 'streaming', 'hosting', 'instanceType', 'contextWindow', 'scheduleType', 'scheduleDetails', 'modelDescription', 'allowedGroups', 'modelStatus'],
 };
 
 export const VISIBLE_CONTENT_OPTIONS = [
@@ -199,6 +211,7 @@ export const VISIBLE_CONTENT_OPTIONS = [
             { id: 'streaming', label: 'Streaming' },
             { id: 'hosting', label: 'LISA-Hosted infrastructure' },
             { id: 'instanceType', label: 'Instance type' },
+            { id: 'contextWindow', label: 'Context Window' },
             { id: 'scheduleType', label: 'Schedule type' },
             { id: 'scheduleDetails', label: 'Schedule details' },
             { id: 'modelDescription', label: 'Description' },

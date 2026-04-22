@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "description": "AWS CDK dependencies for deployer Lambdas",
   "dependencies": {
-    "aws-cdk": "^2.1033.0",
-    "aws-cdk-lib": "^2.232.1",
-    "constructs": "^10.4.3",
-    "zod": "^4.1.13"
+    "aws-cdk": "^2.1118.4",
+    "aws-cdk-lib": "^2.250.0",
+    "constructs": "^10.6.0",
+    "zod": "^4.3.6"
   },
   "scripts": {
     "build": "echo \"Nothing to build\"",

@@ -67,6 +67,7 @@ const navLinks = [
       { text: 'Configuration UI', link: '/config/configuration-ui' },
       { text: 'Usage & Features', link: '/config/usage' },
       { text: 'RAG Repository', link: '/config/repositories' },
+      { text: 'RAG Evaluation', link: '/config/rag-evaluation' },
       { text: 'Langfuse Tracing', link: '/config/langfuse-tracing'},
       { text: 'Private Labeling', link: '/config/custom-branding' },
       {
@@ -135,7 +136,11 @@ export default defineConfig({
       md.use(tabsMarkdownPlugin)
       const defaultRender = md.render.bind(md);
       md.render = (src, env) => {
+        // Escape generic type syntax that Vue interprets as HTML tags
         src = src.replace(/Array<([^>]+)>/g, 'Array&lt;$1&gt;');
+        src = src.replace(/Record<([^>]+)>/g, 'Record&lt;$1&gt;');
+        // Escape angle-bracketed placeholders in prose (e.g. <tokenUUID>, <username>, <sub>)
+        src = src.replace(/"([^"]*)<(tokenUUID|username|sub)>([^"]*)"/g, '"$1&lt;$2&gt;$3"');
         return defaultRender(src, env);
       };
     },

@@ -72,6 +72,8 @@
   },
   "devDependencies": {
     "@rolldown/pluginutils": "^1.0.0-beta.47",
+    "@tailwindcss/node": "^4.1.18",
+    "@tailwindcss/oxide": "^4.1.18",
     "@tailwindcss/vite": "^4.1.18",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",

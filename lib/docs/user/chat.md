@@ -61,7 +61,6 @@ pip install -r src/requirements.txt
 export AWS_REGION=<Region where LISA is deployed>
 export AUTHORITY=<IdP Endpoint>
 export CLIENT_ID=<IdP Client Id>
-export REGISTERED_MODELS_PS_NAME=<Models ParameterName>
 export TOKEN_TABLE_NAME="<deployment prefix>/LISAApiTokenTable"
 gunicorn -k uvicorn.workers.UvicornWorker -w 2 -b "0.0.0.0:8080" "src.main:app"
 ```

@@ -35,7 +35,6 @@ def mock_env_vars(monkeypatch):
         "ADMIN_GROUP": "admin",
         "USER_GROUP": "users",
         "JWT_GROUPS_PROP": "cognito:groups",
-        "REGISTERED_MODELS_PS_NAME": "/test/models",
         "GUARDRAILS_TABLE_NAME": "test-guardrails-table",
         "USAGE_METRICS_QUEUE_URL": "",
         "LITELLM_KEY": "test-litellm-key",

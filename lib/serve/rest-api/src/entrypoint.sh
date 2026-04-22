@@ -5,17 +5,30 @@ set -e
 HOST="0.0.0.0"
 PORT="8080"
 
+# Production mode: disables load_dotenv() so LiteLLM won't try to load credentials
+# from .env files. All env vars are injected by ECS task definition / CDK.
+export LITELLM_MODE="PRODUCTION"
+
+# Use prisma migrate deploy instead of prisma db push for safe, incremental DB migrations.
+# prisma db push can drop columns/tables; migrate deploy only applies forward migrations.
+export USE_PRISMA_MIGRATE="True"
+
+# Disable LiteLLM's per-worker schema updates. We run prisma generate + migrate
+# once below (before workers spawn) to avoid filesystem write contention when
+# multiple Gunicorn workers try to generate the Prisma client simultaneously.
+export DISABLE_SCHEMA_UPDATE="true"
+
 echo "Starting LISA REST API Service"
 echo "=================================="
 
-# Prisma client is now generated during build from LiteLLM's schema
-echo "Prisma client already generated during build"
+# Prisma binaries are cached during Docker build; client generation happens below
+# after DB connectivity is confirmed, before workers spawn.
 
-# Update LiteLLM config that was already copied from config.yaml with runtime-deployed models.
-# Depends on SSM Parameter for registered models.
+# Generate the LiteLLM config for this environment.
+# Model definitions are managed from the database, and DB connection info comes
+# from the SSM parameter referenced by LITELLM_DB_INFO_PS_NAME.
 echo "🔧 Configuring LiteLLM..."
 echo "   - AWS Region: $AWS_REGION"
-echo "   - Models Parameter: $REGISTERED_MODELS_PS_NAME"
 echo "   - DB Info Parameter: $LITELLM_DB_INFO_PS_NAME"
 
 # Generate LiteLLM config with error handling
@@ -36,9 +49,19 @@ if [ ! -f "litellm_config.yaml" ]; then
     exit 1
 fi
 
-echo "📄 LiteLLM config file contents:"
+echo "📄 LiteLLM config sections:"
 echo "--------------------------------"
-head -20 litellm_config.yaml
+python -c 'import yaml
+with open("litellm_config.yaml") as f:
+    cfg = yaml.safe_load(f)
+for section in cfg:
+    if section in ("general_settings", "litellm_settings", "router_settings", "callback_settings"):
+        print(f"  {section}: {list(cfg[section].keys()) if isinstance(cfg[section], dict) else type(cfg[section]).__name__}")
+    elif section == "model_list":
+        print(f"  model_list: {len(cfg[section]) if isinstance(cfg[section], list) else 0} models")
+    else:
+        print(f"  {section}: [set]")
+'
 echo "--------------------------------"
 
 # If LiteLLM OTEL message_logging is enabled, OTEL console output may still omit
@@ -67,15 +90,20 @@ if [ "${DEBUG}" = "true" ]; then
     LOG_LEVEL="DEBUG"
     GUNICORN_LOG_LEVEL="debug"
     PRISMA_LOG_LEVEL="info,query"
+    # Use --detailed_debug for maximum LiteLLM verbosity
+    LITELLM_DETAILED_DEBUG_ARGS="--detailed_debug"
+    # Plain text logs are easier to read when debugging
+    export LITELLM_JSON_LOGS=${LITELLM_JSON_LOGS:-false}
 else
     LOG_LEVEL="${LITELLM_LOG_LEVEL:-WARNING}"
     GUNICORN_LOG_LEVEL="info"
     PRISMA_LOG_LEVEL="warn"
+    # JSON logs are recommended for production (structured logging for CloudWatch/ECS)
+    export LITELLM_JSON_LOGS=${LITELLM_JSON_LOGS:-true}
 fi
 
 # Configure LiteLLM logging
 export LITELLM_LOG=${LOG_LEVEL}
-export LITELLM_JSON_LOGS=${LITELLM_JSON_LOGS:-false}
 export LITELLM_DISABLE_HEALTH_CHECK_LOGS=${LITELLM_DISABLE_HEALTH_CHECK_LOGS:-true}
 
 # Configure Prisma logging
@@ -107,13 +135,29 @@ if [ -n "$DATABASE_HOST" ] && [ -n "$DATABASE_PORT" ]; then
     fi
 fi
 
+# Pre-generate Prisma client and run migrations ONCE before spawning workers.
+# This prevents the crash-loop caused by multiple Gunicorn workers simultaneously
+# trying to generate the Prisma Python client to the same filesystem path.
+# See src/utils/setup_prisma_db.py for full details.
+echo "🔧 Pre-generating Prisma client and running migrations..."
+python ./src/utils/setup_prisma_db.py
+
+# Symlink schema.prisma into /app so LiteLLM's per-worker schema diff check
+# (check_prisma_schema_diff) can find it via the relative path ./schema.prisma.
+# Without this, each worker logs "Could not load --to-schema-datamodel from
+# provided path schema.prisma: file or directory not found" on startup.
+PRISMA_SCHEMA_DIR=$(python -c "import litellm.proxy, os; print(os.path.dirname(litellm.proxy.__file__))")
+ln -sf "${PRISMA_SCHEMA_DIR}/schema.prisma" /app/schema.prisma
+
+echo "✅ Prisma setup complete"
+
 # Start LiteLLM in the background with better error handling
 # Note: For IAM RDS authentication, LiteLLM handles token refresh natively
 # when IAM_TOKEN_DB_AUTH=true is set (configured via CDK environment variables)
 echo "🚀 Starting LiteLLM server..."
 echo "   - Config file: litellm_config.yaml"
 echo "   - Port: 4000 (internal)"
-echo "   - Database: Prisma with auto-push enabled"
+echo "   - Database: Prisma with migrate deploy"
 echo "   - Debug mode: ${DEBUG:-false}"
 echo "   - Log level: $LOG_LEVEL"
 echo "   - Prisma log level: $PRISMA_LOG_LEVEL"
@@ -127,9 +171,18 @@ fi
 # These are expected with LiteLLM < 1.81 and the service recovers automatically
 # Set LITELLM_LOG_LEVEL=INFO to see all logs, or DEBUG for verbose output
 # Use --num_workers to increase parallelism for embedding requests
-LITELLM_WORKERS=${LITELLM_WORKERS:-4}
+# Both LISA and LiteLLM run as Gunicorn + Uvicorn async workers doing I/O-bound
+# HTTP proxying. Every request passes through both serially (LISA :8080 → LiteLLM :4000),
+# so they should have the same worker count. A single WORKER_COUNT env var controls both.
+# Async Uvicorn workers handle many concurrent connections each, so 2 is sufficient
+# for redundancy without excessive memory/DB connection overhead.
+WORKER_COUNT=${WORKER_COUNT:-2}
+LITELLM_WORKERS=${LITELLM_WORKERS:-$WORKER_COUNT}
+# Recycle workers after 10000 requests to mitigate gradual memory leaks under sustained load
+LITELLM_MAX_REQUESTS=${LITELLM_MAX_REQUESTS:-10000}
 echo "   - LiteLLM workers: $LITELLM_WORKERS"
-litellm -c litellm_config.yaml --use_prisma_db_push --num_workers "$LITELLM_WORKERS" $LITELLM_DETAILED_DEBUG_ARGS > litellm.log 2>&1 &
+echo "   - Worker recycle after: $LITELLM_MAX_REQUESTS requests"
+litellm -c litellm_config.yaml --run_gunicorn --num_workers "$LITELLM_WORKERS" --max_requests_before_restart "$LITELLM_MAX_REQUESTS" $LITELLM_DETAILED_DEBUG_ARGS > litellm.log 2>&1 &
 LITELLM_PID=$!
 
 echo "   - LiteLLM PID: $LITELLM_PID"
@@ -143,8 +196,8 @@ echo "   - Log tail PID: $TAIL_PID"
 
 # LiteLLM is starting in the background, proceed with Gunicorn startup
 
-# Validate THREADS variable with default value
-THREADS=${THREADS:-4}
+# Use same worker count as LiteLLM — both are async Uvicorn behind Gunicorn
+THREADS=${THREADS:-$WORKER_COUNT}
 echo "🚀 Starting Gunicorn with $THREADS workers..."
 
 # Start Gunicorn with Uvicorn workers

@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Authorize for REST API."""
+
 import hashlib
 import json
 import logging

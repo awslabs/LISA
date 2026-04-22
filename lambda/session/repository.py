@@ -18,6 +18,7 @@ No module-level AWS resource instantiation — all clients/resources are
 passed in by the caller so this module is safe to import from any Lambda
 regardless of which environment variables are present.
 """
+
 import logging
 import os
 from typing import Any

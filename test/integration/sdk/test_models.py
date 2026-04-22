@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Test basic usage of the Lisapy SDK."""
+
 import logging
 
 from lisapy import LisaLlm

@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Authorization provider abstraction for pluggable auth implementations."""
+
 import os
 from abc import ABC, abstractmethod
 from typing import Any

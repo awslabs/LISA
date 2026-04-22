@@ -32,8 +32,7 @@ class LiteLLMClient:
         self._verify = verify
 
     def list_models(self) -> list[dict[str, Any]]:
-        """
-        Retrieve all models from the database.
+        """Retrieve all models from the database.
 
         Note, this is a superset of the models that are visible from the OpenAI API call to /models. If multiple models
         are defined with the same model name, only one will show in the OpenAI API call because of the model name, but
@@ -50,14 +49,13 @@ class LiteLLMClient:
         return models_list
 
     def add_model(self, model_name: str, litellm_params: dict[str, str]) -> dict[str, Any]:
-        """
-        Add a new model configuration to the database.
+        """Add a new model configuration to the database.
 
-        The parameters for this method will be used for defining how LiteLLM accesses a model between both the model
-        and the litellm_params dictionary, and anything that is not LiteLLM-specific can be added to the
-        additional_metadata dictionary. Because LiteLLM uses this ID instead of other data, it is possible to add
-        two models with the same name, which causes ambiguous results when using the OpenAI API for listing models as
-        that only shows one model per model name.
+        The parameters for this method will be used for defining how LiteLLM accesses a model between both the model and
+        the litellm_params dictionary, and anything that is not LiteLLM-specific can be added to the additional_metadata
+        dictionary. Because LiteLLM uses this ID instead of other data, it is possible to add two models with the same
+        name, which causes ambiguous results when using the OpenAI API for listing models as that only shows one model
+        per model name.
         """
         resp = requests.post(
             self._base_uri + "/model/new",
@@ -72,11 +70,10 @@ class LiteLLMClient:
         return resp.json()  # type: ignore [no-any-return]
 
     def delete_model(self, identifier: str) -> None:
-        """
-        Delete a model from the database.
+        """Delete a model from the database.
 
-        The identifier is the ID that LiteLLM generates on its end when creating a model, regardless of if the model
-        was defined in a static configuration file or if it was added dynamically.
+        The identifier is the ID that LiteLLM generates on its end when creating a model, regardless of if the model was
+        defined in a static configuration file or if it was added dynamically.
         """
         requests.post(
             self._base_uri + "/model/delete",
@@ -87,8 +84,7 @@ class LiteLLMClient:
         )
 
     def get_model(self, identifier: str) -> dict[str, Any]:
-        """
-        Get model metadata from the database.
+        """Get model metadata from the database.
 
         Due to what appears to be a bug in LiteLLM when accessing individual models from the /model/info route, we must
         list all models then filter out the one we want for this method call.
@@ -100,8 +96,7 @@ class LiteLLMClient:
         return filtered_models[0]
 
     def create_guardrail(self, guardrail_config: dict[str, Any]) -> dict[str, Any]:
-        """
-        Create a new guardrail configuration in LiteLLM.
+        """Create a new guardrail configuration in LiteLLM.
 
         Args:
             guardrail_config: Dictionary containing guardrail configuration including
@@ -121,8 +116,7 @@ class LiteLLMClient:
         return resp.json()  # type: ignore [no-any-return]
 
     def update_guardrail(self, guardrail_id: str, guardrail_config: dict[str, Any]) -> dict[str, Any]:
-        """
-        Update an existing guardrail configuration in LiteLLM.
+        """Update an existing guardrail configuration in LiteLLM.
 
         Args:
             guardrail_id: The LiteLLM guardrail ID to update
@@ -142,8 +136,7 @@ class LiteLLMClient:
         return resp.json()  # type: ignore [no-any-return]
 
     def delete_guardrail(self, guardrail_id: str) -> None:
-        """
-        Delete a guardrail configuration from LiteLLM.
+        """Delete a guardrail configuration from LiteLLM.
 
         Args:
             guardrail_id: The LiteLLM guardrail ID to delete
@@ -157,8 +150,7 @@ class LiteLLMClient:
         resp.raise_for_status()
 
     def get_guardrail_info(self, guardrail_id: str) -> dict[str, Any]:
-        """
-        Get information about a specific guardrail.
+        """Get information about a specific guardrail.
 
         Args:
             guardrail_id: The LiteLLM guardrail ID to retrieve
@@ -176,8 +168,7 @@ class LiteLLMClient:
         return resp.json()  # type: ignore [no-any-return]
 
     def apply_guardrail(self, guardrail_name: str, text: str) -> dict[str, Any]:
-        """
-        Apply a guardrail to text content for validation.
+        """Apply a guardrail to text content for validation.
 
         Args:
             guardrail_name: Name of the guardrail to apply

@@ -438,7 +438,6 @@ from session.lambda_functions import (
 
 def test_is_session_encryption_enabled_true(config_table, lambda_context):
     """Test session encryption enabled via global configuration."""
-
     # Add global configuration entry with encryption enabled
     config_table.put_item(
         Item={
@@ -460,7 +459,6 @@ def test_is_session_encryption_enabled_true(config_table, lambda_context):
 
 def test_is_session_encryption_enabled_false(config_table, lambda_context):
     """Test session encryption disabled via global configuration."""
-
     # Add global configuration entry with encryption disabled
     config_table.put_item(
         Item={
@@ -482,7 +480,6 @@ def test_is_session_encryption_enabled_false(config_table, lambda_context):
 
 def test_is_session_encryption_enabled_default_fallback(config_table, lambda_context):
     """Test session encryption defaults to disabled when configuration is missing."""
-
     # Don't add any configuration entry
     # Clear cache to ensure fresh result
     from session.lambda_functions import cache
@@ -530,7 +527,6 @@ def test_is_session_encryption_enabled_client_error(mock_config_table, lambda_co
 @patch("session.lambda_functions.config_table")
 def test_is_session_encryption_enabled_general_exception(mock_config_table, lambda_context):
     """Test session encryption with general exception in configuration lookup."""
-
     # Mock config table to raise general exception
     mock_config_table.query.side_effect = Exception("General database error")
 
@@ -1015,7 +1011,6 @@ def test_get_session_model_config_update(mock_update_config, dynamodb_table, sam
 # Image Attachment Tests
 def test_attach_image_to_session_success(lambda_context):
     """Test attach_image_to_session with valid image data."""
-
     # Create a simple base64 encoded image
     image_data = (
         "data:image/png;base64,"
@@ -1060,7 +1055,6 @@ def test_attach_image_to_session_missing_message(lambda_context):
 
 def test_attach_image_to_session_s3_upload_error(lambda_context):
     """Test attach_image_to_session with S3 upload error."""
-
     image_data = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB"
 
     event = {
@@ -1149,7 +1143,6 @@ def test_put_session_encryption_enabled_success(
     mock_migrate, mock_encryption_enabled, dynamodb_table, config_table, sample_session, lambda_context
 ):
     """Test put_session with encryption enabled and successful encryption."""
-
     # Mock encryption enabled
     mock_encryption_enabled.return_value = True
 
@@ -1212,7 +1205,6 @@ def test_put_session_sqs_metrics_success(
     mock_sqs_client, mock_get_user_context, dynamodb_table, config_table, sample_session, lambda_context
 ):
     """Test put_session with successful SQS metrics publishing."""
-
     # Set environment variable for metrics queue
     os.environ["USAGE_METRICS_QUEUE_NAME"] = "test-metrics-queue"
 
@@ -1236,7 +1228,6 @@ def test_put_session_sqs_metrics_missing_queue(
     mock_sqs_client, dynamodb_table, config_table, sample_session, lambda_context
 ):
     """Test put_session with missing USAGE_METRICS_QUEUE_NAME environment variable."""
-
     # Remove environment variable
     if "USAGE_METRICS_QUEUE_NAME" in os.environ:
         del os.environ["USAGE_METRICS_QUEUE_NAME"]
@@ -1260,7 +1251,6 @@ def test_put_session_sqs_metrics_error(
     mock_sqs_client, mock_get_user_context, dynamodb_table, config_table, sample_session, lambda_context
 ):
     """Test put_session with SQS metrics publishing error."""
-
     # Set environment variable for metrics queue
     os.environ["USAGE_METRICS_QUEUE_NAME"] = "test-metrics-queue"
 
@@ -1286,7 +1276,6 @@ def test_put_session_model_config_update(
     mock_update_config, dynamodb_table, config_table, sample_session, lambda_context
 ):
     """Test put_session with model configuration update."""
-
     # Mock model config update - return SessionConfigurationModel
     updated_config = SessionConfigurationModel(
         selectedModel=SelectedModel(modelId="test-model", features=[{"name": "new-feature", "overview": ""}])
@@ -1446,7 +1435,6 @@ def test_extract_video_s3_keys_string_content():
 def test_generate_presigned_video_url_success(mock_s3_client):
     """Test _generate_presigned_video_url with success."""
     mock_s3_client.generate_presigned_url.return_value = "https://presigned-video-url.com"
-
     result = _generate_presigned_video_url("videos/test-video.mp4")
     assert result == "https://presigned-video-url.com"
 

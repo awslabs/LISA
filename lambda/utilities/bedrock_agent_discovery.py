@@ -203,8 +203,7 @@ def list_agent_aliases(agent_id: str, bedrock_agent_client: Any) -> list[Bedrock
 
 
 def discover_bedrock_agents(bedrock_agent_client: Any | None = None) -> list[BedrockAgentDiscoveryItem]:
-    """
-    List agents in the account and attach alias hints for invocation.
+    """List agents in the account and attach alias hints for invocation.
 
     Only agents in PREPARED state are returned (consistent with ready-to-invoke agents).
     """

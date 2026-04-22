@@ -38,7 +38,7 @@ def setup_env(monkeypatch):
 
 
 def test_create_collection():
-    """Test collection creation"""
+    """Test collection creation."""
     from repository.collection_service import CollectionService
 
     mock_repo = Mock()
@@ -66,7 +66,7 @@ def test_create_collection():
 
 
 def test_get_collection():
-    """Test get collection"""
+    """Test get collection."""
     from repository.collection_service import CollectionService
 
     mock_repo = Mock()
@@ -93,8 +93,7 @@ def test_get_collection():
 
 
 def test_list_collections():
-    """Test list collections"""
-
+    """Test list collections."""
     from repository.collection_service import CollectionService
 
     mock_repo = Mock()
@@ -237,7 +236,7 @@ def test_delete_default_collection():
 
 
 def test_create_collection_lambda_with_embedding_model():
-    """Test create_collection lambda with embedding model specified"""
+    """Test create_collection lambda with embedding model specified."""
     import json
     from unittest.mock import Mock, patch
 
@@ -302,7 +301,7 @@ def test_create_collection_lambda_with_embedding_model():
 
 
 def test_create_collection_lambda_without_embedding_model_with_repository_default():
-    """Test create_collection lambda without embedding model but repository has default"""
+    """Test create_collection lambda without embedding model but repository has default."""
     import json
     from unittest.mock import Mock, patch
 
@@ -366,7 +365,7 @@ def test_create_collection_lambda_without_embedding_model_with_repository_defaul
 
 
 def test_create_collection_lambda_without_embedding_model_no_repository_default():
-    """Test create_collection lambda fails when no embedding model and no repository default"""
+    """Test create_collection lambda fails when no embedding model and no repository default."""
     import json
     from unittest.mock import Mock, patch
 
@@ -423,7 +422,7 @@ def test_create_collection_lambda_without_embedding_model_no_repository_default(
 
 
 def test_create_collection_lambda_original_payload():
-    """Test create_collection lambda with the original failing payload"""
+    """Test create_collection lambda with the original failing payload."""
     import json
     from unittest.mock import Mock, patch
 

@@ -39,8 +39,7 @@ class CollectionRepository:
     """Collection repository for DynamoDB operations."""
 
     def __init__(self, table_name: str | None = None) -> None:
-        """
-        Initialize the Collection Repository.
+        """Initialize the Collection Repository.
 
         Args:
             table_name: Optional table name override for testing
@@ -51,8 +50,7 @@ class CollectionRepository:
         logger.info(f"Initialized CollectionRepository with table: {table_name}")
 
     def create(self, collection: RagCollectionConfig) -> RagCollectionConfig:
-        """
-        Create a new collection in DynamoDB.
+        """Create a new collection in DynamoDB.
 
         Args:
             collection: The collection configuration to create
@@ -97,8 +95,7 @@ class CollectionRepository:
             raise CollectionRepositoryError(f"Unexpected error creating collection: {str(e)}")
 
     def find_by_id(self, collection_id: str, repository_id: str) -> RagCollectionConfig | None:
-        """
-        Find a collection by its ID and repository ID.
+        """Find a collection by its ID and repository ID.
 
         Args:
             collection_id: The collection ID
@@ -136,8 +133,7 @@ class CollectionRepository:
         updates: dict[str, Any],
         expected_version: str | None = None,
     ) -> RagCollectionConfig:
-        """
-        Update a collection with optimistic locking.
+        """Update a collection with optimistic locking.
 
         Args:
             collection_id: The collection ID
@@ -213,8 +209,7 @@ class CollectionRepository:
             raise CollectionRepositoryError(f"Unexpected error updating collection: {str(e)}")
 
     def delete(self, collection_id: str, repository_id: str) -> bool:
-        """
-        Delete a collection from DynamoDB.
+        """Delete a collection from DynamoDB.
 
         Args:
             collection_id: The collection ID
@@ -256,8 +251,7 @@ class CollectionRepository:
         sort_by: CollectionSortBy = CollectionSortBy.CREATED_AT,
         sort_order: SortOrder = SortOrder.DESC,
     ) -> tuple[list[RagCollectionConfig], dict[str, str] | None]:
-        """
-        List collections for a repository with pagination, filtering, and sorting.
+        """List collections for a repository with pagination, filtering, and sorting.
 
         Args:
             repository_id: The repository ID
@@ -333,8 +327,7 @@ class CollectionRepository:
             raise CollectionRepositoryError(f"Failed to list collections: {str(e)}")
 
     def count_by_repository(self, repository_id: str, status: CollectionStatus | None = None) -> int:
-        """
-        Count collections in a repository.
+        """Count collections in a repository.
 
         Args:
             repository_id: The repository ID
@@ -400,8 +393,8 @@ class CollectionRepository:
             raise CollectionRepositoryError(f"Failed to find collection by name: {str(e)}")
 
     def find_collections_using_model(self, model_id: str) -> list[dict[str, str]]:
-        """
-        Find all collections that use a specific embedding model.
+        """Find all collections that use a specific embedding model.
+
         Excludes collections with status indicating they are deleted or archived.
 
         Args:

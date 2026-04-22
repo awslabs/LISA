@@ -84,8 +84,7 @@ def drop_pgvector_collection(repository_id: str, collection_id: str) -> None:
 
 
 def pipeline_delete_collection(job: IngestionJob) -> None:
-    """
-    Delete all documents in a collection.
+    """Delete all documents in a collection.
 
     Steps:
     1. Drop vector store index for collection (if supported)
@@ -194,8 +193,7 @@ def pipeline_delete_collection(job: IngestionJob) -> None:
 
 
 def pipeline_delete(job: IngestionJob) -> None:
-    """
-    Route deletion job to appropriate handler based on job type.
+    """Route deletion job to appropriate handler based on job type.
 
     Args:
         job: Ingestion job with deletion details
@@ -214,8 +212,7 @@ def pipeline_delete(job: IngestionJob) -> None:
 
 
 def pipeline_delete_document(job: IngestionJob) -> None:
-    """
-    Delete a single document.
+    """Delete a single document.
 
     Args:
         job: Ingestion job with document deletion details
@@ -257,8 +254,7 @@ def pipeline_delete_document(job: IngestionJob) -> None:
 
 
 def pipeline_delete_documents(job: IngestionJob) -> None:
-    """
-    Delete multiple documents in batch (up to 100 at a time).
+    """Delete multiple documents in batch (up to 100 at a time).
 
     Processes documents from document_ids field containing list of document IDs.
 

@@ -158,8 +158,7 @@ def _get_metadata_update_handlers(server_config: dict[str, Any], server_id: str)
 def _process_metadata_updates(
     server_config: dict[str, Any], update_payload: dict[str, Any], server_id: str
 ) -> tuple[bool, dict[str, Any]]:
-    """
-    Process metadata updates.
+    """Process metadata updates.
 
     Args:
         server_config: The server configuration dictionary to update
@@ -301,8 +300,7 @@ def _update_mcp_connections_table_metadata(
 
 
 def handle_job_intake(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """
-    Handle initial UpdateMcpServer job submission.
+    """Handle initial UpdateMcpServer job submission.
 
     This handler will perform the following actions:
     1. Determine if any metadata (description, groups, environment, etc.) changes are required
@@ -743,8 +741,7 @@ def update_ecs_service(cluster_arn: str, service_arn: str, task_definition_arn: 
 
 
 def handle_ecs_update(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """
-    Update ECS task definition with new environment variables and update service.
+    """Update ECS task definition with new environment variables and update service.
 
     This handler will:
     1. Retrieve current task definition from ECS
@@ -809,8 +806,7 @@ def handle_ecs_update(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
 
 def handle_poll_ecs_deployment(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """
-    Monitor ECS service deployment progress.
+    """Monitor ECS service deployment progress.
 
     This handler will:
     1. Check if ECS service deployment is complete
@@ -903,8 +899,7 @@ def handle_poll_ecs_deployment(event: dict[str, Any], context: Any) -> dict[str,
 
 
 def handle_poll_capacity(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """
-    Poll ECS service to confirm if the capacity is done updating.
+    """Poll ECS service to confirm if the capacity is done updating.
 
     This handler will:
     1. Get the ECS service's current status. If it is still updating, then exit with a
@@ -950,8 +945,7 @@ def handle_poll_capacity(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
 
 def handle_finish_update(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """
-    Finalize update in DDB.
+    """Finalize update in DDB.
 
     1. If the server was enabled from the Stopped state, update MCP Connections table to ACTIVE,
        set status to InService in DDB

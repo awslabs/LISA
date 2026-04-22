@@ -31,7 +31,7 @@ from utilities.encoders import convert_decimal
 
 
 def test_convert_decimal_with_decimal():
-    """Test convert_decimal with Decimal values"""
+    """Test convert_decimal with Decimal values."""
     # Test single Decimal
     result = convert_decimal(Decimal("123.45"))
     assert result == 123.45
@@ -49,7 +49,7 @@ def test_convert_decimal_with_decimal():
 
 
 def test_convert_decimal_with_dict():
-    """Test convert_decimal with dictionary containing Decimals"""
+    """Test convert_decimal with dictionary containing Decimals."""
     input_dict = {
         "price": Decimal("99.99"),
         "quantity": Decimal("5"),
@@ -73,7 +73,7 @@ def test_convert_decimal_with_dict():
 
 
 def test_convert_decimal_with_list():
-    """Test convert_decimal with list containing Decimals"""
+    """Test convert_decimal with list containing Decimals."""
     input_list = [Decimal("10.5"), "string_value", 42, [Decimal("3.14"), "nested"], {"amount": Decimal("100.00")}]
 
     result = convert_decimal(input_list)
@@ -113,7 +113,7 @@ def test_convert_decimal_with_non_decimal_types():
 
 
 def test_convert_decimal_with_empty_collections():
-    """Test convert_decimal with empty dict and list"""
+    """Test convert_decimal with empty dict and list."""
     # Test empty dict
     result = convert_decimal({})
     assert result == {}
@@ -124,7 +124,7 @@ def test_convert_decimal_with_empty_collections():
 
 
 def test_convert_decimal_with_complex_nested_structure():
-    """Test convert_decimal with deeply nested structure"""
+    """Test convert_decimal with deeply nested structure."""
     complex_data = {
         "users": [
             {
@@ -175,7 +175,7 @@ def test_convert_decimal_with_complex_nested_structure():
 
 
 def test_convert_decimal_with_mixed_types_in_list():
-    """Test convert_decimal with list containing mixed types including nested structures"""
+    """Test convert_decimal with list containing mixed types including nested structures."""
     mixed_list = [
         Decimal("123.45"),
         {"price": Decimal("99.99"), "name": "Item"},
@@ -205,7 +205,7 @@ def test_convert_decimal_with_mixed_types_in_list():
 
 
 def test_convert_decimal_preserves_original_structure():
-    """Test that convert_decimal preserves the original data structure"""
+    """Test that convert_decimal preserves the original data structure."""
     original = {"level1": {"level2": {"level3": [{"value": Decimal("42.0")}, {"value": Decimal("84.0")}]}}}
 
     result = convert_decimal(original)

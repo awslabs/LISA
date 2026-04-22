@@ -84,6 +84,7 @@ pytest test/sdk --cov=lisa-sdk/lisapy --cov-report=html
 The test suite provides comprehensive coverage of all SDK operations:
 
 ### ModelMixin (11 tests)
+
 - ✅ List models
 - ✅ List embedding models
 - ✅ List instance types
@@ -95,6 +96,7 @@ The test suite provides comprehensive coverage of all SDK operations:
 - ✅ Error handling
 
 ### RepositoryMixin (10 tests)
+
 - ✅ List repositories
 - ✅ Create repository
 - ✅ Create PGVector repository
@@ -104,6 +106,7 @@ The test suite provides comprehensive coverage of all SDK operations:
 - ✅ Error handling
 
 ### CollectionMixin (14 tests)
+
 - ✅ Create collection (basic, with chunking, with metadata)
 - ✅ Get collection
 - ✅ Update collection (name, description, status)
@@ -113,6 +116,7 @@ The test suite provides comprehensive coverage of all SDK operations:
 - ✅ Error handling
 
 ### RagMixin (13 tests)
+
 - ✅ List documents
 - ✅ Get document by ID
 - ✅ Delete documents (by IDs, by name)
@@ -123,17 +127,20 @@ The test suite provides comprehensive coverage of all SDK operations:
 - ✅ Error handling
 
 ### ConfigMixin (4 tests)
+
 - ✅ Get configs (global, custom scope)
 - ✅ Empty configs
 - ✅ Error handling
 
 ### SessionMixin (5 tests)
+
 - ✅ List sessions
 - ✅ Get session by user
 - ✅ Empty sessions
 - ✅ Error handling
 
 ### DocsMixin (2 tests)
+
 - ✅ Get API documentation
 - ✅ Error handling
 
@@ -198,17 +205,20 @@ def test_new_operation(self, lisa_api: LisaApi, api_url: str):
 ## Benefits of This Approach
 
 ### Fast Execution
+
 - All 57 tests run in ~0.1 seconds
 - No network latency
 - No AWS resource dependencies
 
 ### Fully Isolated
+
 - No external dependencies
 - No deployed LISA environment required
 - No AWS credentials needed
 - Can run in CI/CD without infrastructure
 
 ### Comprehensive Coverage
+
 - Tests all SDK methods
 - Tests error handling
 - Tests request formatting
@@ -216,6 +226,7 @@ def test_new_operation(self, lisa_api: LisaApi, api_url: str):
 - Tests query parameters and request bodies
 
 ### Easy to Maintain
+
 - Clear test structure
 - Reusable fixtures
 - Simple mock responses
@@ -236,6 +247,7 @@ def test_new_operation(self, lisa_api: LisaApi, api_url: str):
 ## Continuous Integration
 
 These tests are ideal for CI/CD pipelines because they:
+
 - Run quickly
 - Require no infrastructure
 - Have no external dependencies
@@ -247,6 +259,7 @@ These tests are ideal for CI/CD pipelines because they:
 ### Import Errors
 
 If you see import errors for `responses`:
+
 ```bash
 pip install responses
 ```
@@ -254,6 +267,7 @@ pip install responses
 ### Fixture Not Found
 
 If you see fixture errors, ensure you're running from the LISA root directory:
+
 ```bash
 cd /path/to/LISA
 pytest test/sdk -v
@@ -262,6 +276,7 @@ pytest test/sdk -v
 ### Test Failures
 
 If tests fail:
+
 1. Check that you're using the latest SDK code
 2. Verify the mock responses match the expected API format
 3. Check for changes in the SDK that require test updates

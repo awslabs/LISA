@@ -85,6 +85,7 @@ When adding new integration tests:
 ### Authentication Errors
 
 If you see authentication errors:
+
 - Verify AWS credentials are configured correctly
 - Check that the deployment name matches your LISA deployment
 - Ensure the management key exists in Secrets Manager
@@ -92,6 +93,7 @@ If you see authentication errors:
 ### Connection Errors
 
 If you see connection errors:
+
 - Verify the API URL is correct and accessible
 - Check SSL verification settings (`--verify false` for self-signed certs)
 - Ensure network connectivity to the LISA deployment
@@ -99,6 +101,7 @@ If you see connection errors:
 ### Skipped Tests
 
 Many tests are skipped by default because they require:
+
 - Specific models to be deployed (TGI, instructor embeddings, etc.)
 - Specific configurations (API Gateway vs REST URL)
 - Management tokens (not all deployments support this)

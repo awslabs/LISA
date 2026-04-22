@@ -50,8 +50,8 @@ def _get_prisma_schema_dir() -> str:
 def _generate_prisma_client(schema_dir: str) -> None:
     """Generate the Prisma Python client from LiteLLM's schema.
 
-    This writes the generated client to site-packages/prisma/ once, so that
-    Gunicorn workers find it already present and skip generation.
+    This writes the generated client to site-packages/prisma/ once, so that Gunicorn workers find it already present and
+    skip generation.
     """
     schema_path = os.path.join(schema_dir, "schema.prisma")
     print(f"Generating Prisma client from {schema_path}")

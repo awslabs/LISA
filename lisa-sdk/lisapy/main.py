@@ -461,7 +461,6 @@ class LisaLlm(BaseModel):
         dict[str, Any]
             Transcription response with text and metadata.
         """
-
         if isinstance(file, str):
             file_path = Path(file)
             if not file_path.is_file():
@@ -506,7 +505,6 @@ class LisaLlm(BaseModel):
         dict[str, Any]
             Transcription response with text and metadata.
         """
-
         if isinstance(file, str):
             file_path = Path(file)
             if not file_path.is_file():

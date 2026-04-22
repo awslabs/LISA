@@ -24,7 +24,7 @@ def default_expiration() -> int:
 
 
 class CreateTokenAdminRequest(BaseModel):
-    """Admin request to create token for a user or system"""
+    """Admin request to create token for a user or system."""
 
     tokenExpiration: int = Field(
         default_factory=default_expiration, description="Unix timestamp when token expires. Defaults to 90 days"
@@ -43,7 +43,7 @@ class CreateTokenAdminRequest(BaseModel):
 
 
 class CreateTokenUserRequest(BaseModel):
-    """User request to create their own token"""
+    """User request to create their own token."""
 
     name: str = Field(description="Human-readable name for the token")
     tokenExpiration: int = Field(

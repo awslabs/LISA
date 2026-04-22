@@ -13,8 +13,8 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""
-Integration test script that deploys resources to LISA.
+"""Integration test script that deploys resources to LISA.
+
 This script creates:
 - Self-hosted and Bedrock models (textgen and embedding)
 - PGVector, OpenSearch, and Bedrock Knowledge Base repositories
@@ -888,7 +888,10 @@ def cleanup_integ_repositories(lisa_client: LisaApi) -> None:
 
 
 def cleanup_resources(lisa_client: LisaApi, created_resources: dict[str, list], region: str | None = None) -> None:
-    """Clean up only integration test resources. Does NOT delete all models/repos."""
+    """Clean up only integration test resources.
+
+    Does NOT delete all models/repos.
+    """
     print("\nCleaning up integration test resources...")
     cleanup_integ_models(lisa_client)
     cleanup_integ_repositories(lisa_client)

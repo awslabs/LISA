@@ -28,7 +28,7 @@ MAX_SUBDOCS = 1000
 
 
 class RagDocumentRepository:
-    """RAG Document repository for DynamoDB"""
+    """RAG Document repository for DynamoDB."""
 
     def __init__(self, document_table_name: str, sub_document_table_name: str):
         dynamodb = boto3.resource("dynamodb")
@@ -288,6 +288,7 @@ class RagDocumentRepository:
 
     def count_documents(self, repository_id: str, collection_id: str | None = None) -> int:
         """Count total documents in a repository/collection.
+
         Args:
             repository_id: Repository ID
             collection_id?: Collection ID

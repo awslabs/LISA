@@ -1097,8 +1097,8 @@ class TestTokenMetrics:
             assert "TotalMCPToolCalls" not in metric_names
 
     def test_update_user_metrics_token_only_new_user(self, dynamodb_table):
-        """token_only event for a brand-new user creates a DynamoDB record with token totals
-        but no sessionMetrics entry.
+        """token_only event for a brand-new user creates a DynamoDB record with token totals but no sessionMetrics
+        entry.
 
         Expected: record exists with totalPromptTokens/totalCompletionTokens set and
                   sessionMetrics is empty dict.
@@ -1130,8 +1130,7 @@ class TestTokenMetrics:
         assert item["sessionMetrics"] == {}
 
     def test_update_user_metrics_token_only_existing_user(self, dynamodb_table):
-        """token_only event for an existing user accumulates token totals without
-        creating sessionMetrics entries.
+        """token_only event for an existing user accumulates token totals without creating sessionMetrics entries.
 
         Expected: totalPromptTokens increases by delta on each call.
         """

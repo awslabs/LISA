@@ -165,8 +165,8 @@ def get_error_message(body):
 def setup_mcp_patches(request, mock_auth):
     """Set up per-test patches for MCP server lambda functions.
 
-    This fixture runs after conftest's setup_auth_patches and ensures
-    api_wrapper is properly mocked and adds additional patches needed.
+    This fixture runs after conftest's setup_auth_patches and ensures api_wrapper is properly mocked and adds additional
+    patches needed.
     """
     # Skip patching for test_lambda_auth.py since it tests the auth module itself
     if "test_lambda_auth" in request.node.nodeid:

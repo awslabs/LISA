@@ -14,9 +14,8 @@
 
 """Discovery service for Bedrock Knowledge Base data sources.
 
-This module provides functionality to discover and list Knowledge Bases and their
-data sources from AWS Bedrock Agent APIs. It supports caching and pagination for
-efficient resource discovery.
+This module provides functionality to discover and list Knowledge Bases and their data sources from AWS Bedrock Agent
+APIs. It supports caching and pagination for efficient resource discovery.
 """
 
 import logging
@@ -38,8 +37,7 @@ logger = logging.getLogger(__name__)
 def list_knowledge_bases(
     bedrock_agent_client: Any | None = None,
 ) -> list[KnowledgeBaseMetadata]:
-    """
-    List all Knowledge Bases accessible in the AWS account.
+    """List all Knowledge Bases accessible in the AWS account.
 
     Args:
         bedrock_agent_client: Optional boto3 bedrock-agent client
@@ -95,8 +93,7 @@ def discover_kb_data_sources(
     kb_id: str,
     bedrock_agent_client: Any | None = None,
 ) -> list[DataSourceMetadata]:
-    """
-    Discover all data sources in a Bedrock Knowledge Base.
+    """Discover all data sources in a Bedrock Knowledge Base.
 
     Args:
         kb_id: Knowledge Base ID
@@ -211,7 +208,6 @@ def build_pipeline_configs_from_kb_config(
     Raises:
         ValidationError: If duplicate data source IDs or S3 URIs found
     """
-
     pipeline_configs = []
     data_source_ids = set()
     s3_uris = set()
@@ -279,8 +275,7 @@ def get_available_data_sources(
     repository_id: str | None = None,
     bedrock_agent_client: Any | None = None,
 ) -> list[DataSourceMetadata]:
-    """
-    Get all data sources for a Knowledge Base.
+    """Get all data sources for a Knowledge Base.
 
     Args:
         kb_id: Knowledge Base ID

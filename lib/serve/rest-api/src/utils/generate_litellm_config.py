@@ -16,11 +16,10 @@
 
 Models are managed dynamically via LiteLLM's DB (store_model_in_db=True).
 
-Uses LiteLLM's ConfigYAML pydantic model for top-level structure validation.
-Note: general_settings is kept as a dict because LiteLLM's ConfigGeneralSettings
-model does not include all runtime-accepted fields (e.g., proxy_batch_write_at,
-disable_error_logs, allow_requests_on_db_unavailable). These fields are consumed
-by LiteLLM at runtime via dict access but are not in the pydantic schema.
+Uses LiteLLM's ConfigYAML pydantic model for top-level structure validation. Note: general_settings is kept as a dict
+because LiteLLM's ConfigGeneralSettings model does not include all runtime-accepted fields (e.g., proxy_batch_write_at,
+disable_error_logs, allow_requests_on_db_unavailable). These fields are consumed by LiteLLM at runtime via dict access
+but are not in the pydantic schema.
 """
 
 import json

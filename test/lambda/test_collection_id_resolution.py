@@ -14,11 +14,9 @@
 
 """Tests for pipeline collectionId resolution in ingest and delete handlers.
 
-Pipeline configs may store a collection name (e.g. "default") as the collectionId
-rather than the auto-generated UUID used as the collections table primary key.
-These tests verify that find_by_id_or_name correctly resolves a name to its
-corresponding UUID at read time, ensuring both ingest and delete handlers
-operate on the correct collection.
+Pipeline configs may store a collection name (e.g. "default") as the collectionId rather than the auto-generated UUID
+used as the collections table primary key. These tests verify that find_by_id_or_name correctly resolves a name to its
+corresponding UUID at read time, ensuring both ingest and delete handlers operate on the correct collection.
 """
 
 import os
@@ -125,9 +123,8 @@ def _build_real_collection_service(mock_dynamodb_table):
 def test_ingest_name_resolves_to_uuid_via_real_service(setup_env, mock_dynamodb_table):
     """Ingest handler resolves a collection name to its UUID before saving the job.
 
-    When a pipeline config references a collection by name, the ingest handler
-    must resolve that name to the collection's UUID so the job is persisted
-    with the correct identifier.
+    When a pipeline config references a collection by name, the ingest handler must resolve that name to the
+    collection's UUID so the job is persisted with the correct identifier.
     """
     # DynamoDB: get_item (UUID lookup) misses; query (name lookup) returns the collection
     mock_dynamodb_table.get_item.return_value = {}
@@ -169,9 +166,8 @@ def test_ingest_name_resolves_to_uuid_via_real_service(setup_env, mock_dynamodb_
 def test_delete_name_resolves_to_uuid_via_real_service(setup_env, mock_dynamodb_table):
     """Delete handler resolves a collection name to its UUID before removing documents.
 
-    When a pipeline config references a collection by name, the delete handler
-    must resolve that name to the collection's UUID and proceed with document
-    deletion rather than skipping the operation.
+    When a pipeline config references a collection by name, the delete handler must resolve that name to the
+    collection's UUID and proceed with document deletion rather than skipping the operation.
     """
     mock_dynamodb_table.get_item.return_value = {}
     mock_dynamodb_table.query.return_value = {"Items": [_make_collection_item("uuid-abc", "default")]}

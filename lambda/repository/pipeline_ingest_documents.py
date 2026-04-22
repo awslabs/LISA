@@ -56,8 +56,7 @@ bedrock_agent = boto3.client("bedrock-agent", region_name=os.environ["AWS_REGION
 
 
 def pipeline_ingest(job: IngestionJob) -> None:
-    """
-    Ingest a single document or batch of documents.
+    """Ingest a single document or batch of documents.
 
     Routes to appropriate handler based on job type.
     """
@@ -260,11 +259,10 @@ def pipeline_ingest_document(job: IngestionJob) -> None:
 
 
 def pipeline_ingest_documents(job: IngestionJob) -> None:
-    """
-    Ingest multiple documents in batch (up to 100 at a time).
+    """Ingest multiple documents in batch (up to 100 at a time).
 
-    Processes documents from s3_paths field containing list of S3 paths.
-    If s3_paths is empty, triggers S3 bucket scan to discover existing documents.
+    Processes documents from s3_paths field containing list of S3 paths. If s3_paths is empty, triggers S3 bucket scan
+    to discover existing documents.
     """
     try:
         logger.info(f"Starting batch ingestion for job {job.id}")
@@ -341,8 +339,7 @@ def pipeline_ingest_documents(job: IngestionJob) -> None:
 
 
 def _handle_s3_discovery_scan(job: IngestionJob) -> None:
-    """
-    Handle S3 bucket scanning for existing documents.
+    """Handle S3 bucket scanning for existing documents.
 
     Delegates to S3DocumentDiscoveryService for the actual work.
 

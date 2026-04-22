@@ -32,7 +32,7 @@ from repository.services.pgvector_repository_service import PGVectorRepositorySe
 
 
 def test_opensearch_retrieve_documents_without_score():
-    """Test OpenSearch retrieve_documents without scores"""
+    """Test OpenSearch retrieve_documents without scores."""
     repository = {"repositoryId": "test-repo", "type": "opensearch"}
     service = OpenSearchRepositoryService(repository)
 
@@ -55,7 +55,7 @@ def test_opensearch_retrieve_documents_without_score():
 
 
 def test_pgvector_retrieve_documents_with_score():
-    """Test PGVector retrieve_documents with score normalization"""
+    """Test PGVector retrieve_documents with score normalization."""
     repository = {"repositoryId": "test-repo", "type": "pgvector"}
     service = PGVectorRepositoryService(repository)
 
@@ -77,7 +77,7 @@ def test_pgvector_retrieve_documents_with_score():
 
 
 def test_opensearch_retrieve_documents_with_score():
-    """Test OpenSearch retrieve_documents with score"""
+    """Test OpenSearch retrieve_documents with score."""
     repository = {"repositoryId": "test-repo", "type": "opensearch"}
     service = OpenSearchRepositoryService(repository)
 

@@ -72,9 +72,11 @@ def mock_api_wrapper(func):
 
 @pytest.fixture(scope="function")
 def chat_stacks_handlers(patch_is_admin_for_chat_stacks):
-    """Patch retry_config and api_wrapper only for this module, then import handlers. No global mocks.
-    Depends on patch_is_admin_for_chat_stacks so handlers are imported after admin_only is restored
-    (test_repository_lambda patches it at module load). Clear cache to force fresh import with current admin_only."""
+    """Patch retry_config and api_wrapper only for this module, then import handlers.
+
+    No global mocks. Depends on patch_is_admin_for_chat_stacks so handlers are imported after admin_only is restored
+    (test_repository_lambda patches it at module load). Clear cache to force fresh import with current admin_only.
+    """
     for mod in list(sys.modules.keys()):
         if mod == "chat_assistant_stacks" or mod.startswith("chat_assistant_stacks."):
             del sys.modules[mod]

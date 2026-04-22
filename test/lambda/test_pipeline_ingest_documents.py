@@ -610,7 +610,9 @@ def test_pipeline_ingest_routes_to_single_ingestion(setup_env):
 
 def test_handle_pipeline_ingest_event_resolves_collection_by_name(setup_env):
     """Pipeline collectionId name string must be resolved to UUID before job creation.
-    The job must be created with the UUID, not the name string."""
+
+    The job must be created with the UUID, not the name string.
+    """
     event = {
         "detail": {
             "bucket": "test-bucket",

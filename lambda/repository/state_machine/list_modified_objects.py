@@ -27,8 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 def normalize_prefix(prefix: str) -> str:
-    """
-    Normalize the S3 prefix by handling trailing slashes.
+    """Normalize the S3 prefix by handling trailing slashes.
 
     Args:
         prefix: S3 prefix to normalize
@@ -50,8 +49,7 @@ def normalize_prefix(prefix: str) -> str:
 
 
 def validate_bucket_prefix(bucket: str, prefix: str) -> bool:
-    """
-    Validate bucket and prefix parameters.
+    """Validate bucket and prefix parameters.
 
     Args:
         bucket: S3 bucket name
@@ -77,8 +75,7 @@ def validate_bucket_prefix(bucket: str, prefix: str) -> bool:
 
 
 def handle_list_modified_objects(event: dict[str, Any], context: Any) -> dict[str, Any] | Any:
-    """
-    Lists all objects in the specified S3 bucket and prefix that were modified in the last 24 hours.
+    """Lists all objects in the specified S3 bucket and prefix that were modified in the last 24 hours.
 
     Args:
         event: Event data containing bucket and prefix information

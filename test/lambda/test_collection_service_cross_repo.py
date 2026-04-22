@@ -12,8 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""
-Unit tests for cross-repository collection queries.
+"""Unit tests for cross-repository collection queries.
 
 These tests follow API-level testing principles:
 - Test complete workflows, not individual lines
@@ -159,8 +158,7 @@ def sample_collections():
 def test_list_all_user_collections_admin_workflow(
     collection_service, mock_vector_store_repo, mock_collection_repo, sample_repositories, sample_collections
 ):
-    """
-    Complete workflow: Admin requests collections → service queries all repos → returns all collections.
+    """Complete workflow: Admin requests collections → service queries all repos → returns all collections.
 
     Workflow:
     1. Admin user requests all collections
@@ -201,8 +199,7 @@ def test_list_all_user_collections_admin_workflow(
 def test_list_all_user_collections_group_access_workflow(
     collection_service, mock_vector_store_repo, mock_collection_repo, sample_repositories, sample_collections
 ):
-    """
-    Complete workflow: User with groups → filtered by repo permissions → returns accessible collections.
+    """Complete workflow: User with groups → filtered by repo permissions → returns accessible collections.
 
     Workflow:
     1. User with group1 requests collections
@@ -241,8 +238,7 @@ def test_list_all_user_collections_group_access_workflow(
 def test_list_all_user_collections_no_access_workflow(
     collection_service, mock_vector_store_repo, mock_collection_repo, sample_repositories
 ):
-    """
-    Complete workflow: User with no access → empty list returned.
+    """Complete workflow: User with no access → empty list returned.
 
     Workflow:
     1. User with no matching groups requests collections
@@ -271,8 +267,7 @@ def test_list_all_user_collections_no_access_workflow(
 def test_list_all_user_collections_private_collections_workflow(
     collection_service, mock_vector_store_repo, mock_collection_repo, sample_repositories, sample_collections
 ):
-    """
-    Complete workflow: User sees collections based on ownership and group access.
+    """Complete workflow: User sees collections based on ownership and group access.
 
     Workflow:
     1. User2 (owner of coll-2) requests collections
@@ -326,8 +321,7 @@ def test_list_all_user_collections_private_collections_workflow(
 def test_pagination_strategy_selection_workflow(
     collection_service, mock_vector_store_repo, mock_collection_repo, sample_repositories
 ):
-    """
-    Complete workflow: Service estimates count → selects correct strategy.
+    """Complete workflow: Service estimates count → selects correct strategy.
 
     Workflow:
     1. User requests collections
@@ -359,8 +353,7 @@ def test_pagination_strategy_selection_workflow(
 def test_paginate_collections_workflow(
     collection_service, mock_vector_store_repo, mock_collection_repo, sample_repositories, sample_collections
 ):
-    """
-    Complete workflow: Request with filter/sort → paginated results.
+    """Complete workflow: Request with filter/sort → paginated results.
 
     Workflow:
     1. User requests collections with filter and sort
@@ -398,9 +391,8 @@ def test_paginate_collections_workflow(
 def test_rag_admin_sees_admin_restricted_collection_in_accessible_repo(
     collection_service, mock_vector_store_repo, mock_collection_repo
 ):
-    """
-    RAG admin sees all collections in repos they have group access to,
-    including collections restricted to AdminGroup.
+    """RAG admin sees all collections in repos they have group access to, including collections restricted to
+    AdminGroup.
 
     Workflow:
     1. RAG admin (in rag-team, NOT in AdminGroup) requests collections
@@ -461,9 +453,9 @@ def test_rag_admin_sees_admin_restricted_collection_in_accessible_repo(
 def test_rag_admin_cannot_see_collections_in_admin_restricted_repo(
     collection_service, mock_vector_store_repo, mock_collection_repo
 ):
-    """
-    RAG admin is blocked from repos where they don't have group access,
-    even with is_rag_admin=True. Repo-level filtering is unchanged.
+    """RAG admin is blocked from repos where they don't have group access, even with is_rag_admin=True.
+
+    Repo-level filtering is unchanged.
 
     Workflow:
     1. RAG admin (in rag-team) requests collections
@@ -511,8 +503,8 @@ def test_rag_admin_cannot_see_collections_in_admin_restricted_repo(
 def test_regular_user_still_filtered_by_collection_allowed_groups(
     collection_service, mock_vector_store_repo, mock_collection_repo
 ):
-    """
-    Regular users (is_rag_admin=False) are still filtered by collection allowedGroups.
+    """Regular users (is_rag_admin=False) are still filtered by collection allowedGroups.
+
     Adding is_rag_admin parameter must not affect existing user behavior.
     """
     now = datetime.now(timezone.utc)
@@ -563,8 +555,8 @@ def test_regular_user_still_filtered_by_collection_allowed_groups(
 def test_full_admin_sees_all_collections_regardless_of_allowed_groups(
     collection_service, mock_vector_store_repo, mock_collection_repo
 ):
-    """
-    Full admin (is_admin=True) still bypasses all collection-level filtering.
+    """Full admin (is_admin=True) still bypasses all collection-level filtering.
+
     Regression: is_rag_admin parameter must not affect admin behavior.
     """
     now = datetime.now(timezone.utc)
@@ -602,8 +594,7 @@ def test_full_admin_sees_all_collections_regardless_of_allowed_groups(
 def test_repository_metadata_enrichment_workflow(
     collection_service, mock_vector_store_repo, mock_collection_repo, sample_repositories, sample_collections
 ):
-    """
-    Complete workflow: Collections queried → enriched with repo names.
+    """Complete workflow: Collections queried → enriched with repo names.
 
     Workflow:
     1. User requests collections

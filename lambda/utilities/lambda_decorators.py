@@ -190,8 +190,7 @@ def authorization_wrapper(f: LambdaHandler) -> LambdaHandler:
 
 
 def get_lambda_context() -> Any:
-    """
-    Get the current Lambda context from context variable.
+    """Get the current Lambda context from context variable.
 
     Returns
     -------

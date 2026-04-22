@@ -34,8 +34,7 @@ events_client = boto3.client("events", region_name=os.environ["AWS_REGION"], con
 
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """
-    AWS Secrets Manager rotation handler for management key.
+    """AWS Secrets Manager rotation handler for management key.
 
     This function implements the standard AWS Secrets Manager rotation workflow:
     1. createSecret: Generate new secret version
@@ -74,9 +73,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
 
 def create_secret(secret_arn: str, token: str) -> None:
-    """
-    Create a new secret version with a new randomly generated password.
-    """
+    """Create a new secret version with a new randomly generated password."""
     logger.info(f"Creating new secret version for {secret_arn}")
 
     try:
@@ -106,18 +103,18 @@ def create_secret(secret_arn: str, token: str) -> None:
 
 
 def set_secret(secret_arn: str, token: str) -> None:
-    """
-    Set the secret in the service that the secret belongs to.
-    For management keys, this step is typically a no-op since the secret
-    is used by the application directly from Secrets Manager.
+    """Set the secret in the service that the secret belongs to.
+
+    For management keys, this step is typically a no-op since the secret is used by the application directly from
+    Secrets Manager.
     """
     logger.info(f"Setting secret for {secret_arn} - No action needed for management key")
     # No action needed for management keys as they are retrieved directly from Secrets Manager
 
 
 def test_secret(secret_arn: str, token: str) -> None:
-    """
-    Test the new secret to ensure it's valid and can be used.
+    """Test the new secret to ensure it's valid and can be used.
+
     For management keys, we verify the secret can be retrieved and has the expected format.
     """
     logger.info(f"Testing secret for {secret_arn}")
@@ -147,9 +144,7 @@ def test_secret(secret_arn: str, token: str) -> None:
 
 
 def finish_secret(secret_arn: str, token: str) -> None:
-    """
-    Finish the rotation by marking the new secret as current.
-    """
+    """Finish the rotation by marking the new secret as current."""
     logger.info(f"Finishing secret rotation for {secret_arn}")
 
     try:
@@ -181,9 +176,7 @@ def finish_secret(secret_arn: str, token: str) -> None:
 
 
 def publish_rotation_event(secret_arn: str, new_version: str, old_version: str | None) -> None:
-    """
-    Publish a management key rotation event to EventBridge.
-    """
+    """Publish a management key rotation event to EventBridge."""
     event_bus_name = os.environ.get("EVENT_BUS_NAME")
     if not event_bus_name:
         logger.warning("EVENT_BUS_NAME environment variable not set, skipping event publication")

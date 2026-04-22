@@ -88,8 +88,7 @@ app.add_middleware(
 async def rate_limit(request, call_next):  # type: ignore
     """Per-user rate limiting middleware.
 
-    Runs after authentication (user identity is available) to enforce
-    per-API-key / per-user request rate limits.
+    Runs after authentication (user identity is available) to enforce per-API-key / per-user request rate limits.
     """
     return await rate_limit_middleware(request, call_next)
 

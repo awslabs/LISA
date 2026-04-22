@@ -38,8 +38,8 @@ RAG_FILES = [
     XML_FILE,
     LOG_FILE,
 ]
+"""Constants for pagination and time limits."""
 
-"""Constants for pagination and time limits"""
 DEFAULT_TIME_LIMIT_HOURS = 720  # 30 days
 DEFAULT_PAGE_SIZE = 10
 MAX_PAGE_SIZE = 100

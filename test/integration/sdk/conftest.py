@@ -14,11 +14,11 @@
 
 """Sets the input parameters for lisa-sdk tests.
 
-Note: pytest_addoption for --api, --url, etc. is in the root conftest.py because
-pytest parses command-line options before loading subdirectory conftests.
+Note: pytest_addoption for --api, --url, etc. is in the root conftest.py because pytest parses command-line options
+before loading subdirectory conftests.
 
-When --api/--url are not provided, values are loaded from config-custom.yaml or
-fetched from AWS via scripts/integration-env.mjs (same as run-integration-tests.sh).
+When --api/--url are not provided, values are loaded from config-custom.yaml or fetched from AWS via
+scripts/integration-env.mjs (same as run-integration-tests.sh).
 """
 
 import logging
@@ -55,7 +55,10 @@ def _resolve_url_option(pytestconfig: pytest.Config, kind: str) -> str:
 
 @pytest.fixture(scope="session")
 def url(pytestconfig: pytest.Config) -> str:
-    """Get the REST url (ALB). From --url, or config-custom.yaml + AWS."""
+    """Get the REST url (ALB).
+
+    From --url, or config-custom.yaml + AWS.
+    """
     val = _resolve_url_option(pytestconfig, "url")
     if not val:
         pytest.skip(
@@ -67,7 +70,10 @@ def url(pytestconfig: pytest.Config) -> str:
 
 @pytest.fixture(scope="session")
 def api(pytestconfig: pytest.Config) -> str:
-    """Get the API Gateway url. From --api, or config-custom.yaml + AWS."""
+    """Get the API Gateway url.
+
+    From --api, or config-custom.yaml + AWS.
+    """
     val = _resolve_url_option(pytestconfig, "api")
     if not val:
         pytest.skip(
@@ -95,7 +101,10 @@ def verify(pytestconfig: pytest.Config) -> bool | Any:
 
 @pytest.fixture(scope="session")
 def api_key(pytestconfig: pytest.Config) -> str:
-    """Get management key from Secrets Manager. Uses same multi-pattern lookup as RAG tests."""
+    """Get management key from Secrets Manager.
+
+    Uses same multi-pattern lookup as RAG tests.
+    """
     profile = _resolve_option(pytestconfig, "profile", "profile") or "default"
     deployment_name = _resolve_option(pytestconfig, "deployment", "deployment") or "app"
     stage = _resolve_option(pytestconfig, "stage", "stage") or "prod"
@@ -116,9 +125,7 @@ def api_key(pytestconfig: pytest.Config) -> str:
 
 @pytest.fixture(scope="session")
 def api_token(pytestconfig: pytest.Config, api_key: str) -> Generator:
-    """
-    Create a token item in DynamoDB with expiration if none is provided
-    """
+    """Create a token item in DynamoDB with expiration if none is provided."""
     auth_token = pytestconfig.getoption("auth_token")
     if auth_token is not None:
         return

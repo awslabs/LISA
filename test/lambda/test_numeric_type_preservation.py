@@ -13,11 +13,10 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""
-Unit test to verify numeric type preservation through encryption/decryption.
+"""Unit test to verify numeric type preservation through encryption/decryption.
 
-This test ensures that numeric types (floats, ints) are preserved correctly
-when session data goes through the encryption/decryption process.
+This test ensures that numeric types (floats, ints) are preserved correctly when session data goes through the
+encryption/decryption process.
 """
 
 import json

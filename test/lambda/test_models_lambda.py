@@ -715,7 +715,6 @@ def test_update_model_validation(
 @pytest.mark.asyncio
 async def test_exception_handlers():
     """Test exception handlers."""
-
     # Setup mock request
     request = MagicMock()
 
@@ -879,7 +878,6 @@ async def test_fastapi_endpoints(
 @pytest.mark.asyncio
 async def test_get_instances():
     """Test get_instances endpoint."""
-
     # Mock the shape_for method to return a mock with enum attribute
     mock_shape = MagicMock()
     mock_shape.enum = ["t2.micro", "t3.small", "m5.large"]
@@ -926,7 +924,6 @@ def non_admin_event():
 @pytest.mark.asyncio
 async def test_get_admin_status_and_groups(mock_auth):
     """Test the get_admin_status_and_groups helper function."""
-
     # Test with admin event
     admin_event = {
         "requestContext": {
@@ -978,7 +975,6 @@ async def test_create_model_admin_required(
     sample_model, model_table, mock_autoscaling_client, mock_stepfunctions_client, admin_event, non_admin_event
 ):
     """Test that create_model endpoint requires admin access."""
-
     # Test non-admin cannot create
     mock_request = MagicMock(spec=Request)
     mock_request.scope = {"aws.event": non_admin_event}
@@ -1005,7 +1001,6 @@ async def test_update_model_admin_required(
     sample_model, model_table, mock_autoscaling_client, mock_stepfunctions_client, admin_event, non_admin_event
 ):
     """Test that update_model endpoint requires admin access."""
-
     # Test non-admin cannot update
     mock_request = MagicMock(spec=Request)
     mock_request.scope = {"aws.event": non_admin_event}
@@ -1030,7 +1025,6 @@ async def test_delete_model_admin_required(
     sample_model, model_table, mock_autoscaling_client, mock_stepfunctions_client, admin_event, non_admin_event
 ):
     """Test that delete_model endpoint requires admin access."""
-
     # Test non-admin cannot delete
     mock_request = MagicMock(spec=Request)
     mock_request.scope = {"aws.event": non_admin_event}
@@ -1053,7 +1047,6 @@ async def test_create_update_delete_admin_allowed(
     sample_model, model_table, mock_autoscaling_client, mock_stepfunctions_client, admin_event, mock_auth
 ):
     """Test that admin users can successfully create, update, and delete models."""
-
     # Set admin access via mock_auth fixture
     mock_auth.set_user("admin-user", ["admin-group"], is_admin=True)
 

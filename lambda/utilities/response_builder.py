@@ -27,8 +27,7 @@ class DecimalEncoder(json.JSONEncoder):
     """JSON encoder that handles Decimal, datetime, and Pydantic objects."""
 
     def default(self, obj: Any) -> Any:
-        """
-        Encode special types to JSON-serializable formats.
+        """Encode special types to JSON-serializable formats.
 
         Parameters
         ----------
@@ -51,8 +50,7 @@ class DecimalEncoder(json.JSONEncoder):
 
 
 def _serialize_pydantic(obj: Any) -> Any:
-    """
-    Recursively serialize Pydantic models to dictionaries.
+    """Recursively serialize Pydantic models to dictionaries.
 
     Parameters
     ----------
@@ -74,8 +72,7 @@ def _serialize_pydantic(obj: Any) -> Any:
 
 
 def generate_html_response(status_code: int, response_body: Any) -> dict[str, str | int | dict[str, str]]:
-    """
-    Generate API Gateway response with security headers.
+    """Generate API Gateway response with security headers.
 
     This function creates a properly formatted API Gateway response with:
     - JSON-encoded body

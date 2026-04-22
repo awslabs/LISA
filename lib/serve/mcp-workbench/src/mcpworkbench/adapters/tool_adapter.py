@@ -102,8 +102,7 @@ class FunctionToolAdapter(ToolAdapter):
 
 
 def create_adapter(tool_info: ToolInfo) -> ToolAdapter:
-    """
-    Create the appropriate adapter for a tool.
+    """Create the appropriate adapter for a tool.
 
     Args:
         tool_info: Information about the tool to create an adapter for

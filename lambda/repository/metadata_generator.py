@@ -63,8 +63,7 @@ class MetadataGenerator:
         document_metadata: dict[str, Any] | None = None,
         for_bedrock_kb: bool = False,
     ) -> dict[str, Any]:
-        """
-        Merge metadata from repository, collection, and document sources.
+        """Merge metadata from repository, collection, and document sources.
 
         This is the core metadata merging logic used by both ingestion jobs and Bedrock KB.
         Follows the hierarchy: repository → collection → document (document has highest precedence).

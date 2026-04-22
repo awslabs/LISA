@@ -90,7 +90,6 @@ def get_management_key(
     RuntimeError
         If none of the secret-name patterns resolve.
     """
-
     secrets_client = boto3.client("secretsmanager", region_name=region) if region else boto3.client("secretsmanager")
 
     patterns: list[str] = []

@@ -136,8 +136,7 @@ def is_user_in_group(jwt_data: dict[str, Any], group: str, jwt_groups_property: 
 
 
 def extract_user_groups_from_jwt(jwt_data: dict[str, Any] | None) -> list[str]:
-    """
-    Extract user groups from JWT data using the JWT_GROUPS_PROP environment variable.
+    """Extract user groups from JWT data using the JWT_GROUPS_PROP environment variable.
 
     This follows the same property path traversal logic as is_user_in_group() function.
 
@@ -226,9 +225,8 @@ class OIDCHTTPBearer(HTTPBearer):
 class ApiTokenAuthorizer:
     """Class for checking API tokens against a DynamoDB table of API Tokens.
 
-    For the Token database, only a string value in the "token" field is required. Optionally,
-    customers may put a UNIX timestamp (in seconds) in a "tokenExpiration" field so that the
-    API key becomes invalid after a specified time.
+    For the Token database, only a string value in the "token" field is required. Optionally, customers may put a UNIX
+    timestamp (in seconds) in a "tokenExpiration" field so that the API key becomes invalid after a specified time.
     """
 
     def __init__(self) -> None:
@@ -242,7 +240,6 @@ class ApiTokenAuthorizer:
 
     async def is_valid_api_token(self, headers: dict[str, str]) -> dict[str, Any] | None:
         """Return token info if API Token from request headers is valid, else None."""
-
         for header_name in AuthHeaders.values():
             token = get_authorization_token(headers, header_name)
 
@@ -348,8 +345,10 @@ class Authorizer:
         return jwt_data
 
     async def authenticate_request(self, request: Request) -> dict[str, Any] | None:
-        """Authenticate request and return JWT data if valid, else None. Invalid requests throw an exception"""
+        """Authenticate request and return JWT data if valid, else None.
 
+        Invalid requests throw an exception
+        """
         logger.trace(f"Authenticating request: {request.method} {request.url.path}")
 
         # First try API tokens
@@ -453,8 +452,7 @@ class Authorizer:
 
 
 def is_api_user(request: Request) -> bool:
-    """
-    Check if the user authenticated with an API token.
+    """Check if the user authenticated with an API token.
 
     Args:
         request: The FastAPI request object
@@ -466,8 +464,7 @@ def is_api_user(request: Request) -> bool:
 
 
 def get_user_context(request: Request) -> tuple[str, list[str]]:
-    """
-    Get user information from the request.
+    """Get user information from the request.
 
     Works with both API token and JWT authentication.
 

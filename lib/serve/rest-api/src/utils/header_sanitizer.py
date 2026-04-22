@@ -14,8 +14,8 @@
 
 """Utility for sanitizing HTTP headers before logging to prevent log injection attacks.
 
-This module is adapted for the serve API (ECS context) where we don't have
-API Gateway event context. Instead, we extract real client IP from ECS/ALB headers.
+This module is adapted for the serve API (ECS context) where we don't have API Gateway event context. Instead, we
+extract real client IP from ECS/ALB headers.
 """
 
 from fastapi import Request
@@ -33,8 +33,7 @@ SECURITY_CRITICAL_HEADERS = {
 
 
 def get_real_client_ip(request: Request) -> str:
-    """
-    Extract the real client IP address from the request.
+    """Extract the real client IP address from the request.
 
     In ECS behind ALB, the real client IP is typically in the last entry
     of x-forwarded-for added by the ALB, or we can use the client host.
@@ -132,8 +131,7 @@ def sanitize_headers_for_logging(
 
 
 def get_sanitized_headers_from_request(request: Request) -> dict[str, str]:
-    """
-    Extract and sanitize headers from a FastAPI request for safe logging.
+    """Extract and sanitize headers from a FastAPI request for safe logging.
 
     This is a convenience function that extracts headers from the request
     and sanitizes them in one step.

@@ -44,7 +44,7 @@ model_table = dynamodb.Table(os.environ.get("MODEL_TABLE_NAME"))
 
 
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """Main Lambda handler for schedule management operations"""
+    """Main Lambda handler for schedule management operations."""
     try:
         logger.info(f"Processing schedule management request: {json.dumps(event, default=str)}")
 
@@ -71,7 +71,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
 
 def update_schedule(event: dict[str, Any]) -> dict[str, Any]:
-    """Update an existing schedule for a model"""
+    """Update an existing schedule for a model."""
     model_id = event["modelId"]
     schedule_config = event.get("scheduleConfig")
     auto_scaling_group = event.get("autoScalingGroup")
@@ -127,7 +127,7 @@ def update_schedule(event: dict[str, Any]) -> dict[str, Any]:
 
 
 def delete_schedule(event: dict[str, Any]) -> dict[str, Any]:
-    """Delete a schedule for a model"""
+    """Delete a schedule for a model."""
     model_id = event["modelId"]
 
     try:
@@ -167,7 +167,7 @@ def delete_schedule(event: dict[str, Any]) -> dict[str, Any]:
 
 
 def get_schedule(event: dict[str, Any]) -> dict[str, Any]:
-    """Get current schedule configuration for a model"""
+    """Get current schedule configuration for a model."""
     model_id = event["modelId"]
 
     try:
@@ -200,7 +200,7 @@ def get_schedule(event: dict[str, Any]) -> dict[str, Any]:
 
 
 def create_scheduled_actions(model_id: str, auto_scaling_group: str, schedule_config: SchedulingConfig) -> list[str]:
-    """Create Auto Scaling scheduled actions based on schedule configuration"""
+    """Create Auto Scaling scheduled actions based on schedule configuration."""
     scheduled_action_arns = []
 
     if schedule_config.scheduleType == ScheduleType.RECURRING:
@@ -223,7 +223,7 @@ def create_scheduled_actions(model_id: str, auto_scaling_group: str, schedule_co
 
 
 def create_scheduling_config(schedule_data: dict[str, Any]) -> SchedulingConfig:
-    """Create the appropriate scheduling config instance based on scheduleType"""
+    """Create the appropriate scheduling config instance based on scheduleType."""
     schedule_type = schedule_data.get("scheduleType")
 
     if schedule_type == ScheduleType.DAILY:
@@ -235,7 +235,7 @@ def create_scheduling_config(schedule_data: dict[str, Any]) -> SchedulingConfig:
 
 
 def get_existing_asg_capacity(auto_scaling_group: str) -> dict[str, int]:
-    """Get the existing Auto Scaling Group's current capacity configuration"""
+    """Get the existing Auto Scaling Group's current capacity configuration."""
     try:
         response = autoscaling_client.describe_auto_scaling_groups(AutoScalingGroupNames=[auto_scaling_group])
 
@@ -256,7 +256,7 @@ def get_existing_asg_capacity(auto_scaling_group: str) -> dict[str, int]:
 
 
 def get_model_baseline_capacity(model_id: str) -> dict[str, int]:
-    """Get the baseline capacity configuration from the model's DynamoDB record"""
+    """Get the baseline capacity configuration from the model's DynamoDB record."""
     try:
         response = model_table.get_item(Key={"model_id": model_id})
 
@@ -293,7 +293,7 @@ def get_model_baseline_capacity(model_id: str) -> dict[str, int]:
 def check_daily_immediate_scaling(
     auto_scaling_group: str, daily_schedule: WeeklySchedule, timezone_name: str, model_id: str
 ) -> None:
-    """Check current day and time, scale ASG down to 0 if outside scheduled window for daily schedules"""
+    """Check current day and time, scale ASG down to 0 if outside scheduled window for daily schedules."""
     try:
         tz = ZoneInfo(timezone_name)
         now = datetime.now(tz)
@@ -330,7 +330,7 @@ def check_daily_immediate_scaling(
 
 
 def scale_immediately(auto_scaling_group: str, day_schedule: DaySchedule, timezone_name: str, model_id: str) -> None:
-    """Check current time and immediately scale ASG up or down based on scheduled window"""
+    """Check current time and immediately scale ASG up or down based on scheduled window."""
     try:
         tz = ZoneInfo(timezone_name)
         now = datetime.now(tz)
@@ -393,7 +393,7 @@ def scale_immediately(auto_scaling_group: str, day_schedule: DaySchedule, timezo
 def create_recurring_scheduled_actions(
     model_id: str, auto_scaling_group: str, day_schedule: DaySchedule, timezone_name: str
 ) -> list[str]:
-    """Create scheduled actions for recurring schedule"""
+    """Create scheduled actions for recurring schedule."""
     scheduled_action_arns = []
 
     # Get baseline capacity config from model DDB record
@@ -536,19 +536,19 @@ def create_daily_scheduled_actions(
 
 
 def time_to_cron(time_str: str) -> str:
-    """Convert time string (HH:MM) to cron expression"""
+    """Convert time string (HH:MM) to cron expression."""
     hour, minute = map(int, time_str.split(":"))
     return f"{minute} {hour} * * *"
 
 
 def time_to_cron_with_day(time_str: str, day_of_week: int) -> str:
-    """Convert time string (HH:MM) to cron expression with day"""
+    """Convert time string (HH:MM) to cron expression with day."""
     hour, minute = map(int, time_str.split(":"))
     return f"{minute} {hour} * * {day_of_week}"
 
 
 def construct_scheduled_action_arn(auto_scaling_group: str, action_name: str) -> str:
-    """Construct ARN for a scheduled action"""
+    """Construct ARN for a scheduled action."""
     region = os.environ.get("AWS_REGION", "us-east-1")
     account_id = os.environ.get("AWS_ACCOUNT_ID")
 
@@ -567,7 +567,7 @@ def construct_scheduled_action_arn(auto_scaling_group: str, action_name: str) ->
 
 
 def delete_scheduled_actions(scheduled_action_arns: list[str]) -> None:
-    """Delete Auto Scaling scheduled actions by ARN"""
+    """Delete Auto Scaling scheduled actions by ARN."""
     for arn in scheduled_action_arns:
         try:
             # Extract action name and ASG name from ARN
@@ -602,7 +602,7 @@ def cleanup_scheduled_actions(scheduled_action_arns: list[str]) -> None:
 
 
 def cleanup_scheduled_actions_by_name_pattern(auto_scaling_group: str, model_id: str) -> None:
-    """Delete all scheduled actions for a model by finding them via name pattern"""
+    """Delete all scheduled actions for a model by finding them via name pattern."""
     try:
         # Get all scheduled actions for the Auto Scaling Group
         response = autoscaling_client.describe_scheduled_actions(AutoScalingGroupName=auto_scaling_group)
@@ -655,7 +655,7 @@ def cleanup_scheduled_actions_by_name_pattern(auto_scaling_group: str, model_id:
 
 
 def calculate_next_scheduled_action(schedule_config: SchedulingConfig, timezone_name: str) -> dict[str, str] | None:
-    """Calculate the next scheduled action (START or STOP) based on the schedule configuration"""
+    """Calculate the next scheduled action (START or STOP) based on the schedule configuration."""
     try:
         tz = ZoneInfo(timezone_name)
         now = datetime.now(tz)
@@ -672,7 +672,7 @@ def calculate_next_scheduled_action(schedule_config: SchedulingConfig, timezone_
 
 
 def _calculate_next_recurring_action(day_schedule: DaySchedule, now: datetime, tz: ZoneInfo) -> dict[str, str]:
-    """Calculate next action for recurring schedule"""
+    """Calculate next action for recurring schedule."""
     # Parse schedule times
     start_hour, start_minute = map(int, day_schedule.startTime.split(":"))
     stop_hour, stop_minute = map(int, day_schedule.stopTime.split(":"))
@@ -700,7 +700,7 @@ def _calculate_next_recurring_action(day_schedule: DaySchedule, now: datetime, t
 
 
 def _calculate_next_daily_action(daily_schedule: WeeklySchedule, now: datetime, tz: ZoneInfo) -> dict[str, str] | None:
-    """Calculate next action for daily schedule"""
+    """Calculate next action for daily schedule."""
     current_weekday = now.weekday()
 
     day_schedules = [
@@ -738,7 +738,7 @@ def _calculate_next_daily_action(daily_schedule: WeeklySchedule, now: datetime, 
 
 
 def _get_next_action_for_today(day_schedule: DaySchedule, now: datetime, tz: ZoneInfo) -> dict[str, str] | None:
-    """Get next action for today's schedule only"""
+    """Get next action for today's schedule only."""
     today = now.date()
 
     # Parse schedule times
@@ -764,7 +764,7 @@ def _get_next_action_for_today(day_schedule: DaySchedule, now: datetime, tz: Zon
 
 
 def merge_schedule_data(model_id: str, partial_update: dict[str, Any]) -> dict[str, Any]:
-    """Merge partial schedule update with existing schedule data"""
+    """Merge partial schedule update with existing schedule data."""
     # Get existing schedule data from model_config.autoScalingConfig.scheduling
     existing_data = {}
     try:
@@ -803,7 +803,7 @@ def merge_schedule_data(model_id: str, partial_update: dict[str, Any]) -> dict[s
 
 
 def get_existing_scheduled_action_arns(model_id: str) -> list[str]:
-    """Get existing scheduled action ARNs for a model"""
+    """Get existing scheduled action ARNs for a model."""
     try:
         response = model_table.get_item(Key={"model_id": model_id})
 
@@ -825,7 +825,7 @@ def get_existing_scheduled_action_arns(model_id: str) -> list[str]:
 def update_model_schedule_record(
     model_id: str, scheduling_config: SchedulingConfig | None, scheduled_action_arns: list[str], enabled: bool
 ) -> None:
-    """Update model record in DynamoDB with schedule information"""
+    """Update model record in DynamoDB with schedule information."""
     try:
         # Check if model_config.autoScalingConfig exists first
         response = model_table.get_item(Key={"model_id": model_id})

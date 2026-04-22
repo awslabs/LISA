@@ -38,8 +38,7 @@ s3 = session.client("s3", region_name=os.environ["AWS_REGION"])
 
 
 def _get_metadata(s3_uri: str, name: str, metadata: dict | None = None) -> dict:
-    """
-    Create metadata dictionary for a document.
+    """Create metadata dictionary for a document.
 
     Args:
         s3_uri: S3 URI of the document
@@ -125,9 +124,9 @@ def _extract_docx_content(s3_object: dict) -> str:
 
 
 def _extract_text_content(s3_object: dict) -> str:
-    """
-    Extracts text content from an S3 object. Decode as
-    utf-8 to properly read special characters
+    """Extracts text content from an S3 object.
+
+    Decode as utf-8 to properly read special characters
 
     Parameters
     ----------

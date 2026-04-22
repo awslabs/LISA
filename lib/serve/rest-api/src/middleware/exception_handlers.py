@@ -14,8 +14,8 @@
 
 """Exception handlers for the serve API.
 
-This module provides exception handlers that return proper HTTP status codes
-with generic error messages, preventing internal details from being exposed.
+This module provides exception handlers that return proper HTTP status codes with generic error messages, preventing
+internal details from being exposed.
 """
 
 import traceback

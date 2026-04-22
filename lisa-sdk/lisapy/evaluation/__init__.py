@@ -14,8 +14,8 @@
 
 """RAG evaluation module for measuring retrieval quality.
 
-Provides metric functions, golden dataset loading, and evaluator classes
-for Bedrock Knowledge Bases and LISA API backends (OpenSearch, PGVector).
+Provides metric functions, golden dataset loading, and evaluator classes for Bedrock Knowledge Bases and LISA API
+backends (OpenSearch, PGVector).
 """
 
 from .base import BaseEvaluator

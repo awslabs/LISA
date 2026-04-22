@@ -50,8 +50,8 @@ retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")
 def mock_api_wrapper(func):
     """Mock API wrapper that handles both success and error cases for testing.
 
-    For successful function calls, it wraps the result in an HTTP response format.
-    For error cases, it returns an appropriate error response with proper status code.
+    For successful function calls, it wraps the result in an HTTP response format. For error cases, it returns an
+    appropriate error response with proper status code.
     """
 
     def wrapper(event, context):

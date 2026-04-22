@@ -114,7 +114,10 @@ SAMPLE_TOOL_ID = "test_tool.py"
 
 @pytest.fixture
 def s3_setup():
-    """Set up S3 with moto and create bucket. Uses complete isolation to avoid test interference."""
+    """Set up S3 with moto and create bucket.
+
+    Uses complete isolation to avoid test interference.
+    """
     # More aggressive approach: Temporarily replace boto3.client entirely
     import importlib
 

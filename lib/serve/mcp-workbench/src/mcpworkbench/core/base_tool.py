@@ -63,8 +63,7 @@ class BaseTool(ABC):
     """Abstract base class for MCP tools."""
 
     def __init__(self, name: str, description: str):
-        """
-        Initialize the tool with required metadata.
+        """Initialize the tool with required metadata.
 
         Args:
             name: The name of the tool
@@ -75,8 +74,7 @@ class BaseTool(ABC):
 
     @abstractmethod
     async def execute(self) -> Callable[..., Any]:
-        """
-        Returns an function to be executed as the tool.
+        """Returns an function to be executed as the tool.
 
         Returns:
             The function to be executed

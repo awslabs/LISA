@@ -49,8 +49,7 @@ class MCPWorkbenchServer:
     """MCP Workbench server using pure FastMCP 2.0."""
 
     def __init__(self, config: ServerConfig, tool_discovery: ToolDiscovery, tool_registry: ToolRegistry):
-        """
-        Initialize the MCP Workbench server.
+        """Initialize the MCP Workbench server.
 
         Args:
             config: Server configuration
@@ -159,7 +158,6 @@ class MCPWorkbenchServer:
 
     def _create_starlette_app(self) -> Starlette:
         """Create Starlette application with MCP and HTTP routes."""
-
         mcp_app = self.app.http_app(path="/", transport="streamable-http", stateless_http=True)
 
         async def health_check(request: Request) -> JSONResponse:

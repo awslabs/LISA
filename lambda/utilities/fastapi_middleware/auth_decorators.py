@@ -23,8 +23,7 @@ from utilities.auth import is_admin
 
 
 def require_admin(message: str = "User does not have permission to perform this action") -> Callable:
-    """
-    Decorator for FastAPI route handlers that require admin access.
+    """Decorator for FastAPI route handlers that require admin access.
 
     Works with async FastAPI handlers that have a `request: Request` parameter.
     The decorator extracts the AWS event from the request scope and checks admin status.

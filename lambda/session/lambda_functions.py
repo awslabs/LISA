@@ -80,7 +80,6 @@ def _is_session_encryption_enabled() -> bool:
         True if session encryption is enabled, False otherwise.
         Defaults to False if configuration is not found or accessible.
     """
-
     try:
         logger.debug("Querying global configuration for session encryption setting")
         # Query the global configuration entry

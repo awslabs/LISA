@@ -12,8 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""
-Context Window Backfill Lambda
+"""Context Window Backfill Lambda.
 
 This Lambda function retroactively enriches existing model DynamoDB records
 with a context_window value. It runs once automatically during CDK deployment
@@ -81,8 +80,8 @@ def _fetch_context_window_from_litellm(
 ) -> int | None:
     """Return max_input_tokens from LiteLLM for a non-LISA-managed model.
 
-    Falls back to list_models() filtered by model_id when litellm_id is absent
-    (pre-existing records created before litellm_id was stored).
+    Falls back to list_models() filtered by model_id when litellm_id is absent (pre-existing records created before
+    litellm_id was stored).
     """
     if litellm_id:
         try:
@@ -222,12 +221,10 @@ def _run_backfill() -> dict[str, Any]:
 
 
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """
-    CloudFormation CustomResource handler for context window backfill.
+    """CloudFormation CustomResource handler for context window backfill.
 
-    Runs the backfill exactly once on Create. Update and Delete are no-ops.
-    The static PhysicalResourceId ensures CloudFormation never re-creates
-    or replaces this resource across subsequent deployments.
+    Runs the backfill exactly once on Create. Update and Delete are no-ops. The static PhysicalResourceId ensures
+    CloudFormation never re-creates or replaces this resource across subsequent deployments.
     """
     request_type = event.get("RequestType", "")
     logger.info(f"context-window-backfill invoked: RequestType={request_type}")

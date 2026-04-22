@@ -27,8 +27,7 @@ from .repository_service import RepositoryService
 class RepositoryServiceFactory:
     """Factory for creating repository-specific service instances.
 
-    Encapsulates repository-specific behavior, eliminating the need for
-    conditional logic throughout the codebase.
+    Encapsulates repository-specific behavior, eliminating the need for conditional logic throughout the codebase.
     """
 
     # Registry mapping repository types to service classes

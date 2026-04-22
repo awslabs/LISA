@@ -622,7 +622,7 @@ class TestRateLimitMiddlewareOverrides:
 
     @pytest.mark.asyncio
     async def test_zero_rpm_override_does_not_crash(self):
-        """rpm=0 should not raise and should return a 429 after burst is consumed."""
+        """Rpm=0 should not raise and should return a 429 after burst is consumed."""
         mod = self._mod
         mod.RATE_LIMIT_OVERRIDES = {"token:zero-rpm": {"rpm": 0, "burst": 1}}
 

@@ -29,10 +29,7 @@ class InvalidAwsCredentialsError(Exception):
 
 @dataclass
 class AwsStsClient:
-    """
-    Thin wrapper around boto3 STS client for validating credentials and
-    creating short-lived session credentials.
-    """
+    """Thin wrapper around boto3 STS client for validating credentials and creating short-lived session credentials."""
 
     def _create_sts_client(
         self,
@@ -61,8 +58,7 @@ class AwsStsClient:
         session_token: str | None,
         region: str,
     ) -> tuple[str, str]:
-        """
-        Validate credentials via GetCallerIdentity.
+        """Validate credentials via GetCallerIdentity.
 
         Returns (account_id, arn) on success, raises InvalidAwsCredentialsError on failure.
         """
@@ -90,8 +86,7 @@ class AwsStsClient:
         duration_seconds: int = 3600,
         safety_margin_seconds: int = 60,
     ) -> AwsSessionRecord:
-        """
-        Produce an AwsSessionRecord from the provided credentials.
+        """Produce an AwsSessionRecord from the provided credentials.
 
         * **Long-term (IAM user) credentials** (no session_token): calls
           ``GetSessionToken`` to mint short-lived temporary credentials

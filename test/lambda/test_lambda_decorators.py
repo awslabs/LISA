@@ -176,7 +176,6 @@ class TestGetLambdaContext:
 
     def test_get_context_when_set(self):
         """Test get_lambda_context returns context when set."""
-
         mock_context = SimpleNamespace(function_name="get-context-test", aws_request_id="req-999")
         ctx_context.set(mock_context)
 

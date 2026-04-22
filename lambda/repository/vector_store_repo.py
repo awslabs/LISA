@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 class VectorStoreRepository:
-    """Vector Store repository for DynamoDB"""
+    """Vector Store repository for DynamoDB."""
 
     def __init__(self, table_name: str | None = None) -> None:
         dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
@@ -61,7 +61,7 @@ class VectorStoreRepository:
         return registered_repositories
 
     def get_repository_status(self) -> dict[str, str]:
-        """Get a list the status of all repositories"""
+        """Get a list the status of all repositories."""
         status: dict[str, str] = {}
 
         response = self.table.scan(
@@ -80,8 +80,7 @@ class VectorStoreRepository:
         return status
 
     def find_repository_by_id(self, repository_id: str, raw_config: bool = False) -> dict[str, Any]:
-        """
-        Find a repository by its ID.
+        """Find a repository by its ID.
 
         Args:
             repository_id: The ID of the repository to find.
@@ -119,8 +118,7 @@ class VectorStoreRepository:
         return config
 
     def update(self, repository_id: str, updates: dict[str, Any], status: str | None = None) -> dict[str, Any]:
-        """
-        Update a repository configuration.
+        """Update a repository configuration.
 
         Args:
             repository_id: The ID of the repository to update.
@@ -163,8 +161,7 @@ class VectorStoreRepository:
             raise ValueError(f"Failed to update repository: {repository_id}", e)
 
     def delete(self, repository_id: str) -> bool:
-        """
-        Delete a repository by its ID.
+        """Delete a repository by its ID.
 
         Args:
             repository_id: The ID of the repository to delete.
@@ -182,8 +179,8 @@ class VectorStoreRepository:
             raise ValueError(f"Failed to delete repository: {repository_id}", e)
 
     def find_repositories_using_model(self, model_id: str) -> list[dict]:
-        """
-        Find all repositories that use a specific model.
+        """Find all repositories that use a specific model.
+
         Excludes repositories with status indicating they are deleted or archived.
 
         Args:

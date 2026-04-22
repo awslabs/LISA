@@ -13,8 +13,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""
-Common utilities for LISA integration tests.
+"""Common utilities for LISA integration tests.
 
 This module provides reusable functions for:
 - Authentication setup (re-exported from lisapy.authentication)

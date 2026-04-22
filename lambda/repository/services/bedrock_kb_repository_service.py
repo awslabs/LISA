@@ -43,8 +43,8 @@ logger = logging.getLogger(__name__)
 class BedrockKBRepositoryService(RepositoryService):
     """Service for Bedrock Knowledge Base repository operations.
 
-    Bedrock KB manages its own ingestion, chunking, and embedding pipeline.
-    LISA only tracks documents and delegates actual operations to Bedrock.
+    Bedrock KB manages its own ingestion, chunking, and embedding pipeline. LISA only tracks documents and delegates
+    actual operations to Bedrock.
     """
 
     def supports_custom_collections(self) -> bool:
@@ -58,8 +58,8 @@ class BedrockKBRepositoryService(RepositoryService):
     def get_collection_id_from_config(self, pipeline_config: dict[str, Any]) -> str:
         """For Bedrock KB, collection ID is the data source ID.
 
-        Extracts the data source ID from the pipeline config's collectionId field,
-        which should match one of the data sources in bedrockKnowledgeBaseConfig.
+        Extracts the data source ID from the pipeline config's collectionId field, which should match one of the data
+        sources in bedrockKnowledgeBaseConfig.
         """
         # The pipeline config should have a collectionId that matches a data source ID
         collection_id: str | None = pipeline_config.get("collectionId")
@@ -180,8 +180,8 @@ class BedrockKBRepositoryService(RepositoryService):
     ) -> None:
         """Delete all LISA-managed documents from Bedrock KB collection.
 
-        Only deletes documents with ingestion_type MANUAL or AUTO.
-        Preserves user-managed documents (ingestion_type EXISTING).
+        Only deletes documents with ingestion_type MANUAL or AUTO. Preserves user-managed documents (ingestion_type
+        EXISTING).
         """
         if not bedrock_agent_client:
             raise ValueError("Bedrock agent client required for KB operations")

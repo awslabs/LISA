@@ -13,11 +13,10 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""
-Test script for MCP Workbench.
+"""Test script for MCP Workbench.
 
-This script creates a temporary tools directory, populates it with example tools,
-starts the MCP workbench server, and tests the API endpoints.
+This script creates a temporary tools directory, populates it with example tools, starts the MCP workbench server, and
+tests the API endpoints.
 """
 
 import subprocess
@@ -31,7 +30,6 @@ import requests
 
 def create_test_tools(tools_dir: Path):
     """Create test tools in the given directory."""
-
     # Create a simple function-based tool
     function_tool = """
 from mcpworkbench.core.annotations import mcp_tool

@@ -134,8 +134,7 @@ def get_rest_api_container_endpoint() -> str:
 
 
 def _get_lambda_role_arn() -> str:
-    """
-    Get the ARN of the Lambda execution role.
+    """Get the ARN of the Lambda execution role.
 
     Returns
     -------
@@ -153,8 +152,7 @@ def _get_lambda_role_arn() -> str:
 
 
 def get_lambda_role_name() -> str:
-    """
-    Extract the role name from the Lambda execution role ARN.
+    """Extract the role name from the Lambda execution role ARN.
 
     Returns
     -------

@@ -483,7 +483,7 @@ class TestLisaLlmComplete:
     """Test suite for legacy text completions."""
 
     def test_complete_success(self):
-        """complete() should return a CompletionResponse with parsed fields."""
+        """Complete() should return a CompletionResponse with parsed fields."""
         from lisapy.main import LisaLlm
         from lisapy.types import CompletionResponse
 
@@ -512,7 +512,7 @@ class TestLisaLlmComplete:
             mock_post.assert_called_once()
 
     def test_complete_with_kwargs(self):
-        """complete() should forward allowed kwargs and filter unknown ones."""
+        """Complete() should forward allowed kwargs and filter unknown ones."""
         from lisapy.main import LisaLlm
 
         llm = LisaLlm(url="https://api.example.com")
@@ -540,7 +540,7 @@ class TestLisaLlmComplete:
             assert "unknown_param" not in payload
 
     def test_complete_error(self):
-        """complete() should raise on non-200 response."""
+        """Complete() should raise on non-200 response."""
         from lisapy.main import LisaLlm
 
         llm = LisaLlm(url="https://api.example.com")

@@ -145,8 +145,7 @@ def get_database_connection() -> Any:
 
 
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """
-    Lambda handler for Bedrock model API key cleanup.
+    """Lambda handler for Bedrock model API key cleanup.
 
     Only processes models with modelName prefixed with "bedrock/".
 

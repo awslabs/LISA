@@ -16,8 +16,8 @@ from pydantic import BaseModel
 
 
 class UserPreferencesModel(BaseModel):
-    """
-    A Pydantic model representing a template for prompts.
+    """A Pydantic model representing a template for prompts.
+
     Contains metadata and functionality to create new revisions.
     """
 

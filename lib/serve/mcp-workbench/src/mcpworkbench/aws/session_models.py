@@ -20,11 +20,9 @@ from datetime import datetime, timedelta, timezone
 
 @dataclass
 class AwsSessionRecord:
-    """
-    In-memory representation of a short-lived AWS session for a user/session.
+    """In-memory representation of a short-lived AWS session for a user/session.
 
-    The fields mirror the design in LISA_Auth.md, with expires_at stored as
-    an aware UTC datetime.
+    The fields mirror the design in LISA_Auth.md, with expires_at stored as an aware UTC datetime.
     """
 
     user_id: str

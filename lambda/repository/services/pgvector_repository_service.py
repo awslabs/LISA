@@ -37,8 +37,8 @@ secretsmanager_client = boto3.client("secretsmanager", region_name=os.environ["A
 class PGVectorRepositoryService(VectorStoreRepositoryService):
     """Service for PGVector repository operations.
 
-    Inherits common vector store behavior from VectorStoreRepositoryService.
-    Only implements PGVector-specific collection management and score normalization.
+    Inherits common vector store behavior from VectorStoreRepositoryService. Only implements PGVector-specific
+    collection management and score normalization.
     """
 
     def _drop_collection_index(self, collection_id: str) -> None:

@@ -14,8 +14,8 @@
 
 """Base implementation for vector store-based repository services (OpenSearch, PGVector).
 
-This class provides common functionality for repositories that use traditional
-vector stores with chunking and embedding pipelines.
+This class provides common functionality for repositories that use traditional vector stores with chunking and embedding
+pipelines.
 """
 
 import logging
@@ -48,11 +48,11 @@ ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=re
 class VectorStoreRepositoryService(RepositoryService):
     """Base implementation for vector store-based repository services.
 
-    Provides common functionality for OpenSearch and PGVector repositories
-    that share similar ingestion, deletion, and retrieval patterns.
+    Provides common functionality for OpenSearch and PGVector repositories that share similar ingestion, deletion, and
+    retrieval patterns.
 
-    Subclasses only need to implement repository-specific operations like
-    index/collection dropping and score normalization.
+    Subclasses only need to implement repository-specific operations like index/collection dropping and score
+    normalization.
     """
 
     def supports_custom_collections(self) -> bool:
@@ -138,8 +138,7 @@ class VectorStoreRepositoryService(RepositoryService):
     ) -> None:
         """Delete collection from vector store.
 
-        Delegates to subclass-specific implementation for dropping
-        indexes/collections.
+        Delegates to subclass-specific implementation for dropping indexes/collections.
         """
         self._drop_collection_index(collection_id)
 

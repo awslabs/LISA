@@ -28,7 +28,7 @@ from .utils import get_model_and_validate_access, get_model_and_validate_status
 
 
 class ScheduleBaseHandler(BaseApiHandler):
-    """Base handler for schedule operations"""
+    """Base handler for schedule operations."""
 
     def __init__(
         self,
@@ -37,12 +37,12 @@ class ScheduleBaseHandler(BaseApiHandler):
         model_table_resource: Any,
         guardrails_table_resource: Any,
     ):
-        """Initialize schedule handler"""
+        """Initialize schedule handler."""
         super().__init__(autoscaling_client, stepfunctions_client, model_table_resource, guardrails_table_resource)
 
 
 class UpdateScheduleHandler(ScheduleBaseHandler):
-    """Handler class for UpdateSchedule requests"""
+    """Handler class for UpdateSchedule requests."""
 
     def __call__(
         self,
@@ -51,7 +51,7 @@ class UpdateScheduleHandler(ScheduleBaseHandler):
         user_groups: list[str] | None = None,
         is_admin: bool = False,
     ) -> UpdateScheduleResponse:
-        """Create or update a schedule for a model"""
+        """Create or update a schedule for a model."""
         # Validate model exists, user access, and model status
         model_item = get_model_and_validate_status(
             self._model_table, model_id, user_groups=user_groups, is_admin=is_admin
@@ -83,12 +83,12 @@ class UpdateScheduleHandler(ScheduleBaseHandler):
 
 
 class GetScheduleHandler(ScheduleBaseHandler):
-    """Handler class for GetSchedule requests"""
+    """Handler class for GetSchedule requests."""
 
     def __call__(
         self, model_id: str, user_groups: list[str] | None = None, is_admin: bool = False
     ) -> GetScheduleResponse:
-        """Get current schedule configuration for a model"""
+        """Get current schedule configuration for a model."""
         # Validate model exists and user access
         get_model_and_validate_access(self._model_table, model_id, user_groups, is_admin)
 
@@ -108,12 +108,12 @@ class GetScheduleHandler(ScheduleBaseHandler):
 
 
 class DeleteScheduleHandler(ScheduleBaseHandler):
-    """Handler class for DeleteSchedule requests"""
+    """Handler class for DeleteSchedule requests."""
 
     def __call__(
         self, model_id: str, user_groups: list[str] | None = None, is_admin: bool = False
     ) -> DeleteScheduleResponse:
-        """Delete a schedule for a model"""
+        """Delete a schedule for a model."""
         # Validate model exists, user access, and model status
         get_model_and_validate_status(self._model_table, model_id, user_groups=user_groups, is_admin=is_admin)
 
@@ -129,12 +129,12 @@ class DeleteScheduleHandler(ScheduleBaseHandler):
 
 
 class GetScheduleStatusHandler(ScheduleBaseHandler):
-    """Handler class for GetScheduleStatus requests"""
+    """Handler class for GetScheduleStatus requests."""
 
     def __call__(
         self, model_id: str, user_groups: list[str] | None = None, is_admin: bool = False
     ) -> GetScheduleStatusResponse:
-        """Get current schedule status and next scheduled action for a model"""
+        """Get current schedule status and next scheduled action for a model."""
         # Validate model exists and user access
         model_item = get_model_and_validate_access(self._model_table, model_id, user_groups, is_admin)
 

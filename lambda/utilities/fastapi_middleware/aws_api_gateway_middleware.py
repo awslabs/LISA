@@ -18,11 +18,9 @@ from starlette.middleware.base import ASGIApp, BaseHTTPMiddleware, Request, Requ
 
 
 class AWSAPIGatewayMiddleware(BaseHTTPMiddleware):
-    """
-    Handles the FastAPI path and root_path dynamically from the ASGI request data.
+    """Handles the FastAPI path and root_path dynamically from the ASGI request data.
 
-    Mangum injects the AWS event data which we can use to dynamically set the path
-    and root_path.
+    Mangum injects the AWS event data which we can use to dynamically set the path and root_path.
     https://github.com/jordaneremieff/mangum/issues/147
     """
 

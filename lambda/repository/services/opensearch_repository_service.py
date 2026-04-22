@@ -39,8 +39,8 @@ ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=re
 class OpenSearchRepositoryService(VectorStoreRepositoryService):
     """Service for OpenSearch repository operations.
 
-    Inherits common vector store behavior from VectorStoreRepositoryService.
-    Only implements OpenSearch-specific index management.
+    Inherits common vector store behavior from VectorStoreRepositoryService. Only implements OpenSearch-specific index
+    management.
     """
 
     def retrieve_documents(

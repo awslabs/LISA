@@ -24,8 +24,8 @@ from loguru import logger
 class AuthorizationProvider(ABC):
     """Abstract base class for authorization providers.
 
-    This abstraction allows swapping between different authorization backends
-    (e.g., OIDC group-based, BRASS bindle lock) without changing the consuming code.
+    This abstraction allows swapping between different authorization backends (e.g., OIDC group-based, BRASS bindle
+    lock) without changing the consuming code.
     """
 
     @abstractmethod

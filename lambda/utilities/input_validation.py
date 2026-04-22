@@ -32,8 +32,7 @@ MAX_LARGE_REQUEST_SIZE = 10 * 1024 * 1024
 
 
 def contains_null_bytes(data: str) -> bool:
-    """
-    Check if a string contains null bytes.
+    """Check if a string contains null bytes.
 
     Null bytes (\\x00) can be used to bypass input validation or cause
     unexpected behavior in string processing.
@@ -48,8 +47,7 @@ def contains_null_bytes(data: str) -> bool:
 
 
 def validate_input(max_request_size: int = DEFAULT_MAX_REQUEST_SIZE) -> Callable[[F], F]:
-    """
-    Decorator to validate Lambda event input before processing.
+    """Decorator to validate Lambda event input before processing.
 
     This decorator provides security protections against:
     - Null byte injection attacks
@@ -66,8 +64,7 @@ def validate_input(max_request_size: int = DEFAULT_MAX_REQUEST_SIZE) -> Callable
     def decorator(f: F) -> F:
         @functools.wraps(f)
         def wrapper(event: dict, context: dict) -> dict[str, str | int | dict[str, str]]:
-            """
-            Validate Lambda event input.
+            """Validate Lambda event input.
 
             Validation order:
             1. HTTP method validation (returns 405 if invalid)

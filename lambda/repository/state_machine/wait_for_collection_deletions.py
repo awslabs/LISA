@@ -23,8 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """
-    Check if all collection deletion jobs for a repository are complete.
+    """Check if all collection deletion jobs for a repository are complete.
 
     Args:
         event: Event data containing repositoryId and stackName

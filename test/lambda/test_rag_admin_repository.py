@@ -14,14 +14,13 @@
 
 """Tests for RAG Admin authorization boundaries in repository lambda functions.
 
-Uses _auth_context() to patch auth references directly on repository.lambda_functions.
-This is necessary because the module uses `from utilities.auth import ...` which creates
-local bindings that conftest's patches on utilities.auth do not reach.
+Uses _auth_context() to patch auth references directly on repository.lambda_functions. This is necessary because the
+module uses `from utilities.auth import ...` which creates local bindings that conftest's patches on utilities.auth do
+not reach.
 
-Note: The conftest patches decorators (admin_only, rag_admin_or_admin) as passthroughs
-when test_repository_lambda.py runs first (module-level import). So these tests focus on
-the inner function logic: group access filtering, effective_admin, field restrictions,
-and document ownership bypass.
+Note: The conftest patches decorators (admin_only, rag_admin_or_admin) as passthroughs when test_repository_lambda.py
+runs first (module-level import). So these tests focus on the inner function logic: group access filtering,
+effective_admin, field restrictions, and document ownership bypass.
 """
 
 import json
@@ -88,8 +87,8 @@ def _make_event(username="test-user", groups=None):
 def _auth_context(username, groups, is_admin_val=False, is_rag_admin_val=False):
     """Patch all auth references on repository.lambda_functions for a test.
 
-    Because repository.lambda_functions uses `from utilities.auth import ...`,
-    the module has local bindings that must be patched directly.
+    Because repository.lambda_functions uses `from utilities.auth import ...`, the module has local bindings that must
+    be patched directly.
     """
     stack = ExitStack()
     for p in [
@@ -197,8 +196,8 @@ def test_rag_admin_can_delete_collection_on_accessible_repo(ctx):
 def test_effective_admin_passed_to_collection_service(ctx, is_rag_admin_val, expected):
     """Verify effective_admin (is_admin OR is_rag_admin) is passed to collection_service.
 
-    Call-arg inspection is necessary here because collection_service is always mocked
-    at this layer — it's an external dependency boundary.
+    Call-arg inspection is necessary here because collection_service is always mocked at this layer — it's an external
+    dependency boundary.
     """
     username = "rag-admin-user" if is_rag_admin_val else "regular-user"
     groups = ["rag-team", "rag-admins"] if is_rag_admin_val else ["rag-team"]
@@ -445,10 +444,9 @@ def test_rag_admin_cannot_update_repository_on_inaccessible_repo(ctx):
 def test_rag_admin_list_user_collections_passes_is_rag_admin(ctx):
     """list_user_collections passes is_rag_admin=True for RAG admin callers.
 
-    RAG admins get scoped-admin collection access (bypass collection-level
-    allowedGroups) within repos they have group access to. Repo-level filtering
-    uses is_admin (real flag), so RAG admins do NOT see all repos — only their
-    group-accessible ones. is_rag_admin is threaded through to collection filtering.
+    RAG admins get scoped-admin collection access (bypass collection-level allowedGroups) within repos they have group
+    access to. Repo-level filtering uses is_admin (real flag), so RAG admins do NOT see all repos — only their group-
+    accessible ones. is_rag_admin is threaded through to collection filtering.
     """
     event = _make_event("rag-admin-user", ["rag-team", "rag-admins"])
     event["queryStringParameters"] = {}
@@ -508,8 +506,8 @@ def test_rag_admin_can_update_bedrock_knowledge_base_config(ctx):
 def test_rag_admin_update_filters_serialized_output(ctx):
     """Defense-in-depth filter strips non-allowed fields from model_dump output.
 
-    Even if Pydantic populates default values during serialization, the second
-    filter (lines 1613-1615) ensures only allowed fields reach the update call.
+    Even if Pydantic populates default values during serialization, the second filter (lines 1613-1615) ensures only
+    allowed fields reach the update call.
     """
     event = _make_event("rag-admin-user", ["rag-team", "rag-admins"])
     event["pathParameters"] = {"repositoryId": "repo-1"}

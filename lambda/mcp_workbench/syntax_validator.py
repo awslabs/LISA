@@ -60,12 +60,9 @@ class _StubLoader(importlib.abc.Loader):
 class _McpWorkbenchStubFinder(importlib.abc.MetaPathFinder):
     """Auto-stub any ``mcpworkbench.*`` import that hasn't already been mocked.
 
-    During Lambda-based validation we only have explicit mocks for
-    ``mcpworkbench.core.*``.  Tools may import from other subpackages
-    (e.g. ``mcpworkbench.aws.*``) that don't exist in the Lambda
-    environment.  This finder intercepts those imports and returns
-    lightweight stub modules so validation can proceed without
-    ImportErrors.
+    During Lambda-based validation we only have explicit mocks for ``mcpworkbench.core.*``.  Tools may import from other
+    subpackages (e.g. ``mcpworkbench.aws.*``) that don't exist in the Lambda environment.  This finder intercepts those
+    imports and returns lightweight stub modules so validation can proceed without ImportErrors.
     """
 
     _PREFIX = "mcpworkbench."
@@ -100,8 +97,7 @@ class PythonSyntaxValidator:
         self.max_code_size = 100_000  # 100KB
 
     def validate_code(self, code: str) -> ValidationResult:
-        """
-        Validate Python code for syntax and required imports.
+        """Validate Python code for syntax and required imports.
 
         Args:
             code: Python code string to validate

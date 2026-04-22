@@ -30,8 +30,7 @@ sqs_client = boto3.client("sqs", region_name=os.environ["AWS_REGION"])
 
 
 def extract_messages_for_metrics(params: dict) -> list[dict]:
-    """
-    Extract messages from chat completion request parameters.
+    """Extract messages from chat completion request parameters.
 
     Args:
         params: The request parameters containing messages
@@ -93,8 +92,7 @@ def extract_messages_for_metrics(params: dict) -> list[dict]:
 
 
 def extract_token_usage(response_body: dict | None) -> tuple[int | None, int | None]:
-    """
-    Extract token usage from a LLM response body (non-streaming or SSE chunk).
+    """Extract token usage from a LLM response body (non-streaming or SSE chunk).
 
     The usage structure is identical in both cases — LiteLLM normalises it:
         {"usage": {"prompt_tokens": N, "completion_tokens": N, ...}, ...}
@@ -123,8 +121,7 @@ def publish_metrics_event(
     prompt_tokens: int | None = None,
     completion_tokens: int | None = None,
 ) -> None:
-    """
-    Publish metrics event to SQS queue for API users.
+    """Publish metrics event to SQS queue for API users.
 
     Includes both message-level metrics (for prompt/RAG/MCP counting) and
     token-level metrics (prompt_tokens, completion_tokens) if available.

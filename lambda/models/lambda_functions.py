@@ -319,8 +319,8 @@ async def update_context_window(
 ) -> UpdateContextWindowResponse:
     """Override the context window for a specific model.
 
-    Useful when automatic enrichment during model creation failed, or when
-    the stored value is incorrect and needs to be corrected.
+    Useful when automatic enrichment during model creation failed, or when the stored value is incorrect and needs to be
+    corrected.
     """
     handler = UpdateContextWindowHandler(
         autoscaling_client=autoscaling,
@@ -342,7 +342,7 @@ async def update_schedule(
     schedule_config: SchedulingConfig,
     request: Request,
 ) -> UpdateScheduleResponse:
-    """Endpoint to create or update a schedule for a model"""
+    """Endpoint to create or update a schedule for a model."""
     admin_status, user_groups = get_admin_status_and_groups(request)
 
     update_schedule_handler = UpdateScheduleHandler(
@@ -361,7 +361,7 @@ async def update_schedule(
 async def get_schedule(
     model_id: Annotated[str, Path(title="The unique model ID of the model to get schedule for")], request: Request
 ) -> GetScheduleResponse:
-    """Endpoint to get current schedule configuration for a model"""
+    """Endpoint to get current schedule configuration for a model."""
     get_schedule_handler = GetScheduleHandler(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,
@@ -389,7 +389,7 @@ async def get_schedule(
 async def delete_schedule(
     model_id: Annotated[str, Path(title="The unique model ID of the model to delete schedule for")], request: Request
 ) -> DeleteScheduleResponse:
-    """Endpoint to delete a schedule for a model"""
+    """Endpoint to delete a schedule for a model."""
     admin_status, user_groups = get_admin_status_and_groups(request)
 
     delete_schedule_handler = DeleteScheduleHandler(
@@ -407,7 +407,7 @@ async def get_schedule_status(
     model_id: Annotated[str, Path(title="The unique model ID of the model to get schedule status for")],
     request: Request,
 ) -> GetScheduleStatusResponse:
-    """Endpoint to get current schedule status and next scheduled action for a model"""
+    """Endpoint to get current schedule status and next scheduled action for a model."""
     get_schedule_status_handler = GetScheduleStatusHandler(
         autoscaling_client=autoscaling,
         stepfunctions_client=stepfunctions,

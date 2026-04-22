@@ -14,8 +14,8 @@
 
 """Authentication middleware for the serve API.
 
-This middleware handles authentication at the request level, validating tokens
-and setting user context on request.state for downstream handlers.
+This middleware handles authentication at the request level, validating tokens and setting user context on request.state
+for downstream handlers.
 """
 
 import os

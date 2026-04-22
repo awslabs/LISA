@@ -13,8 +13,8 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""
-Simple test to verify MCP Workbench installation.
+"""Simple test to verify MCP Workbench installation.
+
 Run this after installing to verify everything works.
 """
 
@@ -28,7 +28,6 @@ from mcpworkbench.core.base_tool import BaseTool
 
 def test_cli_available() -> bool:
     """Test that the CLI command is available."""
-
     try:
         result = subprocess.run(
             [sys.executable, "-m", "mcpworkbench.cli", "--help"], capture_output=True, text=True, timeout=10

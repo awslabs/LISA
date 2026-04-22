@@ -13,8 +13,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""
-Integration tests for RAG Collections.
+"""Integration tests for RAG Collections.
 
 This test suite validates end-to-end functionality of RAG collections including:
 - Collection creation and management
@@ -60,7 +59,10 @@ Ryan is a trumpet player and has recorded on various albums like:
 
 
 class RagIntegrationFixtures:
-    """Shared fixtures for RAG integration tests. Contains no test methods."""
+    """Shared fixtures for RAG integration tests.
+
+    Contains no test methods.
+    """
 
     created_collections = []
 
@@ -573,18 +575,16 @@ class TestRagCollectionsIntegration(RagIntegrationFixtures):
 class TestPipelineRagCollectionIntegration(RagIntegrationFixtures):
     """Integration tests for RAG collections using the S3 pipeline EventBridge trigger.
 
-    Tests end-to-end pipeline ingestion and deletion by dropping/removing files
-    directly in the pipeline S3 bucket and verifying the event-driven handler
-    processes them correctly.
+    Tests end-to-end pipeline ingestion and deletion by dropping/removing files directly in the pipeline S3 bucket and
+    verifying the event-driven handler processes them correctly.
     """
 
     @pytest.fixture(scope="class")
     def pipeline_info(self, lisa_client: LisaApi, test_repository_id: str, test_embedding_model: str):
-        """Discover the pipeline S3 bucket/prefix from TEST_REPOSITORY_ID and create
-        a collection whose name is 'default' to test pipeline name-to-UUID resolution.
+        """Discover the pipeline S3 bucket/prefix from TEST_REPOSITORY_ID and create a collection whose name is
+        'default' to test pipeline name-to-UUID resolution.
 
-        Yields the info dict needed by test_01 and test_02.
-        Cleans up the collection on teardown.
+        Yields the info dict needed by test_01 and test_02. Cleans up the collection on teardown.
         """
         # Discover pipeline S3 bucket from the existing repository
         repo = lisa_client.get_repository(test_repository_id)
@@ -624,9 +624,8 @@ class TestPipelineRagCollectionIntegration(RagIntegrationFixtures):
         test_embedding_model: str,
         pipeline_info: dict,
     ):
-        """Drop a file into the pipeline S3 bucket and verify it ingests under the
-        UUID collection, confirming the pipeline resolves collection name to UUID.
-        """
+        """Drop a file into the pipeline S3 bucket and verify it ingests under the UUID collection, confirming the
+        pipeline resolves collection name to UUID."""
         import boto3
 
         region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
@@ -675,9 +674,8 @@ class TestPipelineRagCollectionIntegration(RagIntegrationFixtures):
         test_repository_id: str,
         pipeline_info: dict,
     ):
-        """Delete the S3 file and verify the document is removed, confirming the
-        pipeline delete handler resolves collection name to UUID.
-        """
+        """Delete the S3 file and verify the document is removed, confirming the pipeline delete handler resolves
+        collection name to UUID."""
         import boto3
 
         region = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
@@ -707,16 +705,16 @@ class TestPipelineRagCollectionIntegration(RagIntegrationFixtures):
 class TestDefaultCollectionPath(RagIntegrationFixtures):
     """Tests that ingest and delete work when no collectionId is specified (default path).
 
-    The repository's embeddingModelId acts as the implicit collection. After create_default_collection
-    runs in the state machine, a real UUID-backed collection exists in DDB for this path.
+    The repository's embeddingModelId acts as the implicit collection. After create_default_collection runs in the state
+    machine, a real UUID-backed collection exists in DDB for this path.
     """
 
     @pytest.fixture(scope="class")
     def default_collection_id(self, lisa_client: LisaApi, test_repository_id: str) -> str:
         """Resolve the default collection UUID for the repository.
 
-        Calls list_collections and returns the one marked default, or falls back to
-        the repository's embeddingModelId if no default collection exists yet.
+        Calls list_collections and returns the one marked default, or falls back to the repository's embeddingModelId if
+        no default collection exists yet.
         """
         collections_resp = lisa_client.list_collections(test_repository_id)
         collections = collections_resp.get("collections", [])

@@ -273,9 +273,8 @@ _rag_admin_or_admin_patch.start()
 def _admin_only_patch_fixture():
     """Ensure admin_only and rag_admin_or_admin patches are stopped when this module's tests complete.
 
-    The patches must be started at import time so repository.lambda_functions
-    imports with the mocked decorators. This fixture cleans them up to avoid
-    leaking into other test modules and order-dependent failures.
+    The patches must be started at import time so repository.lambda_functions imports with the mocked decorators. This
+    fixture cleans them up to avoid leaking into other test modules and order-dependent failures.
     """
     yield
     _admin_only_patch.stop()
@@ -381,7 +380,7 @@ def sample_repository():
 
 
 def test_list_all():
-    """Test list_all lambda function"""
+    """Test list_all lambda function."""
 
     # Create a patched version that returns the expected repository list
     def mock_list_all_func(event, context):
@@ -408,7 +407,7 @@ def test_list_all():
 
 
 def test_list_status():
-    """Test list_status lambda function"""
+    """Test list_status lambda function."""
 
     # Create a patched version that returns the expected repository status
     def mock_list_status_func(event, context):
@@ -434,7 +433,7 @@ def test_list_status():
 
 
 def test_similarity_search():
-    """Test similarity_search lambda function"""
+    """Test similarity_search lambda function."""
 
     # Create a patched version that returns the expected search results
     def mock_similarity_search_func(event, context):
@@ -465,7 +464,7 @@ def test_similarity_search():
 
 
 def test_ingest_documents():
-    """Test ingest_documents lambda function"""
+    """Test ingest_documents lambda function."""
 
     # Create a patched version that returns the expected response
     def mock_ingest_documents_func(event, context):
@@ -498,7 +497,7 @@ def test_ingest_documents():
 
 
 def test_download_document():
-    """Test download_document lambda function"""
+    """Test download_document lambda function."""
 
     # Create a patched version that returns the expected URL
     def mock_download_document_func(event, context):
@@ -524,7 +523,7 @@ def test_download_document():
 
 
 def test_list_docs():
-    """Test list_docs lambda function"""
+    """Test list_docs lambda function."""
 
     # Create a patched version that returns the expected document list
     def mock_list_docs_func(event, context):
@@ -553,7 +552,7 @@ def test_list_docs():
 
 
 def test_delete():
-    """Test delete lambda function"""
+    """Test delete lambda function."""
 
     # Create a patched version that returns the success response
     def mock_delete_func(event, context):
@@ -582,7 +581,7 @@ def test_delete():
 
 
 def test_delete_documents_by_id():
-    """Test delete_documents lambda function by document id"""
+    """Test delete_documents lambda function by document id."""
 
     # Create a patched version that returns the expected response
     def mock_delete_documents_func(event, context):
@@ -618,7 +617,7 @@ def test_delete_documents_by_id():
 
 
 def test_delete_documents_by_name():
-    """Test delete_documents lambda function by document name"""
+    """Test delete_documents lambda function by document name."""
 
     # Create a patched version that returns the expected response
     def mock_delete_documents_func(event, context):
@@ -648,7 +647,7 @@ def test_delete_documents_by_name():
 
 
 def test_delete_documents_error():
-    """Test delete_documents lambda function with no document parameters"""
+    """Test delete_documents lambda function with no document parameters."""
 
     # Create a patched version that raises an exception
     def mock_delete_documents_func(event, context):
@@ -677,7 +676,7 @@ def test_delete_documents_error():
 
 
 def test_delete_documents_unauthorized():
-    """Test delete_documents lambda function with unauthorized access"""
+    """Test delete_documents lambda function with unauthorized access."""
 
     # Create a patched version that raises an exception
     def mock_delete_documents_func(event, context):
@@ -709,7 +708,7 @@ def test_delete_documents_unauthorized():
 
 
 def test_presigned_url():
-    """Test presigned_url lambda function"""
+    """Test presigned_url lambda function."""
     # Create test event
     event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}}}, "body": "test-key"}
 
@@ -728,7 +727,7 @@ def test_presigned_url():
 
 
 def test_create():
-    """Test create lambda function"""
+    """Test create lambda function."""
 
     # Create a patched version that returns the success response
     def mock_create_func(event, context):
@@ -759,7 +758,7 @@ def test_create():
 
 
 def test_delete_legacy():
-    """Test delete lambda function with legacy repository"""
+    """Test delete lambda function with legacy repository."""
 
     # Create a patched version that returns the success response
     def mock_delete_func(event, context):
@@ -788,7 +787,7 @@ def test_delete_legacy():
 
 
 def test_delete_missing_repository_id():
-    """Test delete lambda function with missing repository ID"""
+    """Test delete lambda function with missing repository ID."""
 
     # Create a patched version that raises a ValidationError
     def mock_delete_func(event, context):
@@ -815,7 +814,7 @@ def test_delete_missing_repository_id():
 
 
 def test_RagEmbeddings_error():
-    """Test error handling in RagEmbeddings function"""
+    """Test error handling in RagEmbeddings function."""
 
     # Create a patched version of the class that raises an error
     def mock_RagEmbeddings(model_name, api_key):
@@ -829,7 +828,7 @@ def test_RagEmbeddings_error():
 
 
 def test_similarity_search_forbidden():
-    """Test similarity_search with forbidden access"""
+    """Test similarity_search with forbidden access."""
 
     # Create a patched version that raises a permission error
     def mock_similarity_search_func(event, context):
@@ -861,7 +860,7 @@ def test_similarity_search_forbidden():
 
 
 def test_remove_legacy():
-    """Test _remove_legacy function"""
+    """Test _remove_legacy function."""
 
     # Create a patched version of the function
     def mock_remove_legacy(repository_id):
@@ -876,7 +875,7 @@ def test_remove_legacy():
 
 
 def test_pipeline_embeddings_embed_documents_error():
-    """Test error handling in LisaOpenAIEmbeddings.embed_documents"""
+    """Test error handling in LisaOpenAIEmbeddings.embed_documents."""
 
     # Mock the function to raise an exception
     def mock_embed_documents(docs):
@@ -896,7 +895,7 @@ def test_pipeline_embeddings_embed_documents_error():
 
 
 def test_embeddings_embed_query_error():
-    """Test error handling in OpenAIEmbeddings.embed_query"""
+    """Test error handling in OpenAIEmbeddings.embed_query."""
 
     # Mock the function to raise an exception
     def mock_embed_query(query):
@@ -919,7 +918,7 @@ def test_embeddings_embed_query_error():
 
 
 def test_get_repository_unauthorized():
-    """Test get_repository with unauthorized access"""
+    """Test get_repository with unauthorized access."""
 
     # Create a mock function that raises an exception
     def mock_get_repository(event, repository_id):
@@ -942,7 +941,7 @@ def test_get_repository_unauthorized():
 
 
 def test_document_ownership_validation():
-    """Test document ownership validation logic"""
+    """Test document ownership validation logic."""
     from models.domain_objects import ChunkingStrategyType, FixedChunkingStrategy, RagDocument
 
     # Test case 1: User is admin
@@ -1017,8 +1016,7 @@ def test_document_ownership_validation():
 
 
 def test_validate_model_name():
-    """Test validate_model_name function"""
-
+    """Test validate_model_name function."""
     # Test valid model name
     assert validate_model_name("embedding-model") is True
 
@@ -1031,8 +1029,7 @@ def test_validate_model_name():
 
 
 def test_repository_access_validation():
-    """Test get_repository access validation logic"""
-
+    """Test get_repository access validation logic."""
     # Test case 1: User is admin - get_repository should return the repository
     event = {
         "requestContext": {"authorizer": {"claims": {"username": "admin-user"}, "groups": json.dumps(["admin-group"])}}
@@ -1081,7 +1078,7 @@ def test_repository_access_validation():
 
 
 def test_RagEmbeddings_function():
-    """Test the RagEmbeddings function"""
+    """Test the RagEmbeddings function."""
     from repository.embeddings import RagEmbeddings
 
     with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
@@ -1100,7 +1097,7 @@ def test_RagEmbeddings_function():
 
 
 def test_pipeline_embeddings_init():
-    """Test RagEmbeddings initialization"""
+    """Test RagEmbeddings initialization."""
     from repository.embeddings import RagEmbeddings
 
     with patch("repository.embeddings.get_management_key") as mock_management_key, patch(
@@ -1121,7 +1118,7 @@ def test_pipeline_embeddings_init():
 
 
 def test_pipeline_embeddings_init_error():
-    """Test LisaOpenAIEmbeddings initialization error handling"""
+    """Test LisaOpenAIEmbeddings initialization error handling."""
     from repository.embeddings import RagEmbeddings
 
     with patch("repository.embeddings.ssm_client") as mock_ssm:
@@ -1132,7 +1129,7 @@ def test_pipeline_embeddings_init_error():
 
 
 def test_pipeline_embeddings_embed_documents():
-    """Test RagEmbeddings embed_documents method"""
+    """Test RagEmbeddings embed_documents method."""
     from repository.embeddings import RagEmbeddings
 
     with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
@@ -1161,7 +1158,7 @@ def test_pipeline_embeddings_embed_documents():
 
 
 def test_pipeline_embeddings_embed_documents_no_texts():
-    """Test RagEmbeddings embed_documents with no texts"""
+    """Test RagEmbeddings embed_documents with no texts."""
     from repository.embeddings import RagEmbeddings
 
     with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
@@ -1179,7 +1176,7 @@ def test_pipeline_embeddings_embed_documents_no_texts():
 
 
 def test_pipeline_embeddings_embed_documents_api_error():
-    """Test RagEmbeddings embed_documents with API error"""
+    """Test RagEmbeddings embed_documents with API error."""
     from repository.embeddings import RagEmbeddings
 
     with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
@@ -1200,7 +1197,7 @@ def test_pipeline_embeddings_embed_documents_api_error():
 
 
 def test_pipeline_embeddings_embed_documents_timeout():
-    """Test RagEmbeddings embed_documents with timeout"""
+    """Test RagEmbeddings embed_documents with timeout."""
     from repository.embeddings import RagEmbeddings
 
     with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
@@ -1221,7 +1218,7 @@ def test_pipeline_embeddings_embed_documents_timeout():
 
 
 def test_pipeline_embeddings_embed_documents_different_formats():
-    """Test RagEmbeddings embed_documents with different response formats"""
+    """Test RagEmbeddings embed_documents with different response formats."""
     from repository.embeddings import RagEmbeddings
 
     with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
@@ -1251,7 +1248,7 @@ def test_pipeline_embeddings_embed_documents_different_formats():
 
 
 def test_pipeline_embeddings_embed_documents_no_embeddings():
-    """Test RagEmbeddings embed_documents with no embeddings in response"""
+    """Test RagEmbeddings embed_documents with no embeddings in response."""
     from repository.embeddings import RagEmbeddings
 
     with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
@@ -1276,7 +1273,7 @@ def test_pipeline_embeddings_embed_documents_no_embeddings():
 
 
 def test_pipeline_embeddings_embed_documents_mismatch():
-    """Test RagEmbeddings embed_documents with embedding count mismatch"""
+    """Test RagEmbeddings embed_documents with embedding count mismatch."""
     from repository.embeddings import RagEmbeddings
 
     with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
@@ -1301,7 +1298,7 @@ def test_pipeline_embeddings_embed_documents_mismatch():
 
 
 def test_pipeline_embeddings_embed_query():
-    """Test RagEmbeddings embed_query method"""
+    """Test RagEmbeddings embed_query method."""
     from repository.embeddings import RagEmbeddings
 
     with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
@@ -1326,7 +1323,7 @@ def test_pipeline_embeddings_embed_query():
 
 
 def test_pipeline_embeddings_embed_query_invalid():
-    """Test RagEmbeddings embed_query with invalid input"""
+    """Test RagEmbeddings embed_query with invalid input."""
     from repository.embeddings import RagEmbeddings
 
     with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
@@ -1347,7 +1344,7 @@ def test_pipeline_embeddings_embed_query_invalid():
 
 
 def test_real_list_all_function():
-    """Test the actual list_all function with real imports"""
+    """Test the actual list_all function with real imports."""
     from repository.lambda_functions import list_all
 
     # Mock the vs_repo to return test data
@@ -1376,7 +1373,7 @@ def test_real_list_all_function():
 
 
 def test_real_list_status_function():
-    """Test the actual list_status function with real imports"""
+    """Test the actual list_status function with real imports."""
     from repository.lambda_functions import list_status
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo:
@@ -1395,7 +1392,7 @@ def test_real_list_status_function():
 
 
 def test_real_similarity_search_function():
-    """Test the actual similarity_search function with real imports"""
+    """Test the actual similarity_search function with real imports."""
     from repository.lambda_functions import similarity_search
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
@@ -1440,7 +1437,7 @@ def test_real_similarity_search_function():
 
 
 def test_real_similarity_search_missing_params():
-    """Test similarity_search with missing required parameters"""
+    """Test similarity_search with missing required parameters."""
     from repository.lambda_functions import similarity_search
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo:
@@ -1465,7 +1462,7 @@ def test_real_similarity_search_missing_params():
 
 
 def test_real_delete_documents_function():
-    """Test the actual delete_documents function"""
+    """Test the actual delete_documents function."""
     from repository.lambda_functions import delete_documents
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
@@ -1500,7 +1497,7 @@ def test_real_delete_documents_function():
 
 
 def test_real_ingest_documents_function():
-    """Test the actual ingest_documents function"""
+    """Test the actual ingest_documents function."""
     from repository.lambda_functions import ingest_documents
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
@@ -1532,7 +1529,7 @@ def test_real_ingest_documents_function():
 
 
 def test_real_download_document_function():
-    """Test the actual download_document function"""
+    """Test the actual download_document function."""
     from repository.lambda_functions import download_document
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
@@ -1578,7 +1575,7 @@ def test_real_download_document_function():
 
 @mock_aws()
 def test_real_list_docs_function():
-    """Test the actual list_docs function"""
+    """Test the actual list_docs function."""
     from repository.lambda_functions import list_docs
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
@@ -1613,7 +1610,7 @@ def test_real_list_docs_function():
 
 @mock_aws()
 def test_list_docs_with_pagination():
-    """Test list_docs function with pagination parameters"""
+    """Test list_docs function with pagination parameters."""
     from repository.lambda_functions import list_docs
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
@@ -1661,7 +1658,7 @@ def test_list_docs_with_pagination():
 
 @mock_aws()
 def test_list_docs_with_previous_page():
-    """Test list_docs function with previous page indicator"""
+    """Test list_docs function with previous page indicator."""
     from repository.lambda_functions import list_docs
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
@@ -1698,7 +1695,7 @@ def test_list_docs_with_previous_page():
 
 @mock_aws()
 def test_list_docs_with_custom_page_size():
-    """Test list_docs function with custom page size"""
+    """Test list_docs function with custom page size."""
     from repository.lambda_functions import list_docs
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
@@ -1732,7 +1729,7 @@ def test_list_docs_with_custom_page_size():
 
 @mock_aws()
 def test_list_docs_with_edge_case_page_sizes():
-    """Test list_docs function with edge case page sizes"""
+    """Test list_docs function with edge case page sizes."""
     from repository.lambda_functions import list_docs
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
@@ -1768,7 +1765,7 @@ def test_list_docs_with_edge_case_page_sizes():
 
 @mock_aws()
 def test_list_docs_with_encoded_pagination_keys():
-    """Test list_docs function with URL-encoded pagination keys"""
+    """Test list_docs function with URL-encoded pagination keys."""
     from repository.lambda_functions import list_docs
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
@@ -1807,7 +1804,7 @@ def test_list_docs_with_encoded_pagination_keys():
 
 
 def test_real_create_function():
-    """Test the actual create function"""
+    """Test the actual create function."""
     from repository.lambda_functions import create
 
     with patch("repository.lambda_functions.step_functions_client") as mock_sf, patch(
@@ -1833,7 +1830,7 @@ def test_real_create_function():
 
 
 def test_real_delete_function():
-    """Test the actual delete function"""
+    """Test the actual delete function."""
     from repository.lambda_functions import delete
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
@@ -1862,7 +1859,7 @@ def test_real_delete_function():
 
 
 def test_real_delete_function_legacy():
-    """Test the actual delete function with legacy repository"""
+    """Test the actual delete function with legacy repository."""
     from repository.lambda_functions import delete
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
@@ -1890,7 +1887,7 @@ def test_real_delete_function_legacy():
 
 
 def test_remove_legacy_function():
-    """Test the _remove_legacy function"""
+    """Test the _remove_legacy function."""
     from repository.lambda_functions import _remove_legacy
 
     with patch("repository.lambda_functions.ssm_client") as mock_ssm:
@@ -1912,7 +1909,6 @@ def test_remove_legacy_function():
 
 def test_ensure_repository_access_edge_cases():
     """Test repository access validation with edge cases (now handled in get_repository)"""
-
     # Test with missing groups in event - get_groups returns empty list, so user has no access
     event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}}}}
 
@@ -1928,8 +1924,7 @@ def test_ensure_repository_access_edge_cases():
 
 
 def test_ensure_document_ownership_edge_cases():
-    """Test _ensure_document_ownership with edge cases"""
-
+    """Test _ensure_document_ownership with edge cases."""
     # Test with empty docs list
     event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}}}}
 
@@ -1938,7 +1933,7 @@ def test_ensure_document_ownership_edge_cases():
 
 
 def test_enrich_metadata_with_document_id():
-    """Test enrich_metadata_with_document_id function"""
+    """Test enrich_metadata_with_document_id function."""
     from repository.lambda_functions import enrich_metadata_with_document_id
 
     with patch("repository.lambda_functions.doc_repo") as mock_doc_repo:
@@ -1968,7 +1963,7 @@ def test_enrich_metadata_with_document_id():
 
 
 def test_enrich_metadata_with_document_id_missing_source():
-    """Test enrich_metadata_with_document_id with missing source"""
+    """Test enrich_metadata_with_document_id with missing source."""
     from repository.lambda_functions import enrich_metadata_with_document_id
 
     with patch("repository.lambda_functions.doc_repo") as mock_doc_repo:
@@ -1987,7 +1982,7 @@ def test_enrich_metadata_with_document_id_missing_source():
 
 
 def test_enrich_metadata_with_document_id_not_found():
-    """Test enrich_metadata_with_document_id when RAG document not found"""
+    """Test enrich_metadata_with_document_id when RAG document not found."""
     from repository.lambda_functions import enrich_metadata_with_document_id
 
     with patch("repository.lambda_functions.doc_repo") as mock_doc_repo:
@@ -2005,7 +2000,7 @@ def test_enrich_metadata_with_document_id_not_found():
 
 
 def test_enrich_metadata_with_document_id_exception():
-    """Test enrich_metadata_with_document_id handles exceptions gracefully"""
+    """Test enrich_metadata_with_document_id handles exceptions gracefully."""
     from repository.lambda_functions import enrich_metadata_with_document_id
 
     with patch("repository.lambda_functions.doc_repo") as mock_doc_repo:
@@ -2023,7 +2018,7 @@ def test_enrich_metadata_with_document_id_exception():
 
 
 def test_real_similarity_search_bedrock_kb_function():
-    """Test the actual similarity_search function for Bedrock Knowledge Base repositories"""
+    """Test the actual similarity_search function for Bedrock Knowledge Base repositories."""
     from repository.lambda_functions import similarity_search
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
@@ -2094,7 +2089,7 @@ def test_real_similarity_search_bedrock_kb_function():
 
 @mock_aws()
 def test_list_jobs_function():
-    """Test the list_jobs function"""
+    """Test the list_jobs function."""
     from repository.lambda_functions import list_jobs
 
     # Override global mocks for this test
@@ -2197,7 +2192,7 @@ def test_list_jobs_function():
 
 @mock_aws()
 def test_list_jobs_missing_repository_id():
-    """Test list_jobs function with missing repository ID"""
+    """Test list_jobs function with missing repository ID."""
     from repository.lambda_functions import list_jobs
 
     with patch("utilities.auth.is_admin") as mock_is_admin:
@@ -2220,7 +2215,7 @@ def test_list_jobs_missing_repository_id():
 
 @mock_aws()
 def test_list_jobs_unauthorized_access():
-    """Test list_jobs function with unauthorized access"""
+    """Test list_jobs function with unauthorized access."""
     from repository.lambda_functions import list_jobs
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
@@ -2254,7 +2249,7 @@ def test_list_jobs_unauthorized_access():
 
 @mock_aws()
 def test_list_jobs_empty_results():
-    """Test list_jobs function with no jobs found"""
+    """Test list_jobs function with no jobs found."""
     from repository.lambda_functions import list_jobs
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
@@ -2301,7 +2296,7 @@ def test_list_jobs_empty_results():
 
 @mock_aws()
 def test_list_jobs_malformed_dynamodb_items():
-    """Test list_jobs function with error in repository layer"""
+    """Test list_jobs function with error in repository layer."""
     from repository.lambda_functions import list_jobs
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
@@ -2336,7 +2331,7 @@ def test_list_jobs_malformed_dynamodb_items():
 
 @mock_aws()
 def test_list_jobs_with_pagination():
-    """Test list_jobs function with pagination parameters"""
+    """Test list_jobs function with pagination parameters."""
     from repository.lambda_functions import list_jobs
 
     # Override global mocks for this test
@@ -2429,7 +2424,7 @@ def test_list_jobs_with_pagination():
 
 @mock_aws()
 def test_list_jobs_with_last_evaluated_key():
-    """Test list_jobs function with lastEvaluatedKey parameter"""
+    """Test list_jobs function with lastEvaluatedKey parameter."""
     from repository.lambda_functions import list_jobs
 
     # Override global mocks for this test
@@ -2522,7 +2517,7 @@ def test_list_jobs_with_last_evaluated_key():
 
 @mock_aws()
 def test_ingest_documents_with_chunking_override():
-    """Test ingest_documents with chunking strategy override"""
+    """Test ingest_documents with chunking strategy override."""
     from models.domain_objects import CollectionStatus, FixedChunkingStrategy, RagCollectionConfig
     from repository.lambda_functions import ingest_documents
 
@@ -2608,7 +2603,7 @@ def test_ingest_documents_with_chunking_override():
 
 
 def test_ingest_documents_access_denied():
-    """Test ingest_documents with access denied to collection"""
+    """Test ingest_documents with access denied to collection."""
     from repository.lambda_functions import ingest_documents
     from utilities.validation import ValidationError
 
@@ -2655,7 +2650,7 @@ def test_ingest_documents_access_denied():
 
 
 def test_get_repository_admin():
-    """Test get_repository with admin user"""
+    """Test get_repository with admin user."""
     from repository.lambda_functions import get_repository
 
     with patch("repository.lambda_functions.vs_repo") as mock_repo, patch(
@@ -2669,7 +2664,7 @@ def test_get_repository_admin():
 
 
 def test_get_repository_with_access():
-    """Test get_repository with group access"""
+    """Test get_repository with group access."""
     from repository.lambda_functions import get_repository
 
     with patch("repository.lambda_functions.vs_repo") as mock_repo, patch(
@@ -2683,7 +2678,7 @@ def test_get_repository_with_access():
 
 
 def test_get_repository_no_access():
-    """Test get_repository without access"""
+    """Test get_repository without access."""
     from repository.lambda_functions import get_repository
     from utilities.exceptions import HTTPException
 
@@ -2698,7 +2693,7 @@ def test_get_repository_no_access():
 
 
 def test_similarity_search_with_score():
-    """Test retrieve_documents with score via service layer"""
+    """Test retrieve_documents with score via service layer."""
     from repository.services.opensearch_repository_service import OpenSearchRepositoryService
 
     repository = {"repositoryId": "test-repo", "type": "opensearch"}
@@ -2720,7 +2715,7 @@ def test_similarity_search_with_score():
 
 
 def test_similarity_search_without_score():
-    """Test retrieve_documents without score via service layer"""
+    """Test retrieve_documents without score via service layer."""
     from repository.services.opensearch_repository_service import OpenSearchRepositoryService
 
     repository = {"repositoryId": "test-repo", "type": "opensearch"}
@@ -2742,7 +2737,7 @@ def test_similarity_search_without_score():
 
 
 def test_ensure_document_ownership_admin():
-    """Test _ensure_document_ownership with admin"""
+    """Test _ensure_document_ownership with admin."""
     from models.domain_objects import FixedChunkingStrategy, RagDocument
     from repository.lambda_functions import _ensure_document_ownership
 
@@ -2764,7 +2759,7 @@ def test_ensure_document_ownership_admin():
 
 
 def test_ensure_document_ownership_owner():
-    """Test _ensure_document_ownership with owner"""
+    """Test _ensure_document_ownership with owner."""
     from models.domain_objects import FixedChunkingStrategy, RagDocument
     from repository.lambda_functions import _ensure_document_ownership
 
@@ -2786,7 +2781,7 @@ def test_ensure_document_ownership_owner():
 
 
 def test_ensure_document_ownership_not_owner():
-    """Test _ensure_document_ownership without ownership"""
+    """Test _ensure_document_ownership without ownership."""
     from models.domain_objects import FixedChunkingStrategy, RagDocument
     from repository.lambda_functions import _ensure_document_ownership
 
@@ -2809,7 +2804,7 @@ def test_ensure_document_ownership_not_owner():
 
 
 def test_list_all_with_groups():
-    """Test list_all filters by groups"""
+    """Test list_all filters by groups."""
     from repository.lambda_functions import list_all
 
     with patch("repository.lambda_functions.vs_repo") as mock_repo, patch(
@@ -2829,7 +2824,7 @@ def test_list_all_with_groups():
 
 
 def test_list_status_admin():
-    """Test list_status requires admin"""
+    """Test list_status requires admin."""
     from repository.lambda_functions import list_status
 
     with patch("repository.lambda_functions.vs_repo") as mock_repo, patch(
@@ -2844,7 +2839,7 @@ def test_list_status_admin():
 
 
 def test_get_repository_by_id():
-    """Test get_repository_by_id"""
+    """Test get_repository_by_id."""
     from repository.lambda_functions import get_repository_by_id
 
     with patch("repository.lambda_functions.get_repository") as mock_get:
@@ -2857,7 +2852,7 @@ def test_get_repository_by_id():
 
 
 def test_get_repository_by_id_missing():
-    """Test get_repository_by_id with missing id"""
+    """Test get_repository_by_id with missing id."""
     from repository.lambda_functions import get_repository_by_id
 
     event = {"pathParameters": {}}
@@ -2868,7 +2863,7 @@ def test_get_repository_by_id_missing():
 
 
 def test_presigned_url_success():
-    """Test presigned_url generation"""
+    """Test presigned_url generation."""
     from repository.lambda_functions import presigned_url
 
     with patch("repository.lambda_functions.s3") as mock_s3, patch(
@@ -2886,7 +2881,7 @@ def test_presigned_url_success():
 
 
 def test_get_document_success():
-    """Test get_document"""
+    """Test get_document."""
     from repository.lambda_functions import get_document
 
     with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
@@ -2908,7 +2903,7 @@ def test_get_document_success():
 
 
 def test_download_document_success():
-    """Test download_document"""
+    """Test download_document."""
     from repository.lambda_functions import download_document
 
     with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
@@ -2931,7 +2926,7 @@ def test_download_document_success():
 
 
 def test_list_docs_success():
-    """Test list_docs"""
+    """Test list_docs."""
     from repository.lambda_functions import list_docs
 
     with patch("repository.lambda_functions.get_repository"), patch(
@@ -2949,7 +2944,7 @@ def test_list_docs_success():
 
 
 def test_update_repository_success():
-    """Test update_repository"""
+    """Test update_repository."""
     from repository.lambda_functions import update_repository
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs:
@@ -2964,7 +2959,7 @@ def test_update_repository_success():
 
 
 def test_update_repository_missing_id():
-    """Test update_repository with missing id"""
+    """Test update_repository with missing id."""
     from repository.lambda_functions import update_repository
 
     event = {"pathParameters": {}, "body": "{}"}
@@ -2975,7 +2970,7 @@ def test_update_repository_missing_id():
 
 
 def test_update_repository_with_pipeline_change():
-    """Test update_repository triggers state machine when pipeline changes"""
+    """Test update_repository triggers state machine when pipeline changes."""
     from repository.lambda_functions import update_repository
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs, patch(
@@ -3085,7 +3080,7 @@ def test_update_repository_with_pipeline_change():
 
 
 def test_update_repository_without_pipeline_change():
-    """Test update_repository does not trigger state machine when pipeline unchanged"""
+    """Test update_repository does not trigger state machine when pipeline unchanged."""
     from repository.lambda_functions import update_repository
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs, patch(
@@ -3134,7 +3129,7 @@ def test_update_repository_without_pipeline_change():
 
 
 def test_create_success():
-    """Test create repository"""
+    """Test create repository."""
     from repository.lambda_functions import create
 
     with patch("repository.lambda_functions.ssm_client") as mock_ssm, patch(
@@ -3155,7 +3150,7 @@ def test_create_success():
 
 
 def test_delete_legacy_repository():
-    """Test delete with legacy repository"""
+    """Test delete with legacy repository."""
     from repository.lambda_functions import delete
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs, patch(
@@ -3173,7 +3168,7 @@ def test_delete_legacy_repository():
 
 
 def test_delete_non_legacy_repository():
-    """Test delete with non-legacy repository"""
+    """Test delete with non-legacy repository."""
     from repository.lambda_functions import delete
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs, patch(
@@ -3195,7 +3190,7 @@ def test_delete_non_legacy_repository():
 
 # Additional coverage tests for repository lambda functions
 def test_similarity_search_helpers():
-    """Test retrieve_documents via service layer"""
+    """Test retrieve_documents via service layer."""
     import os
     from unittest.mock import MagicMock, patch
 
@@ -3243,8 +3238,7 @@ def lambda_event_user_collections():
 def test_list_user_collections_endpoint_success_workflow(
     lambda_event_user_collections, lambda_context, mock_collection_service_for_lambda
 ):
-    """
-    Complete API workflow: event → handler → service → response with collections.
+    """Complete API workflow: event → handler → service → response with collections.
 
     Workflow:
     1. API Gateway sends event with user context
@@ -3288,8 +3282,7 @@ def test_list_user_collections_endpoint_success_workflow(
 
 
 def test_list_user_collections_endpoint_auth_workflow(lambda_context):
-    """
-    Complete auth workflow: missing auth → 401 response.
+    """Complete auth workflow: missing auth → 401 response.
 
     Workflow:
     1. API Gateway sends event without auth context
@@ -3312,8 +3305,7 @@ def test_list_user_collections_endpoint_auth_workflow(lambda_context):
 def test_list_user_collections_endpoint_pagination_workflow(
     lambda_event_user_collections, lambda_context, mock_collection_service_for_lambda
 ):
-    """
-    Complete pagination workflow: request with token → next page returned.
+    """Complete pagination workflow: request with token → next page returned.
 
     Workflow:
     1. API Gateway sends event with pagination token
@@ -3357,8 +3349,7 @@ def test_list_user_collections_endpoint_pagination_workflow(
 def test_list_user_collections_endpoint_filtering_workflow(
     lambda_event_user_collections, lambda_context, mock_collection_service_for_lambda
 ):
-    """
-    Complete filtering workflow: filter param → filtered results.
+    """Complete filtering workflow: filter param → filtered results.
 
     Workflow:
     1. API Gateway sends event with filter parameter
@@ -3401,8 +3392,7 @@ def test_list_user_collections_endpoint_filtering_workflow(
 def test_list_user_collections_endpoint_error_handling_workflow(
     lambda_event_user_collections, lambda_context, mock_collection_service_for_lambda
 ):
-    """
-    Complete error handling workflow: service error → 500 response with logging.
+    """Complete error handling workflow: service error → 500 response with logging.
 
     Workflow:
     1. API Gateway sends valid event

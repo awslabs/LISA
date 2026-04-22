@@ -16,8 +16,7 @@
 
 
 def validate_healthcheck_command(command: str | list[str]) -> None:
-    """
-    Validate ECS healthcheck command format.
+    """Validate ECS healthcheck command format.
 
     This validation ensures the command format is compatible with ECS requirements
     to prevent deployment failures. It does NOT restrict command content - admins

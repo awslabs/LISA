@@ -163,10 +163,10 @@ class LoadBalancerConfig(BaseModel):
 
 
 class ScheduleType(str, Enum):
-    """Defines supported schedule types for resource scheduling"""
+    """Defines supported schedule types for resource scheduling."""
 
     def __str__(self) -> str:
-        """Returns string representation of the enum value"""
+        """Returns string representation of the enum value."""
         return str(self.value)
 
     DAILY = "DAILY"
@@ -174,7 +174,7 @@ class ScheduleType(str, Enum):
 
 
 class DaySchedule(BaseModel):
-    """Defines start and stop times for a single day"""
+    """Defines start and stop times for a single day."""
 
     startTime: str = Field(pattern=r"^([01]?[0-9]|2[0-3]):[0-5][0-9]$")
     stopTime: str = Field(pattern=r"^([01]?[0-9]|2[0-3]):[0-5][0-9]$")
@@ -182,7 +182,7 @@ class DaySchedule(BaseModel):
     @field_validator("startTime", "stopTime")
     @classmethod
     def validate_time_format(cls, v: str) -> str:
-        """Validates time format is HH:MM"""
+        """Validates time format is HH:MM."""
         try:
 
             datetime.strptime(v, "%H:%M")
@@ -192,8 +192,7 @@ class DaySchedule(BaseModel):
 
     @model_validator(mode="after")
     def validate_stop_after_start(self) -> Self:
-        """Validates that stop time is after start time and at least 2 hours later"""
-
+        """Validates that stop time is after start time and at least 2 hours later."""
         start_time = datetime.strptime(self.startTime, "%H:%M").time()
         stop_time = datetime.strptime(self.stopTime, "%H:%M").time()
 
@@ -221,7 +220,7 @@ class DaySchedule(BaseModel):
 
 
 class WeeklySchedule(BaseModel):
-    """Defines schedule for each day of the week with one start/stop time per day"""
+    """Defines schedule for each day of the week with one start/stop time per day."""
 
     monday: DaySchedule | None = None
     tuesday: DaySchedule | None = None
@@ -233,7 +232,7 @@ class WeeklySchedule(BaseModel):
 
     @model_validator(mode="after")
     def validate_daily_schedules(self) -> Self:
-        """Validates that at least one day has a schedule configured"""
+        """Validates that at least one day has a schedule configured."""
         days = [self.monday, self.tuesday, self.wednesday, self.thursday, self.friday, self.saturday, self.sunday]
 
         if not any(days):
@@ -243,14 +242,14 @@ class WeeklySchedule(BaseModel):
 
 
 class NextScheduledAction(BaseModel):
-    """Defines the next scheduled action for a model"""
+    """Defines the next scheduled action for a model."""
 
     action: str = Field(pattern=r"^(START|STOP)$")
     scheduledTime: str
 
 
 class ScheduleFailure(BaseModel):
-    """Defines schedule failure information"""
+    """Defines schedule failure information."""
 
     timestamp: str
     error: str
@@ -258,7 +257,7 @@ class ScheduleFailure(BaseModel):
 
 
 class BaseSchedulingConfig(BaseModel):
-    """Base configuration shared by all scheduling types"""
+    """Base configuration shared by all scheduling types."""
 
     timezone: str = Field(default="UTC")
 
@@ -280,7 +279,7 @@ class BaseSchedulingConfig(BaseModel):
     @field_validator("timezone")
     @classmethod
     def validate_timezone(cls, v: str) -> str:
-        """Validates timezone is a valid IANA timezone identifier"""
+        """Validates timezone is a valid IANA timezone identifier."""
         try:
             ZoneInfo(v)
         except Exception:
@@ -289,14 +288,14 @@ class BaseSchedulingConfig(BaseModel):
 
 
 class DailySchedulingConfig(BaseSchedulingConfig):
-    """Configuration for daily schedules with different times per day"""
+    """Configuration for daily schedules with different times per day."""
 
     scheduleType: Literal["DAILY"] = "DAILY"
     dailySchedule: WeeklySchedule
 
     @model_validator(mode="after")
     def validate_daily_schedule_exclusivity(self) -> Self:
-        """Validates that only dailySchedule is present for DAILY type"""
+        """Validates that only dailySchedule is present for DAILY type."""
         # Check if any recurring schedule data was included
         if hasattr(self, "recurringSchedule"):
             raise ValueError("recurringSchedule not allowed for DAILY schedule type")
@@ -304,14 +303,14 @@ class DailySchedulingConfig(BaseSchedulingConfig):
 
 
 class RecurringSchedulingConfig(BaseSchedulingConfig):
-    """Configuration for recurring schedules with same time every day"""
+    """Configuration for recurring schedules with same time every day."""
 
     scheduleType: Literal["RECURRING"] = "RECURRING"
     recurringSchedule: DaySchedule
 
     @model_validator(mode="after")
     def validate_recurring_schedule_exclusivity(self) -> Self:
-        """Validates that only recurringSchedule is present for RECURRING type"""
+        """Validates that only recurringSchedule is present for RECURRING type."""
         # Check if any daily schedule data was included
         if hasattr(self, "dailySchedule"):
             raise ValueError("dailySchedule not allowed for RECURRING schedule type")
@@ -1067,7 +1066,6 @@ class SortParams:
         Raises:
             ValidationError: If sortBy or sortOrder values are invalid
         """
-
         sort_by = CollectionSortBy.CREATED_AT
         if "sortBy" in query_params:
             try:
@@ -1365,9 +1363,9 @@ OpenSearchConfig = Union[OpenSearchNewClusterConfig, OpenSearchExistingClusterCo
 class RdsInstanceConfig(BaseModel):
     """Configuration schema for RDS Instances needed for LiteLLM scaling or PGVector RAG operations.
 
-    The optional fields can be omitted to create a new database instance, otherwise fill in all fields
-    to use an existing database instance. By default, IAM authentication is used. Set iamRdsAuth
-    to false in config to use password-based authentication.
+    The optional fields can be omitted to create a new database instance, otherwise fill in all fields to use an
+    existing database instance. By default, IAM authentication is used. Set iamRdsAuth to false in config to use
+    password-based authentication.
     """
 
     username: str = Field(default="postgres", description="The username used for database connection.")

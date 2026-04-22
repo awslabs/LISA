@@ -52,8 +52,7 @@ def _management_bearer_token() -> str | None:
 
 
 def trigger_workbench_rescan() -> dict[str, Any]:
-    """
-    GET the workbench rescan route (same app management key as OIDC middleware when auth is on).
+    """GET the workbench rescan route (same app management key as OIDC middleware when auth is on).
 
     Waits briefly so rclone --poll-interval can surface new S3 keys in the tools mount.
     """
@@ -99,8 +98,7 @@ def trigger_workbench_rescan() -> dict[str, Any]:
 
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """
-    Handle S3 events from EventBridge: call MCP Workbench HTTP rescan (in-VPC).
+    """Handle S3 events from EventBridge: call MCP Workbench HTTP rescan (in-VPC).
 
     Reloads tools from the rclone-mounted bucket without restarting ECS tasks.
     """
@@ -138,9 +136,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
 
 def validate_s3_event(event: dict[str, Any]) -> bool:
-    """
-    Validate that the event is a proper S3 event from EventBridge.
-    """
+    """Validate that the event is a proper S3 event from EventBridge."""
     try:
         source = event.get("source")
         detail_type = event.get("detail-type")

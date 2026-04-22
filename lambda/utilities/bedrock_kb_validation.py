@@ -25,8 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 def validate_bedrock_kb_exists(kb_id: str, bedrock_agent_client: Any | None = None) -> dict[str, Any]:
-    """
-    Validate that a Bedrock Knowledge Base exists and is accessible.
+    """Validate that a Bedrock Knowledge Base exists and is accessible.
 
     Args:
         kb_id: Knowledge Base ID to validate
@@ -69,8 +68,7 @@ def validate_bedrock_kb_exists(kb_id: str, bedrock_agent_client: Any | None = No
 def validate_data_source_exists(
     kb_id: str, data_source_id: str, bedrock_agent_client: Any | None = None
 ) -> dict[str, Any]:
-    """
-    Validate that a data source exists in a Bedrock Knowledge Base.
+    """Validate that a data source exists in a Bedrock Knowledge Base.
 
     Args:
         kb_id: Knowledge Base ID
@@ -115,8 +113,7 @@ def validate_data_source_exists(
 def validate_bedrock_kb_repository(
     kb_id: str, data_source_id: str, bedrock_agent_client: Any | None = None
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """
-    Validate both Knowledge Base and Data Source exist.
+    """Validate both Knowledge Base and Data Source exist.
 
     Args:
         kb_id: Knowledge Base ID

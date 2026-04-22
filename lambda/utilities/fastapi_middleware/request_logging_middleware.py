@@ -34,8 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
-    """
-    Middleware that logs all incoming requests with sanitized data.
+    """Middleware that logs all incoming requests with sanitized data.
 
     This middleware provides:
     - Automatic logging of all requests (method, path, headers, params)
@@ -51,8 +50,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        """
-        Process the request, log details, and pass to next handler.
+        """Process the request, log details, and pass to next handler.
 
         Args:
             request: The incoming HTTP request
@@ -128,8 +126,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         return response
 
     def _build_log_data(self, request: Request, event: dict[str, Any]) -> dict[str, Any]:
-        """
-        Build sanitized log data from request and AWS event.
+        """Build sanitized log data from request and AWS event.
 
         Args:
             request: The FastAPI request object
@@ -170,8 +167,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         return log_data
 
     def _sanitize_body(self, body: bytes) -> str:
-        """
-        Sanitize request body for logging.
+        """Sanitize request body for logging.
 
         Attempts to parse as JSON and redact sensitive fields.
         If parsing fails, returns a placeholder.

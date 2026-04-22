@@ -14,8 +14,8 @@
 
 """Integration tests for the LLM proxy (LiteLLM REST API).
 
-Tests the LiteLLM proxy endpoints via the LisaLlm SDK against a deployed environment.
-Requires: deployed LISA with at least one textgen model.
+Tests the LiteLLM proxy endpoints via the LisaLlm SDK against a deployed environment. Requires: deployed LISA with at
+least one textgen model.
 """
 
 import logging
@@ -34,9 +34,8 @@ _NON_TEXTGEN_PATTERNS = ("embed", "embedding", "rerank")
 def _get_textgen_model(lisa_llm: LisaLlm) -> FoundationModel:
     """Discover the first available textgen model using the model/info endpoint.
 
-    Uses get_model_info() which returns the full LiteLLM model database including
-    model_info.mode (e.g. "chat", "embedding") for reliable model type detection.
-    Falls back to name-based heuristics if mode is not available.
+    Uses get_model_info() which returns the full LiteLLM model database including model_info.mode (e.g. "chat",
+    "embedding") for reliable model type detection. Falls back to name-based heuristics if mode is not available.
     """
     try:
         entries = lisa_llm.get_model_info()
@@ -221,7 +220,6 @@ def test_health_liveliness(lisa_llm: LisaLlm) -> None:
 
 def test_get_model_info(lisa_llm: LisaLlm) -> None:
     """Model info endpoint should return a list of ModelInfoEntry objects."""
-
     result = lisa_llm.get_model_info()
     assert isinstance(result, list), f"Expected list, got {type(result)}"
     if not result:
@@ -240,7 +238,6 @@ def test_get_model_info(lisa_llm: LisaLlm) -> None:
 
 def test_complete(lisa_llm: LisaLlm) -> None:
     """Legacy completions endpoint should return a CompletionResponse."""
-
     model = _get_textgen_model(lisa_llm)
     try:
         result = lisa_llm.complete(

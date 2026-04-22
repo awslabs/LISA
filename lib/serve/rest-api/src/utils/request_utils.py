@@ -98,8 +98,7 @@ def get_lisa_end_user_id(
     jwt_data: dict[str, Any] | None,
     state_username: str | None,
 ) -> str | None:
-    """
-    Derive a human-readable end-user id for logs/spend attribution.
+    """Derive a human-readable end-user id for logs/spend attribution.
 
     LiteLLM uses the provided end-user identifier for spend/budget/logging.
     We prefer the same claims used by the authorizer/session to make the

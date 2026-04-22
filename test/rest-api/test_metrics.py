@@ -387,8 +387,8 @@ class TestPublishMetricsEventTokenPaths:
             mock_sqs.send_message.assert_not_called()
 
     def test_tokens_extracted_from_response_body_for_non_streaming(self, mock_env_vars, mock_request):
-        """When response_body is provided and prompt_tokens is not passed directly,
-        tokens should be extracted from the response body before publishing.
+        """When response_body is provided and prompt_tokens is not passed directly, tokens should be extracted from the
+        response body before publishing.
 
         Expected: Published message contains promptTokens/completionTokens from the response body.
         """

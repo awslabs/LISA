@@ -143,7 +143,6 @@ class TestSchedulingConfig:
 
     def test_invalid_schedule_consistency(self):
         """Test invalid schedule consistency."""
-
         # Test RecurringSchedulingConfig requires recurringSchedule
         with pytest.raises(ValidationError, match="Field required"):
             RecurringSchedulingConfig(timezone="UTC")

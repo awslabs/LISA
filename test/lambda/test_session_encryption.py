@@ -13,12 +13,10 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""
-Comprehensive tests for session encryption utilities.
+"""Comprehensive tests for session encryption utilities.
 
-This test module provides comprehensive coverage for all functions in
-lambda/utilities/session_encryption.py, including error conditions,
-edge cases, and exception handling paths.
+This test module provides comprehensive coverage for all functions in lambda/utilities/session_encryption.py, including
+error conditions, edge cases, and exception handling paths.
 """
 
 import base64

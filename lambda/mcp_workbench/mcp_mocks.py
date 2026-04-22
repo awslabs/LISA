@@ -14,10 +14,9 @@
 
 """Mock implementations of MCP Workbench core components for validation purposes.
 
-These mocks are used by the syntax validator to allow user code to import
-and use MCP Workbench constructs without needing the full MCP Workbench
-package installed. They provide just enough functionality to validate
-the structure and usage of MCP tools.
+These mocks are used by the syntax validator to allow user code to import and use MCP Workbench constructs without
+needing the full MCP Workbench package installed. They provide just enough functionality to validate the structure and
+usage of MCP tools.
 """
 
 from abc import ABC, abstractmethod
@@ -27,17 +26,14 @@ from typing import Any
 
 
 class BaseTool(ABC):
-    """
-    Mock BaseTool for validation purposes.
+    """Mock BaseTool for validation purposes.
 
-    This provides the same interface as the real BaseTool class,
-    allowing validation of class-based MCP tools without requiring
-    the full MCP Workbench package.
+    This provides the same interface as the real BaseTool class, allowing validation of class-based MCP tools without
+    requiring the full MCP Workbench package.
     """
 
     def __init__(self, name: str, description: str):
-        """
-        Initialize the tool with required metadata.
+        """Initialize the tool with required metadata.
 
         Args:
             name: The name of the tool
@@ -48,8 +44,7 @@ class BaseTool(ABC):
 
     @abstractmethod
     async def execute(self) -> Callable[..., Any]:
-        """
-        Returns a function to be executed as the tool.
+        """Returns a function to be executed as the tool.
 
         Returns:
             The function to be executed
@@ -58,8 +53,7 @@ class BaseTool(ABC):
 
 
 def mcp_tool(name: str, description: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
-    """
-    Mock mcp_tool decorator for validation purposes.
+    """Mock mcp_tool decorator for validation purposes.
 
     This provides the same interface as the real mcp_tool decorator,
     allowing validation of function-based MCP tools without requiring

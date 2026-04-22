@@ -54,9 +54,7 @@ class RepositoryServiceFactory:
 
         service_class = cls._services.get(repo_type)
         if not service_class:
-            raise ValueError(
-                f"Unsupported repository type: {repo_type}. " f"Supported types: {list(cls._services.keys())}"
-            )
+            raise ValueError(f"Unsupported repository type: {repo_type}. Supported types: {list(cls._services.keys())}")
 
         return service_class(repository)
 

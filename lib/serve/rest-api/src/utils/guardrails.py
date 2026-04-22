@@ -34,7 +34,7 @@ async def get_model_guardrails(model_id: str) -> list[dict[str, Any]]:
     model_id : str
         The model ID to query guardrails for.
 
-    Returns
+    Returns:
     -------
     List[Dict[str, Any]]
         List of guardrail configurations for the model. Returns empty list if no guardrails found.
@@ -77,7 +77,7 @@ def get_applicable_guardrails(user_groups: list[str], guardrails: list[dict[str,
     model_id : str
         The model ID being invoked. Used to construct the full LiteLLM guardrail name.
 
-    Returns
+    Returns:
     -------
     List[str]
         List of LiteLLM guardrail names (format: {guardrail_name}-{model_id}) that should be applied to the request.
@@ -121,7 +121,7 @@ def is_guardrail_violation(error_msg: str) -> bool:
     error_msg : str
         The error message to check.
 
-    Returns
+    Returns:
     -------
     bool
         True if the error message indicates a guardrail violation, False otherwise.
@@ -137,7 +137,7 @@ def extract_guardrail_response(error_msg: str) -> str | None:
     error_msg : str
         The error message containing the guardrail response.
 
-    Returns
+    Returns:
     -------
     Optional[str]
         The extracted guardrail response text, or None if not found.
@@ -158,7 +158,7 @@ def create_guardrail_streaming_response(guardrail_response: str, model_id: str, 
     created : int, optional
         The creation timestamp, by default 0.
 
-    Yields
+    Yields:
     ------
     str
         Properly formatted SSE chunks for the guardrail response.
@@ -211,7 +211,7 @@ def create_guardrail_json_response(guardrail_response: str, model_id: str, creat
     created : int, optional
         The creation timestamp, by default 0.
 
-    Returns
+    Returns:
     -------
     JSONResponse
         A properly formatted JSON response for the guardrail violation.

@@ -78,10 +78,10 @@ def list_knowledge_bases(
         error_code = e.response.get("Error", {}).get("Code", "")
         if error_code == "AccessDeniedException":
             raise ValidationError(
-                "Access denied to list Knowledge Bases. " "Please check IAM permissions for bedrock:ListKnowledgeBases."
+                "Access denied to list Knowledge Bases. Please check IAM permissions for bedrock:ListKnowledgeBases."
             )
         elif error_code == "ThrottlingException":
-            raise ValidationError("Rate limit exceeded while listing Knowledge Bases. " "Please try again later.")
+            raise ValidationError("Rate limit exceeded while listing Knowledge Bases. Please try again later.")
         else:
             raise ValidationError(f"Failed to list Knowledge Bases: {str(e)}")
     except Exception as e:
@@ -153,7 +153,7 @@ def discover_kb_data_sources(
         error_code = e.response.get("Error", {}).get("Code", "")
         if error_code == "ResourceNotFoundException":
             raise ValidationError(
-                f"Knowledge Base '{kb_id}' not found. " f"Please verify the KB ID in the AWS Bedrock console."
+                f"Knowledge Base '{kb_id}' not found. Please verify the KB ID in the AWS Bedrock console."
             )
         elif error_code == "AccessDeniedException":
             raise ValidationError(
@@ -162,7 +162,7 @@ def discover_kb_data_sources(
             )
         elif error_code == "ThrottlingException":
             raise ValidationError(
-                f"Rate limit exceeded while discovering data sources for KB '{kb_id}'. " f"Please try again later."
+                f"Rate limit exceeded while discovering data sources for KB '{kb_id}'. Please try again later."
             )
         else:
             raise ValidationError(f"Failed to discover data sources: {str(e)}")

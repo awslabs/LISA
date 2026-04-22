@@ -79,7 +79,7 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
         self.max_request_size = max_request_size
 
     def contains_null_bytes(self, data: str) -> bool:
-        """Check if a string contains null bytes.
+        r"""Check if a string contains null bytes.
 
         Null bytes (\\x00) can be used to bypass input validation or cause
         unexpected behavior in string processing.
@@ -120,7 +120,7 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
                         content={
                             "error": "Payload Too Large",
                             "message": (
-                                f"Request body size exceeds maximum allowed size " f"of {self.max_request_size} bytes"
+                                f"Request body size exceeds maximum allowed size of {self.max_request_size} bytes"
                             ),
                         },
                     )

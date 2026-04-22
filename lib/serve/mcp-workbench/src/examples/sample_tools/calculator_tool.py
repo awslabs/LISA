@@ -12,8 +12,8 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""
-MCP Tool Creation Tutorial
+"""MCP Tool Creation Tutorial.
+
 ==========================
 
 This file demonstrates how to create MCP (Model Context Protocol) tools using two different approaches:

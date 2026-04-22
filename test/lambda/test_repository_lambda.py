@@ -1035,8 +1035,9 @@ def test_repository_access_validation():
         "requestContext": {"authorizer": {"claims": {"username": "admin-user"}, "groups": json.dumps(["admin-group"])}}
     }
 
-    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "repository.lambda_functions.is_admin", return_value=True
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_vs_repo,
+        patch("repository.lambda_functions.is_admin", return_value=True),
     ):
         mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["admin-group"], "status": "active"}
         # Admin should always have access
@@ -1051,8 +1052,9 @@ def test_repository_access_validation():
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["test-group"])}}
     }
 
-    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "repository.lambda_functions.is_admin", return_value=False
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_vs_repo,
+        patch("repository.lambda_functions.is_admin", return_value=False),
     ):
         mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
         # User has the right group
@@ -1064,9 +1066,11 @@ def test_repository_access_validation():
         "requestContext": {"authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["wrong-group"])}}
     }
 
-    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "repository.lambda_functions.is_admin", return_value=False
-    ), patch("repository.lambda_functions.get_groups", return_value=["wrong-group"]):
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_vs_repo,
+        patch("repository.lambda_functions.is_admin", return_value=False),
+        patch("repository.lambda_functions.get_groups", return_value=["wrong-group"]),
+    ):
         mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
         # User doesn't have the right group
         with pytest.raises(HTTPException) as exc_info:
@@ -1081,10 +1085,11 @@ def test_RagEmbeddings_function():
     """Test the RagEmbeddings function."""
     from repository.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
-        "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings.get_management_key") as mock_key:
-
+    with (
+        patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint,
+        patch("repository.embeddings.get_cert_path") as mock_cert,
+        patch("repository.embeddings.get_management_key") as mock_key,
+    ):
         mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
         mock_key.return_value = "test-token"
@@ -1100,10 +1105,11 @@ def test_pipeline_embeddings_init():
     """Test RagEmbeddings initialization."""
     from repository.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.get_management_key") as mock_management_key, patch(
-        "repository.embeddings.get_rest_api_container_endpoint"
-    ) as mock_endpoint, patch("repository.embeddings.get_cert_path") as mock_cert:
-
+    with (
+        patch("repository.embeddings.get_management_key") as mock_management_key,
+        patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint,
+        patch("repository.embeddings.get_cert_path") as mock_cert,
+    ):
         mock_management_key.return_value = "test-token"
         mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
@@ -1132,10 +1138,11 @@ def test_pipeline_embeddings_embed_documents():
     """Test RagEmbeddings embed_documents method."""
     from repository.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
-        "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings._get_http_session") as mock_get_session:
-
+    with (
+        patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint,
+        patch("repository.embeddings.get_cert_path") as mock_cert,
+        patch("repository.embeddings._get_http_session") as mock_get_session,
+    ):
         mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
 
@@ -1161,10 +1168,11 @@ def test_pipeline_embeddings_embed_documents_no_texts():
     """Test RagEmbeddings embed_documents with no texts."""
     from repository.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
-        "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings.get_management_key") as mock_key:
-
+    with (
+        patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint,
+        patch("repository.embeddings.get_cert_path") as mock_cert,
+        patch("repository.embeddings.get_management_key") as mock_key,
+    ):
         mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
         mock_key.return_value = "test-token"
@@ -1179,10 +1187,11 @@ def test_pipeline_embeddings_embed_documents_api_error():
     """Test RagEmbeddings embed_documents with API error."""
     from repository.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
-        "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings._get_http_session") as mock_get_session:
-
+    with (
+        patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint,
+        patch("repository.embeddings.get_cert_path") as mock_cert,
+        patch("repository.embeddings._get_http_session") as mock_get_session,
+    ):
         mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
 
@@ -1200,10 +1209,11 @@ def test_pipeline_embeddings_embed_documents_timeout():
     """Test RagEmbeddings embed_documents with timeout."""
     from repository.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
-        "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings._get_http_session") as mock_get_session:
-
+    with (
+        patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint,
+        patch("repository.embeddings.get_cert_path") as mock_cert,
+        patch("repository.embeddings._get_http_session") as mock_get_session,
+    ):
         mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
 
@@ -1221,10 +1231,11 @@ def test_pipeline_embeddings_embed_documents_different_formats():
     """Test RagEmbeddings embed_documents with different response formats."""
     from repository.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
-        "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings._get_http_session") as mock_get_session:
-
+    with (
+        patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint,
+        patch("repository.embeddings.get_cert_path") as mock_cert,
+        patch("repository.embeddings._get_http_session") as mock_get_session,
+    ):
         mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
 
@@ -1251,10 +1262,11 @@ def test_pipeline_embeddings_embed_documents_no_embeddings():
     """Test RagEmbeddings embed_documents with no embeddings in response."""
     from repository.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
-        "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings._get_http_session") as mock_get_session:
-
+    with (
+        patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint,
+        patch("repository.embeddings.get_cert_path") as mock_cert,
+        patch("repository.embeddings._get_http_session") as mock_get_session,
+    ):
         mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
 
@@ -1276,10 +1288,11 @@ def test_pipeline_embeddings_embed_documents_mismatch():
     """Test RagEmbeddings embed_documents with embedding count mismatch."""
     from repository.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
-        "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings._get_http_session") as mock_get_session:
-
+    with (
+        patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint,
+        patch("repository.embeddings.get_cert_path") as mock_cert,
+        patch("repository.embeddings._get_http_session") as mock_get_session,
+    ):
         mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
 
@@ -1301,10 +1314,11 @@ def test_pipeline_embeddings_embed_query():
     """Test RagEmbeddings embed_query method."""
     from repository.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
-        "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings._get_http_session") as mock_get_session:
-
+    with (
+        patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint,
+        patch("repository.embeddings.get_cert_path") as mock_cert,
+        patch("repository.embeddings._get_http_session") as mock_get_session,
+    ):
         mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
 
@@ -1326,10 +1340,11 @@ def test_pipeline_embeddings_embed_query_invalid():
     """Test RagEmbeddings embed_query with invalid input."""
     from repository.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
-        "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings.get_management_key") as mock_key:
-
+    with (
+        patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint,
+        patch("repository.embeddings.get_cert_path") as mock_cert,
+        patch("repository.embeddings.get_management_key") as mock_key,
+    ):
         mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
         mock_key.return_value = "test-token"
@@ -1348,10 +1363,10 @@ def test_real_list_all_function():
     from repository.lambda_functions import list_all
 
     # Mock the vs_repo to return test data
-    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "utilities.auth.get_groups"
-    ) as mock_get_groups:
-
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_vs_repo,
+        patch("utilities.auth.get_groups") as mock_get_groups,
+    ):
         mock_get_groups.return_value = ["test-group"]
         mock_vs_repo.get_registered_repositories.return_value = [
             {"name": "Test Repo", "type": "opensearch", "allowedGroups": ["test-group"], "status": "active"}
@@ -1395,12 +1410,12 @@ def test_real_similarity_search_function():
     """Test the actual similarity_search function with real imports."""
     from repository.lambda_functions import similarity_search
 
-    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "repository.embeddings.RagEmbeddings"
-    ) as mock_RagEmbeddings, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-        "utilities.common_functions.get_id_token"
-    ) as mock_get_token:
-
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_vs_repo,
+        patch("repository.embeddings.RagEmbeddings") as mock_RagEmbeddings,
+        patch("utilities.auth.get_groups") as mock_get_groups,
+        patch("utilities.common_functions.get_id_token") as mock_get_token,
+    ):
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
         mock_get_token.return_value = "test-token"
@@ -1465,14 +1480,13 @@ def test_real_delete_documents_function():
     """Test the actual delete_documents function."""
     from repository.lambda_functions import delete_documents
 
-    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "repository.lambda_functions.doc_repo"
-    ) as mock_doc_repo, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-        "utilities.auth.get_username"
-    ) as mock_get_username, patch(
-        "utilities.auth.is_admin"
-    ) as mock_is_admin:
-
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_vs_repo,
+        patch("repository.lambda_functions.doc_repo") as mock_doc_repo,
+        patch("utilities.auth.get_groups") as mock_get_groups,
+        patch("utilities.auth.get_username") as mock_get_username,
+        patch("utilities.auth.is_admin") as mock_is_admin,
+    ):
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
         mock_get_username.return_value = "test-user"
@@ -1500,12 +1514,12 @@ def test_real_ingest_documents_function():
     """Test the actual ingest_documents function."""
     from repository.lambda_functions import ingest_documents
 
-    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "repository.lambda_functions.ingestion_service"
-    ) as mock_ingestion, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-        "utilities.auth.get_username"
-    ) as mock_get_username:
-
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_vs_repo,
+        patch("repository.lambda_functions.ingestion_service") as mock_ingestion,
+        patch("utilities.auth.get_groups") as mock_get_groups,
+        patch("utilities.auth.get_username") as mock_get_username,
+    ):
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
         mock_get_username.return_value = "test-user"
@@ -1532,16 +1546,14 @@ def test_real_download_document_function():
     """Test the actual download_document function."""
     from repository.lambda_functions import download_document
 
-    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "repository.lambda_functions.doc_repo"
-    ) as mock_doc_repo, patch("repository.lambda_functions.s3") as mock_s3, patch(
-        "utilities.auth.get_groups"
-    ) as mock_get_groups, patch(
-        "utilities.auth.get_username"
-    ) as mock_get_username, patch(
-        "utilities.auth.is_admin"
-    ) as mock_is_admin:
-
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_vs_repo,
+        patch("repository.lambda_functions.doc_repo") as mock_doc_repo,
+        patch("repository.lambda_functions.s3") as mock_s3,
+        patch("utilities.auth.get_groups") as mock_get_groups,
+        patch("utilities.auth.get_username") as mock_get_username,
+        patch("utilities.auth.is_admin") as mock_is_admin,
+    ):
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
         mock_get_username.return_value = "test-user"
@@ -1578,10 +1590,11 @@ def test_real_list_docs_function():
     """Test the actual list_docs function."""
     from repository.lambda_functions import list_docs
 
-    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "repository.lambda_functions.doc_repo"
-    ) as mock_doc_repo, patch("utilities.auth.get_groups") as mock_get_groups:
-
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_vs_repo,
+        patch("repository.lambda_functions.doc_repo") as mock_doc_repo,
+        patch("utilities.auth.get_groups") as mock_get_groups,
+    ):
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
 
@@ -1613,10 +1626,11 @@ def test_list_docs_with_pagination():
     """Test list_docs function with pagination parameters."""
     from repository.lambda_functions import list_docs
 
-    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "repository.lambda_functions.doc_repo"
-    ) as mock_doc_repo, patch("utilities.auth.get_groups") as mock_get_groups:
-
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_vs_repo,
+        patch("repository.lambda_functions.doc_repo") as mock_doc_repo,
+        patch("utilities.auth.get_groups") as mock_get_groups,
+    ):
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
         mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
@@ -1661,10 +1675,11 @@ def test_list_docs_with_previous_page():
     """Test list_docs function with previous page indicator."""
     from repository.lambda_functions import list_docs
 
-    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "repository.lambda_functions.doc_repo"
-    ) as mock_doc_repo, patch("utilities.auth.get_groups") as mock_get_groups:
-
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_vs_repo,
+        patch("repository.lambda_functions.doc_repo") as mock_doc_repo,
+        patch("utilities.auth.get_groups") as mock_get_groups,
+    ):
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
         mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
@@ -1698,10 +1713,11 @@ def test_list_docs_with_custom_page_size():
     """Test list_docs function with custom page size."""
     from repository.lambda_functions import list_docs
 
-    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "repository.lambda_functions.doc_repo"
-    ) as mock_doc_repo, patch("utilities.auth.get_groups") as mock_get_groups:
-
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_vs_repo,
+        patch("repository.lambda_functions.doc_repo") as mock_doc_repo,
+        patch("utilities.auth.get_groups") as mock_get_groups,
+    ):
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
         mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
@@ -1732,10 +1748,11 @@ def test_list_docs_with_edge_case_page_sizes():
     """Test list_docs function with edge case page sizes."""
     from repository.lambda_functions import list_docs
 
-    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "repository.lambda_functions.doc_repo"
-    ) as mock_doc_repo, patch("utilities.auth.get_groups") as mock_get_groups:
-
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_vs_repo,
+        patch("repository.lambda_functions.doc_repo") as mock_doc_repo,
+        patch("utilities.auth.get_groups") as mock_get_groups,
+    ):
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
         mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
@@ -1768,10 +1785,11 @@ def test_list_docs_with_encoded_pagination_keys():
     """Test list_docs function with URL-encoded pagination keys."""
     from repository.lambda_functions import list_docs
 
-    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "repository.lambda_functions.doc_repo"
-    ) as mock_doc_repo, patch("utilities.auth.get_groups") as mock_get_groups:
-
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_vs_repo,
+        patch("repository.lambda_functions.doc_repo") as mock_doc_repo,
+        patch("utilities.auth.get_groups") as mock_get_groups,
+    ):
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
         mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
@@ -1807,10 +1825,11 @@ def test_real_create_function():
     """Test the actual create function."""
     from repository.lambda_functions import create
 
-    with patch("repository.lambda_functions.step_functions_client") as mock_sf, patch(
-        "repository.lambda_functions.ssm_client"
-    ) as mock_ssm, patch("utilities.auth.is_admin") as mock_is_admin:
-
+    with (
+        patch("repository.lambda_functions.step_functions_client") as mock_sf,
+        patch("repository.lambda_functions.ssm_client") as mock_ssm,
+        patch("utilities.auth.is_admin") as mock_is_admin,
+    ):
         # Setup mocks
         mock_is_admin.return_value = True
         mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "test-arn"}}
@@ -1833,12 +1852,12 @@ def test_real_delete_function():
     """Test the actual delete function."""
     from repository.lambda_functions import delete
 
-    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "repository.lambda_functions.step_functions_client"
-    ) as mock_sf, patch("repository.embeddings.ssm_client") as mock_ssm, patch(
-        "utilities.auth.is_admin"
-    ) as mock_is_admin:
-
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_vs_repo,
+        patch("repository.lambda_functions.step_functions_client") as mock_sf,
+        patch("repository.embeddings.ssm_client") as mock_ssm,
+        patch("utilities.auth.is_admin") as mock_is_admin,
+    ):
         # Setup mocks
         mock_is_admin.return_value = True
         mock_vs_repo.find_repository_by_id.return_value = {"stackName": "test-stack"}
@@ -1862,10 +1881,11 @@ def test_real_delete_function_legacy():
     """Test the actual delete function with legacy repository."""
     from repository.lambda_functions import delete
 
-    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "utilities.auth.is_admin"
-    ) as mock_is_admin, patch("repository.lambda_functions._remove_legacy") as mock_remove_legacy:
-
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_vs_repo,
+        patch("utilities.auth.is_admin") as mock_is_admin,
+        patch("repository.lambda_functions._remove_legacy") as mock_remove_legacy,
+    ):
         # Setup mocks
         mock_is_admin.return_value = True
         # Return a legacy repository config instead of None
@@ -1891,7 +1911,6 @@ def test_remove_legacy_function():
     from repository.lambda_functions import _remove_legacy
 
     with patch("repository.lambda_functions.ssm_client") as mock_ssm:
-
         # Mock SSM to return valid JSON with repositories
         repositories = [
             {"repositoryId": "test-repo", "name": "Test Repo"},
@@ -1912,9 +1931,11 @@ def test_ensure_repository_access_edge_cases():
     # Test with missing groups in event - get_groups returns empty list, so user has no access
     event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}}}}
 
-    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "repository.lambda_functions.is_admin", return_value=False
-    ), patch("repository.lambda_functions.get_groups", return_value=[]):
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_vs_repo,
+        patch("repository.lambda_functions.is_admin", return_value=False),
+        patch("repository.lambda_functions.get_groups", return_value=[]),
+    ):
         mock_vs_repo.find_repository_by_id.return_value = {"allowedGroups": ["test-group"], "status": "active"}
 
         # get_repository will raise HTTPException because user has no groups (empty list)
@@ -2021,14 +2042,13 @@ def test_real_similarity_search_bedrock_kb_function():
     """Test the actual similarity_search function for Bedrock Knowledge Base repositories."""
     from repository.lambda_functions import similarity_search
 
-    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "repository.lambda_functions.bedrock_client"
-    ) as mock_bedrock, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-        "repository.lambda_functions.collection_service"
-    ) as mock_collection_service, patch(
-        "repository.lambda_functions.enrich_metadata_with_document_id"
-    ) as mock_enrich:
-
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_vs_repo,
+        patch("repository.lambda_functions.bedrock_client") as mock_bedrock,
+        patch("utilities.auth.get_groups") as mock_get_groups,
+        patch("repository.lambda_functions.collection_service") as mock_collection_service,
+        patch("repository.lambda_functions.enrich_metadata_with_document_id") as mock_enrich,
+    ):
         mock_get_groups.return_value = ["test-group"]
         mock_vs_repo.find_repository_by_id.return_value = {
             "repositoryId": "test-repo",
@@ -2097,16 +2117,14 @@ def test_list_jobs_function():
     mock_common.is_admin.return_value = True
 
     try:
-        with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-            "repository.lambda_functions.ingestion_job_repository"
-        ) as mock_job_repo, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-            "utilities.auth.is_admin"
-        ) as mock_is_admin, patch(
-            "utilities.auth.get_username"
-        ) as mock_get_username, patch(
-            "repository.lambda_functions.get_user_context"
-        ) as mock_get_user_context:
-
+        with (
+            patch("repository.lambda_functions.vs_repo") as mock_vs_repo,
+            patch("repository.lambda_functions.ingestion_job_repository") as mock_job_repo,
+            patch("utilities.auth.get_groups") as mock_get_groups,
+            patch("utilities.auth.is_admin") as mock_is_admin,
+            patch("utilities.auth.get_username") as mock_get_username,
+            patch("repository.lambda_functions.get_user_context") as mock_get_user_context,
+        ):
             # Setup mocks
             mock_get_groups.return_value = ["test-group"]
             mock_is_admin.return_value = True  # Admin access required
@@ -2218,10 +2236,11 @@ def test_list_jobs_unauthorized_access():
     """Test list_jobs function with unauthorized access."""
     from repository.lambda_functions import list_jobs
 
-    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "utilities.auth.get_groups"
-    ) as mock_get_groups, patch("utilities.auth.is_admin") as mock_is_admin:
-
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_vs_repo,
+        patch("utilities.auth.get_groups") as mock_get_groups,
+        patch("utilities.auth.is_admin") as mock_is_admin,
+    ):
         # Setup mocks - user is not admin and doesn't have group access
         mock_get_groups.return_value = ["other-group"]
         mock_is_admin.return_value = False
@@ -2252,14 +2271,13 @@ def test_list_jobs_empty_results():
     """Test list_jobs function with no jobs found."""
     from repository.lambda_functions import list_jobs
 
-    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "repository.lambda_functions.ingestion_job_repository"
-    ) as mock_job_repo, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-        "utilities.auth.is_admin"
-    ) as mock_is_admin, patch(
-        "utilities.auth.get_username"
-    ) as mock_get_username:
-
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_vs_repo,
+        patch("repository.lambda_functions.ingestion_job_repository") as mock_job_repo,
+        patch("utilities.auth.get_groups") as mock_get_groups,
+        patch("utilities.auth.is_admin") as mock_is_admin,
+        patch("utilities.auth.get_username") as mock_get_username,
+    ):
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
         mock_is_admin.return_value = True
@@ -2299,12 +2317,12 @@ def test_list_jobs_malformed_dynamodb_items():
     """Test list_jobs function with error in repository layer."""
     from repository.lambda_functions import list_jobs
 
-    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "repository.lambda_functions.ingestion_job_repository"
-    ) as mock_job_repo, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-        "utilities.auth.is_admin"
-    ) as mock_is_admin:
-
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_vs_repo,
+        patch("repository.lambda_functions.ingestion_job_repository") as mock_job_repo,
+        patch("utilities.auth.get_groups") as mock_get_groups,
+        patch("utilities.auth.is_admin") as mock_is_admin,
+    ):
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
         mock_is_admin.return_value = True
@@ -2339,16 +2357,14 @@ def test_list_jobs_with_pagination():
     mock_common.is_admin.return_value = True
 
     try:
-        with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-            "repository.lambda_functions.ingestion_job_repository"
-        ) as mock_job_repo, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-            "utilities.auth.is_admin"
-        ) as mock_is_admin, patch(
-            "utilities.auth.get_username"
-        ) as mock_get_username, patch(
-            "repository.lambda_functions.get_user_context"
-        ) as mock_get_user_context:
-
+        with (
+            patch("repository.lambda_functions.vs_repo") as mock_vs_repo,
+            patch("repository.lambda_functions.ingestion_job_repository") as mock_job_repo,
+            patch("utilities.auth.get_groups") as mock_get_groups,
+            patch("utilities.auth.is_admin") as mock_is_admin,
+            patch("utilities.auth.get_username") as mock_get_username,
+            patch("repository.lambda_functions.get_user_context") as mock_get_user_context,
+        ):
             # Setup mocks
             mock_get_groups.return_value = ["test-group"]
             mock_is_admin.return_value = True
@@ -2432,16 +2448,14 @@ def test_list_jobs_with_last_evaluated_key():
     mock_common.is_admin.return_value = True
 
     try:
-        with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-            "repository.lambda_functions.ingestion_job_repository"
-        ) as mock_job_repo, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-            "utilities.auth.is_admin"
-        ) as mock_is_admin, patch(
-            "utilities.auth.get_username"
-        ) as mock_get_username, patch(
-            "repository.lambda_functions.get_user_context"
-        ) as mock_get_user_context:
-
+        with (
+            patch("repository.lambda_functions.vs_repo") as mock_vs_repo,
+            patch("repository.lambda_functions.ingestion_job_repository") as mock_job_repo,
+            patch("utilities.auth.get_groups") as mock_get_groups,
+            patch("utilities.auth.is_admin") as mock_is_admin,
+            patch("utilities.auth.get_username") as mock_get_username,
+            patch("repository.lambda_functions.get_user_context") as mock_get_user_context,
+        ):
             # Setup mocks
             mock_get_groups.return_value = ["test-group"]
             mock_is_admin.return_value = True
@@ -2521,20 +2535,15 @@ def test_ingest_documents_with_chunking_override():
     from models.domain_objects import CollectionStatus, FixedChunkingStrategy, RagCollectionConfig
     from repository.lambda_functions import ingest_documents
 
-    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "repository.lambda_functions.collection_service"
-    ) as mock_collection_service, patch(
-        "repository.lambda_functions.ingestion_job_repository"
-    ) as mock_ingestion_job_repo, patch(
-        "repository.lambda_functions.ingestion_service"
-    ) as mock_ingestion_service, patch(
-        "repository.lambda_functions.get_groups"
-    ) as mock_get_groups, patch(
-        "repository.lambda_functions.get_username"
-    ) as mock_get_username, patch(
-        "repository.lambda_functions.is_admin"
-    ) as mock_is_admin:
-
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_vs_repo,
+        patch("repository.lambda_functions.collection_service") as mock_collection_service,
+        patch("repository.lambda_functions.ingestion_job_repository") as mock_ingestion_job_repo,
+        patch("repository.lambda_functions.ingestion_service") as mock_ingestion_service,
+        patch("repository.lambda_functions.get_groups") as mock_get_groups,
+        patch("repository.lambda_functions.get_username") as mock_get_username,
+        patch("repository.lambda_functions.is_admin") as mock_is_admin,
+    ):
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
         mock_get_username.return_value = "test-user"
@@ -2607,14 +2616,13 @@ def test_ingest_documents_access_denied():
     from repository.lambda_functions import ingest_documents
     from utilities.validation import ValidationError
 
-    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "repository.lambda_functions.collection_service"
-    ) as mock_collection_service, patch("repository.lambda_functions.get_groups") as mock_get_groups, patch(
-        "repository.lambda_functions.get_username"
-    ) as mock_get_username, patch(
-        "repository.lambda_functions.is_admin"
-    ) as mock_is_admin:
-
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_vs_repo,
+        patch("repository.lambda_functions.collection_service") as mock_collection_service,
+        patch("repository.lambda_functions.get_groups") as mock_get_groups,
+        patch("repository.lambda_functions.get_username") as mock_get_username,
+        patch("repository.lambda_functions.is_admin") as mock_is_admin,
+    ):
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
         mock_get_username.return_value = "test-user"
@@ -2653,8 +2661,9 @@ def test_get_repository_admin():
     """Test get_repository with admin user."""
     from repository.lambda_functions import get_repository
 
-    with patch("repository.lambda_functions.vs_repo") as mock_repo, patch(
-        "repository.lambda_functions.is_admin", return_value=True
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_repo,
+        patch("repository.lambda_functions.is_admin", return_value=True),
     ):
         mock_repo.find_repository_by_id.return_value = {"allowedGroups": ["group1"]}
         event = {"requestContext": {"authorizer": {"groups": json.dumps(["group2"])}}}
@@ -2667,9 +2676,11 @@ def test_get_repository_with_access():
     """Test get_repository with group access."""
     from repository.lambda_functions import get_repository
 
-    with patch("repository.lambda_functions.vs_repo") as mock_repo, patch(
-        "repository.lambda_functions.is_admin", return_value=False
-    ), patch("repository.lambda_functions.get_groups", return_value=["group1"]):
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_repo,
+        patch("repository.lambda_functions.is_admin", return_value=False),
+        patch("repository.lambda_functions.get_groups", return_value=["group1"]),
+    ):
         mock_repo.find_repository_by_id.return_value = {"allowedGroups": ["group1"]}
         event = {"requestContext": {"authorizer": {"groups": json.dumps(["group1"])}}}
 
@@ -2682,8 +2693,9 @@ def test_get_repository_no_access():
     from repository.lambda_functions import get_repository
     from utilities.exceptions import HTTPException
 
-    with patch("repository.lambda_functions.vs_repo") as mock_repo, patch(
-        "repository.lambda_functions.is_admin", return_value=False
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_repo,
+        patch("repository.lambda_functions.is_admin", return_value=False),
     ):
         mock_repo.find_repository_by_id.return_value = {"allowedGroups": ["group1"]}
         event = {"requestContext": {"authorizer": {"groups": json.dumps(["group2"])}}}
@@ -2741,8 +2753,9 @@ def test_ensure_document_ownership_admin():
     from models.domain_objects import FixedChunkingStrategy, RagDocument
     from repository.lambda_functions import _ensure_document_ownership
 
-    with patch("repository.lambda_functions.get_username", return_value="admin"), patch(
-        "repository.lambda_functions.is_admin", return_value=True
+    with (
+        patch("repository.lambda_functions.get_username", return_value="admin"),
+        patch("repository.lambda_functions.is_admin", return_value=True),
     ):
         event = {}
         doc = RagDocument(
@@ -2763,8 +2776,9 @@ def test_ensure_document_ownership_owner():
     from models.domain_objects import FixedChunkingStrategy, RagDocument
     from repository.lambda_functions import _ensure_document_ownership
 
-    with patch("repository.lambda_functions.get_username", return_value="user1"), patch(
-        "repository.lambda_functions.is_admin", return_value=False
+    with (
+        patch("repository.lambda_functions.get_username", return_value="user1"),
+        patch("repository.lambda_functions.is_admin", return_value=False),
     ):
         event = {}
         doc = RagDocument(
@@ -2785,8 +2799,9 @@ def test_ensure_document_ownership_not_owner():
     from models.domain_objects import FixedChunkingStrategy, RagDocument
     from repository.lambda_functions import _ensure_document_ownership
 
-    with patch("repository.lambda_functions.get_username", return_value="user1"), patch(
-        "repository.lambda_functions.is_admin", return_value=False
+    with (
+        patch("repository.lambda_functions.get_username", return_value="user1"),
+        patch("repository.lambda_functions.is_admin", return_value=False),
     ):
         event = {}
         doc = RagDocument(
@@ -2807,9 +2822,11 @@ def test_list_all_with_groups():
     """Test list_all filters by groups."""
     from repository.lambda_functions import list_all
 
-    with patch("repository.lambda_functions.vs_repo") as mock_repo, patch(
-        "repository.lambda_functions.get_user_context", return_value=("test-user", False, ["group1"])
-    ), patch("repository.lambda_functions.is_admin", return_value=False):
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_repo,
+        patch("repository.lambda_functions.get_user_context", return_value=("test-user", False, ["group1"])),
+        patch("repository.lambda_functions.is_admin", return_value=False),
+    ):
         mock_repo.get_registered_repositories.return_value = [
             {"allowedGroups": ["group1"], "name": "repo1"},
             {"allowedGroups": ["group2"], "name": "repo2"},
@@ -2827,8 +2844,9 @@ def test_list_status_admin():
     """Test list_status requires admin."""
     from repository.lambda_functions import list_status
 
-    with patch("repository.lambda_functions.vs_repo") as mock_repo, patch(
-        "repository.lambda_functions.is_admin", return_value=True
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_repo,
+        patch("repository.lambda_functions.is_admin", return_value=True),
     ):
         mock_repo.get_repository_status.return_value = {"repo1": "active"}
         event = {}
@@ -2866,8 +2884,9 @@ def test_presigned_url_success():
     """Test presigned_url generation."""
     from repository.lambda_functions import presigned_url
 
-    with patch("repository.lambda_functions.s3") as mock_s3, patch(
-        "repository.lambda_functions.get_username", return_value="user1"
+    with (
+        patch("repository.lambda_functions.s3") as mock_s3,
+        patch("repository.lambda_functions.get_username", return_value="user1"),
     ):
         mock_s3.generate_presigned_post.return_value = {"url": "https://test.com", "fields": {}}
         event = {
@@ -2884,9 +2903,10 @@ def test_get_document_success():
     """Test get_document."""
     from repository.lambda_functions import get_document
 
-    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
-        "repository.lambda_functions.doc_repo"
-    ) as mock_repo:
+    with (
+        patch("repository.lambda_functions.get_repository") as mock_get_repo,
+        patch("repository.lambda_functions.doc_repo") as mock_repo,
+    ):
         mock_get_repo.return_value = {"repositoryId": "repo1", "allowedGroups": ["users"]}
         mock_doc = MagicMock()
         mock_doc.model_dump.return_value = {"documentId": "doc1"}
@@ -2906,9 +2926,11 @@ def test_download_document_success():
     """Test download_document."""
     from repository.lambda_functions import download_document
 
-    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
-        "repository.lambda_functions.doc_repo"
-    ) as mock_repo, patch("repository.lambda_functions.s3") as mock_s3:
+    with (
+        patch("repository.lambda_functions.get_repository") as mock_get_repo,
+        patch("repository.lambda_functions.doc_repo") as mock_repo,
+        patch("repository.lambda_functions.s3") as mock_s3,
+    ):
         mock_get_repo.return_value = {"repositoryId": "repo1", "allowedGroups": ["users"]}
         mock_doc = MagicMock()
         mock_doc.source = "s3://bucket/key"
@@ -2929,9 +2951,10 @@ def test_list_docs_success():
     """Test list_docs."""
     from repository.lambda_functions import list_docs
 
-    with patch("repository.lambda_functions.get_repository"), patch(
-        "repository.lambda_functions.doc_repo"
-    ) as mock_repo:
+    with (
+        patch("repository.lambda_functions.get_repository"),
+        patch("repository.lambda_functions.doc_repo") as mock_repo,
+    ):
         mock_doc = MagicMock()
         mock_doc.model_dump.return_value = {"documentId": "doc1"}
         mock_repo.list_all.return_value = ([mock_doc], None, 1)
@@ -2973,11 +2996,12 @@ def test_update_repository_with_pipeline_change():
     """Test update_repository triggers state machine when pipeline changes."""
     from repository.lambda_functions import update_repository
 
-    with patch("repository.lambda_functions.vs_repo") as mock_vs, patch(
-        "repository.lambda_functions.ssm_client"
-    ) as mock_ssm, patch("repository.lambda_functions.step_functions_client") as mock_sf, patch(
-        "utilities.auth.is_admin"
-    ) as mock_is_admin:
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_vs,
+        patch("repository.lambda_functions.ssm_client") as mock_ssm,
+        patch("repository.lambda_functions.step_functions_client") as mock_sf,
+        patch("utilities.auth.is_admin") as mock_is_admin,
+    ):
         # Mock admin access
         mock_is_admin.return_value = True
 
@@ -3083,9 +3107,11 @@ def test_update_repository_without_pipeline_change():
     """Test update_repository does not trigger state machine when pipeline unchanged."""
     from repository.lambda_functions import update_repository
 
-    with patch("repository.lambda_functions.vs_repo") as mock_vs, patch(
-        "repository.lambda_functions.step_functions_client"
-    ) as mock_sf, patch("utilities.auth.is_admin") as mock_is_admin:
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_vs,
+        patch("repository.lambda_functions.step_functions_client") as mock_sf,
+        patch("utilities.auth.is_admin") as mock_is_admin,
+    ):
         # Mock admin access
         mock_is_admin.return_value = True
 
@@ -3132,9 +3158,11 @@ def test_create_success():
     """Test create repository."""
     from repository.lambda_functions import create
 
-    with patch("repository.lambda_functions.ssm_client") as mock_ssm, patch(
-        "repository.lambda_functions.step_functions_client"
-    ) as mock_sf, patch("utilities.auth.is_admin") as mock_is_admin:
+    with (
+        patch("repository.lambda_functions.ssm_client") as mock_ssm,
+        patch("repository.lambda_functions.step_functions_client") as mock_sf,
+        patch("utilities.auth.is_admin") as mock_is_admin,
+    ):
         mock_is_admin.return_value = True
         mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "arn:test"}}
         mock_sf.start_execution.return_value = {"executionArn": "arn:execution"}
@@ -3153,9 +3181,11 @@ def test_delete_legacy_repository():
     """Test delete with legacy repository."""
     from repository.lambda_functions import delete
 
-    with patch("repository.lambda_functions.vs_repo") as mock_vs, patch(
-        "repository.lambda_functions._remove_legacy"
-    ), patch("repository.lambda_functions.collection_service") as mock_coll:
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_vs,
+        patch("repository.lambda_functions._remove_legacy"),
+        patch("repository.lambda_functions.collection_service") as mock_coll,
+    ):
         mock_vs.find_repository_by_id.return_value = {"legacy": True, "repositoryId": "repo1"}
         mock_coll.list_collections.return_value = MagicMock(collections=[])
 
@@ -3171,11 +3201,12 @@ def test_delete_non_legacy_repository():
     """Test delete with non-legacy repository."""
     from repository.lambda_functions import delete
 
-    with patch("repository.lambda_functions.vs_repo") as mock_vs, patch(
-        "repository.lambda_functions.ssm_client"
-    ) as mock_ssm, patch("repository.lambda_functions.step_functions_client") as mock_sf, patch(
-        "repository.lambda_functions.collection_service"
-    ) as mock_coll:
+    with (
+        patch("repository.lambda_functions.vs_repo") as mock_vs,
+        patch("repository.lambda_functions.ssm_client") as mock_ssm,
+        patch("repository.lambda_functions.step_functions_client") as mock_sf,
+        patch("repository.lambda_functions.collection_service") as mock_coll,
+    ):
         mock_vs.find_repository_by_id.return_value = {"stackName": "test-stack", "repositoryId": "repo1"}
         mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "arn:test"}}
         mock_sf.start_execution.return_value = {"executionArn": "arn:execution"}
@@ -3429,9 +3460,10 @@ def test_list_bedrock_knowledge_bases_success():
         }
     }
 
-    with patch("repository.lambda_functions.list_knowledge_bases") as mock_list_kb, patch(
-        "repository.lambda_functions.vs_repo"
-    ) as mock_vs_repo:
+    with (
+        patch("repository.lambda_functions.list_knowledge_bases") as mock_list_kb,
+        patch("repository.lambda_functions.vs_repo") as mock_vs_repo,
+    ):
         mock_kb = MagicMock()
         mock_kb.knowledgeBaseId = "KB123"
         mock_kb.name = "Test KB"
@@ -3467,9 +3499,10 @@ def test_list_bedrock_data_sources_success():
         "pathParameters": {"kbId": "KB123"},
     }
 
-    with patch("repository.lambda_functions.get_available_data_sources") as mock_get_ds, patch(
-        "repository.lambda_functions.validate_bedrock_kb_exists"
-    ) as mock_validate:
+    with (
+        patch("repository.lambda_functions.get_available_data_sources") as mock_get_ds,
+        patch("repository.lambda_functions.validate_bedrock_kb_exists") as mock_validate,
+    ):
         mock_ds = MagicMock()
         mock_ds.dataSourceId = "DS123"
         mock_ds.name = "Test DS"
@@ -3565,9 +3598,10 @@ def test_update_collection_success():
         ),
     }
 
-    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
-        "repository.lambda_functions.collection_service"
-    ) as mock_collection_service:
+    with (
+        patch("repository.lambda_functions.get_repository") as mock_get_repo,
+        patch("repository.lambda_functions.collection_service") as mock_collection_service,
+    ):
         mock_get_repo.return_value = {
             "repositoryId": "test-repo",
             "repositoryType": "opensearch",
@@ -3597,9 +3631,10 @@ def test_delete_collection_success():
         "pathParameters": {"repositoryId": "test-repo", "collectionId": "test-collection"},
     }
 
-    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
-        "repository.lambda_functions.collection_service"
-    ) as mock_collection_service:
+    with (
+        patch("repository.lambda_functions.get_repository") as mock_get_repo,
+        patch("repository.lambda_functions.collection_service") as mock_collection_service,
+    ):
         mock_get_repo.return_value = {
             "repositoryId": "test-repo",
             "repositoryType": "opensearch",
@@ -3627,9 +3662,10 @@ def test_list_user_collections_success():
         "queryStringParameters": {},
     }
 
-    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
-        "repository.lambda_functions.collection_service"
-    ) as mock_collection_service:
+    with (
+        patch("repository.lambda_functions.get_repository") as mock_get_repo,
+        patch("repository.lambda_functions.collection_service") as mock_collection_service,
+    ):
         mock_get_repo.return_value = {
             "repositoryId": "test-repo",
             "repositoryType": "opensearch",
@@ -3669,14 +3705,13 @@ def test_ingest_documents_bedrock_kb_s3_scan():
         ),
     }
 
-    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
-        "repository.lambda_functions.collection_service"
-    ) as mock_collection_service, patch("repository.lambda_functions.MetadataGenerator") as mock_metadata_gen, patch(
-        "repository.lambda_functions.S3MetadataManager"
-    ) as mock_s3_metadata, patch(
-        "repository.lambda_functions.ingestion_service"
-    ) as mock_ingestion_service, patch(
-        "repository.lambda_functions.ingestion_job_repository"
+    with (
+        patch("repository.lambda_functions.get_repository") as mock_get_repo,
+        patch("repository.lambda_functions.collection_service") as mock_collection_service,
+        patch("repository.lambda_functions.MetadataGenerator") as mock_metadata_gen,
+        patch("repository.lambda_functions.S3MetadataManager") as mock_s3_metadata,
+        patch("repository.lambda_functions.ingestion_service") as mock_ingestion_service,
+        patch("repository.lambda_functions.ingestion_job_repository"),
     ):
         mock_get_repo.return_value = {
             "repositoryId": "test-repo",
@@ -3775,9 +3810,11 @@ def test_create_repository_bedrock_kb():
         ),
     }
 
-    with patch("repository.lambda_functions.build_pipeline_configs_from_kb_config") as mock_build_pipelines, patch(
-        "repository.lambda_functions.step_functions_client"
-    ) as mock_sfn, patch("repository.lambda_functions.ssm_client") as mock_ssm:
+    with (
+        patch("repository.lambda_functions.build_pipeline_configs_from_kb_config") as mock_build_pipelines,
+        patch("repository.lambda_functions.step_functions_client") as mock_sfn,
+        patch("repository.lambda_functions.ssm_client") as mock_ssm,
+    ):
         mock_build_pipelines.return_value = [
             {
                 "collectionId": "DS123",
@@ -3820,9 +3857,11 @@ def test_similarity_search_bedrock_kb():
         },
     }
 
-    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
-        "repository.lambda_functions.RepositoryServiceFactory"
-    ) as mock_factory, patch("repository.lambda_functions.collection_service") as mock_collection_service:
+    with (
+        patch("repository.lambda_functions.get_repository") as mock_get_repo,
+        patch("repository.lambda_functions.RepositoryServiceFactory") as mock_factory,
+        patch("repository.lambda_functions.collection_service") as mock_collection_service,
+    ):
         mock_get_repo.return_value = {
             "repositoryId": "test-repo",
             "type": "bedrock_knowledge_base",

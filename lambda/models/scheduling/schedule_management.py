@@ -461,7 +461,7 @@ def create_recurring_scheduled_actions(
 def create_daily_scheduled_actions(
     model_id: str, auto_scaling_group: str, daily_schedule: WeeklySchedule, timezone_name: str
 ) -> list[str]:
-    """Create scheduled actions for daily schedule (different times each day with one start/stop time per day)"""
+    """Create scheduled actions for daily schedule (different times each day with one start/stop time per day)."""
     scheduled_action_arns = []
 
     # Get baseline capacity config from DDB record
@@ -589,7 +589,7 @@ def delete_scheduled_actions(scheduled_action_arns: list[str]) -> None:
 
 
 def cleanup_scheduled_actions(scheduled_action_arns: list[str]) -> None:
-    """Clean up scheduled actions (used for error recovery)"""
+    """Clean up scheduled actions (used for error recovery)."""
     for arn in scheduled_action_arns:
         try:
             action_name = arn.split(":scheduledActionName/")[-1]
@@ -627,7 +627,6 @@ def cleanup_scheduled_actions_by_name_pattern(auto_scaling_group: str, model_id:
                 or action_name.startswith(f"{model_id}-saturday-")
                 or action_name.startswith(f"{model_id}-sunday-")
             ):
-
                 try:
                     autoscaling_client.delete_scheduled_action(
                         AutoScalingGroupName=auto_scaling_group, ScheduledActionName=action_name

@@ -193,7 +193,7 @@ class CollectionService:
         Args:
             collection_id: Collection ID to update
             repository_id: Repository ID
-            request: RagCollectionConfig with fields to update
+            collection_data: RagCollectionConfig with fields to update
             username: Username for access control
             user_groups: User groups for access control
             is_admin: Whether user is admin
@@ -347,7 +347,7 @@ class CollectionService:
             ingestion_job_repo.save(deletion_job)
             ingestion_service.create_delete_job(deletion_job)
 
-            logger.info(f"Submitted {deletion_type} deletion job {deletion_job.id} " f"for repository {repository_id}")
+            logger.info(f"Submitted {deletion_type} deletion job {deletion_job.id} for repository {repository_id}")
 
             response = {
                 "jobId": deletion_job.id,
@@ -466,6 +466,7 @@ class CollectionService:
             username: Username for access control
             user_groups: User groups for access control
             is_admin: Whether user is admin
+            is_rag_admin: Whether user is RAG admin
             page_size: Number of items per page
             pagination_token: Pagination token from previous request
             filter_text: Optional text filter for name/description
@@ -933,8 +934,7 @@ class CollectionService:
     def _merge_sorted_batches(
         self, batches: list[dict[str, Any]], sort_by: str, sort_order: str
     ) -> list[RagCollectionConfig]:
-        """
-        Merge pre-sorted batches from multiple repositories using min-heap.
+        """Merge pre-sorted batches from multiple repositories using min-heap.
 
         Time Complexity: O(N log K) where N = total collections, K = number of repositories
         Space Complexity: O(N) for merged result

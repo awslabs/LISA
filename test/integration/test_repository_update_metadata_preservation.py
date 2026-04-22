@@ -142,12 +142,12 @@ class TestRepositoryUpdateMetadataPreservation:
         }
 
         # Act
-        with patch("repository.lambda_functions.vs_repo", mock_vector_store_repo), patch(
-            "repository.lambda_functions.build_pipeline_configs_from_kb_config"
-        ) as mock_build_pipelines, patch("utilities.auth.is_admin", return_value=True), patch(
-            "utilities.auth.user_has_group_access", return_value=True
+        with (
+            patch("repository.lambda_functions.vs_repo", mock_vector_store_repo),
+            patch("repository.lambda_functions.build_pipeline_configs_from_kb_config") as mock_build_pipelines,
+            patch("utilities.auth.is_admin", return_value=True),
+            patch("utilities.auth.user_has_group_access", return_value=True),
         ):
-
             # Mock the pipeline builder to return pipelines without metadata
             mock_build_pipelines.return_value = [
                 {
@@ -215,9 +215,11 @@ class TestRepositoryUpdateMetadataPreservation:
         }
 
         # Act
-        with patch("repository.lambda_functions.vs_repo", mock_vector_store_repo), patch(
-            "utilities.auth.is_admin", return_value=True
-        ), patch("utilities.auth.user_has_group_access", return_value=True):
+        with (
+            patch("repository.lambda_functions.vs_repo", mock_vector_store_repo),
+            patch("utilities.auth.is_admin", return_value=True),
+            patch("utilities.auth.user_has_group_access", return_value=True),
+        ):
             _result = update_repository(event, lambda_context)
 
         # Assert
@@ -273,9 +275,11 @@ class TestRepositoryUpdateMetadataPreservation:
         }
 
         # Act
-        with patch("repository.lambda_functions.vs_repo", mock_vector_store_repo), patch(
-            "utilities.auth.is_admin", return_value=True
-        ), patch("utilities.auth.user_has_group_access", return_value=True):
+        with (
+            patch("repository.lambda_functions.vs_repo", mock_vector_store_repo),
+            patch("utilities.auth.is_admin", return_value=True),
+            patch("utilities.auth.user_has_group_access", return_value=True),
+        ):
             _result = update_repository(event, lambda_context)
 
         # Assert
@@ -326,9 +330,11 @@ class TestRepositoryUpdateMetadataPreservation:
         }
 
         # Act
-        with patch("repository.lambda_functions.vs_repo", mock_vector_store_repo), patch(
-            "utilities.auth.is_admin", return_value=True
-        ), patch("utilities.auth.user_has_group_access", return_value=True):
+        with (
+            patch("repository.lambda_functions.vs_repo", mock_vector_store_repo),
+            patch("utilities.auth.is_admin", return_value=True),
+            patch("utilities.auth.user_has_group_access", return_value=True),
+        ):
             _result = update_repository(event, lambda_context)
 
         # Assert
@@ -361,7 +367,9 @@ class TestRepositoryUpdateMetadataPreservation:
             knowledgeBaseId="kb-123",
             dataSources=[
                 BedrockDataSource(
-                    id="datasource-2", name="New Data Source", s3Uri="s3://new-docs/"  # New data source ID
+                    id="datasource-2",
+                    name="New Data Source",
+                    s3Uri="s3://new-docs/",  # New data source ID
                 )
             ],
         )
@@ -376,12 +384,12 @@ class TestRepositoryUpdateMetadataPreservation:
         }
 
         # Act
-        with patch("repository.lambda_functions.vs_repo", mock_vector_store_repo), patch(
-            "repository.lambda_functions.build_pipeline_configs_from_kb_config"
-        ) as mock_build_pipelines, patch("utilities.auth.is_admin", return_value=True), patch(
-            "utilities.auth.user_has_group_access", return_value=True
+        with (
+            patch("repository.lambda_functions.vs_repo", mock_vector_store_repo),
+            patch("repository.lambda_functions.build_pipeline_configs_from_kb_config") as mock_build_pipelines,
+            patch("utilities.auth.is_admin", return_value=True),
+            patch("utilities.auth.user_has_group_access", return_value=True),
         ):
-
             mock_build_pipelines.return_value = [
                 {
                     "s3Bucket": "new-docs",

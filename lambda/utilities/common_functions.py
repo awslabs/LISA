@@ -60,7 +60,7 @@ class LambdaContextFilter(logging.Filter):
         record : logging.LogRecord
             The log record.
 
-        Returns
+        Returns:
         -------
         bool
             A boolean.

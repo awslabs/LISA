@@ -183,7 +183,7 @@ class LisaEmbeddings(BaseModel, Embeddings):
         texts : List[str]
             The list of texts to embed.
 
-        Returns
+        Returns:
         -------
         List[List[float]]
             List of embeddings, one for each text.
@@ -198,7 +198,7 @@ class LisaEmbeddings(BaseModel, Embeddings):
         text : str
             The text to embed.
 
-        Returns
+        Returns:
         -------
         List[float]
             Embedding for the text.
@@ -213,7 +213,7 @@ class LisaEmbeddings(BaseModel, Embeddings):
         text : str
             The text to embed.
 
-        Returns
+        Returns:
         -------
         List[float]
             Embedding for the text.
@@ -228,7 +228,7 @@ class LisaEmbeddings(BaseModel, Embeddings):
         texts : List[str]
             The list of texts to embed.
 
-        Returns
+        Returns:
         -------
         List[List[float]]
             List of embeddings, one for each text.

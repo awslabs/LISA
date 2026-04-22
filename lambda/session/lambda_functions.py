@@ -74,7 +74,7 @@ cache: TTLCache = TTLCache(maxsize=1, ttl=300)  # 5 minutes
 def _is_session_encryption_enabled() -> bool:
     """Check if session encryption is enabled via global configuration.
 
-    Returns
+    Returns:
     -------
     bool
         True if session encryption is enabled, False otherwise.
@@ -118,7 +118,7 @@ def _get_current_model_config(model_id: str) -> Any:
     model_id : str
         The model ID to fetch configuration for.
 
-    Returns
+    Returns:
     -------
     Dict[str, Any]
         The current model configuration, or empty dict if not found.
@@ -145,7 +145,7 @@ def _update_session_with_current_model_config(
     session_config : SessionConfigurationModel
         The session configuration containing model information.
 
-    Returns
+    Returns:
     -------
     SessionConfigurationModel
         Updated configuration with current model settings.

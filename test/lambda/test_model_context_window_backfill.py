@@ -266,9 +266,11 @@ def test_run_backfill_enriches_bedrock_model(model_table):
         "model_info": {"id": "litellm-abc", "max_input_tokens": 200000},
     }
 
-    with patch("models.model_context_window_backfill._get_litellm_client", return_value=mock_litellm), patch(
-        "models.model_context_window_backfill.boto3"
-    ) as mock_boto, patch("models.model_context_window_backfill.now", return_value=123456):
+    with (
+        patch("models.model_context_window_backfill._get_litellm_client", return_value=mock_litellm),
+        patch("models.model_context_window_backfill.boto3") as mock_boto,
+        patch("models.model_context_window_backfill.now", return_value=123456),
+    ):
         mock_boto.resource.return_value.Table.return_value = model_table
         mock_boto.client.return_value = MagicMock()
         result = _run_backfill()
@@ -294,9 +296,10 @@ def test_run_backfill_skips_already_enriched(model_table):
 
     mock_litellm = MagicMock()
 
-    with patch("models.model_context_window_backfill._get_litellm_client", return_value=mock_litellm), patch(
-        "models.model_context_window_backfill.boto3"
-    ) as mock_boto:
+    with (
+        patch("models.model_context_window_backfill._get_litellm_client", return_value=mock_litellm),
+        patch("models.model_context_window_backfill.boto3") as mock_boto,
+    ):
         mock_boto.resource.return_value.Table.return_value = model_table
         mock_boto.client.return_value = MagicMock()
         result = _run_backfill()
@@ -324,9 +327,11 @@ def test_run_backfill_defaults_to_zero_when_not_found(model_table):
     mock_litellm.get_model.side_effect = Exception("Not found")
     mock_litellm.list_models.return_value = []
 
-    with patch("models.model_context_window_backfill._get_litellm_client", return_value=mock_litellm), patch(
-        "models.model_context_window_backfill.boto3"
-    ) as mock_boto, patch("models.model_context_window_backfill.now", return_value=123456):
+    with (
+        patch("models.model_context_window_backfill._get_litellm_client", return_value=mock_litellm),
+        patch("models.model_context_window_backfill.boto3") as mock_boto,
+        patch("models.model_context_window_backfill.now", return_value=123456),
+    ):
         mock_boto.resource.return_value.Table.return_value = model_table
         mock_boto.client.return_value = MagicMock()
         result = _run_backfill()
@@ -347,10 +352,14 @@ def test_run_backfill_counts_failures(model_table):
         }
     )
 
-    with patch("models.model_context_window_backfill._get_litellm_client", return_value=MagicMock()), patch(
-        "models.model_context_window_backfill._fetch_context_window_from_litellm",
-        side_effect=RuntimeError("Unexpected crash"),
-    ), patch("models.model_context_window_backfill.boto3") as mock_boto:
+    with (
+        patch("models.model_context_window_backfill._get_litellm_client", return_value=MagicMock()),
+        patch(
+            "models.model_context_window_backfill._fetch_context_window_from_litellm",
+            side_effect=RuntimeError("Unexpected crash"),
+        ),
+        patch("models.model_context_window_backfill.boto3") as mock_boto,
+    ):
         mock_boto.resource.return_value.Table.return_value = model_table
         mock_boto.client.return_value = MagicMock()
         result = _run_backfill()
@@ -361,9 +370,10 @@ def test_run_backfill_counts_failures(model_table):
 
 def test_run_backfill_empty_table(model_table):
     """Test backfill on an empty table returns all zeros."""
-    with patch("models.model_context_window_backfill._get_litellm_client", return_value=MagicMock()), patch(
-        "models.model_context_window_backfill.boto3"
-    ) as mock_boto:
+    with (
+        patch("models.model_context_window_backfill._get_litellm_client", return_value=MagicMock()),
+        patch("models.model_context_window_backfill.boto3") as mock_boto,
+    ):
         mock_boto.resource.return_value.Table.return_value = model_table
         mock_boto.client.return_value = MagicMock()
         result = _run_backfill()

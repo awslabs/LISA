@@ -534,7 +534,6 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
         # Check for anthropic specific headers and reset the max token parameter to None
         # so LiteLLM handles the max_token value. Only if it's not an Anthropic model
         if model_id and "anthropic-beta" in headers and "anthropic-version" in headers:
-
             # Only nullify max_tokens if the model is NOT an Anthropic model
             if model_name and ".anthropic" not in model_name:
                 if "max_tokens" in params:

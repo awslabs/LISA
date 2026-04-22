@@ -44,8 +44,7 @@ HEADERS_WITH_SERVER_VALUES = {
 
 
 def sanitize_headers(headers: dict[str, Any], event: dict[str, Any]) -> dict[str, Any]:
-    """
-    Sanitize HTTP headers using a allowlist approach.
+    """Sanitize HTTP headers using a allowlist approach.
 
     Only headers in the ALLOWED_HEADERS set are logged. This prevents log injection
     attacks by rejecting any unexpected or potentially malicious headers.
@@ -64,7 +63,7 @@ def sanitize_headers(headers: dict[str, Any], event: dict[str, Any]) -> dict[str
         >>> headers = {
         ...     "accept": "application/json",
         ...     "x-amzn-actiontrace": "injected-value",
-        ...     "x-forwarded-for": "1.2.3.4"
+        ...     "x-forwarded-for": "1.2.3.4",
         ... }
         >>> event = {"requestContext": {"identity": {"sourceIp": "9.10.11.12"}}}
         >>> sanitized = sanitize_headers(headers, event)
@@ -101,8 +100,7 @@ def sanitize_headers(headers: dict[str, Any], event: dict[str, Any]) -> dict[str
 
 
 def get_sanitized_headers_for_logging(event: dict[str, Any]) -> dict[str, Any]:
-    """
-    Extract and sanitize headers from Lambda event for safe logging.
+    """Extract and sanitize headers from Lambda event for safe logging.
 
     This is a convenience function that extracts headers from the event
     and sanitizes them in one step.
@@ -114,10 +112,7 @@ def get_sanitized_headers_for_logging(event: dict[str, Any]) -> dict[str, Any]:
         Dictionary of sanitized headers safe for logging
 
     Example:
-        >>> event = {
-        ...     "headers": {"x-forwarded-for": "1.2.3.4"},
-        ...     "requestContext": {"identity": {"sourceIp": "5.6.7.8"}}
-        ... }
+        >>> event = {"headers": {"x-forwarded-for": "1.2.3.4"}, "requestContext": {"identity": {"sourceIp": "5.6.7.8"}}}
         >>> headers = get_sanitized_headers_for_logging(event)
         >>> headers["x-forwarded-for"]
         "5.6.7.8"

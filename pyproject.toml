@@ -52,14 +52,20 @@ exclude = [
 line-length = 120
 
 [tool.ruff.lint]
-ignore = ["D401"]
-select = ["E", "F", "W", "PLC0415"]  # Enable pycodestyle errors, pyflakes, warnings, and import-outside-toplevel
+ignore = ["D401", "D100", "D104", "D103", "D101", "D102", "D105", "D107"]
+select = ["E", "F", "W", "PLC0415", "D"]  # Enable pycodestyle, pyflakes, warnings, import-outside-toplevel, pydocstyle
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
-# Allow imports in functions for test files
+# Allow imports in functions for test files, relax docstring requirements in tests
 "test/lambda/test_session_lambda.py" = ["E402", "PLC0415"]
-"test/**/*.py" = ["E402", "PLC0415"]
-"**/test_*.py" = ["E402", "PLC0415"]
+"test/**/*.py" = ["E402", "PLC0415", "D"]
+"**/test_*.py" = ["E402", "PLC0415", "D"]
+
+[tool.ruff.format]
+docstring-code-format = true
 
 [tool.pytest.ini_options]
 addopts = "--strict-markers -vv -x"

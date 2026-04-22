@@ -566,7 +566,7 @@ def handle_update_guardrails(event: dict[str, Any], context: Any) -> dict[str, A
                 # Transform guardrail config to LiteLLM format for update
                 litellm_guardrail_config = {
                     "guardrail": {
-                        "guardrail_name": f'{guardrail_config["guardrailName"]}-{model_id}',
+                        "guardrail_name": f"{guardrail_config['guardrailName']}-{model_id}",
                         "litellm_params": {
                             "guardrail": "bedrock",
                             "mode": str(guardrail_config.get("mode", "pre_call")),
@@ -612,11 +612,10 @@ def handle_update_guardrails(event: dict[str, Any], context: Any) -> dict[str, A
                 logger.info(f"Successfully updated guardrail: {guardrail_name}")
 
             else:
-
                 # Transform guardrail config to LiteLLM format
                 litellm_guardrail_config = {
                     "guardrail": {
-                        "guardrail_name": f'{guardrail_config["guardrailName"]}-{model_id}',
+                        "guardrail_name": f"{guardrail_config['guardrailName']}-{model_id}",
                         "litellm_params": {
                             "guardrail": "bedrock",
                             "mode": str(guardrail_config.get("mode", "pre_call")),

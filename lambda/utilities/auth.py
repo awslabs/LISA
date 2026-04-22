@@ -136,7 +136,7 @@ def get_management_key() -> str:
 
 # API token utility functions
 def generate_token() -> str:
-    """Generate cryptographically secure random token (64 bytes = 128 hex chars)"""
+    """Generate cryptographically secure random token (64 bytes = 128 hex chars)."""
     return secrets.token_hex(64)
 
 

@@ -78,7 +78,7 @@ class LisaLlm(BaseModel):
     def list_models(self) -> list[dict[str, Any]]:
         """List all models from the LiteLLM proxy.
 
-        Returns
+        Returns:
         -------
         list[dict[str, Any]]
             List of model dicts in OpenAI format (id, object, created, owned_by).
@@ -94,7 +94,7 @@ class LisaLlm(BaseModel):
     def health(self) -> dict[str, Any]:
         """Check health of the LiteLLM proxy.
 
-        Returns
+        Returns:
         -------
         dict[str, Any]
             Health status response from the proxy.
@@ -109,7 +109,7 @@ class LisaLlm(BaseModel):
     def health_readiness(self) -> dict[str, Any]:
         """Check readiness of the LiteLLM proxy.
 
-        Returns
+        Returns:
         -------
         dict[str, Any]
             Readiness status response from the proxy.
@@ -128,7 +128,7 @@ class LisaLlm(BaseModel):
         normalizes it to ``{"status": "I'm alive!"}`` for a consistent
         dict return type across all health methods.
 
-        Returns
+        Returns:
         -------
         dict[str, Any]
             Liveliness status response from the proxy.
@@ -149,7 +149,7 @@ class LisaLlm(BaseModel):
         Returns the full LiteLLM model database including litellm_params,
         provider details, and model configuration.
 
-        Returns
+        Returns:
         -------
         list[ModelInfoEntry]
             List of model info entries with name, params, and metadata.
@@ -244,7 +244,7 @@ class LisaLlm(BaseModel):
             Additional OpenAI completions parameters (temperature, max_tokens, etc.).
             Unknown parameters are filtered out.
 
-        Returns
+        Returns:
         -------
         CompletionResponse
             Legacy completion response with id, choices, and usage.
@@ -274,7 +274,7 @@ class LisaLlm(BaseModel):
             Additional OpenAI completions parameters (temperature, max_tokens, etc.).
             Unknown parameters are filtered out.
 
-        Returns
+        Returns:
         -------
         CompletionResponse
             Legacy completion response with id, choices, and usage.
@@ -312,7 +312,7 @@ class LisaLlm(BaseModel):
         **kwargs : Any
             Additional parameters (n, size, quality, response_format, style).
 
-        Returns
+        Returns:
         -------
         ImageResponse
             Image generation response with created timestamp and image data.
@@ -341,7 +341,7 @@ class LisaLlm(BaseModel):
         **kwargs : Any
             Additional parameters (n, size, quality, response_format, style).
 
-        Returns
+        Returns:
         -------
         ImageResponse
             Image generation response with created timestamp and image data.
@@ -382,7 +382,7 @@ class LisaLlm(BaseModel):
         **kwargs : Any
             Additional parameters (response_format, speed).
 
-        Returns
+        Returns:
         -------
         bytes
             Raw audio content.
@@ -414,7 +414,7 @@ class LisaLlm(BaseModel):
         **kwargs : Any
             Additional parameters (response_format, speed).
 
-        Returns
+        Returns:
         -------
         bytes
             Raw audio content.
@@ -456,7 +456,7 @@ class LisaLlm(BaseModel):
         **kwargs : Any
             Additional parameters (language, prompt, response_format, temperature).
 
-        Returns
+        Returns:
         -------
         dict[str, Any]
             Transcription response with text and metadata.
@@ -500,7 +500,7 @@ class LisaLlm(BaseModel):
         **kwargs : Any
             Additional parameters (language, prompt, response_format, temperature).
 
-        Returns
+        Returns:
         -------
         dict[str, Any]
             Transcription response with text and metadata.
@@ -547,7 +547,7 @@ class LisaLlm(BaseModel):
         model : FoundationModel
             Foundation model for text generation.
 
-        Returns
+        Returns:
         -------
         Response
             Text generation response.
@@ -577,7 +577,7 @@ class LisaLlm(BaseModel):
         model : FoundationModel
             Foundation model for text generation.
 
-        Returns
+        Returns:
         -------
         Response
             Text generation response.
@@ -616,7 +616,7 @@ class LisaLlm(BaseModel):
         model : FoundationModel
             Foundation model for text generation.
 
-        Returns
+        Returns:
         -------
         Generator[StreamingResponse, None, None]
             Text generation streaming response.
@@ -660,7 +660,7 @@ class LisaLlm(BaseModel):
         model : FoundationModel
             Foundation model for text generation.
 
-        Returns
+        Returns:
         -------
         AsyncGenerator[StreamingResponse, None]
             Text generation streaming response.
@@ -710,7 +710,7 @@ class LisaLlm(BaseModel):
         model : FoundationModel
             Foundation model for text embeddings.
 
-        Returns
+        Returns:
         -------
         List[List[float]]
             Text embeddings as a batched response.
@@ -737,7 +737,7 @@ class LisaLlm(BaseModel):
         model : FoundationModel
             Foundation model for text embeddings.
 
-        Returns
+        Returns:
         -------
         List[List[float]]
             Text embeddings as a batched response.

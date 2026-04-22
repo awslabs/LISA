@@ -121,7 +121,7 @@ def wait_for_resource_ready(
             logger.debug(f"Check failed: {e}")
 
         if i < max_iterations - 1:
-            logger.debug(f"Still waiting... ({i+1}/{max_iterations})")
+            logger.debug(f"Still waiting... ({i + 1}/{max_iterations})")
             time.sleep(check_interval_seconds)
 
     logger.warning(f"Timeout waiting for {resource_type} '{resource_id}' to be ready")

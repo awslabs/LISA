@@ -32,7 +32,7 @@ MAX_LARGE_REQUEST_SIZE = 10 * 1024 * 1024
 
 
 def contains_null_bytes(data: str) -> bool:
-    """Check if a string contains null bytes.
+    r"""Check if a string contains null bytes.
 
     Null bytes (\\x00) can be used to bypass input validation or cause
     unexpected behavior in string processing.

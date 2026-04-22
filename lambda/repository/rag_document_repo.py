@@ -137,6 +137,7 @@ class RagDocumentRepository:
             document_name (str): The name of the documents to retrieve
             repository_id (str): The repository id to list documents for
             collection_id (str): The collection id to list documents for
+            join_docs: Join document entries together if record is chunked
 
         Returns:
             list[RagDocument]: A list of document objects matching the specified name
@@ -173,6 +174,8 @@ class RagDocumentRepository:
         Args:
             document_source (str): The name of the documents to retrieve
             repository_id (str): The repository id to list documents for
+            collection_id (str): The collection id to list documents for
+            join_docs: Join document entries together if record is chunked
 
         Returns:
             list[RagDocument]: A list of document objects matching the specified name
@@ -243,10 +246,11 @@ class RagDocumentRepository:
 
         Args:
             repository_id: Repository ID
-            collection_id?: Collection ID
+            collection_id: Collection ID
             last_evaluated_key: last key for pagination
             limit: maximum returned items
             join_docs: whether to include subdoc ids with parent doc
+
         Returns:
             List of documents
         """
@@ -291,7 +295,8 @@ class RagDocumentRepository:
 
         Args:
             repository_id: Repository ID
-            collection_id?: Collection ID
+            collection_id: Collection ID
+
         Returns:
             Total number of documents
         """
@@ -344,7 +349,7 @@ class RagDocumentRepository:
         """Map subdocuments from a document object.
 
         Args:
-            document: The document object containing subdocuments
+            entries: The document object containing subdocuments
 
         Returns:
             List of subdocument dictionaries

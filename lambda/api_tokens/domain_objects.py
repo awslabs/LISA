@@ -19,7 +19,7 @@ from utilities.time import now_seconds
 
 
 def default_expiration() -> int:
-    """Calculate default token expiration (90 days from now)"""
+    """Calculate default token expiration (90 days from now)."""
     return now_seconds() + int(timedelta(days=90).total_seconds())
 
 
@@ -71,7 +71,7 @@ class CreateTokenResponse(BaseModel):
 
 
 class TokenInfo(BaseModel):
-    """Token information (without the actual token value)"""
+    """Token information (without the actual token value)."""
 
     tokenUUID: str
     tokenExpiration: int

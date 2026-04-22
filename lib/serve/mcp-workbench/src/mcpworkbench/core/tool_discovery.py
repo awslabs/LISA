@@ -199,7 +199,6 @@ class ToolDiscovery:
 
             # Check if it's a subclass of BaseTool (but not BaseTool itself)
             if issubclass(obj, BaseTool) and obj != BaseTool and not inspect.isabstract(obj):
-
                 try:
                     # Try to instantiate the tool to get its metadata
                     # We need to handle different constructor signatures

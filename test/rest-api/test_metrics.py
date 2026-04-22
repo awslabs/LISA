@@ -166,10 +166,12 @@ class TestPublishMetricsEvent:
 
         mock_sqs = MagicMock()
 
-        with patch.dict("os.environ", mock_env_vars), patch("utils.metrics.sqs_client", mock_sqs), patch(
-            "utils.metrics.get_user_context", return_value=("test-user", ["users"])
-        ), patch("utils.metrics.is_api_user", return_value=True):
-
+        with (
+            patch.dict("os.environ", mock_env_vars),
+            patch("utils.metrics.sqs_client", mock_sqs),
+            patch("utils.metrics.get_user_context", return_value=("test-user", ["users"])),
+            patch("utils.metrics.is_api_user", return_value=True),
+        ):
             publish_metrics_event(mock_request, params, 200)
 
             mock_sqs.send_message.assert_called_once()
@@ -193,7 +195,6 @@ class TestPublishMetricsEvent:
         mock_sqs = MagicMock()
 
         with patch.dict("os.environ", mock_env_vars), patch("utils.metrics.sqs_client", mock_sqs):
-
             publish_metrics_event(mock_request, params, 400)
 
             mock_sqs.send_message.assert_not_called()
@@ -206,7 +207,6 @@ class TestPublishMetricsEvent:
         mock_sqs = MagicMock()
 
         with patch.dict("os.environ", mock_env_vars, clear=True), patch("utils.metrics.sqs_client", mock_sqs):
-
             publish_metrics_event(mock_request, params, 200)
 
             mock_sqs.send_message.assert_not_called()
@@ -219,10 +219,11 @@ class TestPublishMetricsEvent:
         mock_sqs = MagicMock()
         mock_sqs.send_message.side_effect = Exception("SQS error")
 
-        with patch.dict("os.environ", mock_env_vars), patch("utils.metrics.sqs_client", mock_sqs), patch(
-            "utils.metrics.get_user_context", return_value=("test-user", [])
+        with (
+            patch.dict("os.environ", mock_env_vars),
+            patch("utils.metrics.sqs_client", mock_sqs),
+            patch("utils.metrics.get_user_context", return_value=("test-user", [])),
         ):
-
             # Should not raise exception
             publish_metrics_event(mock_request, params, 200)
 
@@ -233,10 +234,12 @@ class TestPublishMetricsEvent:
         params = {"messages": []}
         mock_sqs = MagicMock()
 
-        with patch.dict("os.environ", mock_env_vars), patch("utils.metrics.sqs_client", mock_sqs), patch(
-            "utils.metrics.get_user_context", return_value=("api-user", [])
-        ), patch("utils.metrics.is_api_user", return_value=True):
-
+        with (
+            patch.dict("os.environ", mock_env_vars),
+            patch("utils.metrics.sqs_client", mock_sqs),
+            patch("utils.metrics.get_user_context", return_value=("api-user", [])),
+            patch("utils.metrics.is_api_user", return_value=True),
+        ):
             publish_metrics_event(mock_request, params, 200)
 
             call_args = mock_sqs.send_message.call_args
@@ -258,10 +261,12 @@ class TestPublishMetricsEvent:
 
         mock_sqs = MagicMock()
 
-        with patch.dict("os.environ", mock_env_vars), patch("utils.metrics.sqs_client", mock_sqs), patch(
-            "utils.metrics.get_user_context", return_value=("user", ["users"])
-        ), patch("utils.metrics.is_api_user", return_value=True):
-
+        with (
+            patch.dict("os.environ", mock_env_vars),
+            patch("utils.metrics.sqs_client", mock_sqs),
+            patch("utils.metrics.get_user_context", return_value=("user", ["users"])),
+            patch("utils.metrics.is_api_user", return_value=True),
+        ):
             publish_metrics_event(mock_request, params, 200)
 
             call_args = mock_sqs.send_message.call_args
@@ -354,10 +359,12 @@ class TestPublishMetricsEventTokenPaths:
         params = {"messages": [{"role": "user", "content": "Hello"}], "model": "my-model"}
         mock_sqs = MagicMock()
 
-        with patch.dict("os.environ", mock_env_vars), patch("utils.metrics.sqs_client", mock_sqs), patch(
-            "utils.metrics.get_user_context", return_value=("jwt-user", ["users"])
-        ), patch("utils.metrics.is_api_user", return_value=False):
-
+        with (
+            patch.dict("os.environ", mock_env_vars),
+            patch("utils.metrics.sqs_client", mock_sqs),
+            patch("utils.metrics.get_user_context", return_value=("jwt-user", ["users"])),
+            patch("utils.metrics.is_api_user", return_value=False),
+        ):
             publish_metrics_event(mock_request, params, 200, prompt_tokens=50, completion_tokens=20)
 
             mock_sqs.send_message.assert_called_once()
@@ -378,10 +385,12 @@ class TestPublishMetricsEventTokenPaths:
         params = {"messages": [{"role": "user", "content": "Hello"}]}
         mock_sqs = MagicMock()
 
-        with patch.dict("os.environ", mock_env_vars), patch("utils.metrics.sqs_client", mock_sqs), patch(
-            "utils.metrics.get_user_context", return_value=("jwt-user", ["users"])
-        ), patch("utils.metrics.is_api_user", return_value=False):
-
+        with (
+            patch.dict("os.environ", mock_env_vars),
+            patch("utils.metrics.sqs_client", mock_sqs),
+            patch("utils.metrics.get_user_context", return_value=("jwt-user", ["users"])),
+            patch("utils.metrics.is_api_user", return_value=False),
+        ):
             publish_metrics_event(mock_request, params, 200)  # no tokens passed
 
             mock_sqs.send_message.assert_not_called()
@@ -400,10 +409,12 @@ class TestPublishMetricsEventTokenPaths:
         }
         mock_sqs = MagicMock()
 
-        with patch.dict("os.environ", mock_env_vars), patch("utils.metrics.sqs_client", mock_sqs), patch(
-            "utils.metrics.get_user_context", return_value=("api-user", [])
-        ), patch("utils.metrics.is_api_user", return_value=True):
-
+        with (
+            patch.dict("os.environ", mock_env_vars),
+            patch("utils.metrics.sqs_client", mock_sqs),
+            patch("utils.metrics.get_user_context", return_value=("api-user", [])),
+            patch("utils.metrics.is_api_user", return_value=True),
+        ):
             publish_metrics_event(mock_request, params, 200, response_body=response_body)
 
             body = json.loads(mock_sqs.send_message.call_args[1]["MessageBody"])
@@ -419,10 +430,12 @@ class TestPublishMetricsEventTokenPaths:
         params = {"messages": [{"role": "user", "content": "Hello"}]}
         mock_sqs = MagicMock()
 
-        with patch.dict("os.environ", mock_env_vars), patch("utils.metrics.sqs_client", mock_sqs), patch(
-            "utils.metrics.get_user_context", return_value=("api-user", [])
-        ), patch("utils.metrics.is_api_user", return_value=True):
-
+        with (
+            patch.dict("os.environ", mock_env_vars),
+            patch("utils.metrics.sqs_client", mock_sqs),
+            patch("utils.metrics.get_user_context", return_value=("api-user", [])),
+            patch("utils.metrics.is_api_user", return_value=True),
+        ):
             publish_metrics_event(mock_request, params, 200)
 
             body = json.loads(mock_sqs.send_message.call_args[1]["MessageBody"])

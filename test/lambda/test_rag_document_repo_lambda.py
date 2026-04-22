@@ -80,9 +80,10 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def patch_dynamodb_methods():
-    with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
-        "repository.rag_document_repo.boto3.client"
-    ) as mock_client:
+    with (
+        patch("repository.rag_document_repo.boto3.resource") as mock_resource,
+        patch("repository.rag_document_repo.boto3.client") as mock_client,
+    ):
         mock_doc_table = MagicMock()
         mock_subdoc_table = MagicMock()
         mock_doc_table.put_item.return_value = {}
@@ -96,10 +97,11 @@ def patch_dynamodb_methods():
 
 def test_rag_document_repository_init():
     """Test RagDocumentRepository initialization."""
-    with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
-        "repository.rag_document_repo.boto3.client"
-    ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
-
+    with (
+        patch("repository.rag_document_repo.boto3.resource") as mock_resource,
+        patch("repository.rag_document_repo.boto3.client") as mock_client,
+        patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class,
+    ):
         mock_doc_table = MagicMock()
         mock_subdoc_table = MagicMock()
         mock_s3_client = MagicMock()
@@ -119,10 +121,11 @@ def test_rag_document_repository_init():
 
 def test_delete_by_id_success(sample_rag_document):
     """Test successful deletion by ID."""
-    with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
-        "repository.rag_document_repo.boto3.client"
-    ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
-
+    with (
+        patch("repository.rag_document_repo.boto3.resource") as mock_resource,
+        patch("repository.rag_document_repo.boto3.client") as mock_client,
+        patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class,
+    ):
         mock_doc_table = MagicMock()
         mock_subdoc_table = MagicMock()
         mock_s3_client = MagicMock()
@@ -157,10 +160,11 @@ def test_delete_by_id_success(sample_rag_document):
 
 def test_delete_by_id_no_document(sample_rag_sub_document):
     """Test deletion by ID when document doesn't exist."""
-    with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
-        "repository.rag_document_repo.boto3.client"
-    ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
-
+    with (
+        patch("repository.rag_document_repo.boto3.resource") as mock_resource,
+        patch("repository.rag_document_repo.boto3.client") as mock_client,
+        patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class,
+    ):
         mock_doc_table = MagicMock()
         mock_subdoc_table = MagicMock()
         mock_s3_client = MagicMock()
@@ -195,10 +199,11 @@ def test_delete_by_id_no_document(sample_rag_sub_document):
 
 def test_delete_by_id_client_error():
     """Test deletion by ID with client error."""
-    with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
-        "repository.rag_document_repo.boto3.client"
-    ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
-
+    with (
+        patch("repository.rag_document_repo.boto3.resource") as mock_resource,
+        patch("repository.rag_document_repo.boto3.client") as mock_client,
+        patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class,
+    ):
         mock_doc_table = MagicMock()
         mock_subdoc_table = MagicMock()
         mock_s3_client = MagicMock()
@@ -232,10 +237,11 @@ def test_delete_by_id_client_error():
 
 def test_save_success(sample_rag_document):
     """Test successful save operation."""
-    with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
-        "repository.rag_document_repo.boto3.client"
-    ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
-
+    with (
+        patch("repository.rag_document_repo.boto3.resource") as mock_resource,
+        patch("repository.rag_document_repo.boto3.client") as mock_client,
+        patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class,
+    ):
         mock_doc_table = MagicMock()
         mock_subdoc_table = MagicMock()
         mock_s3_client = MagicMock()
@@ -266,10 +272,11 @@ def test_save_success(sample_rag_document):
 
 def test_save_client_error(sample_rag_document):
     """Test save operation with client error."""
-    with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
-        "repository.rag_document_repo.boto3.client"
-    ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
-
+    with (
+        patch("repository.rag_document_repo.boto3.resource") as mock_resource,
+        patch("repository.rag_document_repo.boto3.client") as mock_client,
+        patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class,
+    ):
         mock_doc_table = MagicMock()
         mock_subdoc_table = MagicMock()
         mock_s3_client = MagicMock()
@@ -301,10 +308,11 @@ def test_save_client_error(sample_rag_document):
 
 def test_find_by_id_success(sample_rag_document):
     """Test successful find by ID."""
-    with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
-        "repository.rag_document_repo.boto3.client"
-    ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
-
+    with (
+        patch("repository.rag_document_repo.boto3.resource") as mock_resource,
+        patch("repository.rag_document_repo.boto3.client") as mock_client,
+        patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class,
+    ):
         mock_doc_table = MagicMock()
         mock_subdoc_table = MagicMock()
         mock_s3_client = MagicMock()
@@ -332,10 +340,11 @@ def test_find_by_id_success(sample_rag_document):
 
 def test_find_by_id_not_found():
     """Test find by ID when document doesn't exist."""
-    with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
-        "repository.rag_document_repo.boto3.client"
-    ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
-
+    with (
+        patch("repository.rag_document_repo.boto3.resource") as mock_resource,
+        patch("repository.rag_document_repo.boto3.client") as mock_client,
+        patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class,
+    ):
         mock_doc_table = MagicMock()
         mock_subdoc_table = MagicMock()
         mock_s3_client = MagicMock()
@@ -362,10 +371,11 @@ def test_find_by_id_not_found():
 
 def test_find_by_source_success(sample_rag_document):
     """Test find by source with results."""
-    with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
-        "repository.rag_document_repo.boto3.client"
-    ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
-
+    with (
+        patch("repository.rag_document_repo.boto3.resource") as mock_resource,
+        patch("repository.rag_document_repo.boto3.client") as mock_client,
+        patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class,
+    ):
         mock_doc_table = MagicMock()
         mock_subdoc_table = MagicMock()
         mock_s3_client = MagicMock()
@@ -392,10 +402,11 @@ def test_find_by_source_success(sample_rag_document):
 
 def test_find_by_source_no_results():
     """Test find by source with no results."""
-    with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
-        "repository.rag_document_repo.boto3.client"
-    ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
-
+    with (
+        patch("repository.rag_document_repo.boto3.resource") as mock_resource,
+        patch("repository.rag_document_repo.boto3.client") as mock_client,
+        patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class,
+    ):
         mock_doc_table = MagicMock()
         mock_subdoc_table = MagicMock()
         mock_s3_client = MagicMock()
@@ -422,10 +433,11 @@ def test_find_by_source_no_results():
 
 def test_find_by_source_client_error():
     """Test find by source with client error."""
-    with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
-        "repository.rag_document_repo.boto3.client"
-    ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
-
+    with (
+        patch("repository.rag_document_repo.boto3.resource") as mock_resource,
+        patch("repository.rag_document_repo.boto3.client") as mock_client,
+        patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class,
+    ):
         mock_doc_table = MagicMock()
         mock_subdoc_table = MagicMock()
         mock_s3_client = MagicMock()
@@ -451,10 +463,11 @@ def test_find_by_source_client_error():
 
 def test_list_all_with_repository_id_only(sample_rag_document):
     """Test list_all with repository_id only."""
-    with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
-        "repository.rag_document_repo.boto3.client"
-    ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
-
+    with (
+        patch("repository.rag_document_repo.boto3.resource") as mock_resource,
+        patch("repository.rag_document_repo.boto3.client") as mock_client,
+        patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class,
+    ):
         mock_doc_table = MagicMock()
         mock_subdoc_table = MagicMock()
         mock_s3_client = MagicMock()
@@ -482,10 +495,11 @@ def test_list_all_with_repository_id_only(sample_rag_document):
 
 def test_list_all_with_collection_id(sample_rag_document):
     """Test list_all with collection_id."""
-    with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
-        "repository.rag_document_repo.boto3.client"
-    ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
-
+    with (
+        patch("repository.rag_document_repo.boto3.resource") as mock_resource,
+        patch("repository.rag_document_repo.boto3.client") as mock_client,
+        patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class,
+    ):
         mock_doc_table = MagicMock()
         mock_subdoc_table = MagicMock()
         mock_s3_client = MagicMock()
@@ -513,10 +527,11 @@ def test_list_all_with_collection_id(sample_rag_document):
 
 def test_list_all_with_pagination(sample_rag_document):
     """Test list_all with pagination."""
-    with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
-        "repository.rag_document_repo.boto3.client"
-    ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
-
+    with (
+        patch("repository.rag_document_repo.boto3.resource") as mock_resource,
+        patch("repository.rag_document_repo.boto3.client") as mock_client,
+        patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class,
+    ):
         mock_doc_table = MagicMock()
         mock_subdoc_table = MagicMock()
         mock_s3_client = MagicMock()
@@ -548,12 +563,12 @@ def test_list_all_with_pagination(sample_rag_document):
 
 def test_list_all_with_join_docs(sample_rag_document):
     """Test list_all with join_docs=True."""
-    with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
-        "repository.rag_document_repo.boto3.client"
-    ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class, patch(
-        "repository.rag_document_repo.RagDocumentRepository._get_subdoc_ids", return_value=["subdoc1"]
+    with (
+        patch("repository.rag_document_repo.boto3.resource") as mock_resource,
+        patch("repository.rag_document_repo.boto3.client") as mock_client,
+        patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class,
+        patch("repository.rag_document_repo.RagDocumentRepository._get_subdoc_ids", return_value=["subdoc1"]),
     ):
-
         mock_doc_table = MagicMock()
         mock_subdoc_table = MagicMock()
         mock_s3_client = MagicMock()
@@ -587,10 +602,11 @@ def test_list_all_with_join_docs(sample_rag_document):
 
 def test_find_subdocs_by_id_success(sample_rag_sub_document):
     """Test successful find_subdocs_by_id."""
-    with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
-        "repository.rag_document_repo.boto3.client"
-    ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
-
+    with (
+        patch("repository.rag_document_repo.boto3.resource") as mock_resource,
+        patch("repository.rag_document_repo.boto3.client") as mock_client,
+        patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class,
+    ):
         mock_doc_table = MagicMock()
         mock_subdoc_table = MagicMock()
         mock_s3_client = MagicMock()
@@ -617,10 +633,11 @@ def test_find_subdocs_by_id_success(sample_rag_sub_document):
 
 def test_find_subdocs_by_id_with_pagination(sample_rag_sub_document):
     """Test find_subdocs_by_id with pagination."""
-    with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
-        "repository.rag_document_repo.boto3.client"
-    ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
-
+    with (
+        patch("repository.rag_document_repo.boto3.resource") as mock_resource,
+        patch("repository.rag_document_repo.boto3.client") as mock_client,
+        patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class,
+    ):
         mock_doc_table = MagicMock()
         mock_subdoc_table = MagicMock()
         mock_s3_client = MagicMock()
@@ -649,10 +666,11 @@ def test_find_subdocs_by_id_with_pagination(sample_rag_sub_document):
 
 def test_delete_s3_object_success():
     """Test successful S3 object deletion."""
-    with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
-        "repository.rag_document_repo.boto3.client"
-    ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
-
+    with (
+        patch("repository.rag_document_repo.boto3.resource") as mock_resource,
+        patch("repository.rag_document_repo.boto3.client") as mock_client,
+        patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class,
+    ):
         mock_doc_table = MagicMock()
         mock_subdoc_table = MagicMock()
         mock_s3_client = MagicMock()
@@ -676,10 +694,11 @@ def test_delete_s3_object_success():
 
 def test_delete_s3_object_client_error():
     """Test S3 object deletion with client error."""
-    with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
-        "repository.rag_document_repo.boto3.client"
-    ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
-
+    with (
+        patch("repository.rag_document_repo.boto3.resource") as mock_resource,
+        patch("repository.rag_document_repo.boto3.client") as mock_client,
+        patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class,
+    ):
         mock_doc_table = MagicMock()
         mock_subdoc_table = MagicMock()
         mock_s3_client = MagicMock()
@@ -704,10 +723,11 @@ def test_delete_s3_object_client_error():
 
 def test_delete_s3_docs_manual_ingestion(sample_rag_document):
     """Test delete_s3_docs with manual ingestion."""
-    with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
-        "repository.rag_document_repo.boto3.client"
-    ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
-
+    with (
+        patch("repository.rag_document_repo.boto3.resource") as mock_resource,
+        patch("repository.rag_document_repo.boto3.client") as mock_client,
+        patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class,
+    ):
         mock_doc_table = MagicMock()
         mock_subdoc_table = MagicMock()
         mock_s3_client = MagicMock()
@@ -737,10 +757,11 @@ def test_delete_s3_docs_auto_ingestion_with_auto_remove(sample_rag_document):
     # Create document with auto_remove=True
     sample_rag_document.ingestion_type = IngestionType.AUTO
 
-    with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
-        "repository.rag_document_repo.boto3.client"
-    ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
-
+    with (
+        patch("repository.rag_document_repo.boto3.resource") as mock_resource,
+        patch("repository.rag_document_repo.boto3.client") as mock_client,
+        patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class,
+    ):
         mock_doc_table = MagicMock()
         mock_subdoc_table = MagicMock()
         mock_s3_client = MagicMock()
@@ -775,10 +796,11 @@ def test_delete_s3_docs_auto_ingestion_without_auto_remove(sample_rag_document):
     # Create document with auto_remove=False
     sample_rag_document.ingestion_type = IngestionType.AUTO
 
-    with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
-        "repository.rag_document_repo.boto3.client"
-    ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
-
+    with (
+        patch("repository.rag_document_repo.boto3.resource") as mock_resource,
+        patch("repository.rag_document_repo.boto3.client") as mock_client,
+        patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class,
+    ):
         mock_doc_table = MagicMock()
         mock_subdoc_table = MagicMock()
         mock_s3_client = MagicMock()
@@ -810,10 +832,11 @@ def test_delete_s3_docs_auto_ingestion_without_auto_remove(sample_rag_document):
 
 def test_delete_s3_docs_no_pipelines(sample_rag_document):
     """Test delete_s3_docs with no pipelines."""
-    with patch("repository.rag_document_repo.boto3.resource") as mock_resource, patch(
-        "repository.rag_document_repo.boto3.client"
-    ) as mock_client, patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class:
-
+    with (
+        patch("repository.rag_document_repo.boto3.resource") as mock_resource,
+        patch("repository.rag_document_repo.boto3.client") as mock_client,
+        patch("repository.rag_document_repo.VectorStoreRepository") as mock_vs_repo_class,
+    ):
         mock_doc_table = MagicMock()
         mock_subdoc_table = MagicMock()
         mock_s3_client = MagicMock()

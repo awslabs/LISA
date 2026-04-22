@@ -710,7 +710,7 @@ def handle_add_guardrails_to_litellm(event: dict[str, Any], context: Any) -> dic
             # Transform guardrail config to LiteLLM format
             litellm_guardrail_config = {
                 "guardrail": {
-                    "guardrail_name": f'{guardrail_config["guardrailName"]}-{model_id}',
+                    "guardrail_name": f"{guardrail_config['guardrailName']}-{model_id}",
                     "litellm_params": {
                         "guardrail": "bedrock",
                         "mode": str(guardrail_config.get("mode", "pre_call")),

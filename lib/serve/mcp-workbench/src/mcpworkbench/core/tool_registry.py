@@ -107,7 +107,8 @@ class ToolRegistry:
         """Update the registry with a new set of tools.
 
         This replaces all existing tools.
-                Args:
+
+        Args:
                     new_tools: New list of tools to register
         """
         with self._lock:

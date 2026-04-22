@@ -64,7 +64,7 @@ class BaseEvaluator(ABC):
             for doc in entry.expected:
                 if doc not in self.source_map:
                     raise ValueError(
-                        f"Golden dataset references unknown document '{doc}'. " f"Available: {sorted(self.source_map)}"
+                        f"Golden dataset references unknown document '{doc}'. Available: {sorted(self.source_map)}"
                     )
             expected = {self.source_map[doc] for doc in entry.expected}
             rel_map = {self.source_map[doc]: entry.relevance[doc] for doc in entry.expected}

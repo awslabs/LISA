@@ -37,7 +37,6 @@ DEFAULT_TEST_REPO_ID = os.environ.get("TEST_REPOSITORY_ID", "test-pgvector-rag")
 
 
 class TestLisaRag:
-
     @pytest.fixture(autouse=True, scope="class")
     def setup_class(self, lisa_api: LisaApi, request: pytest.FixtureRequest) -> None:
         # Find the specific test repository

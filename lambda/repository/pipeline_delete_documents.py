@@ -134,8 +134,7 @@ def pipeline_delete_collection(job: IngestionJob) -> None:
             user_managed = [doc for doc in documents if doc.get("ingestion_type") == "existing"]
 
             logger.info(
-                f"Collection {job.collection_id}: "
-                f"lisa_managed={len(lisa_managed)}, user_managed={len(user_managed)}"
+                f"Collection {job.collection_id}: lisa_managed={len(lisa_managed)}, user_managed={len(user_managed)}"
             )
 
             # Extract S3 paths for LISA-managed documents only

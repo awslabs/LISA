@@ -61,13 +61,13 @@ def handle_stream_exceptions(
         The streaming function to wrap. This function is expected to be an asynchronous generator
         yielding strings.
 
-    Returns
+    Returns:
     -------
     wrapper : Callable[..., AsyncGenerator[str, None]]
         The wrapped function, which handles exceptions by yielding them as formatted error messages
         in the stream.
 
-    Yields
+    Yields:
     ------
     str
         The items yielded by the original function, or a JSON-formatted error message in case of an exception.

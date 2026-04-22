@@ -115,7 +115,7 @@ def wait_for_resource_ready(
         except Exception as e:
             print(f"  Check failed: {e}")
         if i < max_iterations - 1:
-            print(f"  Still waiting... ({i+1}/{max_iterations})")
+            print(f"  Still waiting... ({i + 1}/{max_iterations})")
             time.sleep(15)
     print(f"✗ Timeout waiting for {resource_type} '{resource_id}' to be ready")
     return False

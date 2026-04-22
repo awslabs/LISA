@@ -154,7 +154,7 @@ def _populate_identity_from_http() -> CallerIdentity | None:
         has_auth = "authorization" in headers
         has_session = "x-session-id" in headers
         logger.warning(
-            "identity: extraction failed — authorization present=%s, " "x-session-id present=%s, header keys=%s",
+            "identity: extraction failed — authorization present=%s, x-session-id present=%s, header keys=%s",
             has_auth,
             has_session,
             sorted(headers.keys()),
@@ -182,7 +182,6 @@ def get_caller_identity() -> CallerIdentity:
 
     if identity is None:
         raise CallerIdentityError(
-            "Cannot determine caller identity. "
-            "Ensure the MCP connection sends Authorization and X-Session-Id headers."
+            "Cannot determine caller identity. Ensure the MCP connection sends Authorization and X-Session-Id headers."
         )
     return identity

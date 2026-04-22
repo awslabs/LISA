@@ -162,10 +162,10 @@ def test_delete_collection():
     mock_ingestion_job_repo = Mock()
     mock_ingestion_service = Mock()
 
-    with patch("repository.collection_service.IngestionJobRepository", return_value=mock_ingestion_job_repo), patch(
-        "repository.collection_service.DocumentIngestionService", return_value=mock_ingestion_service
+    with (
+        patch("repository.collection_service.IngestionJobRepository", return_value=mock_ingestion_job_repo),
+        patch("repository.collection_service.DocumentIngestionService", return_value=mock_ingestion_service),
     ):
-
         result = service.delete_collection(
             repository_id="test-repo",
             collection_id="test-coll",
@@ -202,10 +202,10 @@ def test_delete_default_collection():
     mock_ingestion_job_repo = Mock()
     mock_ingestion_service = Mock()
 
-    with patch("repository.collection_service.IngestionJobRepository", return_value=mock_ingestion_job_repo), patch(
-        "repository.collection_service.DocumentIngestionService", return_value=mock_ingestion_service
+    with (
+        patch("repository.collection_service.IngestionJobRepository", return_value=mock_ingestion_job_repo),
+        patch("repository.collection_service.DocumentIngestionService", return_value=mock_ingestion_service),
     ):
-
         result = service.delete_collection(
             repository_id="test-repo",
             collection_id=None,
@@ -280,10 +280,11 @@ def test_create_collection_lambda_with_embedding_model():
         status=CollectionStatus.ACTIVE,
     )
 
-    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
-        "repository.lambda_functions.collection_service"
-    ) as mock_service, patch("utilities.auth.is_admin") as mock_is_admin:
-
+    with (
+        patch("repository.lambda_functions.get_repository") as mock_get_repo,
+        patch("repository.lambda_functions.collection_service") as mock_service,
+        patch("utilities.auth.is_admin") as mock_is_admin,
+    ):
         mock_get_repo.return_value = mock_repository
         mock_service.create_collection.return_value = mock_collection
         mock_is_admin.return_value = True  # Mock admin check to pass
@@ -345,10 +346,11 @@ def test_create_collection_lambda_without_embedding_model_with_repository_defaul
         status=CollectionStatus.ACTIVE,
     )
 
-    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
-        "repository.lambda_functions.collection_service"
-    ) as mock_service, patch("utilities.auth.is_admin") as mock_is_admin:
-
+    with (
+        patch("repository.lambda_functions.get_repository") as mock_get_repo,
+        patch("repository.lambda_functions.collection_service") as mock_service,
+        patch("utilities.auth.is_admin") as mock_is_admin,
+    ):
         mock_get_repo.return_value = mock_repository
         mock_service.create_collection.return_value = mock_collection
         mock_is_admin.return_value = True  # Mock admin check to pass
@@ -400,10 +402,11 @@ def test_create_collection_lambda_without_embedding_model_no_repository_default(
         "embeddingModelId": None,  # No default embedding model
     }
 
-    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
-        "repository.lambda_functions.collection_service"
-    ) as mock_service, patch("utilities.auth.is_admin") as mock_is_admin:
-
+    with (
+        patch("repository.lambda_functions.get_repository") as mock_get_repo,
+        patch("repository.lambda_functions.collection_service") as mock_service,
+        patch("utilities.auth.is_admin") as mock_is_admin,
+    ):
         mock_get_repo.return_value = mock_repository
         mock_is_admin.return_value = True  # Mock admin check to pass
 
@@ -462,10 +465,11 @@ def test_create_collection_lambda_original_payload():
         status=CollectionStatus.ACTIVE,
     )
 
-    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
-        "repository.lambda_functions.collection_service"
-    ) as mock_service, patch("utilities.auth.is_admin") as mock_is_admin:
-
+    with (
+        patch("repository.lambda_functions.get_repository") as mock_get_repo,
+        patch("repository.lambda_functions.collection_service") as mock_service,
+        patch("utilities.auth.is_admin") as mock_is_admin,
+    ):
         mock_get_repo.return_value = mock_repository
         mock_service.create_collection.return_value = mock_collection
         mock_is_admin.return_value = True  # Mock admin check to pass

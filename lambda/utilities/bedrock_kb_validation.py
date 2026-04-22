@@ -52,12 +52,11 @@ def validate_bedrock_kb_exists(kb_id: str, bedrock_agent_client: Any | None = No
 
         if error_code == "ResourceNotFoundException":
             raise ValidationError(
-                f"Knowledge Base '{kb_id}' not found. " f"Please verify the KB ID in the AWS Bedrock console."
+                f"Knowledge Base '{kb_id}' not found. Please verify the KB ID in the AWS Bedrock console."
             )
         elif error_code == "AccessDeniedException":
             raise ValidationError(
-                f"Access denied to Knowledge Base '{kb_id}'. "
-                f"Please check IAM permissions for bedrock:GetKnowledgeBase."
+                f"Access denied to Knowledge Base '{kb_id}'. Please check IAM permissions for bedrock:GetKnowledgeBase."
             )
         else:
             raise ValidationError(f"Failed to validate Knowledge Base '{kb_id}': {str(e)}")
@@ -88,7 +87,7 @@ def validate_data_source_exists(
         response = bedrock_agent_client.get_data_source(knowledgeBaseId=kb_id, dataSourceId=data_source_id)
         data_source_config = response.get("dataSource", {})
 
-        logger.info(f"Validated Data Source {data_source_id} in KB {kb_id}: " f"{data_source_config.get('name')}")
+        logger.info(f"Validated Data Source {data_source_id} in KB {kb_id}: {data_source_config.get('name')}")
         return data_source_config  # type: ignore[no-any-return]
 
     except ClientError as e:

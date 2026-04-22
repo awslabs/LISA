@@ -1564,7 +1564,7 @@ def test_map_session_strips_merged_context_from_string_message():
         "history": [
             {
                 "type": "human",
-                "content": ("Context from document search:\n" "Some retrieved content\n\n" "who is dustin?"),
+                "content": ("Context from document search:\nSome retrieved content\n\nwho is dustin?"),
             }
         ],
     }

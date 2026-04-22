@@ -25,7 +25,7 @@ def render_context_from_messages(messages_list: list[dict[str, str]]) -> str:
     messages_list : List[Dict[str, str]]
         List of messages with 'content' field
 
-    Returns
+    Returns:
     -------
     str
         Concatenated message content
@@ -43,12 +43,12 @@ def parse_model_provider_from_string(model_string: str) -> tuple[str, str]:
     model_string : str
         Combined model string in format "model_name (provider_name)"
 
-    Returns
+    Returns:
     -------
     Tuple[str, str]
         Model name and provider name
 
-    Raises
+    Raises:
     ------
     ValueError
         If string format is invalid
@@ -79,7 +79,7 @@ def map_openai_params_to_lisa(request_data: dict) -> dict:
     request_data : dict
         OpenAI-format request data
 
-    Returns
+    Returns:
     -------
     dict
         Mapped parameters for LISA

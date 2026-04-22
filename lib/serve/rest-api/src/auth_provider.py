@@ -39,7 +39,7 @@ class AuthorizationProvider(ABC):
         groups : list[str] | None
             Optional list of groups the user belongs to (used by group-based providers)
 
-        Returns
+        Returns:
         -------
         bool
             True if user has admin access, False otherwise
@@ -57,7 +57,7 @@ class AuthorizationProvider(ABC):
         groups : list[str] | None
             Optional list of groups the user belongs to (used by group-based providers)
 
-        Returns
+        Returns:
         -------
         bool
             True if user has app access, False otherwise
@@ -75,7 +75,7 @@ class AuthorizationProvider(ABC):
         jwt_groups_property : str
             The property path to extract groups from JWT
 
-        Returns
+        Returns:
         -------
         bool
             True if user has admin access, False otherwise
@@ -93,7 +93,7 @@ class AuthorizationProvider(ABC):
         jwt_groups_property : str
             The property path to extract groups from JWT
 
-        Returns
+        Returns:
         -------
         bool
             True if user has app access, False otherwise
@@ -185,7 +185,7 @@ _auth_provider: AuthorizationProvider | None = None
 def get_authorization_provider() -> AuthorizationProvider:
     """Get the configured authorization provider instance.
 
-    Returns
+    Returns:
     -------
     AuthorizationProvider
         The authorization provider instance (OIDC-based for LISA)

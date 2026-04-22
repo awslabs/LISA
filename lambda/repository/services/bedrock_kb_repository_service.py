@@ -143,7 +143,7 @@ class BedrockKBRepositoryService(RepositoryService):
         )
         rag_document_repository.save(rag_document)
 
-        logger.info(f"Tracked document {kb_s3_path} for Bedrock KB. " f"KB will handle ingestion automatically.")
+        logger.info(f"Tracked document {kb_s3_path} for Bedrock KB. KB will handle ingestion automatically.")
         return rag_document
 
     def delete_document(
@@ -210,9 +210,7 @@ class BedrockKBRepositoryService(RepositoryService):
         ]
         user_managed = [doc for doc in documents if doc.get("ingestion_type") == IngestionType.EXISTING]
 
-        logger.info(
-            f"Collection {collection_id}: " f"lisa_managed={len(lisa_managed)}, user_managed={len(user_managed)}"
-        )
+        logger.info(f"Collection {collection_id}: lisa_managed={len(lisa_managed)}, user_managed={len(user_managed)}")
 
         # Extract S3 paths for LISA-managed documents
         s3_paths = [doc.get("source", "") for doc in lisa_managed if doc.get("source")]
@@ -305,8 +303,7 @@ class BedrockKBRepositoryService(RepositoryService):
             if error_code == "ValidationException" and "auto-paused" in error_message.lower():
                 logger.warning(f"Aurora DB is resuming from auto-pause for KB {kb_id}")
                 raise ServiceUnavailableException(
-                    "The knowledge base database is currently starting up. "
-                    "Please retry your request in a few moments."
+                    "The knowledge base database is currently starting up. Please retry your request in a few moments."
                 )
 
             logger.error(f"Bedrock retrieve failed for KB {kb_id}: {error_message}")
@@ -481,9 +478,7 @@ class BedrockKBRepositoryService(RepositoryService):
         source_bucket = s3_path.split("/")[2] if s3_path.startswith("s3://") else None
 
         if source_bucket != expected_bucket:
-            logger.warning(
-                f"Document {s3_path} not from KB bucket {expected_bucket}. " f"Normalizing to KB bucket path."
-            )
+            logger.warning(f"Document {s3_path} not from KB bucket {expected_bucket}. Normalizing to KB bucket path.")
             # Normalize to KB bucket path
             return f"s3://{expected_bucket}/{os.path.basename(s3_path)}"
 

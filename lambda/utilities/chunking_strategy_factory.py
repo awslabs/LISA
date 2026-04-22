@@ -45,7 +45,7 @@ class ChunkingStrategyHandler(ABC):
         strategy : ChunkingStrategy
             The chunking strategy configuration
 
-        Returns
+        Returns:
         -------
         list[Document]
             List of chunked documents
@@ -66,7 +66,7 @@ class FixedSizeChunkingHandler(ChunkingStrategyHandler):
         strategy : ChunkingStrategy
             The chunking strategy configuration (FixedChunkingStrategy)
 
-        Returns
+        Returns:
         -------
         list[Document]
             List of chunked documents
@@ -116,7 +116,7 @@ class NoneChunkingHandler(ChunkingStrategyHandler):
         strategy : ChunkingStrategy
             The chunking strategy configuration (NoneChunkingStrategy)
 
-        Returns
+        Returns:
         -------
         list[Document]
             Original list of documents unmodified
@@ -144,12 +144,12 @@ class ChunkingStrategyFactory:
         strategy : ChunkingStrategy
             The chunking strategy configuration
 
-        Returns
+        Returns:
         -------
         list[Document]
             List of chunked documents
 
-        Raises
+        Raises:
         ------
         ValueError
             If the chunking strategy type is not supported
@@ -186,7 +186,7 @@ class ChunkingStrategyFactory:
     def get_supported_strategies(cls) -> list[ChunkingStrategyType]:
         """Get list of supported chunking strategy types.
 
-        Returns
+        Returns:
         -------
         list[ChunkingStrategyType]
             List of supported strategy types

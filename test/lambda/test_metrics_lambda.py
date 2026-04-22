@@ -418,10 +418,10 @@ class TestCloudwatchMetrics:
 
         Expected: Should call both metrics functions and return the combined results.
         """
-        with patch("metrics.lambda_functions.count_unique_users_and_publish_metric") as mock_count_users, patch(
-            "metrics.lambda_functions.count_users_by_group_and_publish_metric"
-        ) as mock_count_by_group:
-
+        with (
+            patch("metrics.lambda_functions.count_unique_users_and_publish_metric") as mock_count_users,
+            patch("metrics.lambda_functions.count_users_by_group_and_publish_metric") as mock_count_by_group,
+        ):
             mock_count_users.return_value = 3
             mock_count_by_group.return_value = {"group1": 2, "group2": 2, "group3": 2}
 
@@ -815,10 +815,10 @@ class TestUpdateUserMetricsBySession:
             "mcpToolUsage": {},
         }
 
-        with patch("metrics.lambda_functions.usage_metrics_table.get_item") as mock_get_item, patch(
-            "metrics.lambda_functions.logger.error"
-        ) as mock_logger:
-
+        with (
+            patch("metrics.lambda_functions.usage_metrics_table.get_item") as mock_get_item,
+            patch("metrics.lambda_functions.logger.error") as mock_logger,
+        ):
             mock_get_item.side_effect = ClientError(
                 error_response={"Error": {"Code": "ResourceNotFoundException", "Message": "Table not found"}},
                 operation_name="GetItem",
@@ -1047,10 +1047,10 @@ class TestPublishMetricDeltas:
 
         Expected: Should log error and not raise exception when CloudWatch fails.
         """
-        with patch("metrics.lambda_functions.cloudwatch.put_metric_data") as mock_put_metric, patch(
-            "metrics.lambda_functions.logger.error"
-        ) as mock_logger:
-
+        with (
+            patch("metrics.lambda_functions.cloudwatch.put_metric_data") as mock_put_metric,
+            patch("metrics.lambda_functions.logger.error") as mock_logger,
+        ):
             mock_put_metric.side_effect = Exception("CloudWatch error")
 
             # Should not raise exception

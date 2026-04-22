@@ -36,7 +36,7 @@ async def process_request_middleware(request: Request, call_next: Callable[[Requ
     call_next : Callable
         The next middleware or route handler
 
-    Returns
+    Returns:
     -------
     Response
         The response with added request ID header

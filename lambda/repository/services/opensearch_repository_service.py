@@ -105,9 +105,7 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
         if include_score and results:
             max_score = max(self._normalize_similarity_score(score) for _, score in results)
             if max_score < 0.3:
-                logger.warning(
-                    f"All similarity scores < 0.3 for query '{query}' - " "possible embedding model mismatch"
-                )
+                logger.warning(f"All similarity scores < 0.3 for query '{query}' - possible embedding model mismatch")
 
         return documents
 

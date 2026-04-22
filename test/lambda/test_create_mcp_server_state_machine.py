@@ -145,9 +145,10 @@ def test_handle_deploy_server_success(mcp_servers_table, sample_mcp_server_event
     """Test successful deployment of server."""
     from mcp_server.state_machine.create_mcp_server import handle_deploy_server
 
-    with patch("mcp_server.state_machine.create_mcp_server.lambdaClient") as mock_lambda, patch(
-        "mcp_server.state_machine.create_mcp_server.cfnClient"
-    ) as mock_cfn:
+    with (
+        patch("mcp_server.state_machine.create_mcp_server.lambdaClient") as mock_lambda,
+        patch("mcp_server.state_machine.create_mcp_server.cfnClient") as mock_cfn,
+    ):
         mock_response = MagicMock()
         mock_response.read.return_value = json.dumps({"stackName": "test-stack-name"}).encode()
         mock_lambda.invoke.return_value = {"Payload": mock_response}
@@ -181,9 +182,11 @@ def test_handle_deploy_server_missing_stack_name(sample_mcp_server_event):
     """Test deployment failure when stack name is missing."""
     from mcp_server.state_machine.create_mcp_server import handle_deploy_server
 
-    with patch("mcp_server.state_machine.create_mcp_server.lambdaClient") as mock_lambda, patch(
-        "mcp_server.state_machine.create_mcp_server.cfnClient"
-    ), patch("mcp_server.state_machine.create_mcp_server.mcp_servers_table"):
+    with (
+        patch("mcp_server.state_machine.create_mcp_server.lambdaClient") as mock_lambda,
+        patch("mcp_server.state_machine.create_mcp_server.cfnClient"),
+        patch("mcp_server.state_machine.create_mcp_server.mcp_servers_table"),
+    ):
         mock_response = MagicMock()
         mock_response.read.return_value = json.dumps({}).encode()  # Missing stackName
         mock_lambda.invoke.return_value = {"Payload": mock_response}
@@ -227,9 +230,10 @@ def test_handle_deploy_server_with_optional_fields(mcp_servers_table, sample_mcp
         "retries": 3,
     }
 
-    with patch("mcp_server.state_machine.create_mcp_server.lambdaClient") as mock_lambda, patch(
-        "mcp_server.state_machine.create_mcp_server.cfnClient"
-    ) as mock_cfn:
+    with (
+        patch("mcp_server.state_machine.create_mcp_server.lambdaClient") as mock_lambda,
+        patch("mcp_server.state_machine.create_mcp_server.cfnClient") as mock_cfn,
+    ):
         mock_response = MagicMock()
         mock_response.read.return_value = json.dumps({"stackName": "test-stack"}).encode()
         mock_lambda.invoke.return_value = {"Payload": mock_response}
@@ -374,8 +378,9 @@ def test_handle_add_server_to_active_with_connections_table(mcp_servers_table, s
     event = sample_mcp_server_event.copy()
     event["stack_name"] = "test-stack-name"
 
-    with patch("mcp_server.state_machine.create_mcp_server.ssmClient") as mock_ssm, patch.dict(
-        os.environ, {"DEPLOYMENT_PREFIX": "/test/lisa"}
+    with (
+        patch("mcp_server.state_machine.create_mcp_server.ssmClient") as mock_ssm,
+        patch.dict(os.environ, {"DEPLOYMENT_PREFIX": "/test/lisa"}),
     ):
         # Mock SSM to return table name and API URL
         mock_ssm.get_parameter.side_effect = [

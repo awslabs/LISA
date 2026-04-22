@@ -40,9 +40,7 @@ LambdaHandler = Callable[[dict[Any, Any], Any], Any]
 
 
 @overload
-def api_wrapper(_func: LambdaHandler) -> LambdaHandler:
-    """Overload for decorator without parentheses."""
-    ...
+def api_wrapper(_func: LambdaHandler) -> LambdaHandler: ...
 
 
 @overload
@@ -50,9 +48,7 @@ def api_wrapper(
     _func: None = None,
     *,
     max_request_size: int = DEFAULT_MAX_REQUEST_SIZE,
-) -> Callable[[LambdaHandler], LambdaHandler]:
-    """Overload for decorator with parameters."""
-    ...
+) -> Callable[[LambdaHandler], LambdaHandler]: ...
 
 
 def api_wrapper(
@@ -60,8 +56,7 @@ def api_wrapper(
     *,
     max_request_size: int = DEFAULT_MAX_REQUEST_SIZE,
 ) -> LambdaHandler | Callable[[LambdaHandler], LambdaHandler]:
-    """
-    Wrap Lambda function with comprehensive API Gateway integration.
+    """Wrap Lambda function with comprehensive API Gateway integration.
 
     This decorator provides:
     - Input validation (null bytes, request size, HTTP methods)
@@ -81,12 +76,12 @@ def api_wrapper(
     max_request_size : int
         Maximum allowed request body size in bytes (default: 1MB).
 
-    Returns
+    Returns:
     -------
     LambdaHandler | Callable[[LambdaHandler], LambdaHandler]
         The wrapped function with API Gateway integration.
 
-    Example
+    Example:
     -------
     >>> @api_wrapper
     ... def get_user(event: dict, context: dict) -> dict:
@@ -156,8 +151,7 @@ def api_wrapper(
 
 
 def authorization_wrapper(f: LambdaHandler) -> LambdaHandler:
-    """
-    Wrap Lambda authorizer function.
+    """Wrap Lambda authorizer function.
 
     This decorator sets up the Lambda context for authorizer functions
     without adding API Gateway response formatting.
@@ -167,12 +161,12 @@ def authorization_wrapper(f: LambdaHandler) -> LambdaHandler:
     f : LambdaHandler
         The Lambda authorizer function to wrap.
 
-    Returns
+    Returns:
     -------
     LambdaHandler
         The wrapped authorizer function.
 
-    Example
+    Example:
     -------
     >>> @authorization_wrapper
     ... def authorizer(event: dict, context: dict) -> dict:
@@ -192,12 +186,12 @@ def authorization_wrapper(f: LambdaHandler) -> LambdaHandler:
 def get_lambda_context() -> Any:
     """Get the current Lambda context from context variable.
 
-    Returns
+    Returns:
     -------
     Any
         The Lambda context object.
 
-    Raises
+    Raises:
     ------
     LookupError
         If called outside of a Lambda execution context.

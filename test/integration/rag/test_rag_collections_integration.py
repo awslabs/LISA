@@ -648,11 +648,11 @@ class TestPipelineRagCollectionIntegration(RagIntegrationFixtures):
             try:
                 documents = lisa_client.list_documents(test_repository_id, collection_uuid)
                 if documents:
-                    logger.info(f"✓ Document ingested after {int(time.time()-start)}s under UUID {collection_uuid}")
+                    logger.info(f"✓ Document ingested after {int(time.time() - start)}s under UUID {collection_uuid}")
                     break
             except Exception as e:
                 logger.debug(f"Waiting for pipeline ingest: {e}")
-            logger.info(f"Polling for ingested document... ({int(time.time()-start)}s elapsed)")
+            logger.info(f"Polling for ingested document... ({int(time.time() - start)}s elapsed)")
             time.sleep(15)
 
         collection_name = pipeline_info["collection_name"]
@@ -694,9 +694,9 @@ class TestPipelineRagCollectionIntegration(RagIntegrationFixtures):
         while time.time() - start < max_wait:
             remaining = lisa_client.list_documents(test_repository_id, collection_uuid)
             if not any(d["document_id"] == document_id for d in remaining):
-                logger.info(f"✓ Document deleted after {int(time.time()-start)}s via pipeline deletion event")
+                logger.info(f"✓ Document deleted after {int(time.time() - start)}s via pipeline deletion event")
                 break
-            logger.info(f"Polling for document deletion... ({int(time.time()-start)}s elapsed)")
+            logger.info(f"Polling for document deletion... ({int(time.time() - start)}s elapsed)")
             time.sleep(15)
         else:
             assert False, f"Pipeline deletion timed out after {max_wait}s. Delete handler did not process the event."
@@ -787,7 +787,7 @@ class TestDefaultCollectionPath(RagIntegrationFixtures):
             try:
                 documents = lisa_client.list_documents(test_repository_id, default_collection_id)
                 if documents:
-                    logger.info(f"✓ Document ingested after {int(time.time()-start)}s")
+                    logger.info(f"✓ Document ingested after {int(time.time() - start)}s")
                     break
             except Exception as e:
                 logger.debug(f"Waiting: {e}")
@@ -822,7 +822,7 @@ class TestDefaultCollectionPath(RagIntegrationFixtures):
         while time.time() - start < max_wait:
             remaining = lisa_client.list_documents(test_repository_id, default_collection_id)
             if not any(d.get("document_id") == document_id for d in remaining):
-                logger.info(f"✓ Document deleted after {int(time.time()-start)}s")
+                logger.info(f"✓ Document deleted after {int(time.time() - start)}s")
                 break
             time.sleep(10)
         else:

@@ -145,7 +145,7 @@ def extract_user_groups_from_jwt(jwt_data: dict[str, Any] | None) -> list[str]:
     jwt_data : Optional[Dict[str, Any]]
         JWT data from authentication. None if user authenticated via API token.
 
-    Returns
+    Returns:
     -------
     list[str]
         List of groups the user belongs to. Empty list if no JWT data or groups not found.

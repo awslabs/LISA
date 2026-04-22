@@ -156,7 +156,7 @@ class CreateTokenUserHandler:
 
 
 class ListTokensHandler:
-    """List tokens - admins see all, users see only their own"""
+    """List tokens - admins see all, users see only their own."""
 
     def __init__(self, token_table: Any) -> None:
         self.token_table = token_table
@@ -263,7 +263,7 @@ class GetTokenHandler:
 
 
 class DeleteTokenHandler:
-    """Delete token - handles both modern and legacy tokens"""
+    """Delete token - handles both modern and legacy tokens."""
 
     def __init__(self, token_table: Any) -> None:
         self.token_table = token_table

@@ -65,7 +65,7 @@ def _build_general_settings(db_key: str, db_params: dict[str, str], use_iam_auth
     if not use_iam_auth:
         username, password = _get_database_credentials(db_params)
         settings["database_url"] = (
-            f"postgresql://{username}:{password}" f"@{db_params['dbHost']}:{db_params['dbPort']}/{db_params['dbName']}"
+            f"postgresql://{username}:{password}@{db_params['dbHost']}:{db_params['dbPort']}/{db_params['dbName']}"
         )
 
     return settings

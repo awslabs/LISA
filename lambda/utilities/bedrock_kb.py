@@ -570,6 +570,7 @@ def ingest_bedrock_s3_documents(
         embedding_model: Embedding model identifier
         s3_prefix: Optional S3 prefix to scan within bucket
         batch_size: Number of documents per batch job (default: 100)
+        metadata: Optional pre-merged metadata to include in the job
 
     Returns:
         Tuple of (discovered_count, skipped_count)

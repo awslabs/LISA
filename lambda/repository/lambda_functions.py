@@ -1076,9 +1076,7 @@ def handle_deprecated_chunking_strategy(request: IngestDocumentRequest, query_pa
 
             # Create chunkingStrategy from legacy parameters
             request.chunkingStrategy = {"type": "fixed", "size": chunk_size, "overlap": chunk_overlap}
-            logger.info(
-                f"Migrated legacy parameters to chunkingStrategy: " f"size={chunk_size}, overlap={chunk_overlap}"
-            )
+            logger.info(f"Migrated legacy parameters to chunkingStrategy: size={chunk_size}, overlap={chunk_overlap}")
         if "collectionId" in query_params:
             request.collectionId = query_params.get("collectionId")
 
@@ -1159,6 +1157,7 @@ def get_document(event: dict, context: dict) -> dict[str, Any]:
 
     Args:
         event (dict): The Lambda event object containing:
+        context: Lambda context
             path_params:
                 repositoryId - the repository
                 documentId - the document
@@ -1183,8 +1182,10 @@ def get_document(event: dict, context: dict) -> dict[str, Any]:
 @api_wrapper
 def download_document(event: dict, context: dict) -> str:
     """Generate a pre-signed S3 URL for downloading a file from the RAG ingested files.
+
     Args:
         event (dict): The Lambda event object containing:
+        context: Lambda context
             path_params:
                 repositoryId - the repository
                 documentId - the document
@@ -1382,17 +1383,17 @@ def create(event: dict, context: dict) -> Any:
         For Bedrock Knowledge Base repositories, automatically adds a default pipeline configuration
         if none is provided, using the datasource S3 bucket for event-driven ingestion.
 
-        Args:
+    Args:
             event (dict): The Lambda event object containing:
                 - body: A JSON string with the process creation details containing VectorStoreConfig.
             context (dict): The Lambda context object.
 
-        Returns:
+    Returns:
             Dict[str, str]: A dictionary containing:
                 - status: Success status message.
                 - executionArn: The ARN of the step function execution.
 
-        Raises:
+    Raises:
             ValueError: If the user is not an administrator.
             ValidationError: If the request body is invalid.
     """
@@ -1556,16 +1557,16 @@ def update_repository(event: dict, context: dict) -> dict[str, Any]:
         If the pipeline configuration has changed, this will trigger an infrastructure deployment
         using the state machine, similar to repository creation.
 
-        Args:
+    Args:
             event (dict): The Lambda event object containing:
                 - pathParameters.repositoryId: The repository ID to update
                 - body: JSON with fields to update (UpdateVectorStoreRequest)
             context (dict): The Lambda context object
 
-        Returns:
+    Returns:
             Dict[str, Any]: The updated repository configuration with executionArn if deployment triggered
 
-        Raises:
+    Raises:
             ValidationError: If validation fails
             HTTPException: If repository not found
     """
@@ -1673,7 +1674,7 @@ def update_repository(event: dict, context: dict) -> dict[str, Any]:
                 # If metadata provided but missing tags, preserve existing tags
                 elif "tags" not in current_meta and "tags" in existing_meta:
                     pipeline["metadata"]["tags"] = existing_meta["tags"]
-                    logger.info(f"Preserved tags for collection {collection_id}: " f"{existing_meta['tags']}")
+                    logger.info(f"Preserved tags for collection {collection_id}: {existing_meta['tags']}")
 
     # Check if pipeline configuration has changed
     # Use the converted pipelines from updates if available, otherwise use request.pipelines
@@ -1897,8 +1898,7 @@ def list_bedrock_knowledge_bases(event: dict, context: dict) -> dict[str, Any]:
         kb_list.append(kb_dict)
 
     logger.info(
-        f"Found {len(active_kbs)} ACTIVE Knowledge Bases out of {len(all_kbs)} total, "
-        f"{len(used_kb_ids)} already in use"
+        f"Found {len(active_kbs)} ACTIVE Knowledge Bases out of {len(all_kbs)} total, {len(used_kb_ids)} already in use"
     )
 
     return {"knowledgeBases": kb_list, "totalKnowledgeBases": len(kb_list)}

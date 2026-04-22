@@ -144,12 +144,12 @@ def test_ingest_name_resolves_to_uuid_via_real_service(setup_env, mock_dynamodb_
         }
     }
 
-    with patch("repository.pipeline_ingest_handlers.vs_repo") as mock_vs_repo, patch(
-        "repository.pipeline_ingest_handlers.collection_service", real_svc
-    ), patch("repository.pipeline_ingest_handlers.ingestion_job_repository") as mock_job_repo, patch(
-        "repository.pipeline_ingest_handlers.ingestion_service"
+    with (
+        patch("repository.pipeline_ingest_handlers.vs_repo") as mock_vs_repo,
+        patch("repository.pipeline_ingest_handlers.collection_service", real_svc),
+        patch("repository.pipeline_ingest_handlers.ingestion_job_repository") as mock_job_repo,
+        patch("repository.pipeline_ingest_handlers.ingestion_service"),
     ):
-
         mock_vs_repo.find_repository_by_id.return_value = {"repositoryId": "repo1", "type": "opensearch"}
 
         from repository.pipeline_ingest_handlers import handle_pipeline_ingest_event
@@ -183,14 +183,13 @@ def test_delete_name_resolves_to_uuid_via_real_service(setup_env, mock_dynamodb_
         }
     }
 
-    with patch("repository.pipeline_ingest_handlers.vs_repo") as mock_vs_repo, patch(
-        "repository.pipeline_ingest_handlers.collection_service", real_svc
-    ), patch("repository.pipeline_ingest_handlers.rag_document_repository") as mock_doc_repo, patch(
-        "repository.pipeline_ingest_handlers.ingestion_job_repository"
-    ), patch(
-        "repository.pipeline_ingest_handlers.ingestion_service"
+    with (
+        patch("repository.pipeline_ingest_handlers.vs_repo") as mock_vs_repo,
+        patch("repository.pipeline_ingest_handlers.collection_service", real_svc),
+        patch("repository.pipeline_ingest_handlers.rag_document_repository") as mock_doc_repo,
+        patch("repository.pipeline_ingest_handlers.ingestion_job_repository"),
+        patch("repository.pipeline_ingest_handlers.ingestion_service"),
     ):
-
         mock_vs_repo.find_repository_by_id.return_value = {"repositoryId": "repo1", "type": "opensearch"}
         mock_doc_repo.find_by_source.return_value = []
 

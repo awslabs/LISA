@@ -293,7 +293,7 @@ def validate_syntax(event: dict, context: dict) -> dict[str, Any]:
             "validation_timestamp": iso_string(),
         }
 
-        logger.info(f"Validation completed. Valid: {result.is_valid}, " f"Errors: {len(result.syntax_errors)}")
+        logger.info(f"Validation completed. Valid: {result.is_valid}, Errors: {len(result.syntax_errors)}")
 
         return response
 

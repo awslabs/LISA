@@ -82,7 +82,7 @@ def _extract_pdf_content(s3_object: dict) -> str:
     ----------
     s3_object (dict): an S3 object containing a PDF file body
 
-    Returns
+    Returns:
     -------
     str: The extracted text from the PDF file.
     """
@@ -109,7 +109,7 @@ def _extract_docx_content(s3_object: dict) -> str:
     ----------
     s3_object (dict): an S3 object containing a docx file body
 
-    Returns
+    Returns:
     -------
     str: The extracted text from the docx file.
     """
@@ -143,12 +143,12 @@ def generate_chunks(ingestion_job: IngestionJob) -> list[Document]:
     ingestion_job : IngestionJob
         Ingestion job containing file information and chunking strategy
 
-    Returns
+    Returns:
     -------
     list[Document]
         List of document chunks for the processed file
 
-    Raises
+    Raises:
     ------
     RagUploadException
         If S3 path is invalid or file processing fails

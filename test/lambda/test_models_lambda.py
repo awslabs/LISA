@@ -356,11 +356,11 @@ def test_delete_model_handler(
     )
 
     # Mock SSM client, VectorStoreRepository, and CollectionRepository
-    with patch("models.handler.delete_model_handler.ssm_client") as mock_ssm, patch(
-        "models.handler.delete_model_handler.VectorStoreRepository"
-    ) as mock_repo_class, patch(
-        "models.handler.delete_model_handler.CollectionRepository"
-    ) as mock_collection_repo_class:
+    with (
+        patch("models.handler.delete_model_handler.ssm_client") as mock_ssm,
+        patch("models.handler.delete_model_handler.VectorStoreRepository") as mock_repo_class,
+        patch("models.handler.delete_model_handler.CollectionRepository") as mock_collection_repo_class,
+    ):
         mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "vector-store-table"}}
 
         mock_repo = mock_repo_class.return_value
@@ -401,11 +401,11 @@ def test_delete_model_handler_model_in_use_by_repository(
     )
 
     # Mock SSM client, VectorStoreRepository, and CollectionRepository
-    with patch("models.handler.delete_model_handler.ssm_client") as mock_ssm, patch(
-        "models.handler.delete_model_handler.VectorStoreRepository"
-    ) as mock_repo_class, patch(
-        "models.handler.delete_model_handler.CollectionRepository"
-    ) as mock_collection_repo_class:
+    with (
+        patch("models.handler.delete_model_handler.ssm_client") as mock_ssm,
+        patch("models.handler.delete_model_handler.VectorStoreRepository") as mock_repo_class,
+        patch("models.handler.delete_model_handler.CollectionRepository") as mock_collection_repo_class,
+    ):
         mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "vector-store-table"}}
 
         mock_repo = mock_repo_class.return_value
@@ -444,11 +444,11 @@ def test_delete_model_handler_model_in_use_by_pipeline(
     )
 
     # Mock SSM client, VectorStoreRepository, and CollectionRepository
-    with patch("models.handler.delete_model_handler.ssm_client") as mock_ssm, patch(
-        "models.handler.delete_model_handler.VectorStoreRepository"
-    ) as mock_repo_class, patch(
-        "models.handler.delete_model_handler.CollectionRepository"
-    ) as mock_collection_repo_class:
+    with (
+        patch("models.handler.delete_model_handler.ssm_client") as mock_ssm,
+        patch("models.handler.delete_model_handler.VectorStoreRepository") as mock_repo_class,
+        patch("models.handler.delete_model_handler.CollectionRepository") as mock_collection_repo_class,
+    ):
         mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "vector-store-table"}}
 
         mock_repo = mock_repo_class.return_value
@@ -586,9 +586,10 @@ def test_update_model_handler(
     )
 
     # Mock the to_lisa_model function to return a model with streaming=False
-    with patch("models.handler.update_model_handler.to_lisa_model") as mock_to_lisa_model, patch.object(
-        handler, "_stepfunctions"
-    ) as mock_sf:
+    with (
+        patch("models.handler.update_model_handler.to_lisa_model") as mock_to_lisa_model,
+        patch.object(handler, "_stepfunctions") as mock_sf,
+    ):
         # Configure the mock to return a model with streaming=False
         mock_model = LISAModel(
             modelId="test-model",
@@ -755,14 +756,13 @@ async def test_fastapi_endpoints(
     client = TestClient(app)
 
     # Setup mocks for the handlers
-    with patch("models.lambda_functions.CreateModelHandler") as mock_create_handler, patch(
-        "models.lambda_functions.ListModelsHandler"
-    ) as mock_list_handler, patch("models.lambda_functions.GetModelHandler") as mock_get_handler, patch(
-        "models.lambda_functions.UpdateModelHandler"
-    ) as mock_update_handler, patch(
-        "models.lambda_functions.DeleteModelHandler"
-    ) as mock_delete_handler:
-
+    with (
+        patch("models.lambda_functions.CreateModelHandler") as mock_create_handler,
+        patch("models.lambda_functions.ListModelsHandler") as mock_list_handler,
+        patch("models.lambda_functions.GetModelHandler") as mock_get_handler,
+        patch("models.lambda_functions.UpdateModelHandler") as mock_update_handler,
+        patch("models.lambda_functions.DeleteModelHandler") as mock_delete_handler,
+    ):
         # Setup handler mocks
         create_handler_instance = MagicMock()
         create_model_response = CreateModelResponse(
@@ -983,9 +983,11 @@ async def test_create_model_admin_required(
         modelId="test-model", modelName="test-model", modelType=ModelType.TEXTGEN, streaming=True
     )
 
-    with patch("utilities.auth.is_admin") as mock_is_admin, patch(
-        "utilities.auth.get_groups"
-    ) as mock_get_groups, patch("utilities.fastapi_middleware.auth_decorators.is_admin") as mock_decorator_is_admin:
+    with (
+        patch("utilities.auth.is_admin") as mock_is_admin,
+        patch("utilities.auth.get_groups") as mock_get_groups,
+        patch("utilities.fastapi_middleware.auth_decorators.is_admin") as mock_decorator_is_admin,
+    ):
         mock_is_admin.return_value = False
         mock_decorator_is_admin.return_value = False
         mock_get_groups.return_value = []
@@ -1007,9 +1009,11 @@ async def test_update_model_admin_required(
 
     update_request = UpdateModelRequest(streaming=False)
 
-    with patch("utilities.auth.is_admin") as mock_is_admin, patch(
-        "utilities.auth.get_groups"
-    ) as mock_get_groups, patch("utilities.fastapi_middleware.auth_decorators.is_admin") as mock_decorator_is_admin:
+    with (
+        patch("utilities.auth.is_admin") as mock_is_admin,
+        patch("utilities.auth.get_groups") as mock_get_groups,
+        patch("utilities.fastapi_middleware.auth_decorators.is_admin") as mock_decorator_is_admin,
+    ):
         mock_is_admin.return_value = False
         mock_decorator_is_admin.return_value = False
         mock_get_groups.return_value = []
@@ -1029,9 +1033,11 @@ async def test_delete_model_admin_required(
     mock_request = MagicMock(spec=Request)
     mock_request.scope = {"aws.event": non_admin_event}
 
-    with patch("utilities.auth.is_admin") as mock_is_admin, patch(
-        "utilities.auth.get_groups"
-    ) as mock_get_groups, patch("utilities.fastapi_middleware.auth_decorators.is_admin") as mock_decorator_is_admin:
+    with (
+        patch("utilities.auth.is_admin") as mock_is_admin,
+        patch("utilities.auth.get_groups") as mock_get_groups,
+        patch("utilities.fastapi_middleware.auth_decorators.is_admin") as mock_decorator_is_admin,
+    ):
         mock_is_admin.return_value = False
         mock_decorator_is_admin.return_value = False
         mock_get_groups.return_value = []
@@ -1053,10 +1059,11 @@ async def test_create_update_delete_admin_allowed(
     mock_request = MagicMock(spec=Request)
     mock_request.scope = {"aws.event": admin_event}
 
-    with patch("models.lambda_functions.CreateModelHandler") as mock_create_handler, patch(
-        "models.lambda_functions.UpdateModelHandler"
-    ) as mock_update_handler, patch("models.lambda_functions.DeleteModelHandler") as mock_delete_handler:
-
+    with (
+        patch("models.lambda_functions.CreateModelHandler") as mock_create_handler,
+        patch("models.lambda_functions.UpdateModelHandler") as mock_update_handler,
+        patch("models.lambda_functions.DeleteModelHandler") as mock_delete_handler,
+    ):
         # Mock create handler
         create_handler_instance = MagicMock()
         create_model_response = CreateModelResponse(

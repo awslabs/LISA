@@ -184,7 +184,6 @@ class DaySchedule(BaseModel):
     def validate_time_format(cls, v: str) -> str:
         """Validates time format is HH:MM."""
         try:
-
             datetime.strptime(v, "%H:%M")
         except ValueError:
             raise ValueError("Time must be in HH:MM format")
@@ -738,7 +737,7 @@ class FixedChunkingStrategy(BaseModel):
         """Validates overlap is not more than half of chunk size."""
         if self.overlap > self.size / 2:
             raise ValueError(
-                f"chunk overlap ({self.overlap}) must be less than or equal to " f"half of chunk size ({self.size / 2})"
+                f"chunk overlap ({self.overlap}) must be less than or equal to half of chunk size ({self.size / 2})"
             )
         return self
 

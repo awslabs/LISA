@@ -61,8 +61,7 @@ def sanitize_headers_for_logging(
     headers: dict[str, str],
     real_client_ip: str | None = None,
 ) -> dict[str, str]:
-    """
-    Sanitize HTTP headers by replacing user-controlled values with server-controlled values.
+    """Sanitize HTTP headers by replacing user-controlled values with server-controlled values.
 
     This prevents attackers from manipulating security-critical headers in logs,
     which could be used to hide their true source IP or manipulate audit trails.

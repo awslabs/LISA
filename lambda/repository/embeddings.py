@@ -104,7 +104,9 @@ class RagEmbeddings(BaseModel):
             raise
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        """Generate embeddings for a list of documents, automatically batching to stay within the embedding server's max
+        """Generate embeddings for a list of documents.
+
+        Automatically batching to stay within the embedding server's max
         batch size.
 
         Uses input_type="passage" so litellm applies the correct model-specific
@@ -155,7 +157,7 @@ class RagEmbeddings(BaseModel):
                 if attempt < MAX_RETRIES:
                     backoff = INITIAL_BACKOFF_SECONDS * (2 ** (attempt - 1))
                     logger.warning(
-                        f"Embedding attempt {attempt}/{MAX_RETRIES} failed: {e}. " f"Retrying in {backoff:.1f}s..."
+                        f"Embedding attempt {attempt}/{MAX_RETRIES} failed: {e}. Retrying in {backoff:.1f}s..."
                     )
                     time.sleep(backoff)
                 else:

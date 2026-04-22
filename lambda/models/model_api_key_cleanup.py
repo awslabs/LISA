@@ -12,8 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""
-Model API Key Cleanup Lambda
+"""Model API Key Cleanup Lambda.
 
 This Lambda function removes the api_key field from existing Bedrock models
 that were created with the old LiteLLM version that required api_key = "ignored".  # pragma: allowlist secret

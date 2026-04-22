@@ -80,8 +80,9 @@ def chat_stacks_handlers(patch_is_admin_for_chat_stacks):
     for mod in list(sys.modules.keys()):
         if mod == "chat_assistant_stacks" or mod.startswith("chat_assistant_stacks."):
             del sys.modules[mod]
-    with patch("utilities.common_functions.retry_config", retry_config), patch(
-        "utilities.common_functions.api_wrapper", mock_api_wrapper
+    with (
+        patch("utilities.common_functions.retry_config", retry_config),
+        patch("utilities.common_functions.api_wrapper", mock_api_wrapper),
     ):
         from chat_assistant_stacks.lambda_functions import (
             create,

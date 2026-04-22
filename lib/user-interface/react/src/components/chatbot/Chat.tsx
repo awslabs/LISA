@@ -69,7 +69,7 @@ import { useToolChain } from './hooks/useToolChain.hooks';
 import { useDynamicMaxRows } from './hooks/useDynamicMaxRows';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { buildMessageContent, buildMessageMetadata } from './utils/messageBuilder.utils';
-import { formatContextWindow } from '../model-management/ModelManagementUtils';
+import { formatContextAndTokenCount } from '../model-management/ModelManagementUtils';
 import { getButtonItems, useButtonActions } from './config/buttonConfig';
 import PromptPreview from './components/PromptPreview';
 import ChatPromptInput from './components/ChatPromptInput';
@@ -1565,7 +1565,7 @@ export default function Chat ({ sessionId, initialStack }) {
                                             if (!usedTokens) return null;
 
                                             return (
-                                                `${formatContextWindow(usedTokens)} - Tokens Used`
+                                                `${formatContextAndTokenCount(usedTokens)} - Tokens Used`
                                             );
                                         })()}
                                     </Box>

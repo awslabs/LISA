@@ -110,7 +110,7 @@ const formatScheduleDetails = (model: IModel) => {
     );
 };
 
-export function formatContextWindow (tokens?: number | null): string {
+export function formatContextAndTokenCount (tokens?: number | null): string {
     if (!tokens) return '-';
     if (tokens >= 1_000_000) return `${+(tokens / 1_000_000).toFixed(1)}M`;
     if (tokens >= 1_000) return `${+(tokens / 1_000).toFixed(1)}K`;
@@ -158,7 +158,7 @@ export const createCardDefinitions = (defaultModelId?: string) => ({
         {
             id: 'contextWindow',
             header: 'Context Window',
-            content: (model: IModel) => formatContextWindow(model.contextWindow),
+            content: (model: IModel) => formatContextAndTokenCount(model.contextWindow),
         },
         {
             id: 'scheduleType',

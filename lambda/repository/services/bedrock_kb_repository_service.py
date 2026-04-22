@@ -16,7 +16,7 @@
 
 import logging
 import os
-from typing import Any
+from typing import Any, ClassVar  # noqa: UP035
 
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -46,6 +46,8 @@ class BedrockKBRepositoryService(RepositoryService):
     Bedrock KB manages its own ingestion, chunking, and embedding pipeline.
     LISA only tracks documents and delegates actual operations to Bedrock.
     """
+
+    _hybrid_unsupported_kbs: ClassVar[set[str]] = set()
 
     def supports_custom_collections(self) -> bool:
         """Bedrock KB only supports default collections (data sources)."""
@@ -233,7 +235,12 @@ class BedrockKBRepositoryService(RepositoryService):
             logger.info("No LISA-managed documents to delete from KB")
 
     def supports_hybrid_search(self) -> bool:
-        """Bedrock KB supports hybrid search via overrideSearchType."""
+        """Bedrock KB supports hybrid search with automatic fallback.
+
+        Returns True because hybrid_retrieve() handles unsupported KBs
+        internally by falling back to semantic search. Individual KB
+        instances may or may not support hybrid; the fallback is transparent.
+        """
         return True
 
     def _build_retrieve_params(
@@ -364,6 +371,28 @@ class BedrockKBRepositoryService(RepositoryService):
         response = self._call_retrieve_api(bedrock_agent_client, retrieve_params, kb_id)
         return self._transform_retrieve_results(response, include_score)
 
+    def _semantic_fallback(
+        self,
+        query: str,
+        collection_id: str,
+        top_k: int,
+        include_score: bool,
+        bedrock_agent_client: Any,
+    ) -> list[dict[str, Any]]:
+        """Fall back to semantic search when hybrid is unsupported."""
+        retrieve_params, kb_id = self._build_retrieve_params(query, collection_id, top_k, bedrock_agent_client)
+        logger.info(f"Semantic fallback for KB: kb_id={kb_id}, data_source={collection_id}, query={query[:50]}...")
+        response = self._call_retrieve_api(bedrock_agent_client, retrieve_params, kb_id)
+        return self._transform_retrieve_results(
+            response,
+            include_score,
+            extra_metadata={
+                "retrieval_method": "hybrid",
+                "actual_mode_used": "semantic",
+                "hybrid_supported": False,
+            },
+        )
+
     def hybrid_retrieve(
         self,
         query: str,
@@ -375,24 +404,46 @@ class BedrockKBRepositoryService(RepositoryService):
         include_score: bool = False,
         bedrock_agent_client: Any | None = None,
     ) -> list[dict[str, Any]]:
-        """Retrieve documents using hybrid (semantic + lexical) search."""
+        """Retrieve documents using hybrid (semantic + lexical) search.
+
+        Falls back to semantic search if the KB does not support hybrid.
+        Caches unsupported KB IDs to avoid repeated failed attempts.
+        """
         retrieve_params, kb_id = self._build_retrieve_params(query, collection_id, top_k, bedrock_agent_client)
+
+        if kb_id in self._hybrid_unsupported_kbs:
+            logger.info(f"KB {kb_id} cached as hybrid-unsupported, using semantic search")
+            return self._semantic_fallback(query, collection_id, top_k, include_score, bedrock_agent_client)
 
         vector_config = retrieve_params["retrievalConfiguration"]["vectorSearchConfiguration"]
         vector_config["overrideSearchType"] = "HYBRID"
 
         logger.info(f"Hybrid retrieving from KB: kb_id={kb_id}, data_source={collection_id}, query={query[:50]}...")
 
-        response = self._call_retrieve_api(bedrock_agent_client, retrieve_params, kb_id)
-        return self._transform_retrieve_results(
-            response,
-            include_score,
-            extra_metadata={
-                "retrieval_method": "hybrid",
-                "actual_mode_used": "hybrid",
-                "hybrid_supported": True,
-            },
-        )
+        try:
+            response = self._call_retrieve_api(bedrock_agent_client, retrieve_params, kb_id)
+            return self._transform_retrieve_results(
+                response,
+                include_score,
+                extra_metadata={
+                    "retrieval_method": "hybrid",
+                    "actual_mode_used": "hybrid",
+                    "hybrid_supported": True,
+                },
+            )
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code", "")
+            if error_code != "ValidationException":
+                raise
+
+            error_message = str(e).lower()
+            hybrid_keywords = ("hybrid", "overridesearchtype", "override search type", "search type")
+            if not any(keyword in error_message for keyword in hybrid_keywords):
+                raise
+
+            logger.warning(f"KB {kb_id} does not support hybrid search, falling back to semantic")
+            self._hybrid_unsupported_kbs.add(kb_id)
+            return self._semantic_fallback(query, collection_id, top_k, include_score, bedrock_agent_client)
 
     def validate_document_source(self, s3_path: str) -> str:
         """Validate document is from KB data source bucket."""

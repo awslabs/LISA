@@ -24,9 +24,19 @@ os.environ.setdefault("AWS_REGION", "us-east-1")
 os.environ.setdefault("RAG_DOCUMENT_TABLE", "test-doc-table")
 os.environ.setdefault("RAG_SUB_DOCUMENT_TABLE", "test-subdoc-table")
 
+from botocore.exceptions import ClientError
 from models.domain_objects import CollectionStatus, IngestionJob, IngestionType, NoneChunkingStrategy, RagDocument
 from repository.rag_document_repo import RagDocumentRepository
 from repository.services.bedrock_kb_repository_service import BedrockKBRepositoryService
+from utilities.exceptions import ServiceUnavailableException
+
+
+@pytest.fixture(autouse=True)
+def clear_hybrid_cache():
+    """Reset hybrid-unsupported KB cache between tests."""
+    BedrockKBRepositoryService._hybrid_unsupported_kbs.clear()
+    yield
+    BedrockKBRepositoryService._hybrid_unsupported_kbs.clear()
 
 
 @pytest.fixture
@@ -379,3 +389,220 @@ class TestBedrockKBRepositoryService:
                 top_k=5,
                 model_name="m",
             )
+
+    def test_hybrid_retrieve_falls_back_on_validation_exception(self, bedrock_kb_service):
+        """First hybrid call to unsupported KB falls back to semantic search."""
+        mock_client = MagicMock()
+        error_response = {"Error": {"Code": "ValidationException", "Message": "Hybrid search not supported"}}
+        mock_client.retrieve.side_effect = [
+            ClientError(error_response, "Retrieve"),
+            {
+                "retrievalResults": [
+                    {
+                        "content": {"text": "fallback result"},
+                        "metadata": {},
+                        "score": 0.8,
+                        "location": {"s3Location": {"uri": "s3://b/d.pdf"}},
+                    }
+                ]
+            },
+        ]
+
+        results = bedrock_kb_service.hybrid_retrieve(
+            query="test",
+            collection_id="ds-456",
+            top_k=5,
+            model_name="m",
+            include_score=True,
+            bedrock_agent_client=mock_client,
+        )
+
+        assert len(results) == 1
+        assert results[0]["page_content"] == "fallback result"
+        assert results[0]["metadata"]["actual_mode_used"] == "semantic"
+        assert results[0]["metadata"]["hybrid_supported"] is False
+        assert results[0]["metadata"]["retrieval_method"] == "hybrid"
+        assert results[0]["metadata"]["similarity_score"] == 0.8
+        assert mock_client.retrieve.call_count == 2
+
+    def test_hybrid_retrieve_uses_cache_on_second_call(self, bedrock_kb_service):
+        """Second call to same KB skips hybrid attempt entirely."""
+        mock_client = MagicMock()
+        error_response = {"Error": {"Code": "ValidationException", "Message": "Hybrid not supported"}}
+        mock_client.retrieve.side_effect = [
+            ClientError(error_response, "Retrieve"),
+            {"retrievalResults": []},
+            {"retrievalResults": []},
+        ]
+
+        bedrock_kb_service.hybrid_retrieve(
+            query="q1", collection_id="ds-456", top_k=5, model_name="m", bedrock_agent_client=mock_client
+        )
+        bedrock_kb_service.hybrid_retrieve(
+            query="q2", collection_id="ds-456", top_k=5, model_name="m", bedrock_agent_client=mock_client
+        )
+
+        assert mock_client.retrieve.call_count == 3
+
+    def test_hybrid_retrieve_fallback_metadata_on_all_docs(self, bedrock_kb_service):
+        """All documents in fallback response include correct metadata."""
+        mock_client = MagicMock()
+        error_response = {"Error": {"Code": "ValidationException", "Message": "Hybrid not supported"}}
+        mock_client.retrieve.side_effect = [
+            ClientError(error_response, "Retrieve"),
+            {
+                "retrievalResults": [
+                    {
+                        "content": {"text": "doc1"},
+                        "metadata": {},
+                        "score": 0.9,
+                        "location": {"s3Location": {"uri": "s3://b/a.pdf"}},
+                    },
+                    {
+                        "content": {"text": "doc2"},
+                        "metadata": {},
+                        "score": 0.7,
+                        "location": {"s3Location": {"uri": "s3://b/b.pdf"}},
+                    },
+                ]
+            },
+        ]
+
+        results = bedrock_kb_service.hybrid_retrieve(
+            query="test",
+            collection_id="ds-456",
+            top_k=5,
+            model_name="m",
+            include_score=True,
+            bedrock_agent_client=mock_client,
+        )
+
+        assert len(results) == 2
+        for doc in results:
+            assert doc["metadata"]["actual_mode_used"] == "semantic"
+            assert doc["metadata"]["hybrid_supported"] is False
+            assert doc["metadata"]["retrieval_method"] == "hybrid"
+
+    def test_hybrid_retrieve_reraises_non_validation_client_error(self, bedrock_kb_service):
+        """Non-ValidationException ClientErrors propagate normally."""
+        mock_client = MagicMock()
+        error_response = {"Error": {"Code": "AccessDeniedException", "Message": "No access"}}
+        mock_client.retrieve.side_effect = ClientError(error_response, "Retrieve")
+
+        with pytest.raises(ClientError):
+            bedrock_kb_service.hybrid_retrieve(
+                query="test", collection_id="ds-456", top_k=5, model_name="m", bedrock_agent_client=mock_client
+            )
+
+    def test_hybrid_retrieve_reraises_non_client_error(self, bedrock_kb_service):
+        """Non-ClientError exceptions propagate normally."""
+        mock_client = MagicMock()
+        mock_client.retrieve.side_effect = RuntimeError("connection lost")
+
+        with pytest.raises(RuntimeError, match="connection lost"):
+            bedrock_kb_service.hybrid_retrieve(
+                query="test", collection_id="ds-456", top_k=5, model_name="m", bedrock_agent_client=mock_client
+            )
+
+    def test_hybrid_retrieve_does_not_catch_auto_pause_exception(self, bedrock_kb_service):
+        """Auto-pause ServiceUnavailableException propagates through fallback."""
+        mock_client = MagicMock()
+        error_response = {"Error": {"Code": "ValidationException", "Message": "The Aurora cluster is auto-paused"}}
+        mock_client.retrieve.side_effect = ClientError(error_response, "Retrieve")
+
+        with pytest.raises(ServiceUnavailableException, match="starting up"):
+            bedrock_kb_service.hybrid_retrieve(
+                query="test", collection_id="ds-456", top_k=5, model_name="m", bedrock_agent_client=mock_client
+            )
+
+    def test_hybrid_retrieve_propagates_non_hybrid_validation_exception(self, bedrock_kb_service):
+        """Non-hybrid ValidationException (e.g., invalid filter) must NOT trigger fallback."""
+        mock_client = MagicMock()
+        error_response = {"Error": {"Code": "ValidationException", "Message": "Invalid filter expression"}}
+        mock_client.retrieve.side_effect = ClientError(error_response, "Retrieve")
+
+        with pytest.raises(ClientError) as exc_info:
+            bedrock_kb_service.hybrid_retrieve(
+                query="test",
+                collection_id="ds-456",
+                top_k=5,
+                model_name="m",
+                bedrock_agent_client=mock_client,
+            )
+
+        assert "Invalid filter expression" in str(exc_info.value)
+        assert "kb-123" not in BedrockKBRepositoryService._hybrid_unsupported_kbs
+
+    def test_hybrid_retrieve_cache_isolation_between_kb_ids(self):
+        """Caching KB-A as hybrid-unsupported does not affect KB-B."""
+        repo_a = {
+            "repositoryId": "repo-a",
+            "type": "bedrock_knowledge_base",
+            "bedrockKnowledgeBaseConfig": {
+                "knowledgeBaseId": "kb-aaa",
+                "bedrockKnowledgeDatasourceId": "ds-a",
+            },
+        }
+        repo_b = {
+            "repositoryId": "repo-b",
+            "type": "bedrock_knowledge_base",
+            "bedrockKnowledgeBaseConfig": {
+                "knowledgeBaseId": "kb-bbb",
+                "bedrockKnowledgeDatasourceId": "ds-b",
+            },
+        }
+        service_a = BedrockKBRepositoryService(repo_a)
+        service_b = BedrockKBRepositoryService(repo_b)
+
+        mock_client = MagicMock()
+        error_response = {
+            "Error": {
+                "Code": "ValidationException",
+                "Message": "Hybrid search is not supported for this knowledge base",
+            }
+        }
+        mock_client.retrieve.side_effect = [
+            ClientError(error_response, "Retrieve"),
+            {"retrievalResults": []},
+        ]
+
+        service_a.hybrid_retrieve(
+            query="q", collection_id="ds-a", top_k=3, model_name="m", bedrock_agent_client=mock_client
+        )
+
+        assert "kb-aaa" in BedrockKBRepositoryService._hybrid_unsupported_kbs
+        assert "kb-bbb" not in BedrockKBRepositoryService._hybrid_unsupported_kbs
+
+        mock_client.retrieve.reset_mock()
+        mock_client.retrieve.side_effect = None
+        mock_client.retrieve.return_value = {"retrievalResults": []}
+
+        service_b.hybrid_retrieve(
+            query="q", collection_id="ds-b", top_k=3, model_name="m", bedrock_agent_client=mock_client
+        )
+
+        call_args = mock_client.retrieve.call_args[1]
+        vector_config = call_args["retrievalConfiguration"]["vectorSearchConfiguration"]
+        assert vector_config.get("overrideSearchType") == "HYBRID"
+
+    def test_hybrid_retrieve_propagates_fallback_failure(self, bedrock_kb_service):
+        """If semantic fallback also fails, the error propagates."""
+        mock_client = MagicMock()
+        hybrid_error = {"Error": {"Code": "ValidationException", "Message": "Hybrid search is not supported"}}
+        throttle_error = {"Error": {"Code": "ThrottlingException", "Message": "Rate exceeded"}}
+        mock_client.retrieve.side_effect = [
+            ClientError(hybrid_error, "Retrieve"),
+            ClientError(throttle_error, "Retrieve"),
+        ]
+
+        with pytest.raises(ClientError) as exc_info:
+            bedrock_kb_service.hybrid_retrieve(
+                query="test",
+                collection_id="ds-456",
+                top_k=5,
+                model_name="m",
+                bedrock_agent_client=mock_client,
+            )
+
+        assert "ThrottlingException" in str(exc_info.value)
+        assert mock_client.retrieve.call_count == 2

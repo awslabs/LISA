@@ -13,8 +13,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""
-LISA Inference Metrics Publisher
+"""LISA Inference Metrics Publisher.
 
 Background daemon that scrapes Prometheus metrics from inference engine
 endpoints (vLLM, TGI, TEI) and publishes them to CloudWatch.

@@ -1,22 +1,23 @@
 # AWS SDK Dependencies
-# Keep boto3 aligned with LiteLLM / RDS IAM token refresh expectations (loose range, not hard-pinned).
-boto3>=1.40.76,<1.41.0
+# Keep boto3 aligned with LiteLLM / RDS IAM token refresh expectations.
+# litellm[proxy]==1.83.11 pins boto3==1.42.59
+boto3>=1.42.59,<1.43.0
 
 # OpenTelemetry - Optional for LiteLLM Weave integration, silences import warnings
-opentelemetry-api>=1.20.0
-opentelemetry-sdk>=1.20.0
+opentelemetry-api>=1.41.0
+opentelemetry-sdk>=1.41.0
 
 aiohttp>=3.13.3,<4.0.0
 backoff>=2.2.1,<3.0.0
 cachetools>=7.0.2,<8.0.0
-click>=8.3.0,<9.0.0
+click>=8.1.8,<9.0.0
 cryptography>=46.0.5,<47.0.0
-fastapi>=0.120.1
+fastapi>=0.124.4
 gunicorn>=23.0.0,<24.0.0
 
 # LiteLLM — pinned by policy (orchestration / proxy compatibility).
 # Fixes: "All connection attempts failed" errors every 15 minutes with IAM auth (older LiteLLM).
-litellm[proxy]==1.83.0
+litellm[proxy]==1.83.11
 
 loguru>=0.7.3,<0.8.0
 pydantic>=2.5.0,<3.0.0

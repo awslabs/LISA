@@ -18,10 +18,10 @@ from unittest.mock import MagicMock
 
 import pytest
 from botocore.exceptions import ClientError
-from models.domain_objects import BedrockAgentAliasSummary
-from utilities import bedrock_agent_discovery as bed_ad
-from utilities.bedrock_agent_discovery import discover_bedrock_agents, list_agent_aliases, TST_ALIAS_ID
-from utilities.validation import ValidationError
+from lisa.domain.domain_objects import BedrockAgentAliasSummary
+from lisa.utilities import bedrock_agent_discovery as bed_ad
+from lisa.utilities.bedrock_agent_discovery import discover_bedrock_agents, list_agent_aliases, TST_ALIAS_ID
+from lisa.utilities.validation import ValidationError
 
 
 @pytest.fixture

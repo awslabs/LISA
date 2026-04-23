@@ -26,9 +26,9 @@ from unittest.mock import MagicMock, patch
 import boto3
 import pytest
 from botocore.config import Config
+from lisa.utilities.exceptions import HTTPException
+from lisa.utilities.validation import ValidationError as UtilitiesValidationError
 from moto import mock_aws
-from utilities.exceptions import HTTPException
-from utilities.validation import ValidationError as UtilitiesValidationError
 
 # Add the lambda directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../"))
@@ -105,8 +105,8 @@ def mock_admin_only(func):
     @functools.wraps(func)
     def wrapper(event, context, *args, **kwargs):
         # Import here to get the mocked version
-        from utilities.auth import is_admin
-        from utilities.exceptions import HTTPException
+        from lisa.utilities.auth import is_admin
+        from lisa.utilities.exceptions import HTTPException
 
         # Check admin status using the mocked is_admin function
         if not is_admin(event):
@@ -122,9 +122,9 @@ mock_create_env = MagicMock()
 # Patch BEFORE importing to ensure decorators use mocked api_wrapper and admin_only
 # These patches are module-scoped and cleaned up when pytest finishes
 _patch_create_env = patch.dict("sys.modules", {"create_env_variables": mock_create_env})
-_patch_retry_config = patch("utilities.common_functions.retry_config", retry_config)
-_patch_api_wrapper = patch("utilities.common_functions.api_wrapper", mock_api_wrapper)
-_patch_admin_only = patch("utilities.auth.admin_only", mock_admin_only)
+_patch_retry_config = patch("lisa.utilities.common_functions.retry_config", retry_config)
+_patch_api_wrapper = patch("lisa.utilities.common_functions.api_wrapper", mock_api_wrapper)
+_patch_admin_only = patch("lisa.utilities.auth.admin_only", mock_admin_only)
 
 # Start patches - they'll be active for the lifetime of this test module
 _patch_create_env.start()
@@ -1724,7 +1724,7 @@ def test_update_hosted_mcp_server_not_found(mcp_servers_table, lambda_context, m
 
 def test_list_bedrock_agents_success():
     """Test listing approved Bedrock Agents merged with discovery (MCP Lambda)."""
-    from models.domain_objects import BedrockAgentDiscoveryItem
+    from lisa.domain.domain_objects import BedrockAgentDiscoveryItem
 
     event = {
         "requestContext": {
@@ -1856,7 +1856,7 @@ def test_invoke_bedrock_agent_function_mode_builds_prompt():
 
 def test_list_bedrock_agents_merge_not_in_account(mock_auth, lambda_context):
     """Catalog approval without matching AWS discovery yields NOT_IN_ACCOUNT row."""
-    from models.domain_objects import BedrockAgentDiscoveryItem
+    from lisa.domain.domain_objects import BedrockAgentDiscoveryItem
 
     set_auth_user(mock_auth, "user1", ["everyone"], False)
     approval = {
@@ -1891,7 +1891,7 @@ def test_list_bedrock_agents_merge_not_in_account(mock_auth, lambda_context):
 
 
 def test_list_bedrock_agents_discovery_admin(mock_auth, lambda_context):
-    from models.domain_objects import BedrockAgentDiscoveryItem
+    from lisa.domain.domain_objects import BedrockAgentDiscoveryItem
 
     set_auth_user(mock_auth, "admin-user", [], True)
     item = BedrockAgentDiscoveryItem(

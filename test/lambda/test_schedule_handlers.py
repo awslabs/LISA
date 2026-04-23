@@ -19,7 +19,7 @@ import os
 from unittest.mock import MagicMock, patch
 
 import pytest
-from models.domain_objects import (
+from lisa.domain.domain_objects import (
     DaySchedule,
     DeleteScheduleResponse,
     GetScheduleResponse,
@@ -27,15 +27,15 @@ from models.domain_objects import (
     RecurringSchedulingConfig,
     UpdateScheduleResponse,
 )
-from models.exception import InvalidStateTransitionError, ModelNotFoundError
-from models.handler.schedule_handlers import (
+from lisa.domain.exception import InvalidStateTransitionError, ModelNotFoundError
+from lisa.domain.handler.schedule_handlers import (
     DeleteScheduleHandler,
     GetScheduleHandler,
     GetScheduleStatusHandler,
     UpdateScheduleHandler,
 )
-from utilities.auth import user_has_group_access
-from utilities.validation import ValidationError
+from lisa.utilities.auth import user_has_group_access
+from lisa.utilities.validation import ValidationError
 
 # Set mock AWS credentials
 os.environ["AWS_ACCESS_KEY_ID"] = "testing"
@@ -115,7 +115,7 @@ def sample_schedule_config():
 class TestUpdateScheduleHandler:
     """Test UpdateScheduleHandler class."""
 
-    @patch("models.handler.schedule_handlers.schedule_management.update_schedule")
+    @patch("lisa.domain.handler.schedule_handlers.schedule_management.update_schedule")
     def test_successful_update_schedule(
         self,
         mock_update_schedule,
@@ -265,7 +265,7 @@ class TestUpdateScheduleHandler:
 class TestGetScheduleHandler:
     """Test GetScheduleHandler class."""
 
-    @patch("models.handler.schedule_handlers.schedule_management.get_schedule")
+    @patch("lisa.domain.handler.schedule_handlers.schedule_management.get_schedule")
     def test_successful_get_schedule(
         self,
         mock_get_schedule,
@@ -326,7 +326,7 @@ class TestGetScheduleHandler:
 class TestDeleteScheduleHandler:
     """Test DeleteScheduleHandler class."""
 
-    @patch("models.handler.schedule_handlers.schedule_management.delete_schedule")
+    @patch("lisa.domain.handler.schedule_handlers.schedule_management.delete_schedule")
     def test_successful_delete_schedule(
         self,
         mock_delete_schedule,
@@ -590,7 +590,7 @@ class TestUpdateScheduleHandlerGroupAccess:
             {"statusCode": 200, "body": {"message": "Schedule updated successfully"}}
         ).encode()
 
-        with patch("models.handler.schedule_handlers.schedule_management.update_schedule") as mock_update_schedule:
+        with patch("lisa.domain.handler.schedule_handlers.schedule_management.update_schedule") as mock_update_schedule:
             mock_update_schedule.return_value = {
                 "statusCode": 200,
                 "body": {"message": "Schedule updated successfully", "scheduleEnabled": True},
@@ -677,7 +677,7 @@ class TestUpdateScheduleHandlerGroupAccess:
             {"statusCode": 200, "body": {"message": "Schedule updated successfully"}}
         ).encode()
 
-        with patch("models.handler.schedule_handlers.schedule_management.update_schedule") as mock_update_schedule:
+        with patch("lisa.domain.handler.schedule_handlers.schedule_management.update_schedule") as mock_update_schedule:
             mock_update_schedule.return_value = {
                 "statusCode": 200,
                 "body": {"message": "Schedule updated successfully", "scheduleEnabled": True},
@@ -788,7 +788,7 @@ class TestGetScheduleStatusHandlerGroupAccess:
 class TestLambdaInvocationErrorHandling:
     """Test Lambda invocation error handling scenarios."""
 
-    @patch("models.handler.schedule_handlers.schedule_management.update_schedule")
+    @patch("lisa.domain.handler.schedule_handlers.schedule_management.update_schedule")
     def test_update_schedule_lambda_error_response_format_string_body(
         self,
         mock_update_schedule,
@@ -815,7 +815,7 @@ class TestLambdaInvocationErrorHandling:
         with pytest.raises(ValueError, match="Failed to create/update schedule: Internal server error"):
             handler(model_id="test-model", schedule_config=sample_schedule_config)
 
-    @patch("models.handler.schedule_handlers.schedule_management.update_schedule")
+    @patch("lisa.domain.handler.schedule_handlers.schedule_management.update_schedule")
     def test_update_schedule_lambda_invalid_json_body(
         self,
         mock_update_schedule,
@@ -842,7 +842,7 @@ class TestLambdaInvocationErrorHandling:
         with pytest.raises(ValueError, match="Failed to create/update schedule: invalid json"):
             handler(model_id="test-model", schedule_config=sample_schedule_config)
 
-    @patch("models.handler.schedule_handlers.schedule_management.get_schedule")
+    @patch("lisa.domain.handler.schedule_handlers.schedule_management.get_schedule")
     def test_get_schedule_lambda_error_handling(
         self,
         mock_get_schedule,
@@ -868,7 +868,7 @@ class TestLambdaInvocationErrorHandling:
         with pytest.raises(ValueError, match="Failed to get schedule: Schedule management failed"):
             handler(model_id="test-model")
 
-    @patch("models.handler.schedule_handlers.schedule_management.delete_schedule")
+    @patch("lisa.domain.handler.schedule_handlers.schedule_management.delete_schedule")
     def test_delete_schedule_lambda_error_handling(
         self,
         mock_delete_schedule,

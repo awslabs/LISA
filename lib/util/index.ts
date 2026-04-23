@@ -15,4 +15,7 @@
 */
 
 export * from './codeFactory';
+export * from './definePythonLambda';
+export * from './lambdaCode';
+export * from './lambdaLayers';
 export * from './paths';

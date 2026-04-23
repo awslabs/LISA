@@ -17,8 +17,8 @@
 from unittest.mock import MagicMock
 
 import pytest
-from models.domain_objects import IngestionJob, IngestionType, JobActionType, NoneChunkingStrategy
-from utilities.bedrock_kb import (
+from lisa.domain.domain_objects import IngestionJob, IngestionType, JobActionType, NoneChunkingStrategy
+from lisa.utilities.bedrock_kb import (
     bulk_delete_documents_from_kb,
     delete_document_from_kb,
     ingest_bedrock_s3_documents,
@@ -404,7 +404,7 @@ class TestGetDatasourceBucketForCollection:
 
     def test_get_bucket_legacy_format(self):
         """Test getting bucket from legacy format."""
-        from utilities.bedrock_kb import get_datasource_bucket_for_collection
+        from lisa.utilities.bedrock_kb import get_datasource_bucket_for_collection
 
         # Arrange
         repository = {
@@ -422,7 +422,7 @@ class TestGetDatasourceBucketForCollection:
 
     def test_get_bucket_from_pipelines(self):
         """Test getting bucket from pipelines array."""
-        from utilities.bedrock_kb import get_datasource_bucket_for_collection
+        from lisa.utilities.bedrock_kb import get_datasource_bucket_for_collection
 
         # Arrange
         repository = {
@@ -442,7 +442,7 @@ class TestGetDatasourceBucketForCollection:
 
     def test_get_bucket_from_data_sources(self):
         """Test getting bucket from dataSources array."""
-        from utilities.bedrock_kb import get_datasource_bucket_for_collection
+        from lisa.utilities.bedrock_kb import get_datasource_bucket_for_collection
 
         # Arrange
         repository = {
@@ -463,7 +463,7 @@ class TestGetDatasourceBucketForCollection:
 
     def test_get_bucket_invalid_s3_uri(self):
         """Test handling of invalid S3 URI format."""
-        from utilities.bedrock_kb import get_datasource_bucket_for_collection
+        from lisa.utilities.bedrock_kb import get_datasource_bucket_for_collection
 
         # Arrange
         repository = {
@@ -481,7 +481,7 @@ class TestGetDatasourceBucketForCollection:
 
     def test_get_bucket_not_found(self):
         """Test handling when bucket configuration is not found."""
-        from utilities.bedrock_kb import get_datasource_bucket_for_collection
+        from lisa.utilities.bedrock_kb import get_datasource_bucket_for_collection
 
         # Arrange
         repository = {
@@ -496,7 +496,7 @@ class TestGetDatasourceBucketForCollection:
 
     def test_get_bucket_from_pipelines_object_format(self):
         """Test getting bucket from pipelines with object format."""
-        from utilities.bedrock_kb import get_datasource_bucket_for_collection
+        from lisa.utilities.bedrock_kb import get_datasource_bucket_for_collection
 
         # Arrange
         class Pipeline:
@@ -546,7 +546,7 @@ class TestIngestDocumentToKBWithMultipleFormats:
 
     def test_ingest_with_pipelines_config(self, mock_s3_client, mock_bedrock_agent_client, sample_job):
         """Test ingestion with pipelines configuration."""
-        from utilities.bedrock_kb import ingest_document_to_kb
+        from lisa.utilities.bedrock_kb import ingest_document_to_kb
 
         # Arrange
         repository = {
@@ -568,7 +568,7 @@ class TestIngestDocumentToKBWithMultipleFormats:
 
     def test_ingest_with_data_sources_config(self, mock_s3_client, mock_bedrock_agent_client, sample_job):
         """Test ingestion with dataSources configuration."""
-        from utilities.bedrock_kb import ingest_document_to_kb
+        from lisa.utilities.bedrock_kb import ingest_document_to_kb
 
         # Arrange
         repository = {
@@ -590,7 +590,7 @@ class TestIngestDocumentToKBWithMultipleFormats:
 
     def test_ingest_missing_kb_id(self, mock_s3_client, mock_bedrock_agent_client, sample_job):
         """Test ingestion with missing knowledge base ID."""
-        from utilities.bedrock_kb import ingest_document_to_kb
+        from lisa.utilities.bedrock_kb import ingest_document_to_kb
 
         # Arrange
         repository = {
@@ -633,7 +633,7 @@ class TestDeleteDocumentFromKBWithMultipleFormats:
 
     def test_delete_with_pipelines_config(self, mock_s3_client, mock_bedrock_agent_client, sample_job):
         """Test deletion with pipelines configuration."""
-        from utilities.bedrock_kb import delete_document_from_kb
+        from lisa.utilities.bedrock_kb import delete_document_from_kb
 
         # Arrange
         repository = {
@@ -655,7 +655,7 @@ class TestDeleteDocumentFromKBWithMultipleFormats:
 
     def test_delete_missing_kb_id(self, mock_s3_client, mock_bedrock_agent_client, sample_job):
         """Test deletion with missing knowledge base ID."""
-        from utilities.bedrock_kb import delete_document_from_kb
+        from lisa.utilities.bedrock_kb import delete_document_from_kb
 
         # Arrange
         repository = {
@@ -686,7 +686,7 @@ class TestBulkDeleteWithMultipleFormats:
 
     def test_bulk_delete_with_data_sources_array(self, mock_s3_client, mock_bedrock_agent_client):
         """Test bulk delete with dataSources array."""
-        from utilities.bedrock_kb import bulk_delete_documents_from_kb
+        from lisa.utilities.bedrock_kb import bulk_delete_documents_from_kb
 
         # Arrange
         repository = {
@@ -710,7 +710,7 @@ class TestBulkDeleteWithMultipleFormats:
 
     def test_bulk_delete_with_data_sources_object_format(self, mock_s3_client, mock_bedrock_agent_client):
         """Test bulk delete with dataSources in object format."""
-        from utilities.bedrock_kb import bulk_delete_documents_from_kb
+        from lisa.utilities.bedrock_kb import bulk_delete_documents_from_kb
 
         # Arrange
         class DataSource:
@@ -736,7 +736,7 @@ class TestBulkDeleteWithMultipleFormats:
 
     def test_bulk_delete_with_legacy_datasource_id(self, mock_s3_client, mock_bedrock_agent_client):
         """Test bulk delete with legacy datasource ID."""
-        from utilities.bedrock_kb import bulk_delete_documents_from_kb
+        from lisa.utilities.bedrock_kb import bulk_delete_documents_from_kb
 
         # Arrange
         repository = {
@@ -758,7 +758,7 @@ class TestBulkDeleteWithMultipleFormats:
 
     def test_bulk_delete_missing_kb_id(self, mock_s3_client, mock_bedrock_agent_client):
         """Test bulk delete with missing knowledge base ID."""
-        from utilities.bedrock_kb import bulk_delete_documents_from_kb
+        from lisa.utilities.bedrock_kb import bulk_delete_documents_from_kb
 
         # Arrange
         repository = {
@@ -789,7 +789,7 @@ class TestCreateS3ScanJob:
 
     def test_create_s3_scan_job_with_prefix(self, mock_ingestion_job_repo, mock_ingestion_service):
         """Test creating S3 scan job with prefix."""
-        from utilities.bedrock_kb import create_s3_scan_job
+        from lisa.utilities.bedrock_kb import create_s3_scan_job
 
         # Act
         create_s3_scan_job(
@@ -814,7 +814,7 @@ class TestCreateS3ScanJob:
 
     def test_create_s3_scan_job_without_prefix(self, mock_ingestion_job_repo, mock_ingestion_service):
         """Test creating S3 scan job without prefix."""
-        from utilities.bedrock_kb import create_s3_scan_job
+        from lisa.utilities.bedrock_kb import create_s3_scan_job
 
         # Act
         create_s3_scan_job(
@@ -889,7 +889,7 @@ class TestS3DocumentDiscoveryService:
         mock_vector_store_repo,
     ):
         """Create S3DocumentDiscoveryService instance."""
-        from utilities.bedrock_kb import S3DocumentDiscoveryService
+        from lisa.utilities.bedrock_kb import S3DocumentDiscoveryService
 
         return S3DocumentDiscoveryService(
             s3_client=mock_s3_client,

@@ -18,8 +18,6 @@ import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
-import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
-import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
@@ -27,7 +25,7 @@ import { BaseProps } from '../../schema';
 import { createLambdaRole } from '../../core/utils';
 import { getAuditLoggingEnv } from '../../api-base/auditEnv';
 import { Vpc } from '../../networking/vpc';
-import { LAMBDA_PATH } from '../../util';
+import { getPythonLambdaLayers } from '../../util';
 import { RemovalPolicy } from 'aws-cdk-lib';
 
 /**
@@ -58,18 +56,7 @@ export class UserPreferencesApi extends Construct {
 
         const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
 
-        // Get common layer based on arn from SSM due to issues with cross stack references
-        const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
-            this,
-            'user-preferences-common-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
-        );
-
-        const fastapiLambdaLayer = LayerVersion.fromLayerVersionArn(
-            this,
-            'user-preferences-fastapi-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/fastapi`),
-        );
+        const lambdaLayers = getPythonLambdaLayers(this, config, ['common', 'fastapi'], 'UserPreferences');
 
         // Create DynamoDB table to handle user preferences
         const userPreferencesTable = new dynamodb.Table(this, 'UserPreferencesTable', {
@@ -114,13 +101,12 @@ export class UserPreferencesApi extends Construct {
         ];
 
         const lambdaRole: IRole = createLambdaRole(this, config.deploymentName, 'UserPreferencesApi', userPreferencesTable.tableArn, config.roles?.LambdaExecutionRole);
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         apis.forEach((f) => {
             const lambdaFunction = registerAPIEndpoint(
                 this,
                 restApi,
-                lambdaPath,
-                [commonLambdaLayer, fastapiLambdaLayer],
+                config,
+                lambdaLayers,
                 f,
                 getPythonRuntime(),
                 vpc,

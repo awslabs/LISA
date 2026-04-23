@@ -84,7 +84,7 @@ def test_extract_chunk_strategy_unsupported_type(setup_env):
 
 def test_batch_texts(setup_env):
     """Test batch_texts splits texts into batches."""
-    from repository.pipeline_ingest_documents import batch_texts
+    from lisa.rag.pipeline_ingest_documents import batch_texts
 
     texts = [f"text{i}" for i in range(1200)]
     metadatas = [{"id": i} for i in range(1200)]
@@ -99,7 +99,7 @@ def test_batch_texts(setup_env):
 
 def test_prepare_chunks(setup_env):
     """Test prepare_chunks extracts texts and metadatas."""
-    from repository.pipeline_ingest_documents import prepare_chunks
+    from lisa.rag.pipeline_ingest_documents import prepare_chunks
 
     mock_doc1 = Mock()
     mock_doc1.page_content = "content1"
@@ -117,7 +117,7 @@ def test_prepare_chunks(setup_env):
 
 def test_store_chunks_in_vectorstore(setup_env):
     """Test store_chunks_in_vectorstore stores chunks in batches."""
-    from repository.pipeline_ingest_documents import store_chunks_in_vectorstore
+    from lisa.rag.pipeline_ingest_documents import store_chunks_in_vectorstore
 
     texts = [f"text{i}" for i in range(1200)]
     metadatas = [{"id": i} for i in range(1200)]
@@ -128,9 +128,9 @@ def test_store_chunks_in_vectorstore(setup_env):
     mock_service = Mock()
     mock_service.get_vector_store_client.return_value = mock_vs
 
-    with patch("repository.pipeline_ingest_documents.RagEmbeddings"), patch(
-        "repository.pipeline_ingest_documents.VectorStoreRepository"
-    ) as mock_vs_repo, patch("repository.pipeline_ingest_documents.RepositoryServiceFactory") as mock_factory:
+    with patch("lisa.rag.pipeline_ingest_documents.RagEmbeddings"), patch(
+        "lisa.rag.pipeline_ingest_documents.VectorStoreRepository"
+    ) as mock_vs_repo, patch("lisa.rag.pipeline_ingest_documents.RepositoryServiceFactory") as mock_factory:
         mock_vs_repo.return_value.find_repository_by_id.return_value = {"repositoryId": "repo1", "type": "opensearch"}
         mock_factory.create_service.return_value = mock_service
 
@@ -142,7 +142,7 @@ def test_store_chunks_in_vectorstore(setup_env):
 
 def test_store_chunks_in_vectorstore_failure(setup_env):
     """Test store_chunks_in_vectorstore raises error on failure."""
-    from repository.pipeline_ingest_documents import store_chunks_in_vectorstore
+    from lisa.rag.pipeline_ingest_documents import store_chunks_in_vectorstore
 
     texts = ["text1"]
     metadatas = [{"id": 1}]
@@ -153,9 +153,9 @@ def test_store_chunks_in_vectorstore_failure(setup_env):
     mock_service = Mock()
     mock_service.get_vector_store_client.return_value = mock_vs
 
-    with patch("repository.pipeline_ingest_documents.RagEmbeddings"), patch(
-        "repository.pipeline_ingest_documents.VectorStoreRepository"
-    ) as mock_vs_repo, patch("repository.pipeline_ingest_documents.RepositoryServiceFactory") as mock_factory:
+    with patch("lisa.rag.pipeline_ingest_documents.RagEmbeddings"), patch(
+        "lisa.rag.pipeline_ingest_documents.VectorStoreRepository"
+    ) as mock_vs_repo, patch("lisa.rag.pipeline_ingest_documents.RepositoryServiceFactory") as mock_factory:
         mock_vs_repo.return_value.find_repository_by_id.return_value = {"repositoryId": "repo1", "type": "opensearch"}
         mock_factory.create_service.return_value = mock_service
 
@@ -165,8 +165,8 @@ def test_store_chunks_in_vectorstore_failure(setup_env):
 
 def test_pipeline_ingest_bedrock_kb(setup_env):
     """Test pipeline_ingest with Bedrock KB repository - only tracks documents."""
-    from models.domain_objects import IngestionJob, IngestionStatus, NoneChunkingStrategy
-    from utilities.repository_types import RepositoryType
+    from lisa.domain.domain_objects import IngestionJob, IngestionStatus, NoneChunkingStrategy
+    from lisa.utilities.repository_types import RepositoryType
 
     job = IngestionJob(
         repository_id="repo1",
@@ -185,14 +185,14 @@ def test_pipeline_ingest_bedrock_kb(setup_env):
         },
     }
 
-    with patch("repository.pipeline_ingest_documents.vs_repo") as mock_vs_repo, patch(
-        "repository.pipeline_ingest_documents.rag_document_repository"
-    ) as mock_doc_repo, patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo:
+    with patch("lisa.rag.pipeline_ingest_documents.vs_repo") as mock_vs_repo, patch(
+        "lisa.rag.pipeline_ingest_documents.rag_document_repository"
+    ) as mock_doc_repo, patch("lisa.rag.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo:
 
         mock_vs_repo.find_repository_by_id.return_value = bedrock_kb_repo
         mock_doc_repo.find_by_source.return_value = []
 
-        from repository.pipeline_ingest_documents import pipeline_ingest
+        from lisa.rag.pipeline_ingest_documents import pipeline_ingest
 
         pipeline_ingest(job)
 
@@ -204,8 +204,8 @@ def test_pipeline_ingest_bedrock_kb(setup_env):
 
 def test_pipeline_ingest_bedrock_kb_copy_from_lisa_bucket(setup_env):
     """Test pipeline_ingest with Bedrock KB repository - copies from LISA bucket to KB bucket."""
-    from models.domain_objects import IngestionJob, IngestionStatus, NoneChunkingStrategy
-    from utilities.repository_types import RepositoryType
+    from lisa.domain.domain_objects import IngestionJob, IngestionStatus, NoneChunkingStrategy
+    from lisa.utilities.repository_types import RepositoryType
 
     job = IngestionJob(
         repository_id="repo1",
@@ -225,18 +225,18 @@ def test_pipeline_ingest_bedrock_kb_copy_from_lisa_bucket(setup_env):
         },
     }
 
-    with patch("repository.pipeline_ingest_documents.vs_repo") as mock_vs_repo, patch(
-        "repository.pipeline_ingest_documents.rag_document_repository"
-    ) as mock_doc_repo, patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo, patch(
-        "repository.pipeline_ingest_documents.s3"
+    with patch("lisa.rag.pipeline_ingest_documents.vs_repo") as mock_vs_repo, patch(
+        "lisa.rag.pipeline_ingest_documents.rag_document_repository"
+    ) as mock_doc_repo, patch("lisa.rag.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo, patch(
+        "lisa.rag.pipeline_ingest_documents.s3"
     ) as mock_s3, patch(
-        "repository.pipeline_ingest_documents.bedrock_agent"
+        "lisa.rag.pipeline_ingest_documents.bedrock_agent"
     ) as mock_bedrock_agent:
 
         mock_vs_repo.find_repository_by_id.return_value = bedrock_kb_repo
         mock_doc_repo.find_by_source.return_value = []
 
-        from repository.pipeline_ingest_documents import pipeline_ingest
+        from lisa.rag.pipeline_ingest_documents import pipeline_ingest
 
         pipeline_ingest(job)
 
@@ -264,8 +264,8 @@ def test_pipeline_ingest_bedrock_kb_copy_from_lisa_bucket(setup_env):
 
 def test_pipeline_ingest_with_previous_document(setup_env):
     """Test pipeline_ingest removes previous document version."""
-    from models.domain_objects import FixedChunkingStrategy, IngestionJob, RagDocument
-    from utilities.repository_types import RepositoryType
+    from lisa.domain.domain_objects import FixedChunkingStrategy, IngestionJob, RagDocument
+    from lisa.utilities.repository_types import RepositoryType
 
     job = IngestionJob(
         repository_id="repo1",
@@ -296,16 +296,16 @@ def test_pipeline_ingest_with_previous_document(setup_env):
         document_id="prev-doc",
     )
 
-    with patch("repository.pipeline_ingest_documents.vs_repo") as mock_vs_repo, patch(
-        "repository.pipeline_ingest_documents.generate_chunks"
-    ) as mock_chunks, patch("repository.pipeline_ingest_documents.prepare_chunks") as mock_prepare, patch(
-        "repository.pipeline_ingest_documents.store_chunks_in_vectorstore"
+    with patch("lisa.rag.pipeline_ingest_documents.vs_repo") as mock_vs_repo, patch(
+        "lisa.rag.pipeline_ingest_documents.generate_chunks"
+    ) as mock_chunks, patch("lisa.rag.pipeline_ingest_documents.prepare_chunks") as mock_prepare, patch(
+        "lisa.rag.pipeline_ingest_documents.store_chunks_in_vectorstore"
     ) as mock_store, patch(
-        "repository.pipeline_ingest_documents.rag_document_repository"
+        "lisa.rag.pipeline_ingest_documents.rag_document_repository"
     ) as mock_doc_repo, patch(
-        "repository.pipeline_ingest_documents.ingestion_job_repository"
+        "lisa.rag.pipeline_ingest_documents.ingestion_job_repository"
     ) as mock_job_repo, patch(
-        "repository.pipeline_ingest_documents.remove_document_from_vectorstore"
+        "lisa.rag.pipeline_ingest_documents.remove_document_from_vectorstore"
     ):
 
         mock_vs_repo.find_repository_by_id.return_value = {"type": RepositoryType.OPENSEARCH}
@@ -315,7 +315,7 @@ def test_pipeline_ingest_with_previous_document(setup_env):
         mock_doc_repo.find_by_source.return_value = [prev_doc]
         mock_job_repo.find_by_document.return_value = prev_job
 
-        from repository.pipeline_ingest_documents import pipeline_ingest
+        from lisa.rag.pipeline_ingest_documents import pipeline_ingest
 
         pipeline_ingest(job)
 
@@ -429,7 +429,7 @@ def test_handle_pipline_ingest_schedule_no_contents(setup_env):
 
 def test_remove_document_from_vectorstore(setup_env):
     """Test remove_document_from_vectorstore deletes from vector store."""
-    from models.domain_objects import FixedChunkingStrategy, RagDocument
+    from lisa.domain.domain_objects import FixedChunkingStrategy, RagDocument
 
     doc = RagDocument(
         repository_id="repo1",
@@ -446,13 +446,13 @@ def test_remove_document_from_vectorstore(setup_env):
     mock_service = Mock()
     mock_service.get_vector_store_client.return_value = mock_vs
 
-    with patch("repository.pipeline_ingest_documents.RagEmbeddings"), patch(
-        "repository.pipeline_ingest_documents.VectorStoreRepository"
-    ) as mock_vs_repo, patch("repository.pipeline_ingest_documents.RepositoryServiceFactory") as mock_factory:
+    with patch("lisa.rag.pipeline_ingest_documents.RagEmbeddings"), patch(
+        "lisa.rag.pipeline_ingest_documents.VectorStoreRepository"
+    ) as mock_vs_repo, patch("lisa.rag.pipeline_ingest_documents.RepositoryServiceFactory") as mock_factory:
         mock_vs_repo.return_value.find_repository_by_id.return_value = {"repositoryId": "repo1", "type": "opensearch"}
         mock_factory.create_service.return_value = mock_service
 
-        from repository.pipeline_ingest_documents import remove_document_from_vectorstore
+        from lisa.rag.pipeline_ingest_documents import remove_document_from_vectorstore
 
         remove_document_from_vectorstore(doc)
 
@@ -461,7 +461,7 @@ def test_remove_document_from_vectorstore(setup_env):
 
 def test_pipeline_ingest_documents_batch(setup_env):
     """Test pipeline_ingest_documents processes batch ingestion."""
-    from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, JobActionType
+    from lisa.domain.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, JobActionType
 
     job = IngestionJob(
         repository_id="repo1",
@@ -474,11 +474,11 @@ def test_pipeline_ingest_documents_batch(setup_env):
         s3_paths=["s3://bucket/key1", "s3://bucket/key2", "s3://bucket/key3"],
     )
 
-    with patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo, patch(
-        "repository.pipeline_ingest_documents.pipeline_ingest_document"
+    with patch("lisa.rag.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo, patch(
+        "lisa.rag.pipeline_ingest_documents.pipeline_ingest_document"
     ) as mock_ingest_doc:
 
-        from repository.pipeline_ingest_documents import pipeline_ingest_documents
+        from lisa.rag.pipeline_ingest_documents import pipeline_ingest_documents
 
         pipeline_ingest_documents(job)
 
@@ -488,7 +488,7 @@ def test_pipeline_ingest_documents_batch(setup_env):
 
 def test_pipeline_ingest_documents_batch_with_failures(setup_env):
     """Test pipeline_ingest_documents handles partial failures."""
-    from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, JobActionType
+    from lisa.domain.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, JobActionType
 
     job = IngestionJob(
         repository_id="repo1",
@@ -501,14 +501,14 @@ def test_pipeline_ingest_documents_batch_with_failures(setup_env):
         s3_paths=["s3://bucket/key1", "s3://bucket/key2", "s3://bucket/key3"],
     )
 
-    with patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo, patch(
-        "repository.pipeline_ingest_documents.pipeline_ingest_document"
+    with patch("lisa.rag.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo, patch(
+        "lisa.rag.pipeline_ingest_documents.pipeline_ingest_document"
     ) as mock_ingest_doc:
 
         # First succeeds, second fails, third succeeds
         mock_ingest_doc.side_effect = [None, Exception("Ingest failed"), None]
 
-        from repository.pipeline_ingest_documents import pipeline_ingest_documents
+        from lisa.rag.pipeline_ingest_documents import pipeline_ingest_documents
 
         pipeline_ingest_documents(job)
 
@@ -518,7 +518,7 @@ def test_pipeline_ingest_documents_batch_with_failures(setup_env):
 
 def test_pipeline_ingest_documents_batch_exceeds_limit(setup_env):
     """Test pipeline_ingest_documents rejects batch over 100 documents."""
-    from models.domain_objects import FixedChunkingStrategy, IngestionJob, JobActionType
+    from lisa.domain.domain_objects import FixedChunkingStrategy, IngestionJob, JobActionType
 
     job = IngestionJob(
         repository_id="repo1",
@@ -531,8 +531,8 @@ def test_pipeline_ingest_documents_batch_exceeds_limit(setup_env):
         s3_paths=[f"s3://bucket/key{i}" for i in range(101)],
     )
 
-    with patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo:
-        from repository.pipeline_ingest_documents import pipeline_ingest_documents
+    with patch("lisa.rag.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo:
+        from lisa.rag.pipeline_ingest_documents import pipeline_ingest_documents
 
         with pytest.raises(Exception):
             pipeline_ingest_documents(job)
@@ -542,7 +542,7 @@ def test_pipeline_ingest_documents_batch_exceeds_limit(setup_env):
 
 def test_pipeline_ingest_documents_batch_missing_metadata(setup_env):
     """Test pipeline_ingest_documents raises error when s3_paths missing."""
-    from models.domain_objects import FixedChunkingStrategy, IngestionJob, JobActionType
+    from lisa.domain.domain_objects import FixedChunkingStrategy, IngestionJob, JobActionType
 
     job = IngestionJob(
         repository_id="repo1",
@@ -555,8 +555,8 @@ def test_pipeline_ingest_documents_batch_missing_metadata(setup_env):
         s3_paths=None,
     )
 
-    with patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo:
-        from repository.pipeline_ingest_documents import pipeline_ingest_documents
+    with patch("lisa.rag.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo:
+        from lisa.rag.pipeline_ingest_documents import pipeline_ingest_documents
 
         with pytest.raises(Exception):
             pipeline_ingest_documents(job)
@@ -566,7 +566,7 @@ def test_pipeline_ingest_documents_batch_missing_metadata(setup_env):
 
 def test_pipeline_ingest_routes_to_batch_ingestion(setup_env):
     """Test pipeline_ingest routes to batch document ingestion."""
-    from models.domain_objects import FixedChunkingStrategy, IngestionJob, JobActionType
+    from lisa.domain.domain_objects import FixedChunkingStrategy, IngestionJob, JobActionType
 
     job = IngestionJob(
         repository_id="repo1",
@@ -579,8 +579,8 @@ def test_pipeline_ingest_routes_to_batch_ingestion(setup_env):
         s3_paths=["s3://bucket/key1"],
     )
 
-    with patch("repository.pipeline_ingest_documents.pipeline_ingest_documents") as mock_ingest_documents:
-        from repository.pipeline_ingest_documents import pipeline_ingest
+    with patch("lisa.rag.pipeline_ingest_documents.pipeline_ingest_documents") as mock_ingest_documents:
+        from lisa.rag.pipeline_ingest_documents import pipeline_ingest
 
         pipeline_ingest(job)
 
@@ -589,7 +589,7 @@ def test_pipeline_ingest_routes_to_batch_ingestion(setup_env):
 
 def test_pipeline_ingest_routes_to_single_ingestion(setup_env):
     """Test pipeline_ingest routes to single document ingestion."""
-    from models.domain_objects import FixedChunkingStrategy, IngestionJob
+    from lisa.domain.domain_objects import FixedChunkingStrategy, IngestionJob
 
     job = IngestionJob(
         repository_id="repo1",
@@ -600,8 +600,8 @@ def test_pipeline_ingest_routes_to_single_ingestion(setup_env):
         chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
     )
 
-    with patch("repository.pipeline_ingest_documents.pipeline_ingest_document") as mock_ingest_document:
-        from repository.pipeline_ingest_documents import pipeline_ingest
+    with patch("lisa.rag.pipeline_ingest_documents.pipeline_ingest_document") as mock_ingest_document:
+        from lisa.rag.pipeline_ingest_documents import pipeline_ingest
 
         pipeline_ingest(job)
 

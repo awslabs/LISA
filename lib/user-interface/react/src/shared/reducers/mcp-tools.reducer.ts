@@ -30,9 +30,9 @@ export const mcpToolsApi = createApi({
     reducerPath: 'mcpTools',
     baseQuery: lisaBaseQuery(),
     tagTypes: ['mcpTools'],
-    refetchOnFocus: true,
-    refetchOnMountOrArgChange: true,
-    keepUnusedDataFor: 60, // Keep cache for 60s to prevent cancellation during rapid navigation
+    refetchOnFocus: false,
+    refetchOnMountOrArgChange: 30,
+    keepUnusedDataFor: 300,
     endpoints: (builder) => ({
         listMcpTools: builder.query<IMcpTool[], void>({
             query: () => ({

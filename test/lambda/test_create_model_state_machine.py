@@ -69,10 +69,12 @@ patch.dict(
 ).start()
 
 # Then patch the specific functions
-patch("utilities.common_functions.get_cert_path", mock_common.get_cert_path).start()
-patch("utilities.common_functions.get_rest_api_container_endpoint", mock_common.get_rest_api_container_endpoint).start()
-patch("utilities.common_functions.retry_config", retry_config).start()
-patch("models.clients.litellm_client.LiteLLMClient", return_value=mock_litellm_client).start()
+patch("lisa.utilities.common_functions.get_cert_path", mock_common.get_cert_path).start()
+patch(
+    "lisa.utilities.common_functions.get_rest_api_container_endpoint", mock_common.get_rest_api_container_endpoint
+).start()
+patch("lisa.utilities.common_functions.retry_config", retry_config).start()
+patch("lisa.domain.clients.litellm_client.LiteLLMClient", return_value=mock_litellm_client).start()
 
 # Mock boto3 clients
 mock_lambda = MagicMock()
@@ -153,7 +155,7 @@ patch("models.state_machine.create_model.ec2Client", mock_ec2).start()
 patch("models.state_machine.create_model.cfnClient", mock_cfn).start()
 patch("models.state_machine.create_model.lambdaClient", mock_lambda).start()
 
-from models.domain_objects import InferenceContainer, ModelStatus
+from lisa.domain.domain_objects import InferenceContainer, ModelStatus
 
 # Now import the state machine functions
 from models.state_machine.create_model import (
@@ -388,7 +390,7 @@ def test_handle_poll_docker_image_available_max_polls_exceeded(sample_event, lam
     # Mock image not found
     mock_ecr.describe_images.side_effect = mock_ecr.exceptions.ImageNotFoundException()
 
-    from models.exception import MaxPollsExceededException
+    from lisa.domain.exception import MaxPollsExceededException
 
     with pytest.raises(MaxPollsExceededException):
         handle_poll_docker_image_available(event, lambda_context)
@@ -426,7 +428,7 @@ def test_handle_start_create_stack_no_stack_name(sample_event, lambda_context):
     # Mock ECS model deployer response without stack name
     mock_lambda.invoke.return_value = {"Payload": MagicMock(read=lambda: json.dumps({}).encode())}
 
-    from models.exception import StackFailedToCreateException
+    from lisa.domain.exception import StackFailedToCreateException
 
     with pytest.raises(StackFailedToCreateException):
         handle_start_create_stack(event, lambda_context)
@@ -469,7 +471,7 @@ def test_handle_poll_create_stack_max_polls_exceeded(sample_event, lambda_contex
     # Mock stack in progress
     mock_cfn.describe_stacks.return_value = {"Stacks": [{"StackStatus": "CREATE_IN_PROGRESS"}]}
 
-    from models.exception import MaxPollsExceededException
+    from lisa.domain.exception import MaxPollsExceededException
 
     with pytest.raises(MaxPollsExceededException):
         handle_poll_create_stack(event, lambda_context)
@@ -483,7 +485,7 @@ def test_handle_poll_create_stack_unexpected_state(sample_event, lambda_context)
     # Mock unexpected stack state
     mock_cfn.describe_stacks.return_value = {"Stacks": [{"StackStatus": "DELETE_COMPLETE"}]}
 
-    from models.exception import UnexpectedCloudFormationStateException
+    from lisa.domain.exception import UnexpectedCloudFormationStateException
 
     with pytest.raises(UnexpectedCloudFormationStateException):
         handle_poll_create_stack(event, lambda_context)

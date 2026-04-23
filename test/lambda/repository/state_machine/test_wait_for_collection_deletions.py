@@ -32,7 +32,7 @@ def setup_env(monkeypatch):
 
 def test_all_deletions_complete(setup_env):
     """Test when all collection deletions are complete."""
-    from repository.ingestion_job_repo import IngestionJobRepository
+    from lisa.rag.ingestion_job_repo import IngestionJobRepository
     from repository.state_machine.wait_for_collection_deletions import lambda_handler
 
     event = {"repositoryId": "repo1", "stackName": "test-stack"}
@@ -53,8 +53,8 @@ def test_all_deletions_complete(setup_env):
 
 def test_deletions_still_pending(setup_env):
     """Test when collection deletions are still pending."""
-    from models.domain_objects import IngestionJob, IngestionStatus, JobActionType
-    from repository.ingestion_job_repo import IngestionJobRepository
+    from lisa.domain.domain_objects import IngestionJob, IngestionStatus, JobActionType
+    from lisa.rag.ingestion_job_repo import IngestionJobRepository
     from repository.state_machine.wait_for_collection_deletions import lambda_handler
 
     event = {"repositoryId": "repo1", "stackName": "test-stack"}
@@ -84,8 +84,8 @@ def test_deletions_still_pending(setup_env):
 
 def test_multiple_pending_deletions(setup_env):
     """Test when multiple collection deletions are pending."""
-    from models.domain_objects import IngestionJob, IngestionStatus, JobActionType
-    from repository.ingestion_job_repo import IngestionJobRepository
+    from lisa.domain.domain_objects import IngestionJob, IngestionStatus, JobActionType
+    from lisa.rag.ingestion_job_repo import IngestionJobRepository
     from repository.state_machine.wait_for_collection_deletions import lambda_handler
 
     event = {"repositoryId": "repo1", "stackName": "test-stack"}

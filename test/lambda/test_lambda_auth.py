@@ -71,10 +71,10 @@ def sample_event_no_context():
 def test_get_username_with_valid_username(sample_event_with_username):
     """Test getting username when username is present in event."""
     # Clean up any existing modules
-    if "utilities.auth" in sys.modules:
-        del sys.modules["utilities.auth"]
+    if "lisa.utilities.auth" in sys.modules:
+        del sys.modules["lisa.utilities.auth"]
 
-    from utilities.auth import get_username
+    from lisa.utilities.auth import get_username
 
     username = get_username(sample_event_with_username)
     assert username == "test-user"
@@ -82,10 +82,10 @@ def test_get_username_with_valid_username(sample_event_with_username):
 
 def test_get_username_without_username(sample_event_without_username):
     """Test getting username when username is not present in event."""
-    if "utilities.auth" in sys.modules:
-        del sys.modules["utilities.auth"]
+    if "lisa.utilities.auth" in sys.modules:
+        del sys.modules["lisa.utilities.auth"]
 
-    from utilities.auth import get_username
+    from lisa.utilities.auth import get_username
 
     username = get_username(sample_event_without_username)
     assert username == "system"
@@ -93,10 +93,10 @@ def test_get_username_without_username(sample_event_without_username):
 
 def test_get_username_empty_context(sample_event_empty_context):
     """Test getting username when requestContext is empty."""
-    if "utilities.auth" in sys.modules:
-        del sys.modules["utilities.auth"]
+    if "lisa.utilities.auth" in sys.modules:
+        del sys.modules["lisa.utilities.auth"]
 
-    from utilities.auth import get_username
+    from lisa.utilities.auth import get_username
 
     username = get_username(sample_event_empty_context)
     assert username == "system"
@@ -104,10 +104,10 @@ def test_get_username_empty_context(sample_event_empty_context):
 
 def test_get_username_no_context(sample_event_no_context):
     """Test getting username when requestContext is missing."""
-    if "utilities.auth" in sys.modules:
-        del sys.modules["utilities.auth"]
+    if "lisa.utilities.auth" in sys.modules:
+        del sys.modules["lisa.utilities.auth"]
 
-    from utilities.auth import get_username
+    from lisa.utilities.auth import get_username
 
     username = get_username(sample_event_no_context)
     assert username == "system"
@@ -115,10 +115,10 @@ def test_get_username_no_context(sample_event_no_context):
 
 def test_get_username_nested_missing_authorizer():
     """Test getting username when authorizer is missing from requestContext."""
-    if "utilities.auth" in sys.modules:
-        del sys.modules["utilities.auth"]
+    if "lisa.utilities.auth" in sys.modules:
+        del sys.modules["lisa.utilities.auth"]
 
-    from utilities.auth import get_username
+    from lisa.utilities.auth import get_username
 
     event = {"requestContext": {"other_field": "value"}}
     username = get_username(event)
@@ -127,12 +127,12 @@ def test_get_username_nested_missing_authorizer():
 
 def test_is_admin_with_admin_group(sample_event_with_username):
     """Test is_admin when user has admin group."""
-    if "utilities.auth" in sys.modules:
-        del sys.modules["utilities.auth"]
+    if "lisa.utilities.auth" in sys.modules:
+        del sys.modules["lisa.utilities.auth"]
 
     with patch.dict(os.environ, {"ADMIN_GROUP": "admin"}):
-        with patch("utilities.auth.get_groups", return_value=["group1", "admin", "group2"]):
-            from utilities.auth import is_admin
+        with patch("lisa.utilities.auth.get_groups", return_value=["group1", "admin", "group2"]):
+            from lisa.utilities.auth import is_admin
 
             result = is_admin(sample_event_with_username)
             assert result is True
@@ -140,12 +140,12 @@ def test_is_admin_with_admin_group(sample_event_with_username):
 
 def test_is_admin_without_admin_group(sample_event_with_username):
     """Test is_admin when user does not have admin group."""
-    if "utilities.auth" in sys.modules:
-        del sys.modules["utilities.auth"]
+    if "lisa.utilities.auth" in sys.modules:
+        del sys.modules["lisa.utilities.auth"]
 
     with patch.dict(os.environ, {"ADMIN_GROUP": "admin"}):
-        with patch("utilities.auth.get_groups", return_value=["group1", "group2"]):
-            from utilities.auth import is_admin
+        with patch("lisa.utilities.auth.get_groups", return_value=["group1", "group2"]):
+            from lisa.utilities.auth import is_admin
 
             result = is_admin(sample_event_with_username)
             assert result is False
@@ -153,12 +153,12 @@ def test_is_admin_without_admin_group(sample_event_with_username):
 
 def test_is_admin_empty_groups(sample_event_with_username):
     """Test is_admin when user has no groups."""
-    if "utilities.auth" in sys.modules:
-        del sys.modules["utilities.auth"]
+    if "lisa.utilities.auth" in sys.modules:
+        del sys.modules["lisa.utilities.auth"]
 
     with patch.dict(os.environ, {"ADMIN_GROUP": "admin"}):
-        with patch("utilities.auth.get_groups", return_value=[]):
-            from utilities.auth import is_admin
+        with patch("lisa.utilities.auth.get_groups", return_value=[]):
+            from lisa.utilities.auth import is_admin
 
             result = is_admin(sample_event_with_username)
             assert result is False
@@ -166,12 +166,12 @@ def test_is_admin_empty_groups(sample_event_with_username):
 
 def test_is_admin_empty_admin_group_env(sample_event_with_username):
     """Test is_admin when ADMIN_GROUP environment variable is empty."""
-    if "utilities.auth" in sys.modules:
-        del sys.modules["utilities.auth"]
+    if "lisa.utilities.auth" in sys.modules:
+        del sys.modules["lisa.utilities.auth"]
 
     with patch.dict(os.environ, {"ADMIN_GROUP": ""}):
-        with patch("utilities.auth.get_groups", return_value=["group1", "group2"]):
-            from utilities.auth import is_admin
+        with patch("lisa.utilities.auth.get_groups", return_value=["group1", "group2"]):
+            from lisa.utilities.auth import is_admin
 
             result = is_admin(sample_event_with_username)
             assert result is False
@@ -179,8 +179,8 @@ def test_is_admin_empty_admin_group_env(sample_event_with_username):
 
 def test_is_admin_no_admin_group_env(sample_event_with_username):
     """Test is_admin when ADMIN_GROUP environment variable is not set."""
-    if "utilities.auth" in sys.modules:
-        del sys.modules["utilities.auth"]
+    if "lisa.utilities.auth" in sys.modules:
+        del sys.modules["lisa.utilities.auth"]
 
     # Temporarily remove ADMIN_GROUP if it exists
     original_admin_group = os.environ.get("ADMIN_GROUP")
@@ -188,8 +188,8 @@ def test_is_admin_no_admin_group_env(sample_event_with_username):
         del os.environ["ADMIN_GROUP"]
 
     try:
-        with patch("utilities.auth.get_groups", return_value=["group1", "group2"]):
-            from utilities.auth import is_admin
+        with patch("lisa.utilities.auth.get_groups", return_value=["group1", "group2"]):
+            from lisa.utilities.auth import is_admin
 
             result = is_admin(sample_event_with_username)
             assert result is False
@@ -201,15 +201,15 @@ def test_is_admin_no_admin_group_env(sample_event_with_username):
 
 def test_is_admin_logging(sample_event_with_username):
     """Test is_admin logs the groups and admin group."""
-    if "utilities.auth" in sys.modules:
-        del sys.modules["utilities.auth"]
-    if "utilities.auth_provider" in sys.modules:
-        del sys.modules["utilities.auth_provider"]
+    if "lisa.utilities.auth" in sys.modules:
+        del sys.modules["lisa.utilities.auth"]
+    if "lisa.utilities.auth_provider" in sys.modules:
+        del sys.modules["lisa.utilities.auth_provider"]
 
     with patch.dict(os.environ, {"ADMIN_GROUP": "admin"}):
-        with patch("utilities.auth.get_groups", return_value=["group1", "admin"]):
-            with patch("utilities.auth_provider.logger") as mock_logger:
-                from utilities.auth import is_admin
+        with patch("lisa.utilities.auth.get_groups", return_value=["group1", "admin"]):
+            with patch("lisa.utilities.auth_provider.logger") as mock_logger:
+                from lisa.utilities.auth import is_admin
 
                 is_admin(sample_event_with_username)
                 mock_logger.info.assert_called_once_with("User groups: ['group1', 'admin'] and admin: admin")
@@ -217,11 +217,11 @@ def test_is_admin_logging(sample_event_with_username):
 
 def test_admin_only_decorator_with_admin_user(lambda_context):
     """Test admin_only decorator allows admin users to access function."""
-    if "utilities.auth" in sys.modules:
-        del sys.modules["utilities.auth"]
+    if "lisa.utilities.auth" in sys.modules:
+        del sys.modules["lisa.utilities.auth"]
 
-    with patch("utilities.auth.is_admin", return_value=True):
-        from utilities.auth import admin_only
+    with patch("lisa.utilities.auth.is_admin", return_value=True):
+        from lisa.utilities.auth import admin_only
 
         @admin_only
         def test_function(event, context):
@@ -235,12 +235,12 @@ def test_admin_only_decorator_with_admin_user(lambda_context):
 
 def test_admin_only_decorator_with_non_admin_user(lambda_context):
     """Test admin_only decorator raises HTTPException for non-admin users."""
-    if "utilities.auth" in sys.modules:
-        del sys.modules["utilities.auth"]
+    if "lisa.utilities.auth" in sys.modules:
+        del sys.modules["lisa.utilities.auth"]
 
-    with patch("utilities.auth.is_admin", return_value=False):
-        from utilities.auth import admin_only
-        from utilities.exceptions import HTTPException
+    with patch("lisa.utilities.auth.is_admin", return_value=False):
+        from lisa.utilities.auth import admin_only
+        from lisa.utilities.exceptions import HTTPException
 
         @admin_only
         def test_function(event, context):
@@ -257,10 +257,10 @@ def test_admin_only_decorator_with_non_admin_user(lambda_context):
 
 def test_admin_only_decorator_preserves_function_metadata():
     """Test admin_only decorator preserves original function metadata."""
-    if "utilities.auth" in sys.modules:
-        del sys.modules["utilities.auth"]
+    if "lisa.utilities.auth" in sys.modules:
+        del sys.modules["lisa.utilities.auth"]
 
-    from utilities.auth import admin_only
+    from lisa.utilities.auth import admin_only
 
     @admin_only
     def test_function(event, context):
@@ -273,11 +273,11 @@ def test_admin_only_decorator_preserves_function_metadata():
 
 def test_admin_only_decorator_with_function_args_kwargs(lambda_context):
     """Test admin_only decorator works with functions that have additional args."""
-    if "utilities.auth" in sys.modules:
-        del sys.modules["utilities.auth"]
+    if "lisa.utilities.auth" in sys.modules:
+        del sys.modules["lisa.utilities.auth"]
 
-    with patch("utilities.auth.is_admin", return_value=True):
-        from utilities.auth import admin_only
+    with patch("lisa.utilities.auth.is_admin", return_value=True):
+        from lisa.utilities.auth import admin_only
 
         @admin_only
         def test_function(event, context, *args, **kwargs):
@@ -293,11 +293,11 @@ def test_admin_only_decorator_with_function_args_kwargs(lambda_context):
 
 def test_admin_only_decorator_function_raises_exception(lambda_context):
     """Test admin_only decorator handles exceptions from wrapped function."""
-    if "utilities.auth" in sys.modules:
-        del sys.modules["utilities.auth"]
+    if "lisa.utilities.auth" in sys.modules:
+        del sys.modules["lisa.utilities.auth"]
 
-    with patch("utilities.auth.is_admin", return_value=True):
-        from utilities.auth import admin_only
+    with patch("lisa.utilities.auth.is_admin", return_value=True):
+        from lisa.utilities.auth import admin_only
 
         @admin_only
         def test_function(event, context):
@@ -311,12 +311,12 @@ def test_admin_only_decorator_function_raises_exception(lambda_context):
 
 def test_admin_only_decorator_calls_is_admin_with_event(lambda_context):
     """Test admin_only decorator calls is_admin with the event."""
-    if "utilities.auth" in sys.modules:
-        del sys.modules["utilities.auth"]
+    if "lisa.utilities.auth" in sys.modules:
+        del sys.modules["lisa.utilities.auth"]
 
-    with patch("utilities.auth.is_admin") as mock_is_admin:
+    with patch("lisa.utilities.auth.is_admin") as mock_is_admin:
         mock_is_admin.return_value = True
-        from utilities.auth import admin_only
+        from lisa.utilities.auth import admin_only
 
         @admin_only
         def test_function(event, context):
@@ -329,14 +329,14 @@ def test_admin_only_decorator_calls_is_admin_with_event(lambda_context):
 
 def test_full_auth_flow_admin_user():
     """Test full authentication flow for admin user."""
-    if "utilities.auth" in sys.modules:
-        del sys.modules["utilities.auth"]
+    if "lisa.utilities.auth" in sys.modules:
+        del sys.modules["lisa.utilities.auth"]
 
     event = {"requestContext": {"authorizer": {"username": "admin-user", "groups": '["admin", "users"]'}}}
 
     with patch.dict(os.environ, {"ADMIN_GROUP": "admin"}):
-        with patch("utilities.auth.get_groups", return_value=["admin", "users"]):
-            from utilities.auth import get_username, is_admin
+        with patch("lisa.utilities.auth.get_groups", return_value=["admin", "users"]):
+            from lisa.utilities.auth import get_username, is_admin
 
             username = get_username(event)
             admin_status = is_admin(event)
@@ -347,14 +347,14 @@ def test_full_auth_flow_admin_user():
 
 def test_full_auth_flow_regular_user():
     """Test full authentication flow for regular user."""
-    if "utilities.auth" in sys.modules:
-        del sys.modules["utilities.auth"]
+    if "lisa.utilities.auth" in sys.modules:
+        del sys.modules["lisa.utilities.auth"]
 
     event = {"requestContext": {"authorizer": {"username": "regular-user", "groups": '["users"]'}}}
 
     with patch.dict(os.environ, {"ADMIN_GROUP": "admin"}):
-        with patch("utilities.auth.get_groups", return_value=["users"]):
-            from utilities.auth import get_username, is_admin
+        with patch("lisa.utilities.auth.get_groups", return_value=["users"]):
+            from lisa.utilities.auth import get_username, is_admin
 
             username = get_username(event)
             admin_status = is_admin(event)
@@ -365,14 +365,14 @@ def test_full_auth_flow_regular_user():
 
 def test_system_user_auth_flow():
     """Test authentication flow for system user (no context)."""
-    if "utilities.auth" in sys.modules:
-        del sys.modules["utilities.auth"]
+    if "lisa.utilities.auth" in sys.modules:
+        del sys.modules["lisa.utilities.auth"]
 
     event = {}
 
     with patch.dict(os.environ, {"ADMIN_GROUP": "admin"}):
-        with patch("utilities.auth.get_groups", return_value=[]):
-            from utilities.auth import get_username, is_admin
+        with patch("lisa.utilities.auth.get_groups", return_value=[]):
+            from lisa.utilities.auth import get_username, is_admin
 
             username = get_username(event)
             admin_status = is_admin(event)
@@ -383,11 +383,11 @@ def test_system_user_auth_flow():
 
 def test_admin_only_decorator_with_extra_args(lambda_context):
     """Test admin_only decorator with additional args and kwargs."""
-    if "utilities.auth" in sys.modules:
-        del sys.modules["utilities.auth"]
+    if "lisa.utilities.auth" in sys.modules:
+        del sys.modules["lisa.utilities.auth"]
 
-    with patch("utilities.auth.is_admin", return_value=True):
-        from utilities.auth import admin_only
+    with patch("lisa.utilities.auth.is_admin", return_value=True):
+        from lisa.utilities.auth import admin_only
 
         @admin_only
         def test_function(event, context, extra_arg, extra_kwarg=None):
@@ -401,11 +401,11 @@ def test_admin_only_decorator_with_extra_args(lambda_context):
 
 def test_admin_only_decorator_function_exception_propagation(lambda_context):
     """Test admin_only decorator allows underlying function exceptions to propagate."""
-    if "utilities.auth" in sys.modules:
-        del sys.modules["utilities.auth"]
+    if "lisa.utilities.auth" in sys.modules:
+        del sys.modules["lisa.utilities.auth"]
 
-    with patch("utilities.auth.is_admin", return_value=True):
-        from utilities.auth import admin_only
+    with patch("lisa.utilities.auth.is_admin", return_value=True):
+        from lisa.utilities.auth import admin_only
 
         @admin_only
         def test_function(event, context):
@@ -421,11 +421,11 @@ def test_admin_only_decorator_function_exception_propagation(lambda_context):
 
 def test_admin_only_decorator_event_passing(lambda_context):
     """Test admin_only decorator calls is_admin with the correct event."""
-    if "utilities.auth" in sys.modules:
-        del sys.modules["utilities.auth"]
+    if "lisa.utilities.auth" in sys.modules:
+        del sys.modules["lisa.utilities.auth"]
 
-    with patch("utilities.auth.is_admin", return_value=True) as mock_is_admin:
-        from utilities.auth import admin_only
+    with patch("lisa.utilities.auth.is_admin", return_value=True) as mock_is_admin:
+        from lisa.utilities.auth import admin_only
 
         @admin_only
         def test_function(event, context):
@@ -439,12 +439,12 @@ def test_admin_only_decorator_event_passing(lambda_context):
 
 def test_complete_auth_flow_admin_user(lambda_context):
     """Test complete auth flow for an admin user."""
-    if "utilities.auth" in sys.modules:
-        del sys.modules["utilities.auth"]
+    if "lisa.utilities.auth" in sys.modules:
+        del sys.modules["lisa.utilities.auth"]
 
     event = {"requestContext": {"authorizer": {"username": "admin_user", "groups": '["user", "lisa-admin"]'}}}
 
-    from utilities.auth import admin_only, get_username, is_admin
+    from lisa.utilities.auth import admin_only, get_username, is_admin
 
     # Test get_username
     username = get_username(event)
@@ -452,7 +452,7 @@ def test_complete_auth_flow_admin_user(lambda_context):
 
     # Test is_admin (need to mock get_groups)
     with patch.dict(os.environ, {"ADMIN_GROUP": "lisa-admin"}):
-        with patch("utilities.auth.get_groups", return_value=["user", "lisa-admin"]):
+        with patch("lisa.utilities.auth.get_groups", return_value=["user", "lisa-admin"]):
             admin_status = is_admin(event)
             assert admin_status is True
 
@@ -467,13 +467,13 @@ def test_complete_auth_flow_admin_user(lambda_context):
 
 def test_complete_auth_flow_regular_user(lambda_context):
     """Test complete auth flow for a regular user."""
-    if "utilities.auth" in sys.modules:
-        del sys.modules["utilities.auth"]
+    if "lisa.utilities.auth" in sys.modules:
+        del sys.modules["lisa.utilities.auth"]
 
     event = {"requestContext": {"authorizer": {"username": "regular_user", "groups": '["user"]'}}}
 
-    from utilities.auth import admin_only, get_username, is_admin
-    from utilities.exceptions import HTTPException
+    from lisa.utilities.auth import admin_only, get_username, is_admin
+    from lisa.utilities.exceptions import HTTPException
 
     # Test get_username
     username = get_username(event)
@@ -481,7 +481,7 @@ def test_complete_auth_flow_regular_user(lambda_context):
 
     # Test is_admin (need to mock get_groups)
     with patch.dict(os.environ, {"ADMIN_GROUP": "lisa-admin"}):
-        with patch("utilities.auth.get_groups", return_value=["user"]):
+        with patch("lisa.utilities.auth.get_groups", return_value=["user"]):
             admin_status = is_admin(event)
             assert admin_status is False
 
@@ -498,32 +498,32 @@ def test_complete_auth_flow_regular_user(lambda_context):
 
 def test_complete_system_user_auth_flow(lambda_context):
     """Test auth flow for system user (no context)."""
-    if "utilities.auth" in sys.modules:
-        del sys.modules["utilities.auth"]
+    if "lisa.utilities.auth" in sys.modules:
+        del sys.modules["lisa.utilities.auth"]
 
     event = {}
 
-    from utilities.auth import get_username, is_admin
+    from lisa.utilities.auth import get_username, is_admin
 
     # Test get_username
     username = get_username(event)
     assert username == "system"
 
     # Test is_admin with system user
-    with patch("utilities.auth.get_groups", return_value=[]):
+    with patch("lisa.utilities.auth.get_groups", return_value=[]):
         admin_status = is_admin(event)
         assert admin_status is False
 
 
 def test_get_username(setup_env):
-    from utilities.auth import get_username
+    from lisa.utilities.auth import get_username
 
     event = {"requestContext": {"authorizer": {"username": "testuser"}}}
     assert get_username(event) == "testuser"
 
 
 def test_get_username_default(setup_env):
-    from utilities.auth import get_username
+    from lisa.utilities.auth import get_username
 
     event = {}
     assert get_username(event) == "system"
@@ -531,7 +531,7 @@ def test_get_username_default(setup_env):
 
 def test_user_has_group():
     """Test user_has_group_access helper function"""
-    from utilities.auth import user_has_group_access
+    from lisa.utilities.auth import user_has_group_access
 
     # Test user has group
     assert user_has_group_access(["group1", "group2"], ["group2", "group3"]) is True

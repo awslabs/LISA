@@ -24,7 +24,7 @@ os.environ.setdefault("AWS_REGION", "us-east-1")
 os.environ.setdefault("RAG_DOCUMENT_TABLE", "test-doc-table")
 os.environ.setdefault("RAG_SUB_DOCUMENT_TABLE", "test-subdoc-table")
 
-from repository.services.opensearch_repository_service import OpenSearchRepositoryService
+from lisa.rag.services.opensearch_repository_service import OpenSearchRepositoryService
 
 
 @pytest.fixture
@@ -56,7 +56,7 @@ class TestOpenSearchRepositoryService:
         mock_vector_store.client.indices.exists.return_value = True
         mock_vector_store.client.indices.delete.return_value = {"acknowledged": True}
 
-        with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
+        with patch("lisa.rag.services.opensearch_repository_service.RagEmbeddings"):
             with patch.object(opensearch_service, "_get_vector_store_client", return_value=mock_vector_store):
                 opensearch_service._drop_collection_index("test-collection")
 
@@ -68,7 +68,7 @@ class TestOpenSearchRepositoryService:
         mock_vector_store = MagicMock()
         mock_vector_store.client.indices.exists.return_value = False
 
-        with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
+        with patch("lisa.rag.services.opensearch_repository_service.RagEmbeddings"):
             with patch.object(opensearch_service, "_get_vector_store_client", return_value=mock_vector_store):
                 opensearch_service._drop_collection_index("test-collection")
 
@@ -79,7 +79,7 @@ class TestOpenSearchRepositoryService:
         """Test dropping index when vector store doesn't support index operations."""
         mock_vector_store = MagicMock(spec=[])  # No client attribute
 
-        with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
+        with patch("lisa.rag.services.opensearch_repository_service.RagEmbeddings"):
             with patch.object(opensearch_service, "_get_vector_store_client", return_value=mock_vector_store):
                 # Should not raise exception
                 opensearch_service._drop_collection_index("test-collection")
@@ -89,7 +89,7 @@ class TestOpenSearchRepositoryService:
         mock_vector_store = MagicMock()
         mock_vector_store.client.indices.exists.side_effect = Exception("Connection error")
 
-        with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
+        with patch("lisa.rag.services.opensearch_repository_service.RagEmbeddings"):
             with patch.object(opensearch_service, "_get_vector_store_client", return_value=mock_vector_store):
                 # Should not raise exception
                 opensearch_service._drop_collection_index("test-collection")
@@ -105,7 +105,7 @@ class TestOpenSearchRepositoryService:
         parameter_not_found = ClientError(error_response, "GetParameter")
 
         # Mock SSM client to raise ParameterNotFound
-        with patch("repository.services.opensearch_repository_service.ssm_client") as mock_ssm:
+        with patch("lisa.rag.services.opensearch_repository_service.ssm_client") as mock_ssm:
             # Set up the exceptions attribute with ParameterNotFound
             mock_ssm.exceptions.ParameterNotFound = ClientError
             mock_ssm.get_parameter.side_effect = parameter_not_found

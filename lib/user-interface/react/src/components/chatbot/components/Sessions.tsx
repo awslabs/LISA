@@ -40,7 +40,8 @@ import { IConfiguration } from '@/shared/model/configuration.model';
 import { useNavigate } from 'react-router-dom';
 import { getDisplayableMessage, getSessionDisplay, messageContainsImage, messageContainsVideo } from '@/components/utils';
 import { LisaChatSession } from '@/components/types';
-import JSZip from 'jszip';
+// jszip (~100 KB) is dynamically imported inside the export handler so
+// it only ships to users who actually use media export from Sessions.
 import { downloadFile } from '@/shared/util/downloader';
 import { setConfirmationModal } from '@/shared/reducers/modal.reducer';
 import { formatDate } from '@/shared/util/formats';
@@ -93,7 +94,7 @@ export function Sessions ({ newSession }) {
     const [newSessionName, setNewSessionName] = useState<string>('');
     const [sessionBeingDeleted, setSessionBeingDeleted] = useState<string | null>(null);
     const [assistantCarouselIndex, setAssistantCarouselIndex] = useState(0);
-    const { data: sessions, isLoading: isSessionsLoading } = useListSessionsQuery(undefined, { refetchOnMountOrArgChange: 5 });
+    const { data: sessions, isLoading: isSessionsLoading } = useListSessionsQuery();
     const { data: availableStacks = [] } = useListStacksQuery(undefined, {
         skip: !config?.configuration?.enabledComponents?.chatAssistantStacks,
         refetchOnMountOrArgChange: true,
@@ -480,6 +481,7 @@ export function Sessions ({ newSession }) {
                                                                                 if (media.length === 0) {
                                                                                     notificationService.generateNotification('No media found to export', 'info');
                                                                                 } else {
+                                                                                    const { default: JSZip } = await import('jszip');
                                                                                     const zip = new JSZip();
                                                                                     let imageCount = 0;
                                                                                     let videoCount = 0;

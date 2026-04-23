@@ -21,9 +21,9 @@ import { Layer, NodeLayer } from './layers';
 import { BaseProps } from '../schema';
 import { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 
-import { COMMON_LAYER_PATH, FASTAPI_LAYER_PATH, AUTHORIZER_LAYER_PATH, CDK_LAYER_PATH } from '../util';
+import { AUTHORIZER_LAYER_PATH, CDK_LAYER_PATH, COMMON_LAYER_PATH, FASTAPI_LAYER_PATH, LAMBDA_SHARED_PATH } from '../util';
 import { BlockPublicAccess, Bucket, BucketEncryption, ObjectOwnership } from 'aws-cdk-lib/aws-s3';
-import { getNodeRuntime } from '../api-base/utils';
+import { getNodeRuntime, getPythonRuntime } from '../api-base/utils';
 
 export const ARCHITECTURE = lambda.Architecture.X86_64;
 process.env.DOCKER_DEFAULT_PLATFORM = ARCHITECTURE.dockerPlatform;
@@ -90,6 +90,16 @@ export class CoreConstruct extends Construct {
             assetPath: config.lambdaLayerAssets?.authorizerLayerPath,
         });
 
+        // Build shared first-party Python source layer. Contents of
+        // `lambda/shared/python/` land at /opt/python/ at runtime so every
+        // Python Lambda can `import lisa.*` without bundling the source.
+        const lisaSharedLayer = new lambda.LayerVersion(scope, 'LisaSharedLayer', {
+            code: lambda.Code.fromAsset(LAMBDA_SHARED_PATH),
+            description: 'LISA shared Python source modules (lisa.*)',
+            compatibleRuntimes: [getPythonRuntime()],
+            removalPolicy: config.removalPolicy,
+        });
+
         // Build CDK Lambda layer for deployer functions
         const cdkLambdaLayer = new NodeLayer(scope, 'CdkLayer', {
             config: config,
@@ -121,6 +131,12 @@ export class CoreConstruct extends Construct {
             parameterName: `${config.deploymentPrefix}/layerVersion/cdk`,
             stringValue: cdkLambdaLayer.layer.layerVersionArn,
             description: 'Layer Version ARN for LISA CDK Lambda Layer',
+        });
+
+        new StringParameter(scope, 'LisaSharedLambdaLayerStringParameter', {
+            parameterName: `${config.deploymentPrefix}/layerVersion/lisa-shared`,
+            stringValue: lisaSharedLayer.layerVersionArn,
+            description: 'Layer Version ARN for LISA first-party shared Python source layer',
         });
     }
 }

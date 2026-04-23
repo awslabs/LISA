@@ -38,7 +38,7 @@ os.environ["ADMIN_GROUP"] = "admin-group"
 import boto3
 import pytest
 from fastapi import HTTPException, Request
-from models.domain_objects import (
+from lisa.domain.domain_objects import (
     AutoScalingConfig,
     AutoScalingInstanceConfig,
     ContainerConfig,
@@ -57,19 +57,19 @@ from models.domain_objects import (
     UpdateModelRequest,
     UpdateModelResponse,
 )
-from models.exception import (
+from lisa.domain.exception import (
     InvalidStateTransitionError,
     ModelAlreadyExistsError,
     ModelInUseError,
     ModelNotFoundError,
 )
-from models.handler.base_handler import BaseApiHandler
-from models.handler.create_model_handler import CreateModelHandler
-from models.handler.delete_model_handler import DeleteModelHandler
-from models.handler.get_model_handler import GetModelHandler
-from models.handler.list_models_handler import ListModelsHandler
-from models.handler.update_model_handler import UpdateModelHandler
-from models.handler.utils import to_lisa_model
+from lisa.domain.handler.base_handler import BaseApiHandler
+from lisa.domain.handler.create_model_handler import CreateModelHandler
+from lisa.domain.handler.delete_model_handler import DeleteModelHandler
+from lisa.domain.handler.get_model_handler import GetModelHandler
+from lisa.domain.handler.list_models_handler import ListModelsHandler
+from lisa.domain.handler.update_model_handler import UpdateModelHandler
+from lisa.domain.handler.utils import to_lisa_model
 from models.lambda_functions import (
     app,
     create_model,
@@ -356,10 +356,10 @@ def test_delete_model_handler(
     )
 
     # Mock SSM client, VectorStoreRepository, and CollectionRepository
-    with patch("models.handler.delete_model_handler.ssm_client") as mock_ssm, patch(
-        "models.handler.delete_model_handler.VectorStoreRepository"
+    with patch("lisa.domain.handler.delete_model_handler.ssm_client") as mock_ssm, patch(
+        "lisa.domain.handler.delete_model_handler.VectorStoreRepository"
     ) as mock_repo_class, patch(
-        "models.handler.delete_model_handler.CollectionRepository"
+        "lisa.domain.handler.delete_model_handler.CollectionRepository"
     ) as mock_collection_repo_class:
         mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "vector-store-table"}}
 
@@ -401,10 +401,10 @@ def test_delete_model_handler_model_in_use_by_repository(
     )
 
     # Mock SSM client, VectorStoreRepository, and CollectionRepository
-    with patch("models.handler.delete_model_handler.ssm_client") as mock_ssm, patch(
-        "models.handler.delete_model_handler.VectorStoreRepository"
+    with patch("lisa.domain.handler.delete_model_handler.ssm_client") as mock_ssm, patch(
+        "lisa.domain.handler.delete_model_handler.VectorStoreRepository"
     ) as mock_repo_class, patch(
-        "models.handler.delete_model_handler.CollectionRepository"
+        "lisa.domain.handler.delete_model_handler.CollectionRepository"
     ) as mock_collection_repo_class:
         mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "vector-store-table"}}
 
@@ -444,10 +444,10 @@ def test_delete_model_handler_model_in_use_by_pipeline(
     )
 
     # Mock SSM client, VectorStoreRepository, and CollectionRepository
-    with patch("models.handler.delete_model_handler.ssm_client") as mock_ssm, patch(
-        "models.handler.delete_model_handler.VectorStoreRepository"
+    with patch("lisa.domain.handler.delete_model_handler.ssm_client") as mock_ssm, patch(
+        "lisa.domain.handler.delete_model_handler.VectorStoreRepository"
     ) as mock_repo_class, patch(
-        "models.handler.delete_model_handler.CollectionRepository"
+        "lisa.domain.handler.delete_model_handler.CollectionRepository"
     ) as mock_collection_repo_class:
         mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "vector-store-table"}}
 
@@ -487,7 +487,7 @@ def test_delete_model_handler_without_vector_store_table(
     )
 
     # Mock SSM client to raise ParameterNotFound
-    with patch("models.handler.delete_model_handler.ssm_client") as mock_ssm:
+    with patch("lisa.domain.handler.delete_model_handler.ssm_client") as mock_ssm:
         from botocore.exceptions import ClientError
 
         mock_ssm.get_parameter.side_effect = ClientError(
@@ -586,7 +586,7 @@ def test_update_model_handler(
     )
 
     # Mock the to_lisa_model function to return a model with streaming=False
-    with patch("models.handler.update_model_handler.to_lisa_model") as mock_to_lisa_model, patch.object(
+    with patch("lisa.domain.handler.update_model_handler.to_lisa_model") as mock_to_lisa_model, patch.object(
         handler, "_stepfunctions"
     ) as mock_sf:
         # Configure the mock to return a model with streaming=False
@@ -987,9 +987,11 @@ async def test_create_model_admin_required(
         modelId="test-model", modelName="test-model", modelType=ModelType.TEXTGEN, streaming=True
     )
 
-    with patch("utilities.auth.is_admin") as mock_is_admin, patch(
-        "utilities.auth.get_groups"
-    ) as mock_get_groups, patch("utilities.fastapi_middleware.auth_decorators.is_admin") as mock_decorator_is_admin:
+    with patch("lisa.utilities.auth.is_admin") as mock_is_admin, patch(
+        "lisa.utilities.auth.get_groups"
+    ) as mock_get_groups, patch(
+        "lisa.utilities.fastapi_middleware.auth_decorators.is_admin"
+    ) as mock_decorator_is_admin:
         mock_is_admin.return_value = False
         mock_decorator_is_admin.return_value = False
         mock_get_groups.return_value = []
@@ -1012,9 +1014,11 @@ async def test_update_model_admin_required(
 
     update_request = UpdateModelRequest(streaming=False)
 
-    with patch("utilities.auth.is_admin") as mock_is_admin, patch(
-        "utilities.auth.get_groups"
-    ) as mock_get_groups, patch("utilities.fastapi_middleware.auth_decorators.is_admin") as mock_decorator_is_admin:
+    with patch("lisa.utilities.auth.is_admin") as mock_is_admin, patch(
+        "lisa.utilities.auth.get_groups"
+    ) as mock_get_groups, patch(
+        "lisa.utilities.fastapi_middleware.auth_decorators.is_admin"
+    ) as mock_decorator_is_admin:
         mock_is_admin.return_value = False
         mock_decorator_is_admin.return_value = False
         mock_get_groups.return_value = []
@@ -1035,9 +1039,11 @@ async def test_delete_model_admin_required(
     mock_request = MagicMock(spec=Request)
     mock_request.scope = {"aws.event": non_admin_event}
 
-    with patch("utilities.auth.is_admin") as mock_is_admin, patch(
-        "utilities.auth.get_groups"
-    ) as mock_get_groups, patch("utilities.fastapi_middleware.auth_decorators.is_admin") as mock_decorator_is_admin:
+    with patch("lisa.utilities.auth.is_admin") as mock_is_admin, patch(
+        "lisa.utilities.auth.get_groups"
+    ) as mock_get_groups, patch(
+        "lisa.utilities.fastapi_middleware.auth_decorators.is_admin"
+    ) as mock_decorator_is_admin:
         mock_is_admin.return_value = False
         mock_decorator_is_admin.return_value = False
         mock_get_groups.return_value = []

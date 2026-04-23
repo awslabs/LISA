@@ -18,7 +18,7 @@ import { Cors, IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { Effect, IRole, ManagedPolicy, Policy, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
-import { IFunction, LayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
@@ -27,7 +27,7 @@ import { APP_MANAGEMENT_KEY, BaseProps } from '../schema';
 import { createCdkId, createLambdaRole } from '../core/utils';
 import { getAuditLoggingEnv } from '../api-base/auditEnv';
 import { Vpc } from '../networking/vpc';
-import { LAMBDA_PATH } from '../util';
+import { getPythonLambdaLayers } from '../util';
 import { McpServerDeployer } from './mcp-server-deployer';
 import { CreateMcpServerStateMachine } from './state-machine/create-mcp-server';
 import { DeleteMcpServerStateMachine } from './state-machine/delete-mcp-server';
@@ -58,20 +58,7 @@ export class McpServerApi extends Construct {
 
         const { authorizer, bucketAccessLogsBucket, config, restApiId, rootResourceId, securityGroups, vpc } = props;
 
-        // Get common layer based on arn from SSM due to issues with cross stack references
-        const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
-            this,
-            'mcpserver-common-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
-        );
-
-        const fastapiLambdaLayer = LayerVersion.fromLayerVersionArn(
-            this,
-            'mcpserver-fastapi-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/fastapi`),
-        );
-
-        const lambdaLayers = [commonLambdaLayer, fastapiLambdaLayer];
+        const lambdaLayers = getPythonLambdaLayers(this, config, ['common', 'fastapi'], 'McpServerApi');
 
         // Get management key name
         const managementKeyName = StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/${APP_MANAGEMENT_KEY}`);
@@ -209,14 +196,13 @@ export class McpServerApi extends Construct {
         };
 
         const lambdaRole = createLambdaRole(this, config.deploymentName, 'McpServerDynamicApi', mcpServersTable.tableArn, config.roles?.LambdaExecutionRole);
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
 
         // Create the API Lambda function to trigger the MCP server create state machine
         // Note: registerAPIEndpoint will use getOrCreateResource which will find the existing /mcp resource
         const lambdaFunction = registerAPIEndpoint(
             this,
             restApi,
-            lambdaPath,
+            config,
             lambdaLayers,
             {
                 name: 'create_hosted_mcp_server',
@@ -237,7 +223,7 @@ export class McpServerApi extends Construct {
         registerAPIEndpoint(
             this,
             restApi,
-            lambdaPath,
+            config,
             lambdaLayers,
             {
                 name: 'list_hosted_mcp_servers',
@@ -258,7 +244,7 @@ export class McpServerApi extends Construct {
         registerAPIEndpoint(
             this,
             restApi,
-            lambdaPath,
+            config,
             lambdaLayers,
             {
                 name: 'get_hosted_mcp_server',
@@ -279,7 +265,7 @@ export class McpServerApi extends Construct {
         registerAPIEndpoint(
             this,
             restApi,
-            lambdaPath,
+            config,
             lambdaLayers,
             {
                 name: 'delete_hosted_mcp_server',
@@ -300,7 +286,7 @@ export class McpServerApi extends Construct {
         registerAPIEndpoint(
             this,
             restApi,
-            lambdaPath,
+            config,
             lambdaLayers,
             {
                 name: 'update_hosted_mcp_server',

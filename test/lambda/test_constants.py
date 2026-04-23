@@ -14,7 +14,7 @@
 
 """Test constants module."""
 
-from utilities.constants import DOCX_FILE, PDF_FILE, TEXT_FILE
+from lisa.utilities.constants import DOCX_FILE, PDF_FILE, TEXT_FILE
 
 
 def test_constants():

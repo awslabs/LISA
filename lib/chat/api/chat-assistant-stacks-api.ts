@@ -16,9 +16,7 @@
 
 import { Construct } from 'constructs';
 import { BaseProps } from '../../schema';
-import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb';
-import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
 import { createLambdaRole } from '../../core/utils';
 import { getAuditLoggingEnv } from '../../api-base/auditEnv';
@@ -26,7 +24,7 @@ import { IRole } from 'aws-cdk-lib/aws-iam';
 import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { Vpc } from '../../networking/vpc';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
-import { LAMBDA_PATH } from '../../util';
+import { getPythonLambdaLayers } from '../../util';
 import { RemovalPolicy } from 'aws-cdk-lib';
 
 /**
@@ -51,17 +49,7 @@ export class ChatAssistantStacksApi extends Construct {
 
         const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
 
-        const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
-            this,
-            'chat-assistant-stacks-common-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
-        );
-
-        const fastapiLambdaLayer = LayerVersion.fromLayerVersionArn(
-            this,
-            'chat-assistant-stacks-fastapi-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/fastapi`),
-        );
+        const lambdaLayers = getPythonLambdaLayers(this, config, ['common', 'fastapi'], 'ChatAssistantStacks');
 
         this.stacksTable = new Table(this, 'ChatAssistantStacksTable', {
             partitionKey: {
@@ -143,13 +131,12 @@ export class ChatAssistantStacksApi extends Construct {
             rootResourceId,
         });
 
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         apis.forEach((f) => {
             const lambdaFunction = registerAPIEndpoint(
                 this,
                 restApi,
-                lambdaPath,
-                [commonLambdaLayer, fastapiLambdaLayer],
+                config,
+                lambdaLayers,
                 f,
                 getPythonRuntime(),
                 vpc,

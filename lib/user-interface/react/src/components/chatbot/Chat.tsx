@@ -113,13 +113,11 @@ export default function Chat ({ sessionId, initialStack }) {
 
     // API hooks
     const [getRelevantDocuments] = useLazyGetRelevantDocumentsQuery();
-    const { data: sessionHealth } = useGetSessionHealthQuery(undefined, { refetchOnMountOrArgChange: true });
+    const { data: sessionHealth } = useGetSessionHealthQuery();
     const [getSessionById] = useLazyGetSessionByIdQuery();
     const [updateSession] = useUpdateSessionMutation();
     const [attachImageToSession] = useAttachImageToSessionMutation();
-    const { data: allModelsRaw, isFetching: isFetchingModels } = useGetAllModelsQuery(undefined, {
-        refetchOnMountOrArgChange: 5,
-    });
+    const { data: allModelsRaw, isFetching: isFetchingModels } = useGetAllModelsQuery();
 
     const allModels = useMemo(() =>
         (allModelsRaw || []).filter((model) =>
@@ -167,12 +165,11 @@ export default function Chat ({ sessionId, initialStack }) {
     }, [allModelsWithStopped, effectiveStack]);
     const { data: userPreferences } = useGetUserPreferencesQuery();
     const { data: mcpServers } = useListMcpServersQuery(undefined, {
-        refetchOnMountOrArgChange: true,
         selectFromResult: (state) => ({
             isFetching: state.isFetching,
             data: (state.data?.Items || []).filter((server) => (server.status === McpServerStatus.Active)),
         })
-    },);
+    });
 
     // State management
     const [userPrompt, setUserPrompt] = useState('');
@@ -452,8 +449,8 @@ export default function Chat ({ sessionId, initialStack }) {
     // Custom hooks
     const { dynamicMaxRows } = useDynamicMaxRows();
 
-    // Get sessions list lastUpdated timestamp
-    const { data: sessions } = useListSessionsQuery(undefined, { refetchOnMountOrArgChange: 5 });
+    // Get sessions list lastUpdated timestamp.
+    const { data: sessions } = useListSessionsQuery();
     const currentSessionSummary = useMemo(() =>
         sessions?.find((s) => s.sessionId === session.sessionId),
     [sessions, session.sessionId]

@@ -18,8 +18,6 @@ import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { Effect, IRole, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
-import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
-import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { RemovalPolicy } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
@@ -28,7 +26,7 @@ import { BaseProps } from '../../schema';
 import { createLambdaRole } from '../../core/utils';
 import { getAuditLoggingEnv } from '../../api-base/auditEnv';
 import { Vpc } from '../../networking/vpc';
-import { LAMBDA_PATH } from '../../util';
+import { getPythonLambdaLayers } from '../../util';
 
 type ProjectsApiProps = {
     authorizer: IAuthorizer;
@@ -49,17 +47,7 @@ export class ProjectsApi extends Construct {
 
         const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc, sessionTable, configTable } = props;
 
-        const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
-            this,
-            'projects-common-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
-        );
-
-        const fastapiLambdaLayer = LayerVersion.fromLayerVersionArn(
-            this,
-            'projects-fastapi-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/fastapi`),
-        );
+        const lambdaLayers = getPythonLambdaLayers(this, config, ['common', 'fastapi'], 'Projects');
 
         // Use pre-created table if provided (from chatConstruct), otherwise create one
         this.projectsTable = props.projectsTable ?? new dynamodb.Table(this, 'ProjectsTable', {
@@ -162,13 +150,12 @@ export class ProjectsApi extends Construct {
             },
         ];
 
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         apis.forEach((f) => {
             const lambdaFunction = registerAPIEndpoint(
                 this,
                 restApi,
-                lambdaPath,
-                [commonLambdaLayer, fastapiLambdaLayer],
+                config,
+                lambdaLayers,
                 f,
                 getPythonRuntime(),
                 vpc,

@@ -26,22 +26,39 @@ import { IConstruct } from 'constructs';
  * Lambda response builders and FastAPI middleware read this env var to set the
  * Access-Control-Allow-Origin header, replacing the previous hardcoded wildcard (*).
  *
- * For single-origin deployments (the common case), this is the origin echoed back.
- * For multi-origin deployments, API Gateway preflight handles validation; the Lambda
- * returns the first configured origin as a safe default.
+ * IMPORTANT: The Access-Control-Allow-Origin response header only supports a single
+ * origin value (or '*'). For multi-origin deployments, this aspect uses the first
+ * configured origin. API Gateway preflight OPTIONS handles multi-origin validation;
+ * runtime services (FastAPI) that need multi-origin support should use CORS_ORIGINS
+ * (the full comma-separated list) instead.
+ *
+ * TODO: Unify CORS env var naming. Currently two env vars serve different purposes:
+ *   - CORS_ALLOWED_ORIGIN (single value) — used by Lambda response_builder.py and
+ *     MCP workbench auth.py for the Access-Control-Allow-Origin response header.
+ *   - CORS_ORIGINS (comma-separated list) — used by FastAPI CORSMiddleware in
+ *     fastapi_factory.py and rest-api main.py for multi-origin middleware config.
+ * Both are intentional (single-value header vs. multi-origin middleware), but the
+ * naming is confusing. A future cleanup could consolidate to a single env var with
+ * runtime logic to pick the right value per use case.
  */
 export class CorsOriginAspect implements IAspect {
     private readonly corsOrigin: string;
 
     /**
      * @param corsAllowedOrigins - The configured CORS allowed origins string
-     *   (comma-separated). The first origin is used for Lambda response headers.
+     *   (comma-separated). The first origin is used for Lambda response headers
+     *   because Access-Control-Allow-Origin only accepts a single value.
      *   Pass '*' to preserve wildcard behavior.
      */
     constructor (corsAllowedOrigins: string) {
-        // Use the first origin for the Lambda response header.
-        // API Gateway preflight OPTIONS handles multi-origin validation.
         const origins = corsAllowedOrigins.split(',').map((o) => o.trim()).filter(Boolean);
+        if (origins.length > 1) {
+            console.warn(
+                `CorsOriginAspect: Multiple CORS origins configured (${origins.length}). ` +
+                `Only the first origin ('${origins[0]}') will be used for CORS_ALLOWED_ORIGIN. ` +
+                'Runtime services should use CORS_ORIGINS for full multi-origin support.'
+            );
+        }
         this.corsOrigin = origins[0] || '*';
     }
 

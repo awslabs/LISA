@@ -86,7 +86,7 @@
     "test:update-baselines": "jest --testPathPatterns=snapshot.test.ts -- --updateBaselines",
     "cdk": "cdk",
     "prepare": "husky || true",
-    "postinstall": "",
+    "postinstall": "patch-package",
     "dev": "cd lib/user-interface/react/ && npm run dev",
     "prepublishOnly": "BUILD_ASSETS=true npm run build && npm run copy-dist --workspaces",
     "migrate-properties": "node ./scripts/migrate-properties.mjs",

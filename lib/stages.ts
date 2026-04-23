@@ -500,7 +500,9 @@ export class LisaServeApplicationStage extends Stage {
             this.stacks.forEach((stack) => Aspects.of(stack).add(adcCABundleAspect));
         }
 
-        // Inject CORS_ALLOWED_ORIGIN env var into all Lambda functions
+        // Inject CORS_ALLOWED_ORIGIN env var into all Lambda functions and ECS containers.
+        // Note: FastAPI services also use CORS_ORIGINS (full comma-separated list) for middleware;
+        // CORS_ALLOWED_ORIGIN is used specifically for single-value response headers (e.g., 401 responses).
         const corsOriginAspect = new CorsOriginAspect(config.corsAllowedOrigins.join(','));
         this.stacks.forEach((stack) => Aspects.of(stack).add(corsOriginAspect));
 

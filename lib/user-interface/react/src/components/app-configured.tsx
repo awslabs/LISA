@@ -74,6 +74,14 @@ function OAuthCallback () {
         // into innerHTML. When code is present but state doesn't match
         // a stored OAuth flow, the library throws an error containing
         // the raw state value and renders it via innerHTML (XSS vector).
+        //
+        // NOTE: The localStorage key format `mcp:auth:state_${state}` is
+        // coupled to the use-mcp library's internal storage convention.
+        // If the library changes its key naming this check may incorrectly
+        // block legitimate callbacks. The patched escapeHtml in
+        // patches/use-mcp+0.0.21.patch is the primary XSS fix; this
+        // pre-validation is a defense-in-depth layer. If false positives
+        // occur after a use-mcp upgrade, update or remove this check.
         const code = queryParams.get('code');
         const state = queryParams.get('state');
         if (code && state) {

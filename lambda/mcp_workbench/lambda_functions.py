@@ -287,6 +287,8 @@ def validate_syntax(event: dict, context: dict) -> dict[str, Any]:
 
         return response
 
+    except ValidationError as e:
+        raise BadRequestException(f"Invalid request body: {e}") from e
     except (NotFoundException, ForbiddenException, BadRequestException, InternalServerErrorException):
         raise
     except Exception as e:

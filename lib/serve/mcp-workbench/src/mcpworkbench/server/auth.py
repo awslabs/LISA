@@ -182,7 +182,9 @@ class OIDCHTTPBearer(BaseHTTPMiddleware):
                     break
 
         if not valid:
-            # Use configured CORS origins; fall back to wildcard for backward compatibility
+            # Use CORS_ALLOWED_ORIGIN (single value, injected by CorsOriginAspect) for the
+            # response header. This is distinct from CORS_ORIGINS used by FastAPI middleware,
+            # because Access-Control-Allow-Origin only accepts a single value.
             cors_origin = os.environ.get("CORS_ALLOWED_ORIGIN", "*")
             return JSONResponse(
                 status_code=HTTP_401_UNAUTHORIZED,

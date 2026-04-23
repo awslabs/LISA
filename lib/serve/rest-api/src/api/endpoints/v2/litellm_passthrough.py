@@ -540,10 +540,11 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
         if "add_generation_prompt" not in params:
             params["add_generation_prompt"] = True
         # Tell LiteLLM to allow this vLLM-specific param through drop_params
-        allowed = params.get("allowed_openai_params", [])
+        raw_allowed = params.get("allowed_openai_params", [])
+        allowed = [v for v in raw_allowed if isinstance(v, str)] if isinstance(raw_allowed, list) else []
         if "add_generation_prompt" not in allowed:
             allowed.append("add_generation_prompt")
-            params["allowed_openai_params"] = allowed
+        params["allowed_openai_params"] = allowed
 
     # Apply guardrails BEFORE sending to LiteLLM for chat/completions requests
     # This adds guardrail configuration to the request so LiteLLM enforces them

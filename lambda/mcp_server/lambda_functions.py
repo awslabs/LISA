@@ -300,7 +300,7 @@ def create(event: dict, context: dict) -> Any:
     """Create a new mcp server in DynamoDB."""
     user_id, _, _ = get_user_context(event)
     mcp_server_model = McpServerModel.model_validate_json(event["body"])
-    if mcp_server_model.owner != "lisa:public":
+    if not mcp_server_model.owner or mcp_server_model.owner != "lisa:public":
         mcp_server_model.owner = user_id
 
     # Insert the new mcp server item into the DynamoDB table
@@ -314,7 +314,7 @@ def update(event: dict, context: dict) -> Any:
     user_id, is_admin_user, groups = get_user_context(event)
     mcp_server_id = get_mcp_server_id(event)
     mcp_server_model = McpServerModel.model_validate_json(event["body"])
-    if mcp_server_model.owner != "lisa:public":
+    if not mcp_server_model.owner or mcp_server_model.owner != "lisa:public":
         mcp_server_model.owner = user_id
 
     if mcp_server_id != mcp_server_model.id:
@@ -373,7 +373,7 @@ def create_hosted_mcp_server(event: dict, context: dict) -> Any:
     """Trigger the state machine to create a LISA Hosted MCP server."""
     user_id, is_admin_user, groups = get_user_context(event)
     hosted_server_model = HostedMcpServerModel.model_validate_json(event["body"])
-    if hosted_server_model.owner != "lisa:public":
+    if not hosted_server_model.owner or hosted_server_model.owner != "lisa:public":
         hosted_server_model.owner = user_id
     # Always generate a new id for creation
     hosted_server_model.id = str(uuid.uuid4())

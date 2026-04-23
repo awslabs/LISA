@@ -269,6 +269,8 @@ export class EcsMcpServer extends Construct {
         // Define methods list for reuse (exclude OPTIONS since CORS preflight handles it)
         const methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'];
 
+        // API Gateway integration response headers only support a single static value.
+        // Use the first configured origin; preflight OPTIONS (above) handles multi-origin validation.
         const corsOrigin = config.corsAllowedOrigins?.[0] ?? '*';
 
         const corsIntegrationResponses = [

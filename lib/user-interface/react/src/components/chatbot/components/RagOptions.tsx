@@ -27,6 +27,7 @@ export type RagConfig = {
     embeddingModel: IModel;
     repositoryId: string;
     repositoryType: string;
+    supportsHybridSearch?: boolean;
 };
 
 type RagControlProps = {
@@ -177,14 +178,16 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
                 ...config,
                 repositoryId: newRepositoryId,
                 repositoryType: repository?.type || 'unknown',
-                collection: undefined, // Clear collection when repository changes
-                embeddingModel: undefined, // Clear current model so useEffect can set default
+                supportsHybridSearch: (repository as any)?.supportsHybridSearch ?? false,
+                collection: undefined,
+                embeddingModel: undefined,
             }));
         } else {
             setRagConfig((config) => ({
                 ...config,
                 repositoryId: undefined,
                 repositoryType: undefined,
+                supportsHybridSearch: false,
                 collection: undefined,
                 embeddingModel: undefined,
             }));

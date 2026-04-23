@@ -170,6 +170,22 @@ export const SessionConfiguration = ({
                                 />
                             </FormField>
                         ] : []),
+                        ...(systemConfig && systemConfig.configuration.enabledComponents.hybridSearch && ragConfig?.supportsHybridSearch && !isImageModel && !isVideoModel && !modelOnly ? [
+                            <FormField key='ragSearchMode' label='RAG Search Mode'>
+                                <Select
+                                    disabled={isRunning}
+                                    selectedOption={{
+                                        value: chatConfiguration.sessionConfiguration.ragSearchMode ?? 'vector',
+                                        label: (chatConfiguration.sessionConfiguration.ragSearchMode ?? 'vector') === 'hybrid' ? 'Hybrid' : 'Vector',
+                                    }}
+                                    onChange={({ detail }) => updateSessionConfiguration('ragSearchMode', detail.selectedOption.value)}
+                                    options={[
+                                        { value: 'vector', label: 'Vector', description: 'Semantic similarity search' },
+                                        { value: 'hybrid', label: 'Hybrid', description: 'Combined vector + keyword search' },
+                                    ]}
+                                />
+                            </FormField>
+                        ] : []),
                         ...(selectedModel?.features?.find((feature) => feature.name === ModelFeatures.REASONING) ? [
                             <FormField key='reasoningEffort' label='Reasoning Effort'>
                                 <Select

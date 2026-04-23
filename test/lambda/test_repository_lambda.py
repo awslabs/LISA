@@ -1375,6 +1375,51 @@ def test_real_list_all_function():
         assert body[0]["name"] == "Test Repo"
 
 
+def test_list_all_includes_supports_hybrid_search():
+    """list_all enriches each repo with supportsHybridSearch from the backend service."""
+    from repository.lambda_functions import list_all
+
+    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
+        "utilities.auth.get_groups"
+    ) as mock_get_groups:
+        mock_get_groups.return_value = ["test-group"]
+        mock_vs_repo.get_registered_repositories.return_value = [
+            {
+                "repositoryId": "os-repo",
+                "name": "OpenSearch Repo",
+                "type": "opensearch",
+                "allowedGroups": ["test-group"],
+                "status": "active",
+            },
+            {
+                "repositoryId": "kb-repo",
+                "name": "Bedrock KB Repo",
+                "type": "bedrock_knowledge_base",
+                "allowedGroups": ["test-group"],
+                "status": "active",
+                "knowledgeBaseId": "KB123",
+            },
+        ]
+
+        event = {
+            "requestContext": {
+                "authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["test-group"])}
+            }
+        }
+
+        result = list_all(event, SimpleNamespace())
+
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert len(body) == 2
+
+        os_repo = next(r for r in body if r["repositoryId"] == "os-repo")
+        kb_repo = next(r for r in body if r["repositoryId"] == "kb-repo")
+
+        assert os_repo["supportsHybridSearch"] is False
+        assert kb_repo["supportsHybridSearch"] is True
+
+
 def test_real_list_status_function():
     """Test the actual list_status function with real imports"""
     from repository.lambda_functions import list_status

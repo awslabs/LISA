@@ -57,6 +57,7 @@ type RelevantDocRequest = {
     query: string,
     topK: number,
     modelName?: string,
+    searchMode?: 'vector' | 'hybrid',
 };
 
 type ListRagDocumentRequest = {
@@ -228,6 +229,10 @@ export const ragApi = createApi({
                     params.collectionId = request.collectionId;
                 } else if (request.modelName) {
                     params.modelName = request.modelName;
+                }
+
+                if (request.searchMode && request.searchMode !== 'vector') {
+                    params.searchMode = request.searchMode;
                 }
 
                 const queryString = new URLSearchParams(params).toString();

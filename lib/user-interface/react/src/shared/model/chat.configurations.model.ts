@@ -62,6 +62,7 @@ export type ISessionConfiguration = {
         size: string,
     },
     remixVideoId?: string;
+    ragSearchMode?: 'vector' | 'hybrid';
 };
 
 export type GenerateLLMRequestParams = {
@@ -101,6 +102,7 @@ export const baseConfig: IChatConfiguration = {
         videoGenerationArgs: {
             seconds: '4',
             size: '720x1280',
-        }
+        },
+        ragSearchMode: 'vector',
     }
 };

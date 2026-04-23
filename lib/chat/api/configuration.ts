@@ -132,6 +132,7 @@ export class ConfigurationApi extends Construct {
                                         'encryptSession': { 'BOOL': 'False' },
                                         'chatAssistantStacks': { 'BOOL': 'False' },
                                         'projectOrganization': { 'BOOL': 'False' },
+                                        'hybridSearch': { 'BOOL': config.deployRag ? 'True' : 'False' },
                                     }
                                 },
                                 'maxProjectsPerUser': { 'N': '50' },

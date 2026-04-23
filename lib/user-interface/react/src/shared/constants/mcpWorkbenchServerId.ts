@@ -16,6 +16,6 @@
 
 /**
  * Auto-registered MCP Workbench server row in DynamoDB.
- * Must match `mcpWorkbenchServerId` in `lambda/mcp_workbench/mcp_workbench_server_id.json` (Python loads that file).
+ * Must match `mcpWorkbenchServerId` in `lambda/shared/python/lisa/mcp/mcp_workbench_server_id.json` (Python loads that file).
  */
 export const LISA_MCP_WORKBENCH_SERVER_ID = '50667e07-f95e-5ea3-8efc-8f4806d23063';

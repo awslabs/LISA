@@ -26,7 +26,7 @@ import { createCdkId } from '../core/utils';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import { LAMBDA_PATH, MCP_WORKBENCH_PATH } from '../util';
+import { definePythonLambda, getPythonLambdaLayers, MCP_WORKBENCH_PATH } from '../util';
 import { WORKBENCH_CONTAINER_MEMORY_RESERVATION, WORKBENCH_CONTAINER_MEMORY_LIMIT } from '../api-base/fastApiContainer';
 import { defaultMcpWorkbenchHostnameFromServeApiDomain } from './mcpWorkbenchDomain';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
@@ -54,30 +54,23 @@ export class McpWorkbenchConstruct extends Construct {
 
         const { authorizer, bucketAccessLogsBucket, config, restApiId, rootResourceId, securityGroups, vpc } = props;
 
-        // Get common layer based on arn from SSM due to issues with cross stack references
-        const commonLambdaLayer = lambda.LayerVersion.fromLayerVersionArn(
-            this,
-            'mcp-common-lambda-layer',
-            ssm.StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
-        );
-
-        const fastapiLambdaLayer = lambda.LayerVersion.fromLayerVersionArn(
-            this,
-            'mcp-fastapi-lambda-layer',
-            ssm.StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/fastapi`),
-        );
+        const lambdaLayers = getPythonLambdaLayers(this, config, ['common', 'fastapi'], 'McpWorkbench');
 
         const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
             restApiId: restApiId,
             rootResourceId: rootResourceId,
         });
 
-        const lambdaLayers = [commonLambdaLayer, fastapiLambdaLayer];
-
         const workbenchBucket = this.createWorkbenchBucket(scope, config, bucketAccessLogsBucket);
         this.createWorkbenchApi(restApi, config, vpc, securityGroups, workbenchBucket, lambdaLayers, authorizer);
 
         if (config.deployMcpWorkbench) {
+            // The workbench ECS service only needs the third-party `common` layer (not lisa-shared).
+            const commonLambdaLayer = lambda.LayerVersion.fromLayerVersionArn(
+                this,
+                'mcp-common-lambda-layer-ecs',
+                ssm.StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
+            );
             this.createWorkbenchService(config, vpc, commonLambdaLayer);
         }
     }
@@ -281,12 +274,11 @@ export class McpWorkbenchConstruct extends Construct {
             iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole')
         );
 
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         apis.forEach((f) => {
             const lambdaFunction = registerAPIEndpoint(
                 this,
                 restApi,
-                lambdaPath,
+                config,
                 lambdaLayers,
                 f,
                 getPythonRuntime(),
@@ -411,22 +403,21 @@ export class McpWorkbenchConstruct extends Construct {
             }
         });
 
-        const s3EventHandlerLambda = new lambda.Function(this, 'S3EventHandlerLambda', {
-            runtime: getPythonRuntime(),
-            handler: 'mcp_workbench.s3_event_handler.handler',
-            code: lambda.Code.fromAsset(config.lambdaPath ?? LAMBDA_PATH),
-            timeout: Duration.minutes(2),
-            role: s3EventHandlerRole,
+        const s3EventHandlerLambda = definePythonLambda(this, 'S3EventHandlerLambda', {
+            handlerDir: 'mcp_workbench',
+            entry: 's3_event_handler.handler',
+            config,
             layers: [commonLambdaLayer],
-            vpc: vpc.vpc,
-            vpcSubnets: vpc.subnetSelection,
+            role: s3EventHandlerRole,
+            vpc,
             securityGroups: [vpc.securityGroups.lambdaSg],
+            timeout: Duration.minutes(2),
             environment: {
                 MCP_WORKBENCH_ENDPOINT: workbenchEndpointUrl,
                 WORKBENCH_RESCAN_DELAY_SECONDS: '5',
                 MCP_WORKBENCH_RESCAN_PATH: 'v2/mcp/rescan',
                 ...(managementKeyName ? { MANAGEMENT_KEY_NAME: managementKeyName } : {}),
-            }
+            },
         });
 
         const rescanMcpWorkbenchRule = new events.Rule(this, 'RescanMCPWorkbenchRule', {

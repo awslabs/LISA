@@ -106,10 +106,10 @@ patch.dict(
 ).start()
 
 # Then patch the specific functions before importing
-patch("utilities.auth.get_username", mock_common.get_username).start()
-patch("utilities.common_functions.retry_config", retry_config).start()
-patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()
-patch("utilities.common_functions.get_item", mock_common.get_item).start()
+patch("lisa.utilities.auth.get_username", mock_common.get_username).start()
+patch("lisa.utilities.common_functions.retry_config", retry_config).start()
+patch("lisa.utilities.common_functions.api_wrapper", mock_api_wrapper).start()
+patch("lisa.utilities.common_functions.get_item", mock_common.get_item).start()
 patch("user_preferences.models.UserPreferencesModel", mock_user_preferences_model).start()
 
 # Now import the lambda functions

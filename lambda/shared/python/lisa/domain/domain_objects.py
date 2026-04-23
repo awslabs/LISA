@@ -1,0 +1,1577 @@
+#   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License").
+#   You may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
+"""Defines domain objects for model endpoint interactions."""
+
+from __future__ import annotations
+
+import json
+import logging
+import re
+import urllib.parse
+import uuid
+from collections.abc import Generator
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from enum import auto, Enum, StrEnum
+from typing import Annotated, Any, Literal, Self, TypeAlias, Union
+from uuid import uuid4
+from zoneinfo import ZoneInfo
+
+from lisa.utilities.constants import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, MIN_PAGE_SIZE
+from lisa.utilities.healthcheck_validator import validate_healthcheck_command
+from lisa.utilities.time import now, utc_now
+from lisa.utilities.validation import (
+    validate_all_fields_defined,
+    validate_any_fields_defined,
+    validate_instance_type,
+    ValidationError,
+)
+from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt
+from pydantic.functional_validators import AfterValidator, field_validator, model_validator
+
+logger = logging.getLogger(__name__)
+
+
+class InferenceContainer(StrEnum):
+    """Defines supported inference container types."""
+
+    TGI = auto()
+    TEI = auto()
+    VLLM = auto()
+
+
+class ModelStatus(StrEnum):
+    """Defines possible model deployment states."""
+
+    CREATING = "Creating"
+    IN_SERVICE = "InService"
+    STARTING = "Starting"
+    STOPPING = "Stopping"
+    STOPPED = "Stopped"
+    UPDATING = "Updating"
+    DELETING = "Deleting"
+    FAILED = "Failed"
+
+
+class ModelType(StrEnum):
+    """Defines supported model categories."""
+
+    TEXTGEN = auto()
+    IMAGEGEN = auto()
+    VIDEOGEN = auto()
+    EMBEDDING = auto()
+
+
+class ModelHostingType(StrEnum):
+    """Defines where a model is hosted."""
+
+    THIRD_PARTY = auto()
+    LISA_HOSTED = auto()
+    INTERNAL_HOSTED = auto()
+
+
+class GuardrailMode(StrEnum):
+    """Defines supported guardrail execution modes."""
+
+    PRE_CALL = auto()
+    DURING_CALL = auto()
+    POST_CALL = auto()
+
+
+class GuardrailConfig(BaseModel):
+    """Defines configuration for a single guardrail."""
+
+    guardrailName: str = Field(min_length=1)
+    guardrailIdentifier: str = Field(min_length=1)
+    guardrailVersion: str = Field(default="DRAFT")
+    mode: GuardrailMode = Field(default=GuardrailMode.PRE_CALL)
+    description: str | None = None
+    allowedGroups: list[str] = Field(default_factory=list)
+    markedForDeletion: bool | None = Field(default=False)
+
+
+# Type alias for guardrails configuration - maps guardrail IDs to their configs
+GuardrailsConfig: TypeAlias = dict[str, GuardrailConfig]
+
+
+class GuardrailRequest(BaseModel):
+    """Defines request structure for guardrails API operations."""
+
+    model_id: str = Field(min_length=1)
+    guardrails_config: GuardrailsConfig
+
+
+class GuardrailResponse(BaseModel):
+    """Defines response structure for guardrails API operations."""
+
+    model_id: str
+    guardrails_config: GuardrailsConfig
+    success: bool
+    message: str
+
+
+class GuardrailsTableEntry(BaseModel):
+    """Represents a guardrail entry in DynamoDB table."""
+
+    guardrailId: str  # Partition key
+    modelId: str  # Sort key
+    guardrailName: str
+    guardrailIdentifier: str
+    guardrailVersion: str
+    mode: str
+    description: str | None
+    allowedGroups: list[str]
+    createdDate: int = Field(default_factory=lambda: now())
+    lastModifiedDate: int = Field(default_factory=lambda: now())
+
+
+class MetricConfig(BaseModel):
+    """Defines metrics configuration for auto-scaling policies."""
+
+    albMetricName: str = Field(default="RequestCountPerTarget", min_length=1)
+    targetValue: NonNegativeInt = Field(default=30)
+    duration: PositiveInt
+    estimatedInstanceWarmup: PositiveInt
+
+
+class LoadBalancerHealthCheckConfig(BaseModel):
+    """Specifies health check parameters for load balancer configuration."""
+
+    path: str = Field(min_length=1)
+    interval: PositiveInt
+    timeout: PositiveInt
+    healthyThresholdCount: PositiveInt
+    unhealthyThresholdCount: PositiveInt
+
+
+class LoadBalancerConfig(BaseModel):
+    """Defines load balancer settings."""
+
+    healthCheckConfig: LoadBalancerHealthCheckConfig
+
+
+class ScheduleType(str, Enum):
+    """Defines supported schedule types for resource scheduling"""
+
+    def __str__(self) -> str:
+        """Returns string representation of the enum value"""
+        return str(self.value)
+
+    DAILY = "DAILY"
+    RECURRING = "RECURRING"
+
+
+class DaySchedule(BaseModel):
+    """Defines start and stop times for a single day"""
+
+    startTime: str = Field(pattern=r"^([01]?[0-9]|2[0-3]):[0-5][0-9]$")
+    stopTime: str = Field(pattern=r"^([01]?[0-9]|2[0-3]):[0-5][0-9]$")
+
+    @field_validator("startTime", "stopTime")
+    @classmethod
+    def validate_time_format(cls, v: str) -> str:
+        """Validates time format is HH:MM"""
+        try:
+
+            datetime.strptime(v, "%H:%M")
+        except ValueError:
+            raise ValueError("Time must be in HH:MM format")
+        return v
+
+    @model_validator(mode="after")
+    def validate_stop_after_start(self) -> Self:
+        """Validates that stop time is after start time and at least 2 hours later"""
+
+        start_time = datetime.strptime(self.startTime, "%H:%M").time()
+        stop_time = datetime.strptime(self.stopTime, "%H:%M").time()
+
+        # Reject if start and stop times are exactly equal
+        if start_time == stop_time:
+            raise ValueError("Stop time must be at least 2 hours after start time")
+
+        # Convert to datetime objects for easier calculation
+        start_dt = datetime.combine(datetime.today(), start_time)
+        stop_dt = datetime.combine(datetime.today(), stop_time)
+
+        # Handle case where stop time is next day (e.g., start at 23:00, stop at 01:00)
+        if stop_time < start_time:
+            stop_dt += timedelta(days=1)
+
+        # Calculate the time difference
+        time_diff = stop_dt - start_dt
+
+        # Ensure stop time is at least 2 hours after start time
+        min_duration = timedelta(hours=2)
+        if time_diff < min_duration:
+            raise ValueError("Stop time must be at least 2 hours after start time")
+
+        return self
+
+
+class WeeklySchedule(BaseModel):
+    """Defines schedule for each day of the week with one start/stop time per day"""
+
+    monday: DaySchedule | None = None
+    tuesday: DaySchedule | None = None
+    wednesday: DaySchedule | None = None
+    thursday: DaySchedule | None = None
+    friday: DaySchedule | None = None
+    saturday: DaySchedule | None = None
+    sunday: DaySchedule | None = None
+
+    @model_validator(mode="after")
+    def validate_daily_schedules(self) -> Self:
+        """Validates that at least one day has a schedule configured"""
+        days = [self.monday, self.tuesday, self.wednesday, self.thursday, self.friday, self.saturday, self.sunday]
+
+        if not any(days):
+            raise ValueError("At least one day must have a schedule configured")
+
+        return self
+
+
+class NextScheduledAction(BaseModel):
+    """Defines the next scheduled action for a model"""
+
+    action: str = Field(pattern=r"^(START|STOP)$")
+    scheduledTime: str
+
+
+class ScheduleFailure(BaseModel):
+    """Defines schedule failure information"""
+
+    timestamp: str
+    error: str
+    retryCount: int
+
+
+class BaseSchedulingConfig(BaseModel):
+    """Base configuration shared by all scheduling types"""
+
+    timezone: str = Field(default="UTC")
+
+    # Schedule metadata and tracking
+    scheduleEnabled: bool = False
+    lastScheduleUpdate: str | None = None
+    scheduledActionArns: list[str] | None = None
+
+    # Status tracking
+    scheduleConfigured: bool = False
+    lastScheduleFailed: bool = False
+
+    # Next scheduled action info (computed field)
+    nextScheduledAction: NextScheduledAction | None = None
+
+    # Failure tracking
+    lastScheduleFailure: ScheduleFailure | None = None
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, v: str) -> str:
+        """Validates timezone is a valid IANA timezone identifier"""
+        try:
+            ZoneInfo(v)
+        except Exception:
+            raise ValueError(f"Invalid timezone: {v}, timezone must be a valid IANA timezone identifier")
+        return v
+
+
+class DailySchedulingConfig(BaseSchedulingConfig):
+    """Configuration for daily schedules with different times per day"""
+
+    scheduleType: Literal["DAILY"] = "DAILY"
+    dailySchedule: WeeklySchedule
+
+    @model_validator(mode="after")
+    def validate_daily_schedule_exclusivity(self) -> Self:
+        """Validates that only dailySchedule is present for DAILY type"""
+        # Check if any recurring schedule data was included
+        if hasattr(self, "recurringSchedule"):
+            raise ValueError("recurringSchedule not allowed for DAILY schedule type")
+        return self
+
+
+class RecurringSchedulingConfig(BaseSchedulingConfig):
+    """Configuration for recurring schedules with same time every day"""
+
+    scheduleType: Literal["RECURRING"] = "RECURRING"
+    recurringSchedule: DaySchedule
+
+    @model_validator(mode="after")
+    def validate_recurring_schedule_exclusivity(self) -> Self:
+        """Validates that only recurringSchedule is present for RECURRING type"""
+        # Check if any daily schedule data was included
+        if hasattr(self, "dailySchedule"):
+            raise ValueError("dailySchedule not allowed for RECURRING schedule type")
+        return self
+
+
+# Discriminated union type for scheduling configurations
+SchedulingConfig = Annotated[
+    Union[DailySchedulingConfig, RecurringSchedulingConfig], Field(discriminator="scheduleType")
+]
+
+
+class AutoScalingConfig(BaseModel):
+    """Specifies auto-scaling parameters for model deployment."""
+
+    blockDeviceVolumeSize: NonNegativeInt | None = 50
+    minCapacity: PositiveInt
+    maxCapacity: PositiveInt
+    desiredCapacity: PositiveInt | None = None
+    cooldown: PositiveInt
+    defaultInstanceWarmup: Annotated[int, Field(gt=0, le=3600)]
+    metricConfig: MetricConfig
+    scheduling: SchedulingConfig | None = None
+
+    @model_validator(mode="after")
+    def validate_auto_scaling_config(self) -> Self:
+        """Validates auto-scaling configuration parameters."""
+        if self.minCapacity > self.maxCapacity:
+            raise ValueError("minCapacity must be less than or equal to the maxCapacity.")
+        if self.blockDeviceVolumeSize is not None and self.blockDeviceVolumeSize < 30:
+            raise ValueError("blockDeviceVolumeSize must be greater than or equal to 30.")
+        if self.desiredCapacity and self.desiredCapacity > self.maxCapacity:
+            raise ValueError("Desired capacity must be less than or equal to max capacity.")
+        if self.desiredCapacity and self.desiredCapacity < self.minCapacity:
+            raise ValueError("Desired capacity must be greater than or equal to minimum capacity.")
+        return self
+
+
+class AutoScalingInstanceConfig(BaseModel):
+    """Defines instance count parameters for auto-scaling updates."""
+
+    minCapacity: PositiveInt | None = None
+    maxCapacity: PositiveInt | None = None
+    desiredCapacity: PositiveInt | None = None
+    cooldown: PositiveInt | None = None
+    defaultInstanceWarmup: Annotated[int, Field(gt=0, le=3600)] | None = None
+
+    @model_validator(mode="after")
+    def validate_auto_scaling_instance_config(self) -> Self:
+        """Validates auto-scaling instance configuration parameters."""
+        config_fields = [
+            self.minCapacity,
+            self.maxCapacity,
+            self.desiredCapacity,
+            self.cooldown,
+            self.defaultInstanceWarmup,
+        ]
+        if not validate_any_fields_defined(config_fields):
+            raise ValueError("At least one option of autoScalingInstanceConfig must be defined.")
+        if self.desiredCapacity and self.maxCapacity and self.desiredCapacity > self.maxCapacity:
+            raise ValueError("Desired capacity must be less than or equal to max capacity.")
+        if self.desiredCapacity and self.minCapacity and self.desiredCapacity < self.minCapacity:
+            raise ValueError("Desired capacity must be greater than or equal to minimum capacity.")
+        return self
+
+
+class ContainerHealthCheckConfig(BaseModel):
+    """Specifies container health check parameters."""
+
+    command: str | list[str]
+    interval: PositiveInt
+    startPeriod: PositiveInt
+    timeout: PositiveInt
+    retries: PositiveInt
+
+    @field_validator("command")
+    @classmethod
+    def validate_command(cls, command: str | list[str]) -> str | list[str]:
+        """Validates healthcheck command format for ECS compatibility."""
+        validate_healthcheck_command(command)
+        return command
+
+
+class ContainerConfigImage(BaseModel):
+    """Defines container image configuration."""
+
+    baseImage: str = Field(min_length=1)
+    type: str = Field(min_length=1)
+
+
+class ContainerConfig(BaseModel):
+    """Specifies container deployment settings."""
+
+    image: ContainerConfigImage
+    sharedMemorySize: PositiveInt
+    healthCheckConfig: ContainerHealthCheckConfig
+    environment: dict[str, str] | None = {}
+    memoryReservation: int | None = Field(
+        default=None, ge=0, description="Memory reservation in MiB for the container."
+    )
+
+    @field_validator("environment")
+    @classmethod
+    def validate_environment(cls, environment: dict[str, str]) -> dict[str, str]:
+        """Validates environment variable key names."""
+        if environment:
+            if not all(key for key in environment.keys()):
+                raise ValueError("Empty strings are not allowed for environment variable key names.")
+        return environment
+
+
+class ContainerConfigUpdatable(BaseModel):
+    """Specifies container configuration fields that can be updated."""
+
+    environment: dict[str, str] | None = None
+    sharedMemorySize: PositiveInt | None = None
+    healthCheckCommand: str | list[str] | None = None
+    healthCheckInterval: PositiveInt | None = None
+    healthCheckTimeout: PositiveInt | None = None
+    healthCheckStartPeriod: PositiveInt | None = None
+    healthCheckRetries: PositiveInt | None = None
+
+    @field_validator("environment")
+    @classmethod
+    def validate_environment(cls, environment: dict[str, str]) -> dict[str, str]:
+        """Validates environment variable key names."""
+        if environment:
+            if not all(key for key in environment.keys()):
+                raise ValueError("Empty strings are not allowed for environment variable key names.")
+        return environment
+
+
+class ModelFeature(BaseModel):
+    """Defines model feature attributes."""
+
+    __exceptions: list[Any] = []
+    name: str
+    overview: str
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
+
+class LISAModel(BaseModel):
+    """Defines core model attributes and configuration."""
+
+    autoScalingConfig: AutoScalingConfig | None = None
+    containerConfig: ContainerConfig | None = None
+    inferenceContainer: InferenceContainer | None = None
+    instanceType: Annotated[str, AfterValidator(validate_instance_type)] | None = None
+    loadBalancerConfig: LoadBalancerConfig | None = None
+    modelId: str
+    modelName: str
+    modelDescription: str | None = None
+    modelType: ModelType
+    modelUrl: str | None = None
+    status: ModelStatus
+    streaming: bool
+    features: list[ModelFeature] | None = None
+    allowedGroups: list[str] | None = None
+    guardrailsConfig: GuardrailsConfig | None = None
+    contextWindow: int | None = None
+    hostingType: ModelHostingType | None = ModelHostingType.THIRD_PARTY
+
+
+class ApiResponseBase(BaseModel):
+    """Defines base structure for API responses."""
+
+    model: LISAModel
+
+
+class CreateModelRequest(BaseModel):
+    """Specifies parameters for model creation requests."""
+
+    autoScalingConfig: AutoScalingConfig | None = None
+    containerConfig: ContainerConfig | None = None
+    inferenceContainer: InferenceContainer | None = None
+    instanceType: Annotated[str, AfterValidator(validate_instance_type)] | None = None
+    loadBalancerConfig: LoadBalancerConfig | None = None
+    modelId: str = Field(min_length=1)
+    modelName: str = Field(min_length=1)
+    modelDescription: str | None = None
+    modelType: ModelType
+    modelUrl: str | None = None
+    streaming: bool | None = False
+    features: list[ModelFeature] | None = None
+    allowedGroups: list[str] | None = None
+    apiKey: str | None = None
+    guardrailsConfig: GuardrailsConfig | None = None
+    hostingType: ModelHostingType | None = ModelHostingType.THIRD_PARTY
+
+    @model_validator(mode="after")
+    def validate_create_model_request(self) -> Self:
+        """Validates model creation request parameters."""
+        if self.modelType == ModelType.EMBEDDING and self.streaming:
+            raise ValueError("Embedding model cannot be set with streaming enabled.")
+
+        required_hosting_fields = [
+            self.autoScalingConfig,
+            self.containerConfig,
+            self.inferenceContainer,
+            self.instanceType,
+            self.loadBalancerConfig,
+        ]
+        if validate_any_fields_defined(required_hosting_fields):
+            if not validate_all_fields_defined(required_hosting_fields):
+                raise ValueError(
+                    "All of the following fields must be defined if creating a LISA-hosted model: "
+                    "autoScalingConfig, containerConfig, inferenceContainer, instanceType, and loadBalancerConfig"
+                )
+
+        if self.hostingType == ModelHostingType.INTERNAL_HOSTED and not self.modelUrl:
+            raise ValueError("modelUrl is required for INTERNAL_HOSTED models.")
+        if self.hostingType == ModelHostingType.INTERNAL_HOSTED and self.modelUrl:
+            parsed_url = urllib.parse.urlparse(self.modelUrl)
+            if not parsed_url.hostname or not parsed_url.hostname.lower().endswith(".elb.amazonaws.com"):
+                raise ValueError("modelUrl for INTERNAL_HOSTED models must target an AWS load balancer hostname.")
+
+        return self
+
+
+class CreateModelResponse(ApiResponseBase):
+    """Defines response structure for model creation."""
+
+    pass
+
+
+class ListModelsResponse(BaseModel):
+    """Defines response structure for model listing."""
+
+    models: list[LISAModel]
+
+
+class GetModelResponse(ApiResponseBase):
+    """Defines response structure for model retrieval."""
+
+    pass
+
+
+class UpdateModelRequest(BaseModel):
+    """Specifies parameters for model update requests."""
+
+    autoScalingInstanceConfig: AutoScalingInstanceConfig | None = None
+    enabled: bool | None = None
+    modelType: ModelType | None = None
+    modelDescription: str | None = None
+    streaming: bool | None = None
+    allowedGroups: list[str] | None = None
+    features: list[ModelFeature] | None = None
+    containerConfig: ContainerConfigUpdatable | None = None
+    guardrailsConfig: GuardrailsConfig | None = None
+
+    @model_validator(mode="after")
+    def validate_update_model_request(self) -> Self:
+        """Validates model update request parameters."""
+        fields = [
+            self.autoScalingInstanceConfig,
+            self.enabled,
+            self.modelType,
+            self.modelDescription,
+            self.streaming,
+            self.allowedGroups,
+            self.features,
+            self.containerConfig,
+            self.guardrailsConfig,
+        ]
+        if not validate_any_fields_defined(fields):
+            raise ValueError(
+                "At least one field out of autoScalingInstanceConfig, containerConfig, enabled, modelType, "
+                "modelDescription, streaming, allowedGroups, features, or guardrailsConfig must be "
+                "defined in request payload."
+            )
+
+        if self.modelType == ModelType.EMBEDDING and self.streaming:
+            raise ValueError("Embedding model cannot be set with streaming enabled.")
+        return self
+
+    @field_validator("autoScalingInstanceConfig")
+    @classmethod
+    def validate_autoscaling_instance_config(cls, config: AutoScalingInstanceConfig) -> AutoScalingInstanceConfig:
+        """Validates auto-scaling instance configuration."""
+        if not config:
+            raise ValueError("The autoScalingInstanceConfig must not be null if defined in request payload.")
+        return config
+
+    @field_validator("containerConfig")
+    @classmethod
+    def validate_container_config(cls, config: ContainerConfigUpdatable) -> ContainerConfigUpdatable:
+        """Validates container configuration update."""
+        if not config:
+            raise ValueError("The containerConfig must not be null if defined in request payload.")
+        return config
+
+
+class UpdateModelResponse(ApiResponseBase):
+    """Defines response structure for model updates."""
+
+    pass
+
+
+class UpdateContextWindowRequest(BaseModel):
+    """Request body for manually setting a model's context window."""
+
+    contextWindow: int = Field(gt=0, description="The maximum context window size (number of tokens) for the model.")
+
+
+class UpdateContextWindowResponse(ApiResponseBase):
+    """Response for a single-model context window update."""
+
+    pass
+
+
+class DeleteModelResponse(ApiResponseBase):
+    """Defines response structure for model deletion."""
+
+    pass
+
+
+class UpdateScheduleResponse(BaseModel):
+    """Response object for schedule create/update operations."""
+
+    message: str
+    modelId: str
+    scheduleEnabled: bool
+
+
+class GetScheduleResponse(BaseModel):
+    """Response object for getting schedule configuration."""
+
+    modelId: str
+    scheduling: dict[str, Any]
+    nextScheduledAction: dict[str, str] | None = None
+
+
+class DeleteScheduleResponse(BaseModel):
+    """Response object for schedule deletion."""
+
+    message: str
+    modelId: str
+    scheduleEnabled: bool
+
+
+class GetScheduleStatusResponse(BaseModel):
+    """Response object for getting schedule status."""
+
+    modelId: str
+    scheduleEnabled: bool
+    scheduleConfigured: bool
+    lastScheduleFailed: bool
+    scheduleStatus: str
+    scheduleType: str | None = None
+    timezone: str
+    nextScheduledAction: dict[str, str] | None = None
+    lastScheduleUpdate: str | None = None
+    lastScheduleFailure: dict[str, Any] | None = None
+
+
+class IngestionType(StrEnum):
+    """Specifies whether ingestion was automatic or manual."""
+
+    AUTO = auto()  # Automatic ingestion via pipeline (event-driven)
+    MANUAL = auto()  # Manual ingestion via API (user-initiated)
+    EXISTING = auto()  # Pre-existing document discovered in KB (user-managed)
+
+
+class JobActionType(StrEnum):
+    """Defines deletion job types."""
+
+    DOCUMENT_INGESTION = auto()
+    DOCUMENT_BATCH_INGESTION = auto()
+    DOCUMENT_DELETION = auto()
+    DOCUMENT_BATCH_DELETION = auto()
+    COLLECTION_DELETION = auto()
+
+
+RagDocumentDict = dict[str, Any]
+
+
+class ChunkingStrategyType(StrEnum):
+    """Defines supported document chunking strategies."""
+
+    FIXED = auto()
+    NONE = auto()
+
+
+class IngestionStatus(StrEnum):
+    """Defines possible states for document ingestion process."""
+
+    INGESTION_PENDING = "INGESTION_PENDING"
+    INGESTION_IN_PROGRESS = "INGESTION_IN_PROGRESS"
+    INGESTION_COMPLETED = "INGESTION_COMPLETED"
+    INGESTION_FAILED = "INGESTION_FAILED"
+
+    DELETE_PENDING = "DELETE_PENDING"
+    DELETE_IN_PROGRESS = "DELETE_IN_PROGRESS"
+    DELETE_COMPLETED = "DELETE_COMPLETED"
+    DELETE_FAILED = "DELETE_FAILED"
+
+    def is_terminal(self) -> bool:
+        """Check if status is terminal."""
+        return self in [
+            IngestionStatus.INGESTION_COMPLETED,
+            IngestionStatus.INGESTION_FAILED,
+            IngestionStatus.DELETE_COMPLETED,
+            IngestionStatus.DELETE_FAILED,
+        ]
+
+    def is_success(self) -> bool:
+        """Check if status is success."""
+        return self in [
+            IngestionStatus.INGESTION_COMPLETED,
+            IngestionStatus.DELETE_COMPLETED,
+        ]
+
+
+class FixedChunkingStrategy(BaseModel):
+    """Defines parameters for fixed-size document chunking."""
+
+    type: ChunkingStrategyType = ChunkingStrategyType.FIXED
+    size: int = Field(ge=100, le=10000)
+    overlap: int = Field(ge=0)
+
+    @model_validator(mode="after")
+    def validate_overlap(self) -> Self:
+        """Validates overlap is not more than half of chunk size."""
+        if self.overlap > self.size / 2:
+            raise ValueError(
+                f"chunk overlap ({self.overlap}) must be less than or equal to " f"half of chunk size ({self.size / 2})"
+            )
+        return self
+
+
+class NoneChunkingStrategy(BaseModel):
+    """Defines parameters for no-chunking strategy - documents ingested as-is."""
+
+    type: ChunkingStrategyType = ChunkingStrategyType.NONE
+
+
+ChunkingStrategy = Union[FixedChunkingStrategy, NoneChunkingStrategy]
+
+
+class RagSubDocument(BaseModel):
+    """Represents a sub-document entity for DynamoDB storage."""
+
+    document_id: str
+    subdocs: list[str] = Field(default_factory=lambda: [])
+    index: int | None = Field(default=None)
+    sk: str | None = None
+
+    def __init__(self, **data: Any) -> None:
+        super().__init__(**data)
+        self.sk = f"subdoc#{self.document_id}#{self.index}"
+
+
+class RagDocument(BaseModel):
+    """Represents a RAG document entity for DynamoDB storage."""
+
+    pk: str | None = None
+    document_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    repository_id: str = Field(min_length=3, max_length=20)
+    collection_id: str
+    document_name: str
+    source: str
+    username: str
+    subdocs: list[str] = Field(default_factory=lambda: [], exclude=True)
+    chunk_strategy: ChunkingStrategy
+    ingestion_type: IngestionType = Field(default_factory=lambda: IngestionType.MANUAL)
+    upload_date: int = Field(default_factory=lambda: now())
+    chunks: int | None = 0
+    model_config = ConfigDict(use_enum_values=True, validate_default=True)
+
+    def __init__(self, **data: Any) -> None:
+        super().__init__(**data)
+        self.pk = self.createPartitionKey(self.repository_id, self.collection_id)
+        # Only calculate chunks if not explicitly provided in data (for new documents)
+        if "chunks" not in data:
+            self.chunks = len(self.subdocs)
+
+    @staticmethod
+    def createPartitionKey(repository_id: str, collection_id: str) -> str:
+        """Generates a partition key from repository and collection IDs."""
+        return f"{repository_id}#{collection_id}"
+
+    def chunk_doc(self, chunk_size: int = 1000) -> Generator[RagSubDocument]:
+        """Segments document into smaller sub-documents."""
+        total_subdocs = len(self.subdocs)
+        for start_index in range(0, total_subdocs, chunk_size):
+            end_index = min(start_index + chunk_size, total_subdocs)
+            yield RagSubDocument(
+                document_id=self.document_id, subdocs=self.subdocs[start_index:end_index], index=start_index
+            )
+
+    @staticmethod
+    def join_docs(documents: list[RagDocumentDict]) -> list[RagDocumentDict]:
+        """Combines multiple sub-documents into a single document."""
+        grouped_docs: dict[str, list[RagDocumentDict]] = {}
+        for doc in documents:
+            doc_id = doc.get("document_id", "")
+            if doc_id not in grouped_docs:
+                grouped_docs[doc_id] = []
+            grouped_docs[doc_id].append(doc)
+
+        joined_docs: list[RagDocumentDict] = []
+        for docs in grouped_docs.values():
+            joined_doc = docs[0]
+            joined_doc["subdocs"] = [sub_doc for doc in docs for sub_doc in (doc.get("subdocs", []) or [])]
+            joined_docs.append(joined_doc)
+
+        return joined_docs
+
+
+class IngestionJob(BaseModel):
+    """Represents an ingestion job entity for DynamoDB storage."""
+
+    id: str = Field(default_factory=lambda: str(uuid4()))
+    s3_path: str
+    collection_id: str | None = Field(
+        default=None, description="Collection ID for full deletion, None for default collection deletion"
+    )
+    document_id: str | None = Field(default=None)
+    repository_id: str
+    chunk_strategy: ChunkingStrategy | None = Field(default=None)
+    embedding_model: str | None = Field(
+        default=None, description="Embedding model name, used as index identifier for default collections"
+    )
+    username: str | None = Field(default=None)
+    ingestion_type: IngestionType = Field(
+        default=IngestionType.MANUAL, description="How the document was ingested (MANUAL, AUTO, or EXISTING)"
+    )
+    status: IngestionStatus = IngestionStatus.INGESTION_PENDING
+    created_date: str = Field(default_factory=lambda: utc_now().isoformat())
+    error_message: str | None = Field(default=None)
+    document_name: str | None = Field(default=None)
+    auto: bool | None = Field(default=None)
+    metadata: dict | None = Field(default=None)
+    job_type: JobActionType | None = Field(default=None, description="Type of deletion job")
+    collection_deletion: bool = Field(default=False, description="Indicates this is a collection deletion job")
+    s3_paths: list[str] | None = Field(default=None, description="List of S3 paths for batch ingestion operations")
+    document_ids: list[str] | None = Field(
+        default=None, description="List of document IDs from completed batch operations"
+    )
+
+    def __init__(self, **data: Any) -> None:
+        super().__init__(**data)
+
+        self.document_name = self.s3_path.split("/")[-1] if self.s3_path else ""
+        self.auto = self.username == "system"
+
+    @model_validator(mode="after")
+    def validate_collection_deletion_identifiers(self) -> Self:
+        """Validate that for collection deletion jobs, exactly one of collection_id or embedding_model is provided."""
+        if self.collection_deletion:
+            has_collection_id = self.collection_id is not None
+            has_embedding_model = self.embedding_model is not None
+
+            # XOR: exactly one must be true
+            if has_collection_id == has_embedding_model:
+                if not has_collection_id and not has_embedding_model:
+                    raise ValueError(
+                        "For collection deletion jobs, either collection_id or embedding_model must be provided"
+                    )
+                else:
+                    raise ValueError(
+                        "For collection deletion jobs, only one of collection_id or "
+                        "embedding_model should be provided, not both"
+                    )
+
+        return self
+
+
+class PaginatedResponse(BaseModel):
+    """Base class for paginated API responses."""
+
+    lastEvaluatedKey: dict[str, str] | None = None
+    hasNextPage: bool = False
+    hasPreviousPage: bool = False
+
+
+class DeleteResponse(BaseModel):
+    """Generic response model for delete operations."""
+
+    deleted: bool = False
+
+
+class SuccessResponse(BaseModel):
+    """Generic response model for successful operations."""
+
+    message: str
+
+
+class ListJobsResponse(PaginatedResponse):
+    """Response structure for listing ingestion jobs with pagination."""
+
+    jobs: list[IngestionJob]
+
+
+@dataclass
+class PaginationResult:
+    """Result of pagination analysis."""
+
+    has_next_page: bool
+    has_previous_page: bool
+
+    @classmethod
+    def from_keys(cls, original_key: dict[str, str] | None, returned_key: dict[str, str] | None) -> PaginationResult:
+        """Create pagination result from keys."""
+        return cls(has_next_page=returned_key is not None, has_previous_page=original_key is not None)
+
+
+@dataclass
+class PaginationParams:
+    """Shared pagination parameter handling."""
+
+    page_size: int = DEFAULT_PAGE_SIZE
+    last_evaluated_key: dict[str, str] | None = None
+
+    @staticmethod
+    def parse_page_size(
+        query_params: dict[str, str], default: int = DEFAULT_PAGE_SIZE, max_size: int = MAX_PAGE_SIZE
+    ) -> int:
+        """Parse and validate page size with configurable limits."""
+        page_size = int(query_params.get("pageSize", str(default)))
+        return max(int(MIN_PAGE_SIZE), min(page_size, int(max_size)))
+
+    @staticmethod
+    def parse_last_evaluated_key(query_params: dict[str, str], key_fields: list[str]) -> dict[str, str] | None:
+        """Parse last evaluated key from query parameters.
+
+        Args:
+            query_params: Query string parameters dictionary
+            key_fields: List of field names to extract from query params (e.g., ['collectionId', 'status', 'createdAt'])
+
+        Returns:
+            Dictionary with last evaluated key fields, or None if no key present
+
+        Notes:
+            Query params should be formatted as lastEvaluatedKey{FieldName}, e.g.:
+            - lastEvaluatedKeyCollectionId
+            - lastEvaluatedKeyStatus
+            - lastEvaluatedKeyCreatedAt
+        """
+        # Check if any lastEvaluatedKey fields are present
+        has_key = any(f"lastEvaluatedKey{field.capitalize()}" in query_params for field in key_fields)
+
+        if not has_key:
+            return None
+
+        last_evaluated_key = {}
+        for field in key_fields:
+            # Convert field name to camelCase for query param (e.g., collectionId -> CollectionId)
+            param_name = f"lastEvaluatedKey{field[0].upper()}{field[1:]}"
+
+            if param_name in query_params:
+                last_evaluated_key[field] = urllib.parse.unquote(query_params[param_name])
+
+        return last_evaluated_key if last_evaluated_key else None
+
+    @staticmethod
+    def parse_last_evaluated_key_v2(query_params: dict[str, str]) -> dict[str, Any] | None:
+        """Parse v2 pagination token from query parameters.
+
+        The v2 token format supports scalable pagination with per-repository cursors.
+        It is passed as a JSON string in the lastEvaluatedKey query parameter.
+
+        Args:
+            query_params: Query string parameters dictionary
+
+        Returns:
+            Dictionary with v2 pagination token structure, or None if not present
+
+        Token Structure:
+            {
+                "version": "v2",
+                "repositoryCursors": {
+                    "repo-id": {
+                        "lastEvaluatedKey": {...},
+                        "exhausted": bool
+                    }
+                },
+                "globalOffset": int,
+                "filters": {
+                    "filter": str,
+                    "sortBy": str,
+                    "sortOrder": str
+                }
+            }
+        """
+        if "lastEvaluatedKey" not in query_params:
+            return None
+
+        try:
+            token_str = urllib.parse.unquote(query_params["lastEvaluatedKey"])
+            token = json.loads(token_str)
+
+            # Validate it's a v2 token
+            if not isinstance(token, dict) or token.get("version") != "v2":
+                return None
+
+            return token
+        except (json.JSONDecodeError, ValueError, TypeError):
+            return None
+
+
+@dataclass
+class FilterParams:
+    """Shared filtering parameter handling for collections."""
+
+    filter_text: str | None = None
+    status_filter: CollectionStatus | None = None
+
+    @staticmethod
+    def from_query_params(query_params: dict[str, str]) -> FilterParams:
+        """Parse filter parameters from query string parameters.
+
+        Args:
+            query_params: Query string parameters dictionary
+
+        Returns:
+            FilterParams object with parsed filter parameters
+
+        Raises:
+            ValidationError: If status value is invalid
+        """
+        filter_text = query_params.get("filter")
+
+        status_filter = None
+        if "status" in query_params:
+            try:
+                status_filter = CollectionStatus(query_params["status"])
+            except ValueError:
+                raise ValidationError(f"Invalid status value: {query_params['status']}")
+
+        return FilterParams(filter_text=filter_text, status_filter=status_filter)
+
+
+@dataclass
+class SortParams:
+    """Shared sorting parameter handling for collections."""
+
+    sort_by: CollectionSortBy | None = None  # Will be set to default in from_query_params
+    sort_order: SortOrder | None = None  # Will be set to default in from_query_params
+
+    @staticmethod
+    def from_query_params(query_params: dict[str, str]) -> SortParams:
+        """Parse sort parameters from query string parameters.
+
+        Args:
+            query_params: Query string parameters dictionary
+
+        Returns:
+            SortParams object with parsed sort parameters
+
+        Raises:
+            ValidationError: If sortBy or sortOrder values are invalid
+        """
+
+        sort_by = CollectionSortBy.CREATED_AT
+        if "sortBy" in query_params:
+            try:
+                sort_by = CollectionSortBy(query_params["sortBy"])
+            except ValueError:
+                raise ValidationError(f"Invalid sortBy value: {query_params['sortBy']}")
+
+        sort_order = SortOrder.DESC
+        if "sortOrder" in query_params:
+            try:
+                sort_order = SortOrder(query_params["sortOrder"])
+            except ValueError:
+                raise ValidationError(f"Invalid sortOrder value: {query_params['sortOrder']}")
+
+        return SortParams(sort_by=sort_by, sort_order=sort_order)
+
+
+# ============================================================================
+# Collection Management Models
+# ============================================================================
+
+
+class CollectionStatus(StrEnum):
+    """Defines possible states for a collection."""
+
+    ACTIVE = "ACTIVE"
+    ARCHIVED = "ARCHIVED"
+    DELETED = "DELETED"
+    DELETE_IN_PROGRESS = "DELETE_IN_PROGRESS"
+    DELETE_FAILED = "DELETE_FAILED"
+
+
+class VectorStoreStatus(StrEnum):
+    """Defines possible states for a vector store deployment."""
+
+    CREATE_IN_PROGRESS = "CREATE_IN_PROGRESS"
+    CREATE_COMPLETE = "CREATE_COMPLETE"
+    CREATE_FAILED = "CREATE_FAILED"
+    UPDATE_IN_PROGRESS = "UPDATE_IN_PROGRESS"
+    UPDATE_COMPLETE = "UPDATE_COMPLETE"
+    UPDATE_COMPLETE_CLEANUP_IN_PROGRESS = "UPDATE_COMPLETE_CLEANUP_IN_PROGRESS"
+    UNKNOWN = "UNKNOWN"
+
+
+class PipelineTrigger(StrEnum):
+    """Defines trigger types for collection pipelines."""
+
+    EVENT = auto()
+    SCHEDULE = auto()
+
+
+class PipelineConfig(BaseModel):
+    """Defines pipeline configuration for automated document ingestion."""
+
+    autoRemove: bool = Field(default=True, description="Automatically remove documents after ingestion")
+    chunkOverlap: int | None = Field(
+        default=None, ge=0, description="Chunk overlap for pipeline ingestion (deprecated, use chunkingStrategy)"
+    )
+    chunkSize: int | None = Field(
+        default=None,
+        ge=0,
+        description="Chunk size for pipeline ingestion (deprecated, use chunkingStrategy)",
+    )
+    chunkingStrategy: ChunkingStrategy | None = Field(
+        default=None, description="Chunking strategy for documents in this pipeline"
+    )
+    collectionId: str | None = Field(
+        default=None, description="Collection ID for this pipeline (for Bedrock KB, this is the data source ID)"
+    )
+    s3Bucket: str = Field(min_length=1, description="S3 bucket for pipeline source")
+    s3Prefix: str = Field(description="S3 prefix for pipeline source")
+    trigger: PipelineTrigger = Field(description="Pipeline trigger type")
+    metadata: CollectionMetadata | None = Field(
+        default_factory=lambda: CollectionMetadata(tags=[]), description="Metadata for the pipeline including tags"
+    )
+
+    @model_validator(mode="after")
+    def validate_chunking_config(self) -> Self:
+        """Validates that either chunkingStrategy or legacy chunk fields are provided."""
+        has_legacy = self.chunkSize is not None and self.chunkOverlap is not None
+        has_new = self.chunkingStrategy is not None
+
+        if not has_legacy and not has_new:
+            raise ValueError(
+                "Chunking configuration required: provide either 'chunkingStrategy' or both "
+                "'chunkSize' and 'chunkOverlap'"
+            )
+
+        # Validate that if one legacy field is provided, both must be provided
+        if (self.chunkSize is not None or self.chunkOverlap is not None) and not has_legacy:
+            raise ValueError("When using legacy chunking fields, both 'chunkSize' and 'chunkOverlap' must be provided")
+
+        # If legacy fields provided but no chunkingStrategy, create one
+        if has_legacy and not has_new:
+            # At this point we know both are not None due to has_legacy check
+            if self.chunkSize is None or self.chunkOverlap is None:
+                raise ValueError("chunkSize and chunkOverlap must both be set")
+            self.chunkingStrategy = FixedChunkingStrategy(
+                type=ChunkingStrategyType.FIXED, size=self.chunkSize, overlap=self.chunkOverlap
+            )
+
+        return self
+
+    @field_validator("s3Bucket")
+    @classmethod
+    def strip_s3_bucket(cls, v: str) -> str:
+        return v.strip()
+
+
+class CollectionMetadata(BaseModel):
+    """Defines metadata for a collection."""
+
+    tags: list[str] = Field(default_factory=list, max_length=50, description="Metadata tags for the collection")
+    customFields: dict[str, Any] = Field(default_factory=dict, description="Custom metadata fields")
+
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, tags: list[str]) -> list[str]:
+        """Validates metadata tags."""
+        tag_pattern = re.compile(r"^[a-zA-Z0-9_-]+$")
+        for tag in tags:
+            if len(tag) > 50:
+                raise ValueError("Each tag must be 50 characters or less")
+            if not tag_pattern.match(tag):
+                raise ValueError(
+                    f"Tag '{tag}' contains invalid characters. "
+                    "Tags must contain only alphanumeric characters, hyphens, and underscores"
+                )
+        return tags
+
+    @classmethod
+    def merge(cls, parent: CollectionMetadata | None, child: CollectionMetadata | None) -> CollectionMetadata:
+        """Merges parent and child metadata.
+
+        Args:
+            parent: Parent vector store metadata
+            child: Collection-specific metadata
+
+        Returns:
+            Merged metadata with combined tags and merged custom fields
+        """
+        if parent is None and child is None:
+            return cls()
+        if parent is None:
+            return child or cls()
+        if child is None:
+            return parent
+
+        # Combine tags (deduplicate while preserving order)
+        merged_tags = list(dict.fromkeys(parent.tags + child.tags))
+
+        # Merge custom fields (child overrides parent)
+        merged_custom_fields = {**parent.customFields, **child.customFields}
+
+        return cls(tags=merged_tags, customFields=merged_custom_fields)
+
+
+class RagCollectionConfig(BaseModel):
+    """Represents a RAG collection configuration."""
+
+    collectionId: str = Field(default_factory=lambda: str(uuid4()), description="Unique collection identifier")
+    repositoryId: str = Field(min_length=1, description="Parent repository ID this collection belongs to")
+    name: str | None = Field(default=None, max_length=100, description="User-friendly collection name")
+    description: str | None = Field(default=None, description="Collection description")
+    chunkingStrategy: ChunkingStrategy | None = Field(default=None, description="Chunking strategy for documents")
+    allowChunkingOverride: bool = Field(
+        default=True, description="Allow users to override chunking strategy during ingestion"
+    )
+    metadata: CollectionMetadata | None = Field(
+        default=None, description="Collection-specific metadata (merged with parent)"
+    )
+    allowedGroups: list[str] | None = Field(default=None, description="User groups with access to collection")
+    embeddingModel: str | None = Field(
+        default=None, description="Embedding model ID (can be set at creation, immutable after)"
+    )
+    createdBy: str = Field(min_length=1, description="User ID of creator")
+    createdAt: datetime = Field(default_factory=utc_now, description="Creation timestamp")
+    updatedAt: datetime = Field(default_factory=utc_now, description="Last update timestamp")
+    status: CollectionStatus = Field(default=CollectionStatus.ACTIVE, description="Collection status")
+    default: bool = Field(default=False, description="Indicates if this is a default collection")
+    dataSourceId: str | None = Field(
+        default=None, description="Bedrock KB data source ID for filtering (Bedrock KB only)"
+    )
+    pipelines: list[PipelineConfig] | None = Field(
+        default=None, description="Pipeline configurations for this collection"
+    )
+
+    model_config = ConfigDict(use_enum_values=True, validate_default=True)
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, name: str | None) -> str | None:
+        """Validates collection name."""
+        if name is not None:
+            if len(name) > 100:
+                raise ValueError("Collection name must be 100 characters or less")
+            # Allow alphanumeric, spaces, hyphens, underscores
+            if not all(c.isalnum() or c in " -_" for c in name):
+                raise ValueError(
+                    "Collection name must contain only alphanumeric characters, spaces, hyphens, and underscores"
+                )
+        return name
+
+    @field_validator("allowedGroups")
+    @classmethod
+    def validate_allowed_groups(cls, groups: list[str] | None) -> list[str] | None:
+        """Validates allowed groups."""
+        if groups is not None and len(groups) == 0:
+            # Empty list should be treated as None (inherit from parent)
+            return None
+        return groups
+
+
+class IngestDocumentRequest(BaseModel):
+    """Request model for ingesting documents."""
+
+    keys: list[str] = Field(description="S3 keys to ingest")
+    collectionId: str | None = Field(default=None, description="Target collection ID")
+    embeddingModel: dict[str, str] | None = Field(default=None, description="Embedding model config")
+    chunkingStrategy: dict[str, Any] | None = Field(default=None, description="Chunking strategy override")
+    metadata: dict[str, Any] | None = Field(default=None, description="Additional metadata")
+
+
+class ListCollectionsResponse(PaginatedResponse):
+    """Response model for listing collections."""
+
+    collections: list[RagCollectionConfig] = Field(description="List of collections")
+    totalCount: int | None = Field(default=None, description="Total number of collections")
+    currentPage: int | None = Field(default=None, description="Current page number")
+    totalPages: int | None = Field(default=None, description="Total number of pages")
+
+
+class CollectionSortBy(StrEnum):
+    """Defines sort options for collection listing."""
+
+    NAME = "name"
+    CREATED_AT = "createdAt"
+    UPDATED_AT = "updatedAt"
+
+
+class SortOrder(StrEnum):
+    """Defines sort order options."""
+
+    ASC = auto()
+    DESC = auto()
+
+
+class RepositoryMetadata(BaseModel):
+    """Defines metadata for a repository/vector store."""
+
+    tags: list[str] = Field(default_factory=list, description="Tags for categorizing the repository")
+    customFields: dict[str, Any] | None = Field(default=None, description="Custom metadata fields")
+
+
+class OpenSearchNewClusterConfig(BaseModel):
+    """Configuration for creating a new OpenSearch cluster."""
+
+    dataNodes: int = Field(
+        default=2,
+        ge=1,
+        description="The number of data nodes (instances) to use in the Amazon OpenSearch Service domain.",
+    )
+    dataNodeInstanceType: str = Field(default="r7g.large.search", description="The instance type for your data nodes")
+    masterNodes: int = Field(default=0, ge=0, description="The number of instances to use for the master node")
+    masterNodeInstanceType: str = Field(
+        default="r7g.large.search",
+        description="The hardware configuration of the computer that hosts the dedicated master node",
+    )
+    volumeSize: int = Field(
+        default=20,
+        ge=20,
+        description=(
+            "The size (in GiB) of the EBS volume for each data node. The minimum and maximum size of "
+            "an EBS volume depends on the EBS volume type and the instance type to which it is attached."
+        ),
+    )
+    volumeType: str = Field(
+        default="gp3", description="The EBS volume type to use with the Amazon OpenSearch Service domain"
+    )
+    multiAzWithStandby: bool = Field(
+        default=False, description="Indicates whether Multi-AZ with Standby deployment option is enabled."
+    )
+
+
+class OpenSearchExistingClusterConfig(BaseModel):
+    """Configuration for using an existing OpenSearch cluster."""
+
+    endpoint: str = Field(min_length=1, description="Existing OpenSearch Cluster endpoint")
+
+
+# Union type for OpenSearch configurations
+OpenSearchConfig = Union[OpenSearchNewClusterConfig, OpenSearchExistingClusterConfig]
+
+
+class RdsInstanceConfig(BaseModel):
+    """Configuration schema for RDS Instances needed for LiteLLM scaling or PGVector RAG operations.
+
+    The optional fields can be omitted to create a new database instance, otherwise fill in all fields
+    to use an existing database instance. By default, IAM authentication is used. Set iamRdsAuth
+    to false in config to use password-based authentication.
+    """
+
+    username: str = Field(default="postgres", description="The username used for database connection.")
+    passwordSecretId: str | None = Field(
+        default=None,
+        description="The SecretsManager Secret ID that stores the existing database password.",
+    )
+    dbHost: str | None = Field(default=None, description="The database hostname for the existing database instance.")
+    dbName: str = Field(default="postgres", description="The name of the database for the database instance.")
+    dbPort: int = Field(
+        default=5432,
+        description="The port of the existing database instance or the port to be opened on the database instance.",
+    )
+
+
+class BedrockDataSource(BaseModel):
+    """Configuration for a single Bedrock Knowledge Base data source."""
+
+    id: str = Field(min_length=1, description="The ID of the Bedrock Knowledge Base data source")
+    name: str = Field(min_length=1, description="The name of the Bedrock Knowledge Base data source")
+    s3Uri: str = Field(min_length=1, description="The S3 URI of the data source (s3://bucket/prefix)")
+
+    @field_validator("s3Uri")
+    @classmethod
+    def validate_s3_uri(cls, v: str) -> str:
+        """Validate S3 URI format."""
+        if not v.startswith("s3://"):
+            raise ValueError("S3 URI must start with s3://")
+        return v
+
+
+class BedrockKnowledgeBaseConfig(BaseModel):
+    """Configuration for Bedrock Knowledge Base with multiple data sources.
+
+    Stores the KB ID and array of data sources. Backend converts to pipelines.
+    """
+
+    knowledgeBaseId: str = Field(min_length=1, description="The ID of the Bedrock Knowledge Base")
+    dataSources: list[BedrockDataSource] = Field(
+        min_length=1, description="Array of data sources in this Knowledge Base"
+    )
+
+
+class VectorStoreConfig(BaseModel):
+    """Represents a vector store/repository configuration."""
+
+    repositoryId: str = Field(description="Unique identifier for the repository")
+    repositoryName: str | None = Field(default=None, description="User-friendly name for the repository")
+    description: str | None = Field(default=None, description="Description of the repository")
+    embeddingModelId: str | None = Field(default=None, description="Default embedding model ID")
+    type: str = Field(description="Type of vector store (opensearch, pgvector, bedrock_knowledge_base)")
+    allowedGroups: list[str] = Field(default_factory=list, description="User groups with access to this repository")
+    metadata: RepositoryMetadata | None = Field(default=None, description="Repository metadata")
+    pipelines: list[PipelineConfig] | None = Field(default=None, description="Automated ingestion pipelines")
+    # Type-specific configurations
+    opensearchConfig: OpenSearchNewClusterConfig | OpenSearchExistingClusterConfig | None = Field(
+        default=None, description="OpenSearch configuration"
+    )
+    rdsConfig: RdsInstanceConfig | None = Field(default=None, description="RDS/PGVector configuration")
+    bedrockKnowledgeBaseConfig: BedrockKnowledgeBaseConfig | None = Field(
+        default=None, description="Bedrock Knowledge Base configuration with data sources"
+    )
+    # Status and timestamps
+    status: VectorStoreStatus | None = Field(default=None, description="Repository Status")
+    createdBy: str = Field(description="Creation user")
+    createdAt: datetime = Field(default_factory=utc_now, description="Creation timestamp")
+    updatedAt: datetime | None = Field(default_factory=utc_now, description="Last update timestamp")
+
+
+class UpdateVectorStoreRequest(BaseModel):
+    """Request model for updating a vector store."""
+
+    repositoryName: str | None = Field(default=None, description="User-friendly name")
+    description: str | None = Field(default=None, description="Description of the repository")
+    embeddingModelId: str | None = Field(default=None, description="Default embedding model ID")
+    allowedGroups: list[str] | None = Field(default=None, description="User groups with access")
+    metadata: RepositoryMetadata | None = Field(default=None, description="Repository metadata")
+    pipelines: list[PipelineConfig] | None = Field(default=None, description="Automated ingestion pipelines")
+    bedrockKnowledgeBaseConfig: BedrockKnowledgeBaseConfig | None = Field(
+        default=None, description="Bedrock Knowledge Base configuration"
+    )
+
+
+class KnowledgeBaseMetadata(BaseModel):
+    """Metadata for a Bedrock Knowledge Base."""
+
+    knowledgeBaseId: str = Field(description="Knowledge Base ID")
+    name: str = Field(description="Knowledge Base name")
+    description: str | None = Field(default="", description="Knowledge Base description")
+    status: str = Field(description="Knowledge Base status (ACTIVE, CREATING, DELETING, etc.)")
+    createdAt: datetime = Field(default_factory=utc_now, description="Creation timestamp")
+    updatedAt: datetime | None = Field(default=None, description="Last update timestamp")
+
+
+class DataSourceMetadata(BaseModel):
+    """Metadata for a Bedrock Knowledge Base data source."""
+
+    dataSourceId: str = Field(description="Data Source ID")
+    name: str = Field(description="Data Source name")
+    description: str | None = Field(default="", description="Data Source description")
+    status: str = Field(description="Data Source status (AVAILABLE, CREATING, DELETING, etc.)")
+    s3Bucket: str = Field(description="S3 bucket for the data source")
+    s3Prefix: str = Field(default="", description="S3 prefix for the data source")
+    createdAt: datetime = Field(default_factory=utc_now, description="Creation timestamp")
+    updatedAt: datetime | None = Field(default=None, description="Last update timestamp")
+    managed: bool | None = Field(default=False, description="Whether this data source is managed by a collection")
+    collectionId: str | None = Field(default=None, description="Collection ID if managed")
+
+    @field_validator("s3Bucket")
+    @classmethod
+    def validate_s3_bucket(cls, v: str) -> str:
+        """Validate S3 bucket name format."""
+        if not v:
+            raise ValueError("S3 bucket cannot be empty")
+        # Basic S3 bucket name validation
+        if not re.match(r"^[a-z0-9][a-z0-9.-]*[a-z0-9]$", v):
+            raise ValueError(f"Invalid S3 bucket name format: {v}")
+        return v
+
+
+class DataSourceSelection(BaseModel):
+    """Represents a user's selection of a data source for collection creation.
+
+    Frontend sends this to backend, which creates pipelines and collections.
+    """
+
+    dataSourceId: str = Field(description="Data Source ID")
+    dataSourceName: str = Field(description="Data Source name")
+    s3Bucket: str = Field(description="S3 bucket for the data source")
+    s3Prefix: str = Field(default="", description="S3 prefix for the data source")
+
+
+class BedrockAgentAliasSummary(BaseModel):
+    """Summary row from bedrock-agent ListAgentAliases."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    agentAliasId: str
+    agentAliasName: str | None = None
+    agentAliasStatus: str | None = None
+    description: str | None = None
+
+
+class BedrockAgentActionTool(BaseModel):
+    """One action-group function exposed as an OpenAI tool in LISA chat."""
+
+    openAiToolName: str = Field(description="Unique tool name for the chat LLM")
+    functionName: str
+    actionGroupId: str
+    actionGroupName: str = ""
+    description: str = ""
+    parameterSchema: dict[str, Any] = Field(
+        default_factory=dict,
+        description="OpenAI-style JSON Schema object with type, properties, required",
+    )
+
+
+class BedrockAgentDiscoveryItem(BaseModel):
+    """One Bedrock Agent with alias metadata for LISA discovery UI."""
+
+    agentId: str
+    agentName: str
+    agentStatus: str
+    description: str = ""
+    updatedAt: datetime | None = None
+    latestAgentVersion: str | None = None
+    suggestedAliasId: str | None = None
+    aliases: list[BedrockAgentAliasSummary] = Field(default_factory=list)
+    invokeReady: bool = False
+    actionTools: list[BedrockAgentActionTool] = Field(default_factory=list)
+
+
+class InvokeBedrockAgentRequest(BaseModel):
+    """Body for invoking an agent via LISA (server-side InvokeAgent)."""
+
+    agentId: str = Field(min_length=1)
+    agentAliasId: str = Field(min_length=1)
+    inputText: str | None = Field(
+        default=None,
+        description="Natural-language turn for the agent orchestrator (omit when using functionName)",
+    )
+    sessionId: str | None = Field(
+        default=None,
+        description="Bedrock agent session id for multi-turn; generated if omitted",
+    )
+    functionName: str | None = Field(
+        default=None,
+        description="When set, LISA builds inputText so the agent should run this action-group function",
+    )
+    actionGroupId: str | None = Field(default=None, description="Required when functionName is set")
+    actionGroupName: str | None = Field(default=None, description="Optional; improves orchestration prompt")
+    parameters: dict[str, Any] | None = Field(
+        default=None,
+        description="Parameter values for functionName (object); may be empty",
+    )
+
+    @model_validator(mode="after")
+    def validate_invoke_mode(self) -> Self:
+        has_fn = bool(self.functionName and self.functionName.strip())
+        has_text = bool(self.inputText and str(self.inputText).strip())
+        if has_fn and has_text:
+            raise ValueError("Provide either inputText or functionName, not both")
+        if not has_fn and not has_text:
+            raise ValueError("Provide inputText or functionName (with optional parameters)")
+        if has_fn and not (self.actionGroupId and str(self.actionGroupId).strip()):
+            raise ValueError("actionGroupId is required when functionName is set")
+        return self

@@ -87,8 +87,8 @@ patch.dict(
 ).start()
 
 # Then patch the specific functions (but NOT get_id_token - that needs to work normally)
-patch("utilities.common_functions.retry_config", retry_config).start()
-patch("utilities.common_functions.authorization_wrapper", mock_authorization_wrapper).start()
+patch("lisa.utilities.common_functions.retry_config", retry_config).start()
+patch("lisa.utilities.common_functions.authorization_wrapper", mock_authorization_wrapper).start()
 
 # Now import the lambda functions
 from authorizer.lambda_functions import (

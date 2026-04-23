@@ -22,9 +22,9 @@ export const modelManagementApi = createApi({
     reducerPath: 'models',
     baseQuery: lisaBaseQuery(),
     tagTypes: ['models'],
-    refetchOnFocus: true,
-    refetchOnMountOrArgChange: true,
-    keepUnusedDataFor: 60, // Keep cache for 60s to prevent cancellation during rapid navigation
+    refetchOnFocus: false,
+    refetchOnMountOrArgChange: 30,
+    keepUnusedDataFor: 300,
     endpoints: (builder) => ({
         getAllModels: builder.query<IModelListResponse['models'], void>({
             query: () => ({

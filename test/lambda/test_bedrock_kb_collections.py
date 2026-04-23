@@ -18,10 +18,10 @@ from typing import Any
 from unittest.mock import create_autospec, MagicMock
 
 import pytest
-from models.domain_objects import CollectionMetadata, RagCollectionConfig, VectorStoreStatus
-from repository.collection_service import CollectionService
-from repository.vector_store_repo import VectorStoreRepository
-from utilities.validation import ValidationError
+from lisa.domain.domain_objects import CollectionMetadata, RagCollectionConfig, VectorStoreStatus
+from lisa.rag.collection_service import CollectionService
+from lisa.rag.vector_store_repo import VectorStoreRepository
+from lisa.utilities.validation import ValidationError
 
 
 @pytest.fixture(scope="function")
@@ -89,7 +89,7 @@ class TestBedrockKBDefaultCollection:
     ):
         """Test that default collection is created for Bedrock KB repository."""
         # Arrange
-        from repository.services import RepositoryServiceFactory
+        from lisa.rag.services import RepositoryServiceFactory
 
         mock_vector_store_repo.find_repository_by_id.return_value = bedrock_kb_repository
 
@@ -115,7 +115,7 @@ class TestBedrockKBCollectionRestrictions:
     def test_service_layer_allows_bedrock_kb_collections(self, bedrock_kb_repository):
         """Test that service layer allows creating collections for Bedrock KB (validation moved to API layer)."""
         # Arrange
-        from repository.collection_repo import CollectionRepository
+        from lisa.rag.collection_repo import CollectionRepository
 
         mock_collection_repo = create_autospec(CollectionRepository, instance=True)
         mock_vector_store_repo = create_autospec(VectorStoreRepository, instance=True)
@@ -207,7 +207,7 @@ class TestBedrockKBCollectionMetadata:
     ):
         """Test that default collection has appropriate metadata tags."""
         # Arrange
-        from repository.services import RepositoryServiceFactory
+        from lisa.rag.services import RepositoryServiceFactory
 
         mock_vector_store_repo.find_repository_by_id.return_value = bedrock_kb_repository
 
@@ -225,7 +225,7 @@ class TestBedrockKBCollectionMetadata:
     ):
         """Test that default collection inherits repository access control."""
         # Arrange
-        from repository.services import RepositoryServiceFactory
+        from lisa.rag.services import RepositoryServiceFactory
 
         mock_vector_store_repo.find_repository_by_id.return_value = bedrock_kb_repository
 
@@ -245,7 +245,7 @@ class TestBedrockKBAPIValidation:
     def test_api_validation_logic_blocks_bedrock_kb_collections(self, bedrock_kb_repository):
         """Test that API validation logic blocks user-created collections for Bedrock KB repositories."""
         # Arrange
-        from utilities.repository_types import RepositoryType
+        from lisa.utilities.repository_types import RepositoryType
 
         # Act & Assert - Test the validation logic directly
         is_bedrock_kb = RepositoryType.is_type(bedrock_kb_repository, RepositoryType.BEDROCK_KB)

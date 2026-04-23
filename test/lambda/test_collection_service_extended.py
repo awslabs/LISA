@@ -24,7 +24,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../lambda"))
 
-from models.domain_objects import (
+from lisa.domain.domain_objects import (
     CollectionSortBy,
     CollectionStatus,
     FixedChunkingStrategy,
@@ -48,7 +48,7 @@ def setup_env(monkeypatch):
 @pytest.fixture
 def service(setup_env):
     """Create CollectionService with mocked dependencies."""
-    from repository.collection_service import CollectionService
+    from lisa.rag.collection_service import CollectionService
 
     mock_collection_repo = Mock()
     mock_vector_store_repo = Mock()
@@ -58,7 +58,7 @@ def service(setup_env):
 
 def testcreate_default_collection_inactive_repository(service):
     """Test create_default_collection with inactive repository."""
-    from repository.services import RepositoryServiceFactory
+    from lisa.rag.services import RepositoryServiceFactory
 
     test_repo = {
         "repositoryId": "repo1",
@@ -73,7 +73,7 @@ def testcreate_default_collection_inactive_repository(service):
 
 def testcreate_default_collection_no_embedding_model(service):
     """Test create_default_collection when repository has no embedding model."""
-    from repository.services import RepositoryServiceFactory
+    from lisa.rag.services import RepositoryServiceFactory
 
     test_repo = {"repositoryId": "repo1", "type": "opensearch", "status": VectorStoreStatus.CREATE_COMPLETE}
     repo_service = RepositoryServiceFactory.create_service(test_repo)
@@ -83,7 +83,7 @@ def testcreate_default_collection_no_embedding_model(service):
 
 def testcreate_default_collection_success(service):
     """Test create_default_collection creates virtual collection."""
-    from repository.services import RepositoryServiceFactory
+    from lisa.rag.services import RepositoryServiceFactory
 
     test_repo = {
         "repositoryId": "repo1",
@@ -105,7 +105,7 @@ def testcreate_default_collection_success(service):
 
 def test_update_collection_name_conflict(service):
     """Test update_collection with name conflict."""
-    from utilities.validation import ValidationError
+    from lisa.utilities.validation import ValidationError
 
     existing = RagCollectionConfig(
         collectionId="col1",
@@ -137,7 +137,7 @@ def test_update_collection_name_conflict(service):
 
 def test_get_collection_model_fallback_to_repository(service):
     """Test get_collection_model falls back to repository default."""
-    from utilities.validation import ValidationError
+    from lisa.utilities.validation import ValidationError
 
     service.collection_repo.find_by_id.side_effect = ValidationError("Not found")
     service.vector_store_repo.find_repository_by_id.return_value = {"embeddingModelId": "repo-model"}
@@ -148,7 +148,7 @@ def test_get_collection_model_fallback_to_repository(service):
 
 def test_get_collection_model_no_repository_model(service):
     """Test get_collection_model when repository has no model."""
-    from utilities.validation import ValidationError
+    from lisa.utilities.validation import ValidationError
 
     service.collection_repo.find_by_id.side_effect = ValidationError("Not found")
     service.vector_store_repo.find_repository_by_id.return_value = {}

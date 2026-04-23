@@ -31,13 +31,12 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import { getPythonRuntime } from '../../api-base/utils';
 import { Vpc } from '../../networking/vpc';
 import path from 'path';
 import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import * as fs from 'fs';
-import { BATCH_INGESTION_PATH, CodeFactory, LAMBDA_PATH } from '../../util';
+import { BATCH_INGESTION_PATH, CodeFactory, definePythonLambda } from '../../util';
 
 // Props interface for the IngestionJobConstruct
 export type IngestionJobConstructProps = StackProps & BaseProps & {
@@ -65,7 +64,6 @@ export class IngestionJobConstruct extends Construct {
         super(scope, id);
 
         const { config, vpc, layers, lambdaRole, baseEnvironment } = props;
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
 
         // DynamoDB table for tracking ingestion jobs
         // Uses id as partition key with additional GSIs for querying by created date, s3 path and document id
@@ -214,19 +212,17 @@ export class IngestionJobConstruct extends Construct {
             resources: ['*']
         }));
 
-        // Lambda function for handling scheduled document ingestion - using container image
-        const handlePipelineIngestScheduleLambda = new lambda.Function(this, 'handlePipelineIngestSchedule', {
+        const handlePipelineIngestScheduleLambda = definePythonLambda(this, 'handlePipelineIngestSchedule', {
             functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-ingest-schedule`,
-            runtime: getPythonRuntime(),
-            handler: 'repository.pipeline_ingest_handlers.handle_pipline_ingest_schedule',
-            code: lambda.Code.fromAsset(lambdaPath),
+            handlerDir: 'repository',
+            entry: 'pipeline_ingest_handlers.handle_pipline_ingest_schedule',
+            config,
             timeout: Duration.seconds(60),
             memorySize: 256,
-            vpc: vpc!.vpc,
+            vpc,
             environment: baseEnvironment,
-            vpcSubnets: vpc!.subnetSelection,
-            layers: layers,
-            role: lambdaRole
+            layers,
+            role: lambdaRole,
         });
         const scheduleAlias = new lambda.Alias(this, 'ScheduleLambdaAlias', {
             aliasName: 'live',
@@ -242,19 +238,17 @@ export class IngestionJobConstruct extends Construct {
             action: 'lambda:InvokeFunction'
         });
 
-        // Lambda function for handling S3 event-based document ingestion - using container image
-        const handlePipelineIngestEvent = new lambda.Function(this, 'handlePipelineIngestEvent', {
+        const handlePipelineIngestEvent = definePythonLambda(this, 'handlePipelineIngestEvent', {
             functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-ingest-event`,
-            runtime: getPythonRuntime(),
-            handler: 'repository.pipeline_ingest_handlers.handle_pipeline_ingest_event',
-            code: lambda.Code.fromAsset(lambdaPath),
+            handlerDir: 'repository',
+            entry: 'pipeline_ingest_handlers.handle_pipeline_ingest_event',
+            config,
             timeout: Duration.seconds(60),
             memorySize: 256,
-            vpc: vpc!.vpc,
+            vpc,
             environment: baseEnvironment,
             layers,
-            vpcSubnets: vpc!.subnetSelection,
-            role: lambdaRole
+            role: lambdaRole,
         });
         const eventAlias = new lambda.Alias(this, 'EventLambdaAlias', {
             aliasName: 'live',
@@ -270,19 +264,17 @@ export class IngestionJobConstruct extends Construct {
             action: 'lambda:InvokeFunction'
         });
 
-        // Lambda function for handling document deletion events - using container image
-        const handlePipelineDeleteEvent = new lambda.Function(this, 'handlePipelineDeleteEvent', {
+        const handlePipelineDeleteEvent = definePythonLambda(this, 'handlePipelineDeleteEvent', {
             functionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-delete-event`,
-            runtime: getPythonRuntime(),
-            handler: 'repository.pipeline_ingest_handlers.handle_pipeline_delete_event',
-            code: lambda.Code.fromAsset(lambdaPath),
+            handlerDir: 'repository',
+            entry: 'pipeline_ingest_handlers.handle_pipeline_delete_event',
+            config,
             timeout: Duration.seconds(60),
             memorySize: 256,
-            vpc: vpc!.vpc,
+            vpc,
             environment: baseEnvironment,
-            vpcSubnets: vpc!.subnetSelection,
             layers,
-            role: lambdaRole
+            role: lambdaRole,
         });
         const deleteAlias = new lambda.Alias(this, 'DeleteLambdaAlias', {
             aliasName: 'live',
@@ -303,11 +295,11 @@ export class IngestionJobConstruct extends Construct {
         // AWS Batch does not publish job-level metrics to CloudWatch natively, so we use
         // EventBridge job state change events as the source of truth. This captures all
         // ingestion jobs regardless of trigger (S3 event, scheduled, or manual upload).
-        const batchJobMetricLambda = new lambda.Function(this, 'BatchJobMetricPublisher', {
+        const batchJobMetricLambda = definePythonLambda(this, 'BatchJobMetricPublisher', {
             functionName: `${config.deploymentName}-${config.deploymentStage}-batch-job-metric`,
-            runtime: lambda.Runtime.PYTHON_3_13,
-            handler: 'batch_job_metric.handler',
-            code: lambda.Code.fromAsset(path.join(__dirname, '../../../lambda/metrics')),
+            handlerDir: 'metrics',
+            entry: 'batch_job_metric.handler',
+            config,
             environment: {
                 METRICS_NAMESPACE: 'LISA/BatchIngestion',
                 DEPLOYMENT_NAME: config.deploymentName,
@@ -315,8 +307,7 @@ export class IngestionJobConstruct extends Construct {
                 JOB_QUEUE_LABEL: `${config.deploymentName}-${config.deploymentStage}-ingestion-job`,
             },
             timeout: Duration.seconds(30),
-            vpc: vpc.vpc,
-            vpcSubnets: vpc.subnetSelection,
+            vpc,
             securityGroups: [vpc.securityGroups.lambdaSg],
         });
 

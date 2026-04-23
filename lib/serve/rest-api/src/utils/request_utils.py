@@ -16,6 +16,7 @@
 
 import json
 import os
+import re
 import sys
 import traceback
 from collections.abc import AsyncGenerator, Callable
@@ -132,3 +133,63 @@ def get_lisa_end_user_id(
         return state_username
 
     return None
+
+
+# Parameters that specific provider models are known to reject. We strip them
+# server-side before forwarding to LiteLLM for two reasons:
+#
+#   1. LiteLLM's ``drop_params: true`` only drops OpenAI parameters the provider
+#      is known (to LiteLLM) not to support. Anthropic's post-release
+#      deprecations (e.g. Opus 4.7 deprecating ``top_p``) lag LiteLLM's provider
+#      map, so users hit raw BedrockException 400s until a LiteLLM bump lands.
+#   2. The chat UI exposes generic sliders (e.g. ``top_p``, ``temperature``)
+#      that users can set independent of the selected model. We don't want to
+#      burden every client (UI, SDK, Claude Code, etc.) with per-model quirks.
+#
+# Entries are matched against the canonical LiteLLM model path (``model_name``
+# resolved via ``get_model_info``, e.g.
+# ``"bedrock/us.anthropic.claude-opus-4-7-20260101-v1:0"``). Extend this list as
+# providers deprecate additional parameters.
+_MODEL_UNSUPPORTED_PARAMS: list[tuple[re.Pattern[str], tuple[str, ...]]] = [
+    # Anthropic Claude Opus 4.7 on Bedrock rejects ``top_p`` with
+    # "`top_p` is deprecated for this model." The adaptive-thinking rework also
+    # landed in this family; see BerriAI/litellm#25867 for the LiteLLM fix that
+    # handled the ``thinking.type`` shape.
+    (re.compile(r"claude-opus-4-7", re.IGNORECASE), ("top_p",)),
+]
+
+
+def strip_unsupported_model_params(
+    params: dict[str, Any],
+    model_name: str | None,
+) -> list[str]:
+    """Remove parameters the target provider model is known to reject.
+
+    Mutates ``params`` in place.
+
+    Parameters
+    ----------
+    params : dict[str, Any]
+        The request payload that will be forwarded to LiteLLM.
+    model_name : str | None
+        The canonical LiteLLM model path (the value of
+        ``litellm_params.model`` returned by ``get_model_info``). ``None`` /
+        empty strings disable stripping.
+
+    Returns
+    -------
+    list[str]
+        The parameter keys that were removed, intended for logging /
+        observability. Empty list when nothing was stripped.
+    """
+    if not model_name or not isinstance(params, dict):
+        return []
+
+    removed: list[str] = []
+    for pattern, unsupported in _MODEL_UNSUPPORTED_PARAMS:
+        if pattern.search(model_name):
+            for key in unsupported:
+                if key in params:
+                    params.pop(key, None)
+                    removed.append(key)
+    return removed

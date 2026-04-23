@@ -26,7 +26,7 @@ import {
     Succeed,
     Wait,
 } from 'aws-cdk-lib/aws-stepfunctions';
-import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { BaseProps } from '../../schema';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
@@ -34,8 +34,7 @@ import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH, POLLING_TIMEOUT } from './constants';
 import { IStringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Vpc } from '../../networking/vpc';
-import { getPythonRuntime } from '../../api-base/utils';
-import { LAMBDA_PATH } from '../../util';
+import { definePythonLambda } from '../../util';
 
 type DeleteModelStateMachineProps = BaseProps & {
     modelTable: ITable,
@@ -69,125 +68,54 @@ export class DeleteModelStateMachine extends Construct {
             MANAGEMENT_KEY_NAME: managementKeyName,
             RESTAPI_SSL_CERT_ARN: config.restApiConfig?.sslCertIamArn ?? '',
         };
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
+        const makeFn = (id: string, entry: string) =>
+            definePythonLambda(this, id, {
+                handlerDir: 'models',
+                entry,
+                config,
+                timeout: LAMBDA_TIMEOUT,
+                memorySize: LAMBDA_MEMORY,
+                role,
+                vpc,
+                securityGroups,
+                layers: lambdaLayers,
+                environment,
+            });
+
         // Needs to return if model has a stack to delete or if it is only in LiteLLM. Updates model state to DELETING.
         // Input payload to state machine contains the model name that we want to delete.
         const setModelToDeleting = new LambdaInvoke(this, 'SetModelToDeleting', {
-            lambdaFunction: new Function(this, 'SetModelToDeletingFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'models.state_machine.delete_model.handle_set_model_to_deleting',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('SetModelToDeletingFunc', 'state_machine.delete_model.handle_set_model_to_deleting'),
             outputPath: OUTPUT_PATH,
         });
 
         const deleteFromLitellm = new LambdaInvoke(this, 'DeleteFromLitellm', {
-            lambdaFunction: new Function(this, 'DeleteFromLitellmFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'models.state_machine.delete_model.handle_delete_from_litellm',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('DeleteFromLitellmFunc', 'state_machine.delete_model.handle_delete_from_litellm'),
             outputPath: OUTPUT_PATH,
         });
 
         const deleteStack = new LambdaInvoke(this, 'DeleteStack', {
-            lambdaFunction: new Function(this, 'DeleteStackFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'models.state_machine.delete_model.handle_delete_stack',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('DeleteStackFunc', 'state_machine.delete_model.handle_delete_stack'),
             outputPath: OUTPUT_PATH,
         });
 
         const monitorDeleteStack = new LambdaInvoke(this, 'MonitorDeleteStack', {
-            lambdaFunction: new Function(this, 'MonitorDeleteStackFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'models.state_machine.delete_model.handle_monitor_delete_stack',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('MonitorDeleteStackFunc', 'state_machine.delete_model.handle_monitor_delete_stack'),
             outputPath: OUTPUT_PATH,
         });
 
         const deleteFromDdb = new LambdaInvoke(this, 'DeleteFromDdb', {
-            lambdaFunction: new Function(this, 'DeleteFromDdbFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'models.state_machine.delete_model.handle_delete_from_ddb',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('DeleteFromDdbFunc', 'state_machine.delete_model.handle_delete_from_ddb'),
             outputPath: OUTPUT_PATH,
         });
 
         const deleteGuardrails = new LambdaInvoke(this, 'DeleteGuardrails', {
-            lambdaFunction: new Function(this, 'DeleteGuardrailsFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'models.state_machine.delete_model.handle_delete_guardrails',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('DeleteGuardrailsFunc', 'state_machine.delete_model.handle_delete_guardrails'),
             outputPath: OUTPUT_PATH,
         });
 
         const handleFailure = new LambdaInvoke(this, 'HandleFailure', {
-            lambdaFunction: new Function(this, 'HandleFailureFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'models.state_machine.delete_model.handle_failure',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('HandleFailureFunc', 'state_machine.delete_model.handle_failure'),
             outputPath: OUTPUT_PATH,
         });
 

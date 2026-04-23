@@ -74,7 +74,8 @@ testpaths = [
     "test/lisa-sdk",
 ]
 pythonpath = [
-    "lambda",
+    "lambda/shared/python",
+    "lambda/handlers",
     "lisa-sdk",
     "lib/serve/rest-api/src",
     "lib/serve/mcp-workbench/src",

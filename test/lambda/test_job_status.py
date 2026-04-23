@@ -15,7 +15,7 @@
 """Unit tests for job status models."""
 
 import pytest
-from repository.job_status import JobStatus
+from lisa.rag.job_status import JobStatus
 
 
 class TestJobStatus:

@@ -79,9 +79,9 @@ export const userPreferencesApi = createApi({
     reducerPath: 'userPreferences',
     baseQuery: lisaBaseQuery(),
     tagTypes: ['user-preferences'],
-    refetchOnFocus: true,
-    refetchOnMountOrArgChange: true,
-    keepUnusedDataFor: 60, // Keep cache for 60s to prevent cancellation during rapid navigation
+    refetchOnFocus: false,
+    refetchOnMountOrArgChange: 30,
+    keepUnusedDataFor: 300,
     endpoints: (builder) => ({
         updateUserPreferences: builder.mutation<UserPreferences, UserPreferences>({
             query: (userPreferences) => ({

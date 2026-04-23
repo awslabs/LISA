@@ -17,7 +17,7 @@ import logging
 import os
 from io import StringIO
 
-from utilities.audit_logging_utils import (
+from lisa.utilities.audit_logging_utils import (
     audit_include_json_body,
     get_matched_audit_prefix,
     log_audit_event,

@@ -27,14 +27,13 @@ import { Construct } from 'constructs';
 import { Duration } from 'aws-cdk-lib';
 import { BaseProps } from '../../schema';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH, POLLING_TIMEOUT } from './constants';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Vpc } from '../../networking/vpc';
-import { getPythonRuntime } from '../../api-base/utils';
-import { LAMBDA_PATH } from '../../util';
+import { definePythonLambda } from '../../util';
 
 type CreateMcpServerStateMachineProps = BaseProps & {
     mcpServerTable: ITable,
@@ -57,7 +56,6 @@ export class CreateMcpServerStateMachine extends Construct {
         super(scope, id);
 
         const { config, mcpServerTable, lambdaLayers, mcpServerDeployerFnArn, role, vpc, securityGroups, managementKeyName, executionRole } = props;
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         const environment = {
             MCP_SERVER_DEPLOYER_FN_ARN: mcpServerDeployerFnArn,
             MCP_SERVERS_TABLE_NAME: mcpServerTable.tableName,
@@ -66,54 +64,32 @@ export class CreateMcpServerStateMachine extends Construct {
             DEPLOYMENT_PREFIX: config.deploymentPrefix ?? '',
         };
 
-        const setServerToCreating = new LambdaInvoke(this, 'SetServerToCreating', {
-            lambdaFunction: new Function(this, 'SetServerToCreatingFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'mcp_server.state_machine.create_mcp_server.handle_set_server_to_creating',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
+        const makeFn = (id: string, entry: string, timeout = LAMBDA_TIMEOUT) =>
+            definePythonLambda(this, id, {
+                handlerDir: 'mcp_server',
+                entry,
+                config,
+                timeout,
                 memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
+                role,
+                vpc,
+                securityGroups,
                 layers: lambdaLayers,
-                environment: environment,
-            }),
+                environment,
+            });
+
+        const setServerToCreating = new LambdaInvoke(this, 'SetServerToCreating', {
+            lambdaFunction: makeFn('SetServerToCreatingFunc', 'state_machine.create_mcp_server.handle_set_server_to_creating'),
             outputPath: OUTPUT_PATH,
         });
 
         const deployServer = new LambdaInvoke(this, 'DeployServer', {
-            lambdaFunction: new Function(this, 'DeployServerFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'mcp_server.state_machine.create_mcp_server.handle_deploy_server',
-                code: Code.fromAsset(lambdaPath),
-                timeout: Duration.minutes(8),
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('DeployServerFunc', 'state_machine.create_mcp_server.handle_deploy_server', Duration.minutes(8)),
             outputPath: OUTPUT_PATH,
         });
 
         const pollDeployment = new LambdaInvoke(this, 'PollDeployment', {
-            lambdaFunction: new Function(this, 'PollDeploymentFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'mcp_server.state_machine.create_mcp_server.handle_poll_deployment',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('PollDeploymentFunc', 'state_machine.create_mcp_server.handle_poll_deployment'),
             outputPath: OUTPUT_PATH,
         });
 
@@ -123,36 +99,12 @@ export class CreateMcpServerStateMachine extends Construct {
         });
 
         const addServerToActive = new LambdaInvoke(this, 'AddServerToActive', {
-            lambdaFunction: new Function(this, 'AddServerToActiveFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'mcp_server.state_machine.create_mcp_server.handle_add_server_to_active',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('AddServerToActiveFunc', 'state_machine.create_mcp_server.handle_add_server_to_active'),
             outputPath: OUTPUT_PATH,
         });
 
         const handleFailureState = new LambdaInvoke(this, 'HandleFailure', {
-            lambdaFunction: new Function(this, 'HandleFailureFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'mcp_server.state_machine.create_mcp_server.handle_failure',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('HandleFailureFunc', 'state_machine.create_mcp_server.handle_failure'),
             outputPath: OUTPUT_PATH,
         });
 

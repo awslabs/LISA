@@ -24,7 +24,7 @@ import pytest
 # Add the lambda directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../lambda"))
 
-from utilities.input_validation import contains_null_bytes, validate_input
+from lisa.utilities.input_validation import contains_null_bytes, validate_input
 
 
 class TestContainsNullBytes:

@@ -22,9 +22,13 @@ export const configurationApi = createApi({
     reducerPath: 'configuration',
     baseQuery: lisaBaseQuery(),
     tagTypes: ['configuration'],
-    refetchOnFocus: true,
-    refetchOnMountOrArgChange: true,
-    keepUnusedDataFor: 60, // Keep cache for 60s to prevent cancellation during rapid navigation
+    // Window focus should not trigger an app-wide refetch cascade; mutations
+    // invalidate the relevant tags when data actually changes.
+    refetchOnFocus: false,
+    // Only refetch on remount if the cached data is older than this many
+    // seconds, so quick navigations between pages use the cache.
+    refetchOnMountOrArgChange: 30,
+    keepUnusedDataFor: 300,
     endpoints: (builder) => ({
         getConfiguration: builder.query<IConfiguration[], string>({
             query: (configScope) => ({

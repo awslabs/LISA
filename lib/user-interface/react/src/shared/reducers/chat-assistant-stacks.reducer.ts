@@ -27,9 +27,9 @@ export const chatAssistantStacksApi = createApi({
     reducerPath: 'chatAssistantStacks',
     baseQuery: lisaBaseQuery(),
     tagTypes: ['chatAssistantStacks'],
-    refetchOnFocus: true,
-    refetchOnMountOrArgChange: true,
-    keepUnusedDataFor: 60,
+    refetchOnFocus: false,
+    refetchOnMountOrArgChange: 30,
+    keepUnusedDataFor: 300,
     endpoints: (builder) => ({
         listStacks: builder.query<IChatAssistantStack[], void>({
             query: () => ({

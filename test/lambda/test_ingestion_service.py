@@ -33,8 +33,8 @@ def setup_env(monkeypatch):
 
 def test_submit_create_job(setup_env):
     """Test submit_create_job submits batch job."""
-    from models.domain_objects import IngestionJob
-    from repository.ingestion_service import DocumentIngestionService
+    from lisa.domain.domain_objects import IngestionJob
+    from lisa.rag.ingestion_service import DocumentIngestionService
 
     job = IngestionJob(
         repository_id="repo1",
@@ -59,8 +59,8 @@ def test_submit_create_job(setup_env):
 
 def test_create_delete_job(setup_env):
     """Test create_delete_job submits delete batch job."""
-    from models.domain_objects import IngestionJob
-    from repository.ingestion_service import DocumentIngestionService
+    from lisa.domain.domain_objects import IngestionJob
+    from lisa.rag.ingestion_service import DocumentIngestionService
 
     job = IngestionJob(
         repository_id="repo1",
@@ -85,8 +85,8 @@ def test_create_delete_job(setup_env):
 
 def test_create_ingestion_job_with_collection(setup_env):
     """Test create_ingestion_job with collection and chunking override."""
-    from models.domain_objects import FixedChunkingStrategy, IngestDocumentRequest
-    from repository.ingestion_service import DocumentIngestionService
+    from lisa.domain.domain_objects import FixedChunkingStrategy, IngestDocumentRequest
+    from lisa.rag.ingestion_service import DocumentIngestionService
 
     repository = {"repositoryId": "repo1", "embeddingModelId": "repo-model"}
 
@@ -108,7 +108,7 @@ def test_create_ingestion_job_with_collection(setup_env):
     service = DocumentIngestionService()
 
     with patch.object(service, "create_ingestion_job") as mock_create:
-        from models.domain_objects import IngestionJob
+        from lisa.domain.domain_objects import IngestionJob
 
         mock_job = IngestionJob(
             repository_id="repo1",
@@ -129,8 +129,8 @@ def test_create_ingestion_job_with_collection(setup_env):
 
 def test_create_ingestion_job_without_collection(setup_env):
     """Test create_ingestion_job without collection uses repository defaults."""
-    from models.domain_objects import FixedChunkingStrategy, IngestDocumentRequest
-    from repository.ingestion_service import DocumentIngestionService
+    from lisa.domain.domain_objects import FixedChunkingStrategy, IngestDocumentRequest
+    from lisa.rag.ingestion_service import DocumentIngestionService
 
     repository = {"repositoryId": "repo1", "embeddingModelId": "repo-model"}
 
@@ -141,7 +141,7 @@ def test_create_ingestion_job_without_collection(setup_env):
     service = DocumentIngestionService()
 
     with patch.object(service, "create_ingestion_job") as mock_create:
-        from models.domain_objects import IngestionJob
+        from lisa.domain.domain_objects import IngestionJob
 
         mock_job = IngestionJob(
             repository_id="repo1",
@@ -162,8 +162,8 @@ def test_create_ingestion_job_without_collection(setup_env):
 
 def test_create_ingestion_job_with_embedding_model_in_request(setup_env):
     """Test create_ingestion_job with embedding model in request."""
-    from models.domain_objects import IngestDocumentRequest
-    from repository.ingestion_service import DocumentIngestionService
+    from lisa.domain.domain_objects import IngestDocumentRequest
+    from lisa.rag.ingestion_service import DocumentIngestionService
 
     repository = {"repositoryId": "repo1", "embeddingModelId": "repo-model"}
 
@@ -174,7 +174,7 @@ def test_create_ingestion_job_with_embedding_model_in_request(setup_env):
     service = DocumentIngestionService()
 
     with patch.object(service, "create_ingestion_job") as mock_create:
-        from models.domain_objects import FixedChunkingStrategy, IngestionJob
+        from lisa.domain.domain_objects import FixedChunkingStrategy, IngestionJob
 
         mock_job = IngestionJob(
             repository_id="repo1",
@@ -193,8 +193,8 @@ def test_create_ingestion_job_with_embedding_model_in_request(setup_env):
 
 def test_create_ingestion_job_invalid_chunking_strategy(setup_env):
     """Test create_ingestion_job handles invalid chunking strategy."""
-    from models.domain_objects import IngestDocumentRequest
-    from repository.ingestion_service import DocumentIngestionService
+    from lisa.domain.domain_objects import IngestDocumentRequest
+    from lisa.rag.ingestion_service import DocumentIngestionService
 
     repository = {"repositoryId": "repo1", "embeddingModelId": "repo-model"}
 
@@ -216,7 +216,7 @@ def test_create_ingestion_job_invalid_chunking_strategy(setup_env):
     service = DocumentIngestionService()
 
     with patch.object(service, "create_ingestion_job") as mock_create:
-        from models.domain_objects import FixedChunkingStrategy, IngestionJob
+        from lisa.domain.domain_objects import FixedChunkingStrategy, IngestionJob
 
         mock_job = IngestionJob(
             repository_id="repo1",

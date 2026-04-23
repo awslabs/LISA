@@ -48,9 +48,11 @@ mock_common.get_cert_path.return_value = None
 mock_common.get_rest_api_container_endpoint.return_value = "https://test-api.example.com"
 mock_common.retry_config = retry_config
 
-patch("utilities.common_functions.get_cert_path", mock_common.get_cert_path).start()
-patch("utilities.common_functions.get_rest_api_container_endpoint", mock_common.get_rest_api_container_endpoint).start()
-patch("utilities.common_functions.retry_config", retry_config).start()
+patch("lisa.utilities.common_functions.get_cert_path", mock_common.get_cert_path).start()
+patch(
+    "lisa.utilities.common_functions.get_rest_api_container_endpoint", mock_common.get_rest_api_container_endpoint
+).start()
+patch("lisa.utilities.common_functions.retry_config", retry_config).start()
 
 # Mock boto3.client for import-time dependencies (secretsmanager used at module import)
 mock_secrets = MagicMock()

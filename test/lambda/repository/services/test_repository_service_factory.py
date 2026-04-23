@@ -23,11 +23,11 @@ os.environ.setdefault("AWS_REGION", "us-east-1")
 os.environ.setdefault("RAG_DOCUMENT_TABLE", "test-doc-table")
 os.environ.setdefault("RAG_SUB_DOCUMENT_TABLE", "test-subdoc-table")
 
-from repository.services.bedrock_kb_repository_service import BedrockKBRepositoryService
-from repository.services.opensearch_repository_service import OpenSearchRepositoryService
-from repository.services.pgvector_repository_service import PGVectorRepositoryService
-from repository.services.repository_service_factory import RepositoryServiceFactory
-from utilities.repository_types import RepositoryType
+from lisa.rag.services.bedrock_kb_repository_service import BedrockKBRepositoryService
+from lisa.rag.services.opensearch_repository_service import OpenSearchRepositoryService
+from lisa.rag.services.pgvector_repository_service import PGVectorRepositoryService
+from lisa.rag.services.repository_service_factory import RepositoryServiceFactory
+from lisa.utilities.repository_types import RepositoryType
 
 
 class TestRepositoryServiceFactory:
@@ -89,7 +89,7 @@ class TestRepositoryServiceFactory:
 
     def test_register_custom_service(self):
         """Test registering a custom service class."""
-        from repository.services.repository_service import RepositoryService
+        from lisa.rag.services.repository_service import RepositoryService
 
         class CustomRepositoryService(RepositoryService):
             def supports_custom_collections(self):

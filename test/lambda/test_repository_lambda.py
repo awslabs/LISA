@@ -46,10 +46,10 @@ import boto3
 import pytest
 import requests
 from botocore.config import Config
-from models.domain_objects import IngestionJob, IngestionStatus
+from lisa.domain.domain_objects import IngestionJob, IngestionStatus
+from lisa.utilities.exceptions import HTTPException
+from lisa.utilities.validation import validate_model_name, ValidationError
 from moto import mock_aws
-from utilities.exceptions import HTTPException
-from utilities.validation import validate_model_name, ValidationError
 
 # Add the lambda directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../"))
@@ -64,7 +64,7 @@ def mock_api_wrapper(func):
     def wrapper(*args, **kwargs):
         # Import ValidationError at wrapper execution time
         try:
-            from utilities.validation import ValidationError as CustomValidationError
+            from lisa.utilities.validation import ValidationError as CustomValidationError
         except ImportError:
             CustomValidationError = None
 
@@ -254,18 +254,18 @@ patch.dict(
 ).start()
 
 # Patch specific functions from utilities.common_functions and utilities.auth
-patch("utilities.auth.get_username", mock_common.get_username).start()
-patch("utilities.auth.get_groups", mock_common.get_groups).start()
-patch("utilities.auth.is_admin", mock_common.is_admin).start()
-patch("utilities.auth.is_rag_admin", mock_common.is_rag_admin).start()
-patch("utilities.auth.get_user_context", mock_common.get_user_context).start()
-patch("utilities.common_functions.retry_config", retry_config).start()
-patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()
-patch("utilities.common_functions.get_id_token", mock_common.get_id_token).start()
-patch("utilities.common_functions.get_cert_path", mock_common.get_cert_path).start()
-_admin_only_patch = patch("utilities.auth.admin_only", mock_admin_only)
+patch("lisa.utilities.auth.get_username", mock_common.get_username).start()
+patch("lisa.utilities.auth.get_groups", mock_common.get_groups).start()
+patch("lisa.utilities.auth.is_admin", mock_common.is_admin).start()
+patch("lisa.utilities.auth.is_rag_admin", mock_common.is_rag_admin).start()
+patch("lisa.utilities.auth.get_user_context", mock_common.get_user_context).start()
+patch("lisa.utilities.common_functions.retry_config", retry_config).start()
+patch("lisa.utilities.common_functions.api_wrapper", mock_api_wrapper).start()
+patch("lisa.utilities.common_functions.get_id_token", mock_common.get_id_token).start()
+patch("lisa.utilities.common_functions.get_cert_path", mock_common.get_cert_path).start()
+_admin_only_patch = patch("lisa.utilities.auth.admin_only", mock_admin_only)
 _admin_only_patch.start()
-_rag_admin_or_admin_patch = patch("utilities.auth.rag_admin_or_admin", mock_admin_only)
+_rag_admin_or_admin_patch = patch("lisa.utilities.auth.rag_admin_or_admin", mock_admin_only)
 _rag_admin_or_admin_patch.start()
 
 
@@ -389,7 +389,7 @@ def test_list_all():
 
     # Patch the api_wrapper to properly wrap our mock function
     with patch("repository.lambda_functions.list_all", side_effect=mock_list_all_func):
-        with patch("utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
+        with patch("lisa.utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
             # Create test event
             event = {
                 "requestContext": {
@@ -416,7 +416,7 @@ def test_list_status():
 
     # Patch the api_wrapper to properly wrap our mock function
     with patch("repository.lambda_functions.list_status", side_effect=mock_list_status_func):
-        with patch("utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
+        with patch("lisa.utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
             # Create test event
             event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}}}}
 
@@ -442,7 +442,7 @@ def test_similarity_search():
 
     # Patch the api_wrapper to properly wrap our mock function
     with patch("repository.lambda_functions.similarity_search", side_effect=mock_similarity_search_func):
-        with patch("utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
+        with patch("lisa.utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
             # Create test event
             event = {
                 "requestContext": {
@@ -476,7 +476,7 @@ def test_ingest_documents():
 
     # Patch the api_wrapper to properly wrap our mock function
     with patch("repository.lambda_functions.ingest_documents", side_effect=mock_ingest_documents_func):
-        with patch("utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
+        with patch("lisa.utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
             # Create test event
             event = {
                 "requestContext": {
@@ -506,7 +506,7 @@ def test_download_document():
 
     # Patch the api_wrapper to properly wrap our mock function
     with patch("repository.lambda_functions.download_document", side_effect=mock_download_document_func):
-        with patch("utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
+        with patch("lisa.utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
             # Create test event
             event = {
                 "requestContext": {
@@ -532,7 +532,7 @@ def test_list_docs():
 
     # Patch the api_wrapper to properly wrap our mock function
     with patch("repository.lambda_functions.list_docs", side_effect=mock_list_docs_func):
-        with patch("utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
+        with patch("lisa.utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
             # Create test event
             event = {
                 "requestContext": {
@@ -561,7 +561,7 @@ def test_delete():
 
     # Patch the api_wrapper to properly wrap our mock function
     with patch("repository.lambda_functions.delete", side_effect=mock_delete_func):
-        with patch("utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
+        with patch("lisa.utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
             # Create test event
             event = {
                 "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
@@ -595,7 +595,7 @@ def test_delete_documents_by_id():
 
     # Patch the api_wrapper to properly wrap our mock function
     with patch("repository.lambda_functions.delete_documents", side_effect=mock_delete_documents_func):
-        with patch("utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
+        with patch("lisa.utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
             # Create test event
             event = {
                 "requestContext": {
@@ -626,7 +626,7 @@ def test_delete_documents_by_name():
 
     # Patch the api_wrapper to properly wrap our mock function
     with patch("repository.lambda_functions.delete_documents", side_effect=mock_delete_documents_func):
-        with patch("utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
+        with patch("lisa.utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
             # Create test event
             event = {
                 "requestContext": {
@@ -656,7 +656,7 @@ def test_delete_documents_error():
 
     # Patch the api_wrapper to properly wrap our mock function
     with patch("repository.lambda_functions.delete_documents", side_effect=mock_delete_documents_func):
-        with patch("utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
+        with patch("lisa.utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
             # Create test event with missing parameters
             event = {
                 "requestContext": {
@@ -685,7 +685,7 @@ def test_delete_documents_unauthorized():
 
     # Patch the api_wrapper to properly wrap our mock function
     with patch("repository.lambda_functions.delete_documents", side_effect=mock_delete_documents_func):
-        with patch("utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
+        with patch("lisa.utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
             # Create test event
             event = {
                 "requestContext": {
@@ -736,7 +736,7 @@ def test_create():
 
     # Patch the api_wrapper to properly wrap our mock function
     with patch("repository.lambda_functions.create", side_effect=mock_create_func):
-        with patch("utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
+        with patch("lisa.utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
             # Create test event
             event = {
                 "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
@@ -767,7 +767,7 @@ def test_delete_legacy():
 
     # Patch the api_wrapper to properly wrap our mock function
     with patch("repository.lambda_functions.delete", side_effect=mock_delete_func):
-        with patch("utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
+        with patch("lisa.utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
             # Create test event
             event = {
                 "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
@@ -797,7 +797,7 @@ def test_delete_missing_repository_id():
 
     # Patch the api_wrapper to properly wrap our mock function
     with patch("repository.lambda_functions.delete", side_effect=mock_delete_func):
-        with patch("utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
+        with patch("lisa.utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
             # Create test event with missing repositoryId
             event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}}}, "pathParameters": {}}
 
@@ -822,7 +822,7 @@ def test_RagEmbeddings_error():
         raise Exception("SSM error")
 
     # Patch the class from the correct module
-    with patch("repository.embeddings.RagEmbeddings", side_effect=mock_RagEmbeddings):
+    with patch("lisa.rag.embeddings.RagEmbeddings", side_effect=mock_RagEmbeddings):
         # Test that the error is properly handled
         with pytest.raises(Exception, match="SSM error"):
             mock_RagEmbeddings("test-model", "test-token")
@@ -837,7 +837,7 @@ def test_similarity_search_forbidden():
 
     # Patch the api_wrapper to properly wrap our mock function
     with patch("repository.lambda_functions.similarity_search", side_effect=mock_similarity_search_func):
-        with patch("utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
+        with patch("lisa.utilities.common_functions.api_wrapper", side_effect=mock_api_wrapper):
             # Create test event
             event = {
                 "requestContext": {
@@ -887,7 +887,7 @@ def test_pipeline_embeddings_embed_documents_error():
     mock_embeddings.embed_documents.side_effect = mock_embed_documents
 
     # Patch RagEmbeddings_pipeline to return our mock
-    with patch("repository.embeddings.RagEmbeddings", return_value=mock_embeddings):
+    with patch("lisa.rag.embeddings.RagEmbeddings", return_value=mock_embeddings):
         embeddings = mock_embeddings
 
         # Test that the error is properly handled
@@ -907,7 +907,7 @@ def test_embeddings_embed_query_error():
     mock_embeddings.embed_query.side_effect = mock_embed_query
 
     # Patch RagEmbeddings_pipeline to return our mock
-    with patch("repository.embeddings.RagEmbeddings", return_value=mock_embeddings):
+    with patch("lisa.rag.embeddings.RagEmbeddings", return_value=mock_embeddings):
         embeddings = mock_embeddings
 
         # Test with invalid input
@@ -943,7 +943,7 @@ def test_get_repository_unauthorized():
 
 def test_document_ownership_validation():
     """Test document ownership validation logic"""
-    from models.domain_objects import ChunkingStrategyType, FixedChunkingStrategy, RagDocument
+    from lisa.domain.domain_objects import ChunkingStrategyType, FixedChunkingStrategy, RagDocument
 
     # Test case 1: User is admin
     event = {"requestContext": {"authorizer": {"claims": {"username": "admin-user"}}}}
@@ -1082,11 +1082,11 @@ def test_repository_access_validation():
 
 def test_RagEmbeddings_function():
     """Test the RagEmbeddings function"""
-    from repository.embeddings import RagEmbeddings
+    from lisa.rag.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
-        "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings.get_management_key") as mock_key:
+    with patch("lisa.rag.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
+        "lisa.rag.embeddings.get_cert_path"
+    ) as mock_cert, patch("lisa.rag.embeddings.get_management_key") as mock_key:
 
         mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
@@ -1101,11 +1101,11 @@ def test_RagEmbeddings_function():
 
 def test_pipeline_embeddings_init():
     """Test RagEmbeddings initialization"""
-    from repository.embeddings import RagEmbeddings
+    from lisa.rag.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.get_management_key") as mock_management_key, patch(
-        "repository.embeddings.get_rest_api_container_endpoint"
-    ) as mock_endpoint, patch("repository.embeddings.get_cert_path") as mock_cert:
+    with patch("lisa.rag.embeddings.get_management_key") as mock_management_key, patch(
+        "lisa.rag.embeddings.get_rest_api_container_endpoint"
+    ) as mock_endpoint, patch("lisa.rag.embeddings.get_cert_path") as mock_cert:
 
         mock_management_key.return_value = "test-token"
         mock_endpoint.return_value = "https://api.example.com"
@@ -1122,9 +1122,9 @@ def test_pipeline_embeddings_init():
 
 def test_pipeline_embeddings_init_error():
     """Test LisaOpenAIEmbeddings initialization error handling"""
-    from repository.embeddings import RagEmbeddings
+    from lisa.rag.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.ssm_client") as mock_ssm:
+    with patch("lisa.rag.embeddings.ssm_client") as mock_ssm:
         mock_ssm.get_parameter.side_effect = Exception("SSM error")
 
         with pytest.raises(Exception):
@@ -1133,11 +1133,11 @@ def test_pipeline_embeddings_init_error():
 
 def test_pipeline_embeddings_embed_documents():
     """Test RagEmbeddings embed_documents method"""
-    from repository.embeddings import RagEmbeddings
+    from lisa.rag.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
-        "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings._get_http_session") as mock_get_session:
+    with patch("lisa.rag.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
+        "lisa.rag.embeddings.get_cert_path"
+    ) as mock_cert, patch("lisa.rag.embeddings._get_http_session") as mock_get_session:
 
         mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
@@ -1162,11 +1162,11 @@ def test_pipeline_embeddings_embed_documents():
 
 def test_pipeline_embeddings_embed_documents_no_texts():
     """Test RagEmbeddings embed_documents with no texts"""
-    from repository.embeddings import RagEmbeddings
+    from lisa.rag.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
-        "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings.get_management_key") as mock_key:
+    with patch("lisa.rag.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
+        "lisa.rag.embeddings.get_cert_path"
+    ) as mock_cert, patch("lisa.rag.embeddings.get_management_key") as mock_key:
 
         mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
@@ -1180,11 +1180,11 @@ def test_pipeline_embeddings_embed_documents_no_texts():
 
 def test_pipeline_embeddings_embed_documents_api_error():
     """Test RagEmbeddings embed_documents with API error"""
-    from repository.embeddings import RagEmbeddings
+    from lisa.rag.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
-        "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings._get_http_session") as mock_get_session:
+    with patch("lisa.rag.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
+        "lisa.rag.embeddings.get_cert_path"
+    ) as mock_cert, patch("lisa.rag.embeddings._get_http_session") as mock_get_session:
 
         mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
@@ -1201,11 +1201,11 @@ def test_pipeline_embeddings_embed_documents_api_error():
 
 def test_pipeline_embeddings_embed_documents_timeout():
     """Test RagEmbeddings embed_documents with timeout"""
-    from repository.embeddings import RagEmbeddings
+    from lisa.rag.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
-        "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings._get_http_session") as mock_get_session:
+    with patch("lisa.rag.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
+        "lisa.rag.embeddings.get_cert_path"
+    ) as mock_cert, patch("lisa.rag.embeddings._get_http_session") as mock_get_session:
 
         mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
@@ -1222,11 +1222,11 @@ def test_pipeline_embeddings_embed_documents_timeout():
 
 def test_pipeline_embeddings_embed_documents_different_formats():
     """Test RagEmbeddings embed_documents with different response formats"""
-    from repository.embeddings import RagEmbeddings
+    from lisa.rag.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
-        "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings._get_http_session") as mock_get_session:
+    with patch("lisa.rag.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
+        "lisa.rag.embeddings.get_cert_path"
+    ) as mock_cert, patch("lisa.rag.embeddings._get_http_session") as mock_get_session:
 
         mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
@@ -1252,11 +1252,11 @@ def test_pipeline_embeddings_embed_documents_different_formats():
 
 def test_pipeline_embeddings_embed_documents_no_embeddings():
     """Test RagEmbeddings embed_documents with no embeddings in response"""
-    from repository.embeddings import RagEmbeddings
+    from lisa.rag.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
-        "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings._get_http_session") as mock_get_session:
+    with patch("lisa.rag.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
+        "lisa.rag.embeddings.get_cert_path"
+    ) as mock_cert, patch("lisa.rag.embeddings._get_http_session") as mock_get_session:
 
         mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
@@ -1277,11 +1277,11 @@ def test_pipeline_embeddings_embed_documents_no_embeddings():
 
 def test_pipeline_embeddings_embed_documents_mismatch():
     """Test RagEmbeddings embed_documents with embedding count mismatch"""
-    from repository.embeddings import RagEmbeddings
+    from lisa.rag.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
-        "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings._get_http_session") as mock_get_session:
+    with patch("lisa.rag.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
+        "lisa.rag.embeddings.get_cert_path"
+    ) as mock_cert, patch("lisa.rag.embeddings._get_http_session") as mock_get_session:
 
         mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
@@ -1302,11 +1302,11 @@ def test_pipeline_embeddings_embed_documents_mismatch():
 
 def test_pipeline_embeddings_embed_query():
     """Test RagEmbeddings embed_query method"""
-    from repository.embeddings import RagEmbeddings
+    from lisa.rag.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
-        "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings._get_http_session") as mock_get_session:
+    with patch("lisa.rag.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
+        "lisa.rag.embeddings.get_cert_path"
+    ) as mock_cert, patch("lisa.rag.embeddings._get_http_session") as mock_get_session:
 
         mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
@@ -1327,11 +1327,11 @@ def test_pipeline_embeddings_embed_query():
 
 def test_pipeline_embeddings_embed_query_invalid():
     """Test RagEmbeddings embed_query with invalid input"""
-    from repository.embeddings import RagEmbeddings
+    from lisa.rag.embeddings import RagEmbeddings
 
-    with patch("repository.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
-        "repository.embeddings.get_cert_path"
-    ) as mock_cert, patch("repository.embeddings.get_management_key") as mock_key:
+    with patch("lisa.rag.embeddings.get_rest_api_container_endpoint") as mock_endpoint, patch(
+        "lisa.rag.embeddings.get_cert_path"
+    ) as mock_cert, patch("lisa.rag.embeddings.get_management_key") as mock_key:
 
         mock_endpoint.return_value = "https://api.example.com"
         mock_cert.return_value = "/path/to/cert"
@@ -1352,7 +1352,7 @@ def test_real_list_all_function():
 
     # Mock the vs_repo to return test data
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "utilities.auth.get_groups"
+        "lisa.utilities.auth.get_groups"
     ) as mock_get_groups:
 
         mock_get_groups.return_value = ["test-group"]
@@ -1385,7 +1385,7 @@ def test_real_list_status_function():
         event = {"requestContext": {"authorizer": {"claims": {"username": "admin-user"}}}}
 
         # Mock admin check
-        with patch("utilities.auth.is_admin", return_value=True):
+        with patch("lisa.utilities.auth.is_admin", return_value=True):
             result = list_status(event, SimpleNamespace())
 
             # The function is wrapped by api_wrapper, so we get an HTTP response
@@ -1399,9 +1399,9 @@ def test_real_similarity_search_function():
     from repository.lambda_functions import similarity_search
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "repository.embeddings.RagEmbeddings"
-    ) as mock_RagEmbeddings, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-        "utilities.common_functions.get_id_token"
+        "lisa.rag.embeddings.RagEmbeddings"
+    ) as mock_RagEmbeddings, patch("lisa.utilities.auth.get_groups") as mock_get_groups, patch(
+        "lisa.utilities.common_functions.get_id_token"
     ) as mock_get_token:
 
         # Setup mocks
@@ -1470,10 +1470,10 @@ def test_real_delete_documents_function():
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "repository.lambda_functions.doc_repo"
-    ) as mock_doc_repo, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-        "utilities.auth.get_username"
+    ) as mock_doc_repo, patch("lisa.utilities.auth.get_groups") as mock_get_groups, patch(
+        "lisa.utilities.auth.get_username"
     ) as mock_get_username, patch(
-        "utilities.auth.is_admin"
+        "lisa.utilities.auth.is_admin"
     ) as mock_is_admin:
 
         # Setup mocks
@@ -1505,8 +1505,8 @@ def test_real_ingest_documents_function():
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "repository.lambda_functions.ingestion_service"
-    ) as mock_ingestion, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-        "utilities.auth.get_username"
+    ) as mock_ingestion, patch("lisa.utilities.auth.get_groups") as mock_get_groups, patch(
+        "lisa.utilities.auth.get_username"
     ) as mock_get_username:
 
         # Setup mocks
@@ -1538,11 +1538,11 @@ def test_real_download_document_function():
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "repository.lambda_functions.doc_repo"
     ) as mock_doc_repo, patch("repository.lambda_functions.s3") as mock_s3, patch(
-        "utilities.auth.get_groups"
+        "lisa.utilities.auth.get_groups"
     ) as mock_get_groups, patch(
-        "utilities.auth.get_username"
+        "lisa.utilities.auth.get_username"
     ) as mock_get_username, patch(
-        "utilities.auth.is_admin"
+        "lisa.utilities.auth.is_admin"
     ) as mock_is_admin:
 
         # Setup mocks
@@ -1583,7 +1583,7 @@ def test_real_list_docs_function():
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "repository.lambda_functions.doc_repo"
-    ) as mock_doc_repo, patch("utilities.auth.get_groups") as mock_get_groups:
+    ) as mock_doc_repo, patch("lisa.utilities.auth.get_groups") as mock_get_groups:
 
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
@@ -1618,7 +1618,7 @@ def test_list_docs_with_pagination():
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "repository.lambda_functions.doc_repo"
-    ) as mock_doc_repo, patch("utilities.auth.get_groups") as mock_get_groups:
+    ) as mock_doc_repo, patch("lisa.utilities.auth.get_groups") as mock_get_groups:
 
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
@@ -1666,7 +1666,7 @@ def test_list_docs_with_previous_page():
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "repository.lambda_functions.doc_repo"
-    ) as mock_doc_repo, patch("utilities.auth.get_groups") as mock_get_groups:
+    ) as mock_doc_repo, patch("lisa.utilities.auth.get_groups") as mock_get_groups:
 
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
@@ -1703,7 +1703,7 @@ def test_list_docs_with_custom_page_size():
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "repository.lambda_functions.doc_repo"
-    ) as mock_doc_repo, patch("utilities.auth.get_groups") as mock_get_groups:
+    ) as mock_doc_repo, patch("lisa.utilities.auth.get_groups") as mock_get_groups:
 
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
@@ -1737,7 +1737,7 @@ def test_list_docs_with_edge_case_page_sizes():
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "repository.lambda_functions.doc_repo"
-    ) as mock_doc_repo, patch("utilities.auth.get_groups") as mock_get_groups:
+    ) as mock_doc_repo, patch("lisa.utilities.auth.get_groups") as mock_get_groups:
 
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
@@ -1773,7 +1773,7 @@ def test_list_docs_with_encoded_pagination_keys():
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "repository.lambda_functions.doc_repo"
-    ) as mock_doc_repo, patch("utilities.auth.get_groups") as mock_get_groups:
+    ) as mock_doc_repo, patch("lisa.utilities.auth.get_groups") as mock_get_groups:
 
         # Setup mocks
         mock_get_groups.return_value = ["test-group"]
@@ -1812,7 +1812,7 @@ def test_real_create_function():
 
     with patch("repository.lambda_functions.step_functions_client") as mock_sf, patch(
         "repository.lambda_functions.ssm_client"
-    ) as mock_ssm, patch("utilities.auth.is_admin") as mock_is_admin:
+    ) as mock_ssm, patch("lisa.utilities.auth.is_admin") as mock_is_admin:
 
         # Setup mocks
         mock_is_admin.return_value = True
@@ -1838,8 +1838,8 @@ def test_real_delete_function():
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "repository.lambda_functions.step_functions_client"
-    ) as mock_sf, patch("repository.embeddings.ssm_client") as mock_ssm, patch(
-        "utilities.auth.is_admin"
+    ) as mock_sf, patch("lisa.rag.embeddings.ssm_client") as mock_ssm, patch(
+        "lisa.utilities.auth.is_admin"
     ) as mock_is_admin:
 
         # Setup mocks
@@ -1866,7 +1866,7 @@ def test_real_delete_function_legacy():
     from repository.lambda_functions import delete
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "utilities.auth.is_admin"
+        "lisa.utilities.auth.is_admin"
     ) as mock_is_admin, patch("repository.lambda_functions._remove_legacy") as mock_remove_legacy:
 
         # Setup mocks
@@ -2028,7 +2028,7 @@ def test_real_similarity_search_bedrock_kb_function():
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "repository.lambda_functions.bedrock_client"
-    ) as mock_bedrock, patch("utilities.auth.get_groups") as mock_get_groups, patch(
+    ) as mock_bedrock, patch("lisa.utilities.auth.get_groups") as mock_get_groups, patch(
         "repository.lambda_functions.collection_service"
     ) as mock_collection_service, patch(
         "repository.lambda_functions.enrich_metadata_with_document_id"
@@ -2104,10 +2104,10 @@ def test_list_jobs_function():
     try:
         with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
             "repository.lambda_functions.ingestion_job_repository"
-        ) as mock_job_repo, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-            "utilities.auth.is_admin"
+        ) as mock_job_repo, patch("lisa.utilities.auth.get_groups") as mock_get_groups, patch(
+            "lisa.utilities.auth.is_admin"
         ) as mock_is_admin, patch(
-            "utilities.auth.get_username"
+            "lisa.utilities.auth.get_username"
         ) as mock_get_username, patch(
             "repository.lambda_functions.get_user_context"
         ) as mock_get_user_context:
@@ -2200,7 +2200,7 @@ def test_list_jobs_missing_repository_id():
     """Test list_jobs function with missing repository ID"""
     from repository.lambda_functions import list_jobs
 
-    with patch("utilities.auth.is_admin") as mock_is_admin:
+    with patch("lisa.utilities.auth.is_admin") as mock_is_admin:
         mock_is_admin.return_value = True
 
         event = {
@@ -2224,8 +2224,8 @@ def test_list_jobs_unauthorized_access():
     from repository.lambda_functions import list_jobs
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "utilities.auth.get_groups"
-    ) as mock_get_groups, patch("utilities.auth.is_admin") as mock_is_admin:
+        "lisa.utilities.auth.get_groups"
+    ) as mock_get_groups, patch("lisa.utilities.auth.is_admin") as mock_is_admin:
 
         # Setup mocks - user is not admin and doesn't have group access
         mock_get_groups.return_value = ["other-group"]
@@ -2259,10 +2259,10 @@ def test_list_jobs_empty_results():
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "repository.lambda_functions.ingestion_job_repository"
-    ) as mock_job_repo, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-        "utilities.auth.is_admin"
+    ) as mock_job_repo, patch("lisa.utilities.auth.get_groups") as mock_get_groups, patch(
+        "lisa.utilities.auth.is_admin"
     ) as mock_is_admin, patch(
-        "utilities.auth.get_username"
+        "lisa.utilities.auth.get_username"
     ) as mock_get_username:
 
         # Setup mocks
@@ -2306,8 +2306,8 @@ def test_list_jobs_malformed_dynamodb_items():
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "repository.lambda_functions.ingestion_job_repository"
-    ) as mock_job_repo, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-        "utilities.auth.is_admin"
+    ) as mock_job_repo, patch("lisa.utilities.auth.get_groups") as mock_get_groups, patch(
+        "lisa.utilities.auth.is_admin"
     ) as mock_is_admin:
 
         # Setup mocks
@@ -2346,10 +2346,10 @@ def test_list_jobs_with_pagination():
     try:
         with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
             "repository.lambda_functions.ingestion_job_repository"
-        ) as mock_job_repo, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-            "utilities.auth.is_admin"
+        ) as mock_job_repo, patch("lisa.utilities.auth.get_groups") as mock_get_groups, patch(
+            "lisa.utilities.auth.is_admin"
         ) as mock_is_admin, patch(
-            "utilities.auth.get_username"
+            "lisa.utilities.auth.get_username"
         ) as mock_get_username, patch(
             "repository.lambda_functions.get_user_context"
         ) as mock_get_user_context:
@@ -2439,10 +2439,10 @@ def test_list_jobs_with_last_evaluated_key():
     try:
         with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
             "repository.lambda_functions.ingestion_job_repository"
-        ) as mock_job_repo, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-            "utilities.auth.is_admin"
+        ) as mock_job_repo, patch("lisa.utilities.auth.get_groups") as mock_get_groups, patch(
+            "lisa.utilities.auth.is_admin"
         ) as mock_is_admin, patch(
-            "utilities.auth.get_username"
+            "lisa.utilities.auth.get_username"
         ) as mock_get_username, patch(
             "repository.lambda_functions.get_user_context"
         ) as mock_get_user_context:
@@ -2523,7 +2523,7 @@ def test_list_jobs_with_last_evaluated_key():
 @mock_aws()
 def test_ingest_documents_with_chunking_override():
     """Test ingest_documents with chunking strategy override"""
-    from models.domain_objects import CollectionStatus, FixedChunkingStrategy, RagCollectionConfig
+    from lisa.domain.domain_objects import CollectionStatus, FixedChunkingStrategy, RagCollectionConfig
     from repository.lambda_functions import ingest_documents
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
@@ -2609,8 +2609,8 @@ def test_ingest_documents_with_chunking_override():
 
 def test_ingest_documents_access_denied():
     """Test ingest_documents with access denied to collection"""
+    from lisa.utilities.validation import ValidationError
     from repository.lambda_functions import ingest_documents
-    from utilities.validation import ValidationError
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
         "repository.lambda_functions.collection_service"
@@ -2684,8 +2684,8 @@ def test_get_repository_with_access():
 
 def test_get_repository_no_access():
     """Test get_repository without access"""
+    from lisa.utilities.exceptions import HTTPException
     from repository.lambda_functions import get_repository
-    from utilities.exceptions import HTTPException
 
     with patch("repository.lambda_functions.vs_repo") as mock_repo, patch(
         "repository.lambda_functions.is_admin", return_value=False
@@ -2699,7 +2699,7 @@ def test_get_repository_no_access():
 
 def test_similarity_search_with_score():
     """Test retrieve_documents with score via service layer"""
-    from repository.services.opensearch_repository_service import OpenSearchRepositoryService
+    from lisa.rag.services.opensearch_repository_service import OpenSearchRepositoryService
 
     repository = {"repositoryId": "test-repo", "type": "opensearch"}
     service = OpenSearchRepositoryService(repository)
@@ -2711,7 +2711,7 @@ def test_similarity_search_with_score():
     mock_vs.similarity_search_with_score.return_value = [(mock_doc, 0.9)]
     mock_vs.client.indices.exists.return_value = True
 
-    with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
+    with patch("lisa.rag.services.opensearch_repository_service.RagEmbeddings"):
         with patch.object(service, "_get_vector_store_client", return_value=mock_vs):
             result = service.retrieve_documents("query", "test-collection", 3, "test-model", include_score=True)
 
@@ -2721,7 +2721,7 @@ def test_similarity_search_with_score():
 
 def test_similarity_search_without_score():
     """Test retrieve_documents without score via service layer"""
-    from repository.services.opensearch_repository_service import OpenSearchRepositoryService
+    from lisa.rag.services.opensearch_repository_service import OpenSearchRepositoryService
 
     repository = {"repositoryId": "test-repo", "type": "opensearch"}
     service = OpenSearchRepositoryService(repository)
@@ -2733,7 +2733,7 @@ def test_similarity_search_without_score():
     mock_doc.metadata = {"source": "test"}
     mock_vs.similarity_search_with_score.return_value = [(mock_doc, 0.9)]
 
-    with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
+    with patch("lisa.rag.services.opensearch_repository_service.RagEmbeddings"):
         with patch.object(service, "_get_vector_store_client", return_value=mock_vs):
             result = service.retrieve_documents("query", "test-collection", 3, "test-model", include_score=False)
 
@@ -2743,7 +2743,7 @@ def test_similarity_search_without_score():
 
 def test_ensure_document_ownership_admin():
     """Test _ensure_document_ownership with admin"""
-    from models.domain_objects import FixedChunkingStrategy, RagDocument
+    from lisa.domain.domain_objects import FixedChunkingStrategy, RagDocument
     from repository.lambda_functions import _ensure_document_ownership
 
     with patch("repository.lambda_functions.get_username", return_value="admin"), patch(
@@ -2765,7 +2765,7 @@ def test_ensure_document_ownership_admin():
 
 def test_ensure_document_ownership_owner():
     """Test _ensure_document_ownership with owner"""
-    from models.domain_objects import FixedChunkingStrategy, RagDocument
+    from lisa.domain.domain_objects import FixedChunkingStrategy, RagDocument
     from repository.lambda_functions import _ensure_document_ownership
 
     with patch("repository.lambda_functions.get_username", return_value="user1"), patch(
@@ -2787,7 +2787,7 @@ def test_ensure_document_ownership_owner():
 
 def test_ensure_document_ownership_not_owner():
     """Test _ensure_document_ownership without ownership"""
-    from models.domain_objects import FixedChunkingStrategy, RagDocument
+    from lisa.domain.domain_objects import FixedChunkingStrategy, RagDocument
     from repository.lambda_functions import _ensure_document_ownership
 
     with patch("repository.lambda_functions.get_username", return_value="user1"), patch(
@@ -2981,7 +2981,7 @@ def test_update_repository_with_pipeline_change():
     with patch("repository.lambda_functions.vs_repo") as mock_vs, patch(
         "repository.lambda_functions.ssm_client"
     ) as mock_ssm, patch("repository.lambda_functions.step_functions_client") as mock_sf, patch(
-        "utilities.auth.is_admin"
+        "lisa.utilities.auth.is_admin"
     ) as mock_is_admin:
         # Mock admin access
         mock_is_admin.return_value = True
@@ -3090,7 +3090,7 @@ def test_update_repository_without_pipeline_change():
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs, patch(
         "repository.lambda_functions.step_functions_client"
-    ) as mock_sf, patch("utilities.auth.is_admin") as mock_is_admin:
+    ) as mock_sf, patch("lisa.utilities.auth.is_admin") as mock_is_admin:
         # Mock admin access
         mock_is_admin.return_value = True
 
@@ -3139,7 +3139,7 @@ def test_create_success():
 
     with patch("repository.lambda_functions.ssm_client") as mock_ssm, patch(
         "repository.lambda_functions.step_functions_client"
-    ) as mock_sf, patch("utilities.auth.is_admin") as mock_is_admin:
+    ) as mock_sf, patch("lisa.utilities.auth.is_admin") as mock_is_admin:
         mock_is_admin.return_value = True
         mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "arn:test"}}
         mock_sf.start_execution.return_value = {"executionArn": "arn:execution"}
@@ -3199,7 +3199,7 @@ def test_similarity_search_helpers():
     import os
     from unittest.mock import MagicMock, patch
 
-    from repository.services.opensearch_repository_service import OpenSearchRepositoryService
+    from lisa.rag.services.opensearch_repository_service import OpenSearchRepositoryService
 
     with patch.dict(os.environ, {"LISA_RAG_VECTOR_STORE_TABLE": "test-table"}, clear=False):
         repository = {"repositoryId": "test-repo", "type": "opensearch"}
@@ -3212,7 +3212,7 @@ def test_similarity_search_helpers():
         mock_vs.similarity_search_with_score.return_value = [(mock_doc, 0.9)]
         mock_vs.client.indices.exists.return_value = True
 
-        with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
+        with patch("lisa.rag.services.opensearch_repository_service.RagEmbeddings"):
             with patch.object(service, "_get_vector_store_client", return_value=mock_vs):
                 results = service.retrieve_documents("query", "test-collection", 3, "test-model", include_score=False)
 
@@ -3955,7 +3955,7 @@ class TestRepositoryTagPreservation:
 
     def test_update_vector_store_request_tag_handling(self):
         """Test UpdateVectorStoreRequest preserves tags correctly."""
-        from models.domain_objects import UpdateVectorStoreRequest
+        from lisa.domain.domain_objects import UpdateVectorStoreRequest
 
         request_body = {
             "pipelines": [
@@ -3991,10 +3991,10 @@ class TestRepositoryTagPreservation:
         tags = pipeline_metadata.get("tags", [])
         assert tags == ["test"]
 
-    @patch("utilities.bedrock_kb_discovery.build_pipeline_configs_from_kb_config")
+    @patch("lisa.utilities.bedrock_kb_discovery.build_pipeline_configs_from_kb_config")
     def test_bedrock_kb_tag_preservation_fix(self, mock_build_pipeline_configs):
         """Test that Bedrock KB updates preserve existing pipeline metadata."""
-        from models.domain_objects import BedrockDataSource, BedrockKnowledgeBaseConfig
+        from lisa.domain.domain_objects import BedrockDataSource, BedrockKnowledgeBaseConfig
 
         # Mock the function to return new pipelines without metadata
         mock_build_pipeline_configs.return_value = [
@@ -4034,7 +4034,7 @@ class TestRepositoryTagPreservation:
         )
 
         # Build new pipeline configs (this currently loses metadata)
-        from utilities.bedrock_kb_discovery import build_pipeline_configs_from_kb_config
+        from lisa.utilities.bedrock_kb_discovery import build_pipeline_configs_from_kb_config
 
         new_pipelines = build_pipeline_configs_from_kb_config(kb_config)
 

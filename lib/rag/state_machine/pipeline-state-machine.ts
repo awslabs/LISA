@@ -27,8 +27,7 @@ import { Roles } from '../../core/iam/roles';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH } from './constants';
-import { getPythonRuntime } from '../../api-base/utils';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
+import { definePythonLambda } from '../../util';
 
 export type PipelineStateMachineProps = BaseProps & {
     vpc: Vpc;
@@ -105,80 +104,53 @@ export class PipelineStateMachine extends Construct {
             REGION: config.region
         };
 
-        // Lambda function for input validation
-        const validateInputLambda = new lambda.Function(this, 'ValidateInputLambda', {
-            functionName: `${config.deploymentName}-${config.deploymentStage}-pipeline-validate-input`,
-            runtime: getPythonRuntime(),
-            handler: 'repository.state_machine.pipeline_validate_input.handler',
-            code: lambda.Code.fromAsset('./lambda'),
-            timeout: Duration.seconds(30),
-            memorySize: 256,
-            vpc: vpc.vpc,
-            vpcSubnets: vpc.subnetSelection,
-            environment: lambdaEnvironment,
-            layers: layers,
-            role: lambdaExecutionRole
-        });
+        const makeFn = (id: string, fnSuffix: string, entry: string, timeout = LAMBDA_TIMEOUT, memorySize = LAMBDA_MEMORY) =>
+            definePythonLambda(this, id, {
+                functionName: `${config.deploymentName}-${config.deploymentStage}-${fnSuffix}`,
+                handlerDir: 'repository',
+                entry,
+                config,
+                timeout,
+                memorySize,
+                vpc,
+                environment: lambdaEnvironment,
+                layers,
+                role: lambdaExecutionRole,
+            });
 
-        // Lambda function for creating pipeline rules
-        const createPipelineRulesLambda = new lambda.Function(this, 'CreatePipelineRulesLambda', {
-            functionName: `${config.deploymentName}-${config.deploymentStage}-pipeline-create-rules`,
-            runtime: getPythonRuntime(),
-            handler: 'repository.state_machine.pipeline_create_rules.handler',
-            code: lambda.Code.fromAsset('./lambda'),
-            timeout: LAMBDA_TIMEOUT,
-            memorySize: LAMBDA_MEMORY,
-            vpc: vpc.vpc,
-            vpcSubnets: vpc.subnetSelection,
-            environment: lambdaEnvironment,
-            layers: layers,
-            role: lambdaExecutionRole
-        });
+        const validateInputLambda = makeFn(
+            'ValidateInputLambda',
+            'pipeline-validate-input',
+            'state_machine.pipeline_validate_input.handler',
+            Duration.seconds(30),
+            256,
+        );
 
-        // Lambda function for updating pipeline rules
-        const updatePipelineRulesLambda = new lambda.Function(this, 'UpdatePipelineRulesLambda', {
-            functionName: `${config.deploymentName}-${config.deploymentStage}-pipeline-update-rules`,
-            runtime: getPythonRuntime(),
-            handler: 'repository.state_machine.pipeline_update_rules.handler',
-            code: lambda.Code.fromAsset('./lambda'),
-            timeout: LAMBDA_TIMEOUT,
-            memorySize: LAMBDA_MEMORY,
-            vpc: vpc.vpc,
-            vpcSubnets: vpc.subnetSelection,
-            environment: lambdaEnvironment,
-            layers: layers,
-            role: lambdaExecutionRole
-        });
+        const createPipelineRulesLambda = makeFn(
+            'CreatePipelineRulesLambda',
+            'pipeline-create-rules',
+            'state_machine.pipeline_create_rules.handler',
+        );
 
-        // Lambda function for deleting pipeline rules
-        const deletePipelineRulesLambda = new lambda.Function(this, 'DeletePipelineRulesLambda', {
-            functionName: `${config.deploymentName}-${config.deploymentStage}-pipeline-delete-rules`,
-            runtime: getPythonRuntime(),
-            handler: 'repository.state_machine.pipeline_delete_rules.handler',
-            code: lambda.Code.fromAsset('./lambda'),
-            timeout: LAMBDA_TIMEOUT,
-            memorySize: LAMBDA_MEMORY,
-            vpc: vpc.vpc,
-            vpcSubnets: vpc.subnetSelection,
-            environment: lambdaEnvironment,
-            layers: layers,
-            role: lambdaExecutionRole
-        });
+        const updatePipelineRulesLambda = makeFn(
+            'UpdatePipelineRulesLambda',
+            'pipeline-update-rules',
+            'state_machine.pipeline_update_rules.handler',
+        );
 
-        // Lambda function for updating collection status
-        const updateCollectionStatusLambda = new lambda.Function(this, 'UpdateCollectionStatusLambda', {
-            functionName: `${config.deploymentName}-${config.deploymentStage}-pipeline-update-status`,
-            runtime: getPythonRuntime(),
-            handler: 'repository.state_machine.pipeline_update_status.handler',
-            code: lambda.Code.fromAsset('./lambda'),
-            timeout: Duration.seconds(30),
-            memorySize: 256,
-            vpc: vpc.vpc,
-            vpcSubnets: vpc.subnetSelection,
-            environment: lambdaEnvironment,
-            layers: layers,
-            role: lambdaExecutionRole
-        });
+        const deletePipelineRulesLambda = makeFn(
+            'DeletePipelineRulesLambda',
+            'pipeline-delete-rules',
+            'state_machine.pipeline_delete_rules.handler',
+        );
+
+        const updateCollectionStatusLambda = makeFn(
+            'UpdateCollectionStatusLambda',
+            'pipeline-update-status',
+            'state_machine.pipeline_update_status.handler',
+            Duration.seconds(30),
+            256,
+        );
 
         // Define Step Functions tasks
         const validateInput = new tasks.LambdaInvoke(this, 'Validate Input', {

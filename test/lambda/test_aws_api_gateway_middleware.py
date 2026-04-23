@@ -17,7 +17,7 @@
 from unittest.mock import AsyncMock, Mock
 
 from fastapi import FastAPI
-from utilities.fastapi_middleware.aws_api_gateway_middleware import AWSAPIGatewayMiddleware
+from lisa.utilities.fastapi_middleware.aws_api_gateway_middleware import AWSAPIGatewayMiddleware
 
 
 class TestAWSAPIGatewayMiddleware:

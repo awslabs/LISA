@@ -45,9 +45,16 @@ export const sessionApi = createApi({
     reducerPath: 'sessions',
     baseQuery: lisaBaseQuery(),
     tagTypes: ['sessions', 'session'],
-    refetchOnFocus: true,
-    refetchOnMountOrArgChange: true,
-    keepUnusedDataFor: 60, // Keep cache for 60s to prevent cancellation during rapid navigation
+    // Window focus should not trigger the (potentially expensive) sessions
+    // list refetch; mutations already invalidate the relevant tags.
+    refetchOnFocus: false,
+    // Refetch on remount only if the cached data is older than this threshold
+    // (seconds). Quick navigations between the chat page and other pages
+    // reuse the cache; genuinely stale data still refreshes.
+    refetchOnMountOrArgChange: 30,
+    // Keep the list in cache for 5 minutes after the last subscriber unmounts.
+    // Users typically return to the chat page well within that window.
+    keepUnusedDataFor: 300,
     endpoints: (builder) => ({
         getSessionById: builder.query<LisaChatSession, string>({
             query: (sessionId: string) => ({

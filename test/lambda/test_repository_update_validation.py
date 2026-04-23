@@ -27,7 +27,7 @@ os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 # Add the lambda directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../lambda"))
 
-from models.domain_objects import (
+from lisa.domain.domain_objects import (
     BedrockDataSource,
     BedrockKnowledgeBaseConfig,
     UpdateVectorStoreRequest,
@@ -196,10 +196,10 @@ class TestRepositoryUpdateValidation:
         tags = pipeline_metadata.get("tags", [])
         assert tags == ["test"]
 
-    @patch("utilities.bedrock_kb_discovery.build_pipeline_configs_from_kb_config")
+    @patch("lisa.utilities.bedrock_kb_discovery.build_pipeline_configs_from_kb_config")
     def test_bedrock_kb_metadata_preservation(self, mock_build_pipeline_configs):
         """Test that Bedrock KB updates preserve existing pipeline metadata."""
-        from utilities.bedrock_kb_discovery import build_pipeline_configs_from_kb_config
+        from lisa.utilities.bedrock_kb_discovery import build_pipeline_configs_from_kb_config
 
         # Mock the function to return new pipelines without metadata
         mock_build_pipeline_configs.return_value = [

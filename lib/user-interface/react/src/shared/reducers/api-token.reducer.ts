@@ -28,9 +28,10 @@ export const apiTokenApi = createApi({
     reducerPath: 'apiTokens',
     baseQuery: lisaBaseQuery(),
     tagTypes: ['apiTokens'],
-    refetchOnFocus: true,
+    refetchOnFocus: false,
     refetchOnReconnect: true,
-    keepUnusedDataFor: 60, // Keep cache for 60s to prevent cancellation during rapid navigation
+    refetchOnMountOrArgChange: 30,
+    keepUnusedDataFor: 300,
     endpoints: (builder) => ({
         listTokens: builder.query<ITokenInfo[], void>({
             query: () => ({

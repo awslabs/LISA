@@ -32,7 +32,7 @@ from unittest.mock import patch
 # Add the lambda directory to the path so we can import the utilities
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "lambda"))
 
-from utilities.session_encryption import (
+from lisa.utilities.session_encryption import (
     _create_encryption_context,
     _decrypt_data_key,
     _deserialize_with_type_preservation,
@@ -59,7 +59,7 @@ class TestSessionEncryption(unittest.TestCase):
         os.environ["AWS_REGION"] = "us-east-1"
 
         # Mock KMS client to avoid actual AWS calls
-        self.kms_patcher = patch("utilities.session_encryption.kms_client")
+        self.kms_patcher = patch("lisa.utilities.session_encryption.kms_client")
         self.mock_kms = self.kms_patcher.start()
 
         # Mock KMS responses
@@ -372,7 +372,7 @@ class TestSessionEncryption(unittest.TestCase):
     def test_migrate_session_to_encrypted_exception(self):
         """Test migrate_session_to_encrypted with exception during encryption."""
         # Mock encrypt_session_data to raise an exception
-        with patch("utilities.session_encryption.encrypt_session_data") as mock_encrypt:
+        with patch("lisa.utilities.session_encryption.encrypt_session_data") as mock_encrypt:
             mock_encrypt.side_effect = Exception("Encryption error")
 
             session_data = {
@@ -397,7 +397,7 @@ class TestSessionEncryption(unittest.TestCase):
         }
 
         # Mock decrypt_session_data to return decrypted data
-        with patch("utilities.session_encryption.decrypt_session_data") as mock_decrypt:
+        with patch("lisa.utilities.session_encryption.decrypt_session_data") as mock_decrypt:
             mock_decrypt.side_effect = [
                 [{"type": "human", "content": "Hello"}],  # history
                 {"model": "test-model"},  # configuration
@@ -448,7 +448,7 @@ class TestSessionEncryption(unittest.TestCase):
     def test_decrypt_session_fields_exception(self):
         """Test decrypt_session_fields with exception during decryption."""
         # Mock decrypt_session_data to raise an exception
-        with patch("utilities.session_encryption.decrypt_session_data") as mock_decrypt:
+        with patch("lisa.utilities.session_encryption.decrypt_session_data") as mock_decrypt:
             mock_decrypt.side_effect = Exception("Decryption error")
 
             session_data = {

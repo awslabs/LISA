@@ -113,22 +113,22 @@ def setup_auth_patches(request, mock_auth, aws_credentials):
 
     # Reset the auth provider singleton to ensure clean state between tests
     try:
-        import utilities.auth_provider as auth_provider_module
+        import lisa.utilities.auth_provider as auth_provider_module
 
         auth_provider_module._auth_provider = None
     except ImportError:
         pass
 
     patches = [
-        patch("utilities.auth.get_username", mock_auth.get_username),
-        patch("utilities.auth.get_user_context", mock_auth.get_user_context),
-        patch("utilities.fastapi_middleware.auth_decorators.is_admin", mock_auth.is_admin),
+        patch("lisa.utilities.auth.get_username", mock_auth.get_username),
+        patch("lisa.utilities.auth.get_user_context", mock_auth.get_user_context),
+        patch("lisa.utilities.fastapi_middleware.auth_decorators.is_admin", mock_auth.is_admin),
     ]
     # Chat assistant stacks tests use own is_admin patch; get_groups must read from event.
     if "test_chat_assistant_stacks" not in request.node.nodeid:
-        patches.append(patch("utilities.auth.get_groups", mock_auth.get_groups))
-        patches.append(patch("utilities.auth.is_admin", mock_auth.is_admin))
-        patches.append(patch("utilities.auth.is_rag_admin", mock_auth.is_rag_admin))
+        patches.append(patch("lisa.utilities.auth.get_groups", mock_auth.get_groups))
+        patches.append(patch("lisa.utilities.auth.is_admin", mock_auth.is_admin))
+        patches.append(patch("lisa.utilities.auth.is_rag_admin", mock_auth.is_rag_admin))
     # Avoid importing models.lambda_functions for tests that don't need it (that module requires MODEL_TABLE_NAME).
     _skip_models = (
         "test_chat_assistant_stacks",
@@ -136,6 +136,8 @@ def setup_auth_patches(request, mock_auth, aws_credentials):
         "test_metrics_lambda",
         "test_mcp_server_lambda",
         "test_mcp_workbench_lambda",
+        "test_prompt_templates_lambda",
+        "test_user_preferences_lambda",
         "test_bedrock_agent_discovery",
         "test_s3_event_handler",
     )
@@ -159,7 +161,7 @@ def setup_auth_patches(request, mock_auth, aws_credentials):
 
     # Reset the auth provider singleton after test
     try:
-        import utilities.auth_provider as auth_provider_module
+        import lisa.utilities.auth_provider as auth_provider_module
 
         auth_provider_module._auth_provider = None
     except ImportError:

@@ -62,6 +62,20 @@ RUN mkdir -p /root/.cache && \
         prisma version; \
     fi
 
+# Generate the Prisma Python client against LiteLLM's bundled schema.
+# LiteLLM's runtime `--use_prisma_db_push` flag only runs `prisma db push`
+# (schema sync); it does NOT run `prisma generate` (Python client codegen).
+# Starting with litellm[proxy] >= 1.83.x, the proxy imports `from prisma import
+# Prisma` lazily at startup and raises "The Client hasn't been generated yet"
+# if the Python client was never generated. The schema lives inside the
+# litellm_proxy_extras package (e.g. .../site-packages/litellm_proxy_extras/schema.prisma).
+RUN python -c "import importlib.util, pathlib; spec = importlib.util.find_spec('litellm_proxy_extras'); print(pathlib.Path(spec.origin).parent / 'schema.prisma')" > /tmp/litellm_schema_path \
+    && SCHEMA_PATH="$(cat /tmp/litellm_schema_path)" \
+    && test -f "$SCHEMA_PATH" \
+    && echo "Generating Prisma Python client from $SCHEMA_PATH" \
+    && prisma generate --schema="$SCHEMA_PATH" \
+    && rm -f /tmp/litellm_schema_path
+
 # Copy the source code into the container
 COPY src/ ./src
 

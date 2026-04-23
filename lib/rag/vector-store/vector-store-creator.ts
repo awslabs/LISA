@@ -26,8 +26,8 @@ import { Roles } from '../../core/iam/roles';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
-import { CodeFactory, LAMBDA_PATH, VECTOR_STORE_DEPLOYER_DIST_PATH } from '../../util';
-import { getNodeRuntime, getPythonRuntime } from '../../api-base/utils';
+import { CodeFactory, definePythonLambda, VECTOR_STORE_DEPLOYER_DIST_PATH } from '../../util';
+import { getNodeRuntime } from '../../api-base/utils';
 
 export type VectorStoreCreatorStackProps = StackProps & BaseProps & {
     ragVectorStoreTable: CfnOutput;
@@ -229,38 +229,34 @@ export class VectorStoreCreatorStack extends Construct {
             securityGroups: [props.vpc.securityGroups.lambdaSg],
         });
 
-        // Create Lambda for Bedrock collection creation
-        const createBedrockCollectionFn = new lambda.Function(this, 'CreateBedrockCollectionFn', {
+        const createBedrockCollectionFn = definePythonLambda(this, 'CreateBedrockCollectionFn', {
             functionName: createCdkId([config.deploymentName, config.deploymentStage, 'create_bedrock_collection']),
-            runtime: getPythonRuntime(),
-            handler: 'repository.lambda_functions.create_bedrock_collection',
-            code: lambda.Code.fromAsset(config.lambdaPath || LAMBDA_PATH),
+            handlerDir: 'repository',
+            entry: 'lambda_functions.create_bedrock_collection',
+            config,
             timeout: Duration.minutes(5),
             memorySize: 512,
             role: lambdaExecutionRole,
             environment: baseEnvironment,
-            vpc: vpc.vpc,
-            vpcSubnets: vpc.subnetSelection,
+            vpc,
             securityGroups: [vpc.securityGroups.lambdaSg],
-            layers: layers,
+            layers,
         });
 
-        // Grant permissions
         vectorStoreTable.grantReadWriteData(createBedrockCollectionFn);
 
-        const createDefaultCollectionFn = new lambda.Function(this, 'CreateDefaultCollectionFn', {
+        const createDefaultCollectionFn = definePythonLambda(this, 'CreateDefaultCollectionFn', {
             functionName: createCdkId([config.deploymentName, config.deploymentStage, 'create_default_collection']),
-            runtime: getPythonRuntime(),
-            handler: 'repository.lambda_functions.create_default_collection',
-            code: lambda.Code.fromAsset(config.lambdaPath || LAMBDA_PATH),
+            handlerDir: 'repository',
+            entry: 'lambda_functions.create_default_collection',
+            config,
             timeout: Duration.minutes(5),
             memorySize: 512,
             role: lambdaExecutionRole,
             environment: baseEnvironment,
-            vpc: vpc.vpc,
-            vpcSubnets: vpc.subnetSelection,
+            vpc,
             securityGroups: [vpc.securityGroups.lambdaSg],
-            layers: layers,
+            layers,
         });
         vectorStoreTable.grantReadWriteData(createDefaultCollectionFn);
 

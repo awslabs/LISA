@@ -69,22 +69,28 @@ register_exception_handlers(app)
 app.include_router(router)
 
 
-# Enable CORS
-_cors_origins_env = os.environ.get("CORS_ORIGINS", "*")
-_cors_origins = [origin.strip() for origin in _cors_origins_env.split(",") if origin.strip()]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_cors_origins,
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
 ##############
 # MIDDLEWARE #
 ##############
+#
+# Starlette applies middleware in REVERSE registration order: the first call to
+# ``add_middleware`` / ``@app.middleware`` becomes the INNERMOST wrapper, and the
+# last call becomes the OUTERMOST wrapper. Requests flow outermost -> innermost,
+# responses flow innermost -> outermost.
+#
+# We want ``CORSMiddleware`` to be the OUTERMOST middleware so that every
+# response — including short-circuited auth failures (401/403 from
+# ``auth_middleware``) and uncaught 5xx errors — gets ``Access-Control-Allow-*``
+# headers attached. Otherwise, browsers surface such failures as opaque CORS
+# errors ("CORS header 'Access-Control-Allow-Origin' missing") that hide the
+# real HTTP status from client-side diagnostics.
+#
+# Registration order below is therefore INNER -> OUTER:
+#   1. authenticate       (innermost, closest to the route)
+#   2. validate_input
+#   3. process_request
+#   4. security_check     (runs first for each incoming request)
+#   5. CORSMiddleware     (outermost; sees every response on the way out)
 
 
 @app.middleware("http")
@@ -131,6 +137,20 @@ async def security_check(request, call_next):  # type: ignore
     - Request size is within limits (model proxy endpoints are exempt)
     """
     return await security_middleware(request, call_next)
+
+
+# Enable CORS. This MUST be the last middleware registered so it becomes the
+# outermost wrapper and can attach CORS headers to every response, including
+# error responses produced (or short-circuited) by the middleware below.
+_cors_origins_env = os.environ.get("CORS_ORIGINS", "*")
+_cors_origins = [origin.strip() for origin in _cors_origins_env.split(",") if origin.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 def _parse_asgi_spec_version(spec_version: str) -> tuple[int, ...]:

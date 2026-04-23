@@ -73,13 +73,13 @@ def sample_weekly_schedule_config():
 class TestScheduleManagement:
     """Test schedule management Lambda function."""
 
-    @patch("models.scheduling.schedule_management.model_table")
-    @patch("models.scheduling.schedule_management.autoscaling_client")
+    @patch("lisa.domain.scheduling.schedule_management.model_table")
+    @patch("lisa.domain.scheduling.schedule_management.autoscaling_client")
     def test_update_operation_success(
         self, mock_autoscaling_client, mock_model_table, lambda_context, sample_schedule_config
     ):
         """Test successful update operation."""
-        from models.scheduling.schedule_management import lambda_handler
+        from lisa.domain.scheduling.schedule_management import lambda_handler
 
         # Mock model table
         mock_model_table.get_item.return_value = {"Item": {"model_id": "test-model"}}
@@ -116,10 +116,10 @@ class TestScheduleManagement:
         # Verify DynamoDB update
         assert mock_model_table.update_item.call_count == 2
 
-    @patch("models.scheduling.schedule_management.model_table")
+    @patch("lisa.domain.scheduling.schedule_management.model_table")
     def test_get_operation_success(self, mock_model_table, lambda_context, sample_schedule_config):
         """Test successful get operation."""
-        from models.scheduling.schedule_management import lambda_handler
+        from lisa.domain.scheduling.schedule_management import lambda_handler
 
         # Mock model table with schedule data
         mock_model_table.get_item.return_value = {
@@ -141,11 +141,11 @@ class TestScheduleManagement:
         assert body["modelId"] == "test-model"
         assert body["scheduling"] == sample_schedule_config
 
-    @patch("models.scheduling.schedule_management.model_table")
-    @patch("models.scheduling.schedule_management.autoscaling_client")
+    @patch("lisa.domain.scheduling.schedule_management.model_table")
+    @patch("lisa.domain.scheduling.schedule_management.autoscaling_client")
     def test_delete_operation_success(self, mock_autoscaling_client, mock_model_table, lambda_context):
         """Test successful delete operation."""
-        from models.scheduling.schedule_management import lambda_handler
+        from lisa.domain.scheduling.schedule_management import lambda_handler
 
         # Mock model table
         mock_model_table.get_item.return_value = {
@@ -185,7 +185,7 @@ class TestScheduleManagement:
 
     def test_invalid_operation(self, lambda_context):
         """Test invalid operation error."""
-        from models.scheduling.schedule_management import lambda_handler
+        from lisa.domain.scheduling.schedule_management import lambda_handler
 
         # Test event with invalid operation
         event = {"operation": "invalid_operation", "modelId": "test-model"}
@@ -198,14 +198,14 @@ class TestScheduleManagement:
         body = json.loads(result["body"])
         assert "Unsupported operation" in body["message"]
 
-    @patch("models.scheduling.schedule_management.model_table")
-    @patch("models.scheduling.schedule_management.autoscaling_client")
+    @patch("lisa.domain.scheduling.schedule_management.model_table")
+    @patch("lisa.domain.scheduling.schedule_management.autoscaling_client")
     def test_autoscaling_error_handling(
         self, mock_autoscaling_client, mock_model_table, lambda_context, sample_schedule_config
     ):
         """Test Auto Scaling error handling."""
         from botocore.exceptions import ClientError
-        from models.scheduling.schedule_management import lambda_handler
+        from lisa.domain.scheduling.schedule_management import lambda_handler
 
         # Mock model table
         mock_model_table.get_item.return_value = {"Item": {"model_id": "test-model"}}
@@ -234,7 +234,7 @@ class TestScheduleManagement:
 
     def test_missing_required_parameters(self, lambda_context):
         """Test missing required parameters."""
-        from models.scheduling.schedule_management import lambda_handler
+        from lisa.domain.scheduling.schedule_management import lambda_handler
 
         # Test event missing modelId
         event = {"operation": "update"}
@@ -253,7 +253,7 @@ class TestHelperFunctions:
 
     def test_time_to_cron(self):
         """Test time_to_cron function."""
-        from models.scheduling.schedule_management import time_to_cron
+        from lisa.domain.scheduling.schedule_management import time_to_cron
 
         result = time_to_cron("09:30")
         assert result == "30 9 * * *"
@@ -263,7 +263,7 @@ class TestHelperFunctions:
 
     def test_time_to_cron_with_day(self):
         """Test time_to_cron_with_day function."""
-        from models.scheduling.schedule_management import time_to_cron_with_day
+        from lisa.domain.scheduling.schedule_management import time_to_cron_with_day
 
         # Monday is 1
         result = time_to_cron_with_day("09:30", 1)
@@ -277,10 +277,10 @@ class TestHelperFunctions:
 class TestScheduleManagementHelperFunctions:
     """Test helper functions in schedule management."""
 
-    @patch("models.scheduling.schedule_management.autoscaling_client")
+    @patch("lisa.domain.scheduling.schedule_management.autoscaling_client")
     def test_get_existing_asg_capacity_success(self, mock_autoscaling_client):
         """Test successful ASG capacity retrieval."""
-        from models.scheduling.schedule_management import get_existing_asg_capacity
+        from lisa.domain.scheduling.schedule_management import get_existing_asg_capacity
 
         # Mock ASG response
         mock_autoscaling_client.describe_auto_scaling_groups.return_value = {
@@ -298,10 +298,10 @@ class TestScheduleManagementHelperFunctions:
         assert result == {"MinSize": 1, "MaxSize": 10, "DesiredCapacity": 3}
         mock_autoscaling_client.describe_auto_scaling_groups.assert_called_once_with(AutoScalingGroupNames=["test-asg"])
 
-    @patch("models.scheduling.schedule_management.autoscaling_client")
+    @patch("lisa.domain.scheduling.schedule_management.autoscaling_client")
     def test_get_existing_asg_capacity_not_found(self, mock_autoscaling_client):
         """Test ASG not found error."""
-        from models.scheduling.schedule_management import get_existing_asg_capacity
+        from lisa.domain.scheduling.schedule_management import get_existing_asg_capacity
 
         # Mock empty ASG response
         mock_autoscaling_client.describe_auto_scaling_groups.return_value = {"AutoScalingGroups": []}
@@ -309,11 +309,11 @@ class TestScheduleManagementHelperFunctions:
         with pytest.raises(ValueError, match="Auto Scaling Group test-asg not found"):
             get_existing_asg_capacity("test-asg")
 
-    @patch("models.scheduling.schedule_management.autoscaling_client")
+    @patch("lisa.domain.scheduling.schedule_management.autoscaling_client")
     def test_get_existing_asg_capacity_client_error(self, mock_autoscaling_client):
         """Test ASG client error handling."""
         from botocore.exceptions import ClientError
-        from models.scheduling.schedule_management import get_existing_asg_capacity
+        from lisa.domain.scheduling.schedule_management import get_existing_asg_capacity
 
         # Mock client error
         mock_autoscaling_client.describe_auto_scaling_groups.side_effect = ClientError(
@@ -325,7 +325,7 @@ class TestScheduleManagementHelperFunctions:
 
     def test_construct_scheduled_action_arn_with_account_id(self):
         """Test ARN construction with account ID in environment."""
-        from models.scheduling.schedule_management import construct_scheduled_action_arn
+        from lisa.domain.scheduling.schedule_management import construct_scheduled_action_arn
 
         # Set environment variable
         os.environ["AWS_ACCOUNT_ID"] = "123456789012"
@@ -341,7 +341,7 @@ class TestScheduleManagementHelperFunctions:
     @patch("boto3.client")
     def test_construct_scheduled_action_arn_without_account_id(self, mock_boto3):
         """Test ARN construction without account ID in environment."""
-        from models.scheduling.schedule_management import construct_scheduled_action_arn
+        from lisa.domain.scheduling.schedule_management import construct_scheduled_action_arn
 
         # Remove account ID from environment
         if "AWS_ACCOUNT_ID" in os.environ:
@@ -363,7 +363,7 @@ class TestScheduleManagementHelperFunctions:
     @patch("boto3.client")
     def test_construct_scheduled_action_arn_sts_error(self, mock_boto3):
         """Test ARN construction with STS error."""
-        from models.scheduling.schedule_management import construct_scheduled_action_arn
+        from lisa.domain.scheduling.schedule_management import construct_scheduled_action_arn
 
         # Remove account ID from environment
         if "AWS_ACCOUNT_ID" in os.environ:
@@ -377,10 +377,10 @@ class TestScheduleManagementHelperFunctions:
         with pytest.raises(ValueError, match="Unable to determine AWS Account ID"):
             construct_scheduled_action_arn("test-asg", "test-action")
 
-    @patch("models.scheduling.schedule_management.model_table")
+    @patch("lisa.domain.scheduling.schedule_management.model_table")
     def test_get_existing_scheduled_action_arns_success(self, mock_model_table):
         """Test successful retrieval of existing scheduled action ARNs."""
-        from models.scheduling.schedule_management import get_existing_scheduled_action_arns
+        from lisa.domain.scheduling.schedule_management import get_existing_scheduled_action_arns
 
         # Mock model table response
         mock_model_table.get_item.return_value = {
@@ -393,10 +393,10 @@ class TestScheduleManagementHelperFunctions:
         result = get_existing_scheduled_action_arns("test-model")
         assert result == ["arn1", "arn2"]
 
-    @patch("models.scheduling.schedule_management.model_table")
+    @patch("lisa.domain.scheduling.schedule_management.model_table")
     def test_get_existing_scheduled_action_arns_no_model(self, mock_model_table):
         """Test retrieval when model doesn't exist."""
-        from models.scheduling.schedule_management import get_existing_scheduled_action_arns
+        from lisa.domain.scheduling.schedule_management import get_existing_scheduled_action_arns
 
         # Mock empty response
         mock_model_table.get_item.return_value = {}
@@ -404,10 +404,10 @@ class TestScheduleManagementHelperFunctions:
         result = get_existing_scheduled_action_arns("nonexistent-model")
         assert result == []
 
-    @patch("models.scheduling.schedule_management.model_table")
+    @patch("lisa.domain.scheduling.schedule_management.model_table")
     def test_get_existing_scheduled_action_arns_no_scheduling(self, mock_model_table):
         """Test retrieval when model has no scheduling config."""
-        from models.scheduling.schedule_management import get_existing_scheduled_action_arns
+        from lisa.domain.scheduling.schedule_management import get_existing_scheduled_action_arns
 
         # Mock model without scheduling
         mock_model_table.get_item.return_value = {"Item": {"model_id": "test-model", "autoScalingConfig": {}}}
@@ -415,10 +415,10 @@ class TestScheduleManagementHelperFunctions:
         result = get_existing_scheduled_action_arns("test-model")
         assert result == []
 
-    @patch("models.scheduling.schedule_management.autoscaling_client")
+    @patch("lisa.domain.scheduling.schedule_management.autoscaling_client")
     def test_delete_scheduled_actions_success(self, mock_autoscaling_client):
         """Test successful deletion of scheduled actions."""
-        from models.scheduling.schedule_management import delete_scheduled_actions
+        from lisa.domain.scheduling.schedule_management import delete_scheduled_actions
 
         arns = [
             "arn:aws:autoscaling:us-east-1:123456789012:scheduledUpdateGroupAction:*:autoScalingGroupName/test-asg:scheduledActionName/action1",
@@ -435,11 +435,11 @@ class TestScheduleManagementHelperFunctions:
             AutoScalingGroupName="test-asg", ScheduledActionName="action2"
         )
 
-    @patch("models.scheduling.schedule_management.autoscaling_client")
+    @patch("lisa.domain.scheduling.schedule_management.autoscaling_client")
     def test_delete_scheduled_actions_validation_error(self, mock_autoscaling_client):
         """Test deletion with validation error (action not found)."""
         from botocore.exceptions import ClientError
-        from models.scheduling.schedule_management import delete_scheduled_actions
+        from lisa.domain.scheduling.schedule_management import delete_scheduled_actions
 
         # Mock validation error (action not found)
         mock_autoscaling_client.delete_scheduled_action.side_effect = ClientError(
@@ -453,11 +453,11 @@ class TestScheduleManagementHelperFunctions:
         # Should not raise exception for validation errors
         delete_scheduled_actions(arns)
 
-    @patch("models.scheduling.schedule_management.autoscaling_client")
+    @patch("lisa.domain.scheduling.schedule_management.autoscaling_client")
     def test_delete_scheduled_actions_other_client_error(self, mock_autoscaling_client):
         """Test deletion with other client errors."""
         from botocore.exceptions import ClientError
-        from models.scheduling.schedule_management import delete_scheduled_actions
+        from lisa.domain.scheduling.schedule_management import delete_scheduled_actions
 
         # Mock other client error
         mock_autoscaling_client.delete_scheduled_action.side_effect = ClientError(
@@ -475,16 +475,16 @@ class TestScheduleManagementHelperFunctions:
 class TestCreateScheduledActions:
     """Test create_scheduled_actions and related functions."""
 
-    @patch("models.scheduling.schedule_management.create_recurring_scheduled_actions")
-    @patch("models.scheduling.schedule_management.get_model_baseline_capacity")
-    @patch("models.scheduling.schedule_management.autoscaling_client")
-    @patch("models.scheduling.schedule_management.model_table")
+    @patch("lisa.domain.scheduling.schedule_management.create_recurring_scheduled_actions")
+    @patch("lisa.domain.scheduling.schedule_management.get_model_baseline_capacity")
+    @patch("lisa.domain.scheduling.schedule_management.autoscaling_client")
+    @patch("lisa.domain.scheduling.schedule_management.model_table")
     def test_create_scheduled_actions_recurring_daily(
         self, mock_model_table, mock_autoscaling_client, mock_get_baseline_capacity, mock_create_recurring
     ):
         """Test creating scheduled actions for RECURRING type."""
-        from models.domain_objects import DaySchedule, RecurringSchedulingConfig
-        from models.scheduling.schedule_management import create_scheduled_actions
+        from lisa.domain.domain_objects import DaySchedule, RecurringSchedulingConfig
+        from lisa.domain.scheduling.schedule_management import create_scheduled_actions
 
         mock_create_recurring.return_value = ["arn1", "arn2"]
 
@@ -500,16 +500,16 @@ class TestCreateScheduledActions:
             "test-model", "test-asg", schedule_config.recurringSchedule, "UTC"
         )
 
-    @patch("models.scheduling.schedule_management.create_daily_scheduled_actions")
-    @patch("models.scheduling.schedule_management.get_model_baseline_capacity")
-    @patch("models.scheduling.schedule_management.autoscaling_client")
-    @patch("models.scheduling.schedule_management.model_table")
+    @patch("lisa.domain.scheduling.schedule_management.create_daily_scheduled_actions")
+    @patch("lisa.domain.scheduling.schedule_management.get_model_baseline_capacity")
+    @patch("lisa.domain.scheduling.schedule_management.autoscaling_client")
+    @patch("lisa.domain.scheduling.schedule_management.model_table")
     def test_create_scheduled_actions_each_day(
         self, mock_model_table, mock_autoscaling_client, mock_get_baseline_capacity, mock_create_daily
     ):
         """Test creating scheduled actions for DAILY type."""
-        from models.domain_objects import DailySchedulingConfig, DaySchedule, WeeklySchedule
-        from models.scheduling.schedule_management import create_scheduled_actions
+        from lisa.domain.domain_objects import DailySchedulingConfig, DaySchedule, WeeklySchedule
+        from lisa.domain.scheduling.schedule_management import create_scheduled_actions
 
         mock_create_daily.return_value = ["arn1", "arn2", "arn3"]
 
@@ -525,11 +525,11 @@ class TestCreateScheduledActions:
         assert result == ["arn1", "arn2", "arn3"]
         mock_create_daily.assert_called_once_with("test-model", "test-asg", schedule_config.dailySchedule, "UTC")
 
-    @patch("models.scheduling.schedule_management.get_model_baseline_capacity")
+    @patch("lisa.domain.scheduling.schedule_management.get_model_baseline_capacity")
     def test_create_scheduled_actions_recurring_daily_missing_schedule(self, mock_get_baseline_capacity):
         """Test error when recurringSchedule is missing for RECURRING."""
-        from models.domain_objects import DaySchedule, RecurringSchedulingConfig
-        from models.scheduling.schedule_management import create_scheduled_actions
+        from lisa.domain.domain_objects import DaySchedule, RecurringSchedulingConfig
+        from lisa.domain.scheduling.schedule_management import create_scheduled_actions
 
         # Mock baseline capacity
         mock_get_baseline_capacity.return_value = {"MinSize": 1, "MaxSize": 10, "DesiredCapacity": 3}
@@ -544,11 +544,11 @@ class TestCreateScheduledActions:
         with pytest.raises(AttributeError, match="'NoneType' object has no attribute"):
             create_scheduled_actions("test-model", "test-asg", schedule_config)
 
-    @patch("models.scheduling.schedule_management.get_model_baseline_capacity")
+    @patch("lisa.domain.scheduling.schedule_management.get_model_baseline_capacity")
     def test_create_scheduled_actions_each_day_missing_schedule(self, mock_get_baseline_capacity):
         """Test error when dailySchedule is missing for DAILY."""
-        from models.domain_objects import DailySchedulingConfig, DaySchedule, WeeklySchedule
-        from models.scheduling.schedule_management import create_scheduled_actions
+        from lisa.domain.domain_objects import DailySchedulingConfig, DaySchedule, WeeklySchedule
+        from lisa.domain.scheduling.schedule_management import create_scheduled_actions
 
         # Mock baseline capacity
         mock_get_baseline_capacity.return_value = {"MinSize": 1, "MaxSize": 10, "DesiredCapacity": 3}
@@ -567,11 +567,11 @@ class TestCreateScheduledActions:
 class TestUpdateModelScheduleRecord:
     """Test update_model_schedule_record function."""
 
-    @patch("models.scheduling.schedule_management.model_table")
+    @patch("lisa.domain.scheduling.schedule_management.model_table")
     def test_update_model_schedule_record_existing_config(self, mock_model_table):
         """Test updating model with existing autoScalingConfig."""
-        from models.domain_objects import DaySchedule, RecurringSchedulingConfig
-        from models.scheduling.schedule_management import update_model_schedule_record
+        from lisa.domain.domain_objects import DaySchedule, RecurringSchedulingConfig
+        from lisa.domain.scheduling.schedule_management import update_model_schedule_record
 
         # Mock existing model with model_config.autoScalingConfig
         mock_model_table.get_item.return_value = {
@@ -589,11 +589,11 @@ class TestUpdateModelScheduleRecord:
         call_args = mock_model_table.update_item.call_args_list
         assert call_args[0][1]["UpdateExpression"] == "SET model_config.autoScalingConfig.scheduling = :scheduling"
 
-    @patch("models.scheduling.schedule_management.model_table")
+    @patch("lisa.domain.scheduling.schedule_management.model_table")
     def test_update_model_schedule_record_new_config(self, mock_model_table):
         """Test updating model without existing autoScalingConfig."""
-        from models.domain_objects import DaySchedule, RecurringSchedulingConfig
-        from models.scheduling.schedule_management import update_model_schedule_record
+        from lisa.domain.domain_objects import DaySchedule, RecurringSchedulingConfig
+        from lisa.domain.scheduling.schedule_management import update_model_schedule_record
 
         # Mock model without model_config.autoScalingConfig
         mock_model_table.get_item.return_value = {
@@ -623,7 +623,7 @@ class TestScheduleValidation:
 
     def test_lambda_handler_missing_operation(self, lambda_context):
         """Test lambda handler with missing operation."""
-        from models.scheduling.schedule_management import lambda_handler
+        from lisa.domain.scheduling.schedule_management import lambda_handler
 
         event = {"modelId": "test-model"}  # Missing operation
 
@@ -635,7 +635,7 @@ class TestScheduleValidation:
 
     def test_lambda_handler_missing_model_id(self, lambda_context):
         """Test lambda handler with missing modelId."""
-        from models.scheduling.schedule_management import lambda_handler
+        from lisa.domain.scheduling.schedule_management import lambda_handler
 
         event = {"operation": "update"}  # Missing modelId
 
@@ -645,10 +645,10 @@ class TestScheduleValidation:
         body = json.loads(result["body"])
         assert "Both 'operation' and 'modelId' are required" in body["message"]
 
-    @patch("models.scheduling.schedule_management.update_schedule")
+    @patch("lisa.domain.scheduling.schedule_management.update_schedule")
     def test_lambda_handler_update_schedule_exception(self, mock_update_schedule, lambda_context):
         """Test lambda handler when update_schedule raises exception."""
-        from models.scheduling.schedule_management import lambda_handler
+        from lisa.domain.scheduling.schedule_management import lambda_handler
 
         mock_update_schedule.side_effect = Exception("Update failed")
 
@@ -664,14 +664,14 @@ class TestScheduleValidation:
 class TestNextScheduledActionCalculation:
     """Test nextScheduledAction calculation functions."""
 
-    @patch("models.scheduling.schedule_management.datetime")
+    @patch("lisa.domain.scheduling.schedule_management.datetime")
     def test_calculate_next_scheduled_action_recurring(self, mock_datetime):
         """Test next scheduled action calculation for recurring schedule."""
         from datetime import datetime
         from zoneinfo import ZoneInfo
 
-        from models.domain_objects import DaySchedule, RecurringSchedulingConfig
-        from models.scheduling.schedule_management import calculate_next_scheduled_action
+        from lisa.domain.domain_objects import DaySchedule, RecurringSchedulingConfig
+        from lisa.domain.scheduling.schedule_management import calculate_next_scheduled_action
 
         # Test before start time
         recurring_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
@@ -689,14 +689,14 @@ class TestNextScheduledActionCalculation:
         assert result["action"] == "START"
         assert "2024-01-15T09:00:00+00:00" in result["scheduledTime"]
 
-    @patch("models.scheduling.schedule_management.datetime")
+    @patch("lisa.domain.scheduling.schedule_management.datetime")
     def test_calculate_next_scheduled_action_daily(self, mock_datetime):
         """Test next scheduled action calculation for daily schedule."""
         from datetime import datetime
         from zoneinfo import ZoneInfo
 
-        from models.domain_objects import DailySchedulingConfig, DaySchedule, WeeklySchedule
-        from models.scheduling.schedule_management import calculate_next_scheduled_action
+        from lisa.domain.domain_objects import DailySchedulingConfig, DaySchedule, WeeklySchedule
+        from lisa.domain.scheduling.schedule_management import calculate_next_scheduled_action
 
         # Create weekly schedule with Monday and Tuesday
         weekly_schedule = WeeklySchedule(
@@ -717,11 +717,11 @@ class TestNextScheduledActionCalculation:
         assert result["action"] == "START"
         assert "2024-01-15T09:00:00+00:00" in result["scheduledTime"]
 
-    @patch("models.scheduling.schedule_management.ZoneInfo")
+    @patch("lisa.domain.scheduling.schedule_management.ZoneInfo")
     def test_calculate_next_scheduled_action_exception(self, mock_zoneinfo):
         """Test next scheduled action calculation with exception."""
-        from models.domain_objects import DaySchedule, RecurringSchedulingConfig
-        from models.scheduling.schedule_management import calculate_next_scheduled_action
+        from lisa.domain.domain_objects import DaySchedule, RecurringSchedulingConfig
+        from lisa.domain.scheduling.schedule_management import calculate_next_scheduled_action
 
         # Create valid config but mock ZoneInfo to raise exception
         recurring_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
@@ -739,10 +739,10 @@ class TestNextScheduledActionCalculation:
 class TestModelBaselineCapacity:
     """Test get_model_baseline_capacity function."""
 
-    @patch("models.scheduling.schedule_management.model_table")
+    @patch("lisa.domain.scheduling.schedule_management.model_table")
     def test_get_model_baseline_capacity_success(self, mock_model_table):
         """Test successful baseline capacity retrieval."""
-        from models.scheduling.schedule_management import get_model_baseline_capacity
+        from lisa.domain.scheduling.schedule_management import get_model_baseline_capacity
 
         # Mock model table response
         mock_model_table.get_item.return_value = {
@@ -762,10 +762,10 @@ class TestModelBaselineCapacity:
 
         assert result == {"MinSize": 2, "MaxSize": 8, "DesiredCapacity": 4}
 
-    @patch("models.scheduling.schedule_management.model_table")
+    @patch("lisa.domain.scheduling.schedule_management.model_table")
     def test_get_model_baseline_capacity_no_desired(self, mock_model_table):
         """Test baseline capacity retrieval without desired capacity."""
-        from models.scheduling.schedule_management import get_model_baseline_capacity
+        from lisa.domain.scheduling.schedule_management import get_model_baseline_capacity
 
         # Mock model table response without desiredCapacity
         mock_model_table.get_item.return_value = {
@@ -785,10 +785,10 @@ class TestModelBaselineCapacity:
         # Should default desiredCapacity to minCapacity
         assert result == {"MinSize": 1, "MaxSize": 5, "DesiredCapacity": 1}
 
-    @patch("models.scheduling.schedule_management.model_table")
+    @patch("lisa.domain.scheduling.schedule_management.model_table")
     def test_get_model_baseline_capacity_model_not_found(self, mock_model_table):
         """Test baseline capacity retrieval when model not found."""
-        from models.scheduling.schedule_management import get_model_baseline_capacity
+        from lisa.domain.scheduling.schedule_management import get_model_baseline_capacity
 
         # Mock model not found
         mock_model_table.get_item.return_value = {}
@@ -800,10 +800,10 @@ class TestModelBaselineCapacity:
 class TestMergeScheduleData:
     """Test merge_schedule_data function."""
 
-    @patch("models.scheduling.schedule_management.model_table")
+    @patch("lisa.domain.scheduling.schedule_management.model_table")
     def test_merge_schedule_data_with_existing(self, mock_model_table):
         """Test merging schedule data with existing schedule."""
-        from models.scheduling.schedule_management import merge_schedule_data
+        from lisa.domain.scheduling.schedule_management import merge_schedule_data
 
         # Mock existing schedule data
         mock_model_table.get_item.return_value = {
@@ -832,10 +832,10 @@ class TestMergeScheduleData:
         # Metadata fields should be removed
         assert "scheduleEnabled" not in result
 
-    @patch("models.scheduling.schedule_management.model_table")
+    @patch("lisa.domain.scheduling.schedule_management.model_table")
     def test_merge_schedule_data_no_existing(self, mock_model_table):
         """Test merging schedule data without existing schedule."""
-        from models.scheduling.schedule_management import merge_schedule_data
+        from lisa.domain.scheduling.schedule_management import merge_schedule_data
 
         # Mock no existing schedule
         mock_model_table.get_item.return_value = {"Item": {"model_id": "test-model"}}
@@ -847,10 +847,10 @@ class TestMergeScheduleData:
         # Should just return the partial update
         assert result == partial_update
 
-    @patch("models.scheduling.schedule_management.model_table")
+    @patch("lisa.domain.scheduling.schedule_management.model_table")
     def test_merge_schedule_data_exception(self, mock_model_table):
         """Test merging schedule data with exception."""
-        from models.scheduling.schedule_management import merge_schedule_data
+        from lisa.domain.scheduling.schedule_management import merge_schedule_data
 
         # Mock exception
         mock_model_table.get_item.side_effect = Exception("DynamoDB error")
@@ -866,19 +866,19 @@ class TestMergeScheduleData:
 class TestImmediateScaling:
     """Test immediate scaling functions."""
 
-    @patch("models.scheduling.schedule_monitoring.sync_model_status")
-    @patch("models.scheduling.schedule_management.autoscaling_client")
+    @patch("lisa.domain.scheduling.schedule_monitoring.sync_model_status")
+    @patch("lisa.domain.scheduling.schedule_management.autoscaling_client")
     def test_scale_immediately_outside_window(self, mock_autoscaling_client, mock_sync_model_status):
         """Test immediate scaling outside scheduled window."""
         from datetime import datetime, time
         from zoneinfo import ZoneInfo
 
-        from models.domain_objects import DaySchedule
-        from models.scheduling.schedule_management import scale_immediately
+        from lisa.domain.domain_objects import DaySchedule
+        from lisa.domain.scheduling.schedule_management import scale_immediately
 
         day_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
 
-        with patch("models.scheduling.schedule_management.datetime") as mock_datetime:
+        with patch("lisa.domain.scheduling.schedule_management.datetime") as mock_datetime:
             # Mock current time as 8:00 AM (outside window)
             mock_now = datetime(2024, 1, 15, 8, 0, tzinfo=ZoneInfo("UTC"))
             mock_datetime.now.return_value = mock_now
@@ -891,9 +891,9 @@ class TestImmediateScaling:
                 AutoScalingGroupName="test-asg", MinSize=0, MaxSize=0, DesiredCapacity=0
             )
 
-    @patch("models.scheduling.schedule_monitoring.sync_model_status")
-    @patch("models.scheduling.schedule_management.get_model_baseline_capacity")
-    @patch("models.scheduling.schedule_management.autoscaling_client")
+    @patch("lisa.domain.scheduling.schedule_monitoring.sync_model_status")
+    @patch("lisa.domain.scheduling.schedule_management.get_model_baseline_capacity")
+    @patch("lisa.domain.scheduling.schedule_management.autoscaling_client")
     def test_scale_immediately_inside_window(
         self, mock_autoscaling_client, mock_get_baseline_capacity, mock_sync_model_status
     ):
@@ -901,8 +901,8 @@ class TestImmediateScaling:
         from datetime import datetime, time
         from zoneinfo import ZoneInfo
 
-        from models.domain_objects import DaySchedule
-        from models.scheduling.schedule_management import scale_immediately
+        from lisa.domain.domain_objects import DaySchedule
+        from lisa.domain.scheduling.schedule_management import scale_immediately
 
         day_schedule = DaySchedule(startTime="09:00", stopTime="17:00")
 
@@ -914,7 +914,7 @@ class TestImmediateScaling:
         # Mock baseline capacity
         mock_get_baseline_capacity.return_value = {"MinSize": 1, "MaxSize": 5, "DesiredCapacity": 2}
 
-        with patch("models.scheduling.schedule_management.datetime") as mock_datetime:
+        with patch("lisa.domain.scheduling.schedule_management.datetime") as mock_datetime:
             # Mock current time as 10:00 AM (inside window)
             mock_now = datetime(2024, 1, 15, 10, 0, tzinfo=ZoneInfo("UTC"))
             mock_datetime.now.return_value = mock_now
@@ -931,10 +931,10 @@ class TestImmediateScaling:
 class TestCleanupScheduledActions:
     """Test cleanup_scheduled_actions_by_name_pattern function."""
 
-    @patch("models.scheduling.schedule_management.autoscaling_client")
+    @patch("lisa.domain.scheduling.schedule_management.autoscaling_client")
     def test_cleanup_scheduled_actions_by_name_pattern_success(self, mock_autoscaling_client):
         """Test successful cleanup by name pattern."""
-        from models.scheduling.schedule_management import cleanup_scheduled_actions_by_name_pattern
+        from lisa.domain.scheduling.schedule_management import cleanup_scheduled_actions_by_name_pattern
 
         # Mock scheduled actions response
         mock_autoscaling_client.describe_scheduled_actions.return_value = {
@@ -960,11 +960,11 @@ class TestCleanupScheduledActions:
             AutoScalingGroupName="test-asg", ScheduledActionName="test-model-tuesday-start"
         )
 
-    @patch("models.scheduling.schedule_management.autoscaling_client")
+    @patch("lisa.domain.scheduling.schedule_management.autoscaling_client")
     def test_cleanup_scheduled_actions_by_name_pattern_client_error(self, mock_autoscaling_client):
         """Test cleanup with client error."""
         from botocore.exceptions import ClientError
-        from models.scheduling.schedule_management import cleanup_scheduled_actions_by_name_pattern
+        from lisa.domain.scheduling.schedule_management import cleanup_scheduled_actions_by_name_pattern
 
         # Mock client error on describe
         mock_autoscaling_client.describe_scheduled_actions.side_effect = ClientError(
@@ -978,16 +978,16 @@ class TestCleanupScheduledActions:
 class TestCreateScheduledActionsHelpers:
     """Test create scheduled actions helper functions."""
 
-    @patch("models.scheduling.schedule_management.construct_scheduled_action_arn")
-    @patch("models.scheduling.schedule_management.get_model_baseline_capacity")
-    @patch("models.scheduling.schedule_management.scale_immediately")
-    @patch("models.scheduling.schedule_management.autoscaling_client")
+    @patch("lisa.domain.scheduling.schedule_management.construct_scheduled_action_arn")
+    @patch("lisa.domain.scheduling.schedule_management.get_model_baseline_capacity")
+    @patch("lisa.domain.scheduling.schedule_management.scale_immediately")
+    @patch("lisa.domain.scheduling.schedule_management.autoscaling_client")
     def test_create_recurring_scheduled_actions_success(
         self, mock_autoscaling_client, mock_scale_immediately, mock_get_baseline_capacity, mock_construct_arn
     ):
         """Test successful creation of recurring scheduled actions."""
-        from models.domain_objects import DaySchedule
-        from models.scheduling.schedule_management import create_recurring_scheduled_actions
+        from lisa.domain.domain_objects import DaySchedule
+        from lisa.domain.scheduling.schedule_management import create_recurring_scheduled_actions
 
         # Mock dependencies
         mock_get_baseline_capacity.return_value = {"MinSize": 1, "MaxSize": 5, "DesiredCapacity": 2}
@@ -1001,16 +1001,16 @@ class TestCreateScheduledActionsHelpers:
         assert mock_autoscaling_client.put_scheduled_update_group_action.call_count == 2
         mock_scale_immediately.assert_called_once()
 
-    @patch("models.scheduling.schedule_management.construct_scheduled_action_arn")
-    @patch("models.scheduling.schedule_management.get_model_baseline_capacity")
-    @patch("models.scheduling.schedule_management.check_daily_immediate_scaling")
-    @patch("models.scheduling.schedule_management.autoscaling_client")
+    @patch("lisa.domain.scheduling.schedule_management.construct_scheduled_action_arn")
+    @patch("lisa.domain.scheduling.schedule_management.get_model_baseline_capacity")
+    @patch("lisa.domain.scheduling.schedule_management.check_daily_immediate_scaling")
+    @patch("lisa.domain.scheduling.schedule_management.autoscaling_client")
     def test_create_daily_scheduled_actions_success(
         self, mock_autoscaling_client, mock_check_daily_scaling, mock_get_baseline_capacity, mock_construct_arn
     ):
         """Test successful creation of daily scheduled actions."""
-        from models.domain_objects import DaySchedule, WeeklySchedule
-        from models.scheduling.schedule_management import create_daily_scheduled_actions
+        from lisa.domain.domain_objects import DaySchedule, WeeklySchedule
+        from lisa.domain.scheduling.schedule_management import create_daily_scheduled_actions
 
         # Mock dependencies
         mock_get_baseline_capacity.return_value = {"MinSize": 1, "MaxSize": 5, "DesiredCapacity": 2}

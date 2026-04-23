@@ -30,13 +30,8 @@ os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 os.environ["AWS_REGION"] = "us-east-1"
 os.environ["MANAGEMENT_KEY_NAME"] = "test-management-key"
 
-# Add lambda directory to path and import functions
-import sys
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../lambda"))
-
-from management_key import create_secret, finish_secret, handler, rotate_management_key, set_secret
-from management_key import test_secret as validate_secret
+from management_key.handler import create_secret, finish_secret, handler, rotate_management_key, set_secret
+from management_key.handler import test_secret as validate_secret
 
 
 @pytest.fixture
@@ -99,7 +94,7 @@ def test_handler_create_secret_success(sample_event, lambda_context, mock_secret
         {"Error": {"Code": "ResourceNotFoundException", "Message": "Version not found"}}, "GetSecretValue"
     )
 
-    with patch("management_key.secrets_manager", mock_secrets_manager):
+    with patch("management_key.handler.secrets_manager", mock_secrets_manager):
         response = handler(sample_event, lambda_context)
 
     assert response["statusCode"] == 200
@@ -111,7 +106,7 @@ def test_handler_create_secret_success(sample_event, lambda_context, mock_secret
 
 def test_handler_create_secret_success_step1_format(sample_event_step1, lambda_context, mock_secrets_manager):
     """Test successful createSecret step with Step1 format."""
-    with patch("management_key.secrets_manager", mock_secrets_manager):
+    with patch("management_key.handler.secrets_manager", mock_secrets_manager):
         response = handler(sample_event_step1, lambda_context)
 
     assert response["statusCode"] == 200
@@ -122,7 +117,7 @@ def test_handler_set_secret_success(sample_event, lambda_context, mock_secrets_m
     """Test successful setSecret step."""
     sample_event["Step"] = "setSecret"
 
-    with patch("management_key.secrets_manager", mock_secrets_manager):
+    with patch("management_key.handler.secrets_manager", mock_secrets_manager):
         response = handler(sample_event, lambda_context)
 
     assert response["statusCode"] == 200
@@ -134,7 +129,7 @@ def test_handler_test_secret_success(sample_event, lambda_context, mock_secrets_
     sample_event["Step"] = "testSecret"
     mock_secrets_manager.get_secret_value.return_value = {"SecretString": "testpassword16chars"}
 
-    with patch("management_key.secrets_manager", mock_secrets_manager):
+    with patch("management_key.handler.secrets_manager", mock_secrets_manager):
         response = handler(sample_event, lambda_context)
 
     assert response["statusCode"] == 200
@@ -145,7 +140,7 @@ def test_handler_finish_secret_success(sample_event, lambda_context, mock_secret
     """Test successful finishSecret step."""
     sample_event["Step"] = "finishSecret"
 
-    with patch("management_key.secrets_manager", mock_secrets_manager):
+    with patch("management_key.handler.secrets_manager", mock_secrets_manager):
         response = handler(sample_event, lambda_context)
 
     assert response["statusCode"] == 200
@@ -182,7 +177,7 @@ def test_handler_exception_propagation(sample_event, lambda_context, mock_secret
         {"Error": {"Code": "InternalServiceError", "Message": "Service error"}}, "GetSecretValue"
     )
 
-    with patch("management_key.secrets_manager", mock_secrets_manager):
+    with patch("management_key.handler.secrets_manager", mock_secrets_manager):
         with pytest.raises(ClientError):
             handler(sample_event, lambda_context)
 
@@ -195,7 +190,7 @@ def test_create_secret_already_exists(mock_secrets_manager):
     # Mock that the secret version already exists
     mock_secrets_manager.get_secret_value.return_value = {"SecretString": "existing-password"}
 
-    with patch("management_key.secrets_manager", mock_secrets_manager):
+    with patch("management_key.handler.secrets_manager", mock_secrets_manager):
         create_secret(secret_arn, token)
 
     # Should only call get_secret_value, not create new password
@@ -217,7 +212,7 @@ def test_create_secret_not_found_creates_new(mock_secrets_manager):
     )
     mock_secrets_manager.get_random_password.return_value = {"RandomPassword": "new-password"}
 
-    with patch("management_key.secrets_manager", mock_secrets_manager):
+    with patch("management_key.handler.secrets_manager", mock_secrets_manager):
         create_secret(secret_arn, token)
 
     mock_secrets_manager.get_secret_value.assert_called_once()
@@ -237,7 +232,7 @@ def test_create_secret_other_client_error(mock_secrets_manager):
         {"Error": {"Code": "InternalServiceError", "Message": "Service error"}}, "GetSecretValue"
     )
 
-    with patch("management_key.secrets_manager", mock_secrets_manager):
+    with patch("management_key.handler.secrets_manager", mock_secrets_manager):
         with pytest.raises(ClientError):
             create_secret(secret_arn, token)
 
@@ -256,7 +251,7 @@ def test_create_secret_put_secret_error(mock_secrets_manager):
         {"Error": {"Code": "ValidationException", "Message": "Invalid secret"}}, "PutSecretValue"
     )
 
-    with patch("management_key.secrets_manager", mock_secrets_manager):
+    with patch("management_key.handler.secrets_manager", mock_secrets_manager):
         with pytest.raises(ClientError):
             create_secret(secret_arn, token)
 
@@ -277,7 +272,7 @@ def test_test_secret_success(mock_secrets_manager):
 
     mock_secrets_manager.get_secret_value.return_value = {"SecretString": "validpassword123"}
 
-    with patch("management_key.secrets_manager", mock_secrets_manager):
+    with patch("management_key.handler.secrets_manager", mock_secrets_manager):
         validate_secret(secret_arn, token)
 
     mock_secrets_manager.get_secret_value.assert_called_once_with(
@@ -292,7 +287,7 @@ def test_test_secret_too_short(mock_secrets_manager):
 
     mock_secrets_manager.get_secret_value.return_value = {"SecretString": "short"}
 
-    with patch("management_key.secrets_manager", mock_secrets_manager):
+    with patch("management_key.handler.secrets_manager", mock_secrets_manager):
         with pytest.raises(ValueError, match="New secret is invalid - too short or empty"):
             validate_secret(secret_arn, token)
 
@@ -304,7 +299,7 @@ def test_test_secret_empty(mock_secrets_manager):
 
     mock_secrets_manager.get_secret_value.return_value = {"SecretString": ""}
 
-    with patch("management_key.secrets_manager", mock_secrets_manager):
+    with patch("management_key.handler.secrets_manager", mock_secrets_manager):
         with pytest.raises(ValueError, match="New secret is invalid - too short or empty"):
             validate_secret(secret_arn, token)
 
@@ -316,7 +311,7 @@ def test_test_secret_contains_punctuation(mock_secrets_manager):
 
     mock_secrets_manager.get_secret_value.return_value = {"SecretString": "password123!@#"}
 
-    with patch("management_key.secrets_manager", mock_secrets_manager):
+    with patch("management_key.handler.secrets_manager", mock_secrets_manager):
         with pytest.raises(ValueError, match="New secret contains punctuation when it shouldn't"):
             validate_secret(secret_arn, token)
 
@@ -330,7 +325,7 @@ def test_test_secret_client_error(mock_secrets_manager):
         {"Error": {"Code": "ResourceNotFoundException", "Message": "Secret not found"}}, "GetSecretValue"
     )
 
-    with patch("management_key.secrets_manager", mock_secrets_manager):
+    with patch("management_key.handler.secrets_manager", mock_secrets_manager):
         with pytest.raises(ClientError):
             validate_secret(secret_arn, token)
 
@@ -347,7 +342,7 @@ def test_finish_secret_success(mock_secrets_manager):
         }
     }
 
-    with patch("management_key.secrets_manager", mock_secrets_manager):
+    with patch("management_key.handler.secrets_manager", mock_secrets_manager):
         finish_secret(secret_arn, token)
 
     mock_secrets_manager.describe_secret.assert_called_once_with(SecretId=secret_arn)
@@ -370,7 +365,7 @@ def test_finish_secret_no_current_version(mock_secrets_manager):
         }
     }
 
-    with patch("management_key.secrets_manager", mock_secrets_manager):
+    with patch("management_key.handler.secrets_manager", mock_secrets_manager):
         finish_secret(secret_arn, token)
 
     mock_secrets_manager.update_secret_version_stage.assert_called_once_with(
@@ -387,7 +382,7 @@ def test_finish_secret_client_error(mock_secrets_manager):
         {"Error": {"Code": "ResourceNotFoundException", "Message": "Secret not found"}}, "DescribeSecret"
     )
 
-    with patch("management_key.secrets_manager", mock_secrets_manager):
+    with patch("management_key.handler.secrets_manager", mock_secrets_manager):
         with pytest.raises(ClientError):
             finish_secret(secret_arn, token)
 
@@ -407,7 +402,7 @@ def test_finish_secret_update_error(mock_secrets_manager):
         {"Error": {"Code": "InvalidParameterException", "Message": "Invalid parameter"}}, "UpdateSecretVersionStage"
     )
 
-    with patch("management_key.secrets_manager", mock_secrets_manager):
+    with patch("management_key.handler.secrets_manager", mock_secrets_manager):
         with pytest.raises(ClientError):
             finish_secret(secret_arn, token)
 
@@ -419,7 +414,7 @@ def test_rotate_management_key_legacy(mock_secrets_manager):
 
     mock_secrets_manager.get_random_password.return_value = {"RandomPassword": "legacy-password"}
 
-    with patch("management_key.secrets_manager", mock_secrets_manager):
+    with patch("management_key.handler.secrets_manager", mock_secrets_manager):
         rotate_management_key(event, ctx)
 
     mock_secrets_manager.get_random_password.assert_called_once_with(ExcludePunctuation=True, PasswordLength=16)
@@ -439,7 +434,7 @@ def test_all_punctuation_characters_detected(mock_secrets_manager):
 
     mock_secrets_manager.get_secret_value.return_value = {"SecretString": test_password}
 
-    with patch("management_key.secrets_manager", mock_secrets_manager):
+    with patch("management_key.handler.secrets_manager", mock_secrets_manager):
         with pytest.raises(ValueError, match="New secret contains punctuation when it shouldn't"):
             validate_secret(secret_arn, token)
 
@@ -458,7 +453,7 @@ def test_handler_with_all_steps(mock_secrets_manager, lambda_context):
         {"SecretString": "validpassword123"},
     ]
 
-    with patch("management_key.secrets_manager", mock_secrets_manager):
+    with patch("management_key.handler.secrets_manager", mock_secrets_manager):
         # Test all steps
         for step in ["createSecret", "setSecret", "testSecret", "finishSecret"]:
             event = base_event.copy()

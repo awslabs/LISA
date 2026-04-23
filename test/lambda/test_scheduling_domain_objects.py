@@ -15,7 +15,7 @@
 """Unit tests for scheduling domain objects."""
 
 import pytest
-from models.domain_objects import (
+from lisa.domain.domain_objects import (
     DailySchedulingConfig,
     DaySchedule,
     DeleteScheduleResponse,

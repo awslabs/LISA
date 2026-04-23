@@ -56,7 +56,7 @@ def mock_dynamodb_table():
 def collection_repo(mock_dynamodb_table, setup_env):
     with patch("boto3.resource") as mock_resource:
         mock_resource.return_value.Table.return_value = mock_dynamodb_table
-        from repository.collection_repo import CollectionRepository
+        from lisa.rag.collection_repo import CollectionRepository
 
         return CollectionRepository()
 
@@ -114,8 +114,8 @@ def test_find_by_id_or_name_returns_none_when_both_miss(collection_repo, mock_dy
 
 def _build_real_collection_service(mock_dynamodb_table):
     """Wire real CollectionRepository (mocked DynamoDB) into real CollectionService."""
-    from repository.collection_repo import CollectionRepository
-    from repository.collection_service import CollectionService
+    from lisa.rag.collection_repo import CollectionRepository
+    from lisa.rag.collection_service import CollectionService
 
     repo = CollectionRepository.__new__(CollectionRepository)
     repo.table = mock_dynamodb_table

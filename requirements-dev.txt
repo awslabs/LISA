@@ -2,9 +2,15 @@
 # Runtime deps are managed by each module's own requirements.txt/pyproject.toml
 # This file only contains: test frameworks, dev tools, and deps needed
 # to import all modules into a single test venv.
+#
+# Python 3.14: litellm[proxy] forces orjson 3.10.15 (no usable cp314 build). Use
+#   bash scripts/install-python.sh
+# which installs litellm without deps, backfills proxy requirements except orjson, then adds orjson from a wheel.
 
-# LiteLLM - needed to run rest-api tests in the shared venv
-litellm[proxy]==1.83.12
+# LiteLLM - needed to run rest-api tests in the shared venv.
+# 1.83.8+ requires Python <3.14; on 3.14+ pip installs 1.83.7 instead.
+litellm[proxy]==1.83.12; python_version < "3.14"
+litellm[proxy]==1.83.7; python_version >= "3.14"
 
 # Test frameworks
 pytest==9.0.3
@@ -39,7 +45,9 @@ cachetools==7.0.6
 tiktoken==0.12.0
 fastapi==0.124.4
 pydantic==2.12.5
-cryptography==46.0.7
+# litellm[proxy] 1.83.7 (Python 3.14+ fallback) pins cryptography==43.0.3 for the proxy extra.
+cryptography==46.0.7; python_version < "3.14"
+cryptography==43.0.3; python_version >= "3.14"
 starlette>=0.40.0
 loguru==0.7.3
 fastapi_utils==0.8.0

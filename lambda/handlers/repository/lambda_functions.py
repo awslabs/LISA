@@ -215,9 +215,7 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
 
     if not isinstance(repository_id, str) or not repository_id:
         raise ValidationError("repositoryId is required")
-    repo_id: str = repository_id
-
-    repository = get_repository(event, repository_id=repo_id)
+    repository = get_repository(event, repository_id=repository_id)
 
     # Get user context for collection access
     username, is_admin, groups = get_user_context(event)
@@ -263,7 +261,7 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
 
     # Enrich metadata with documentId for documents that don't have it
     # Pass the actual search_collection_id (not the metadata's collectionId which may be "default")
-    docs = enrich_metadata_with_document_id(docs, repo_id, search_collection_id)
+    docs = enrich_metadata_with_document_id(docs, repository_id, search_collection_id)
 
     doc_content = [
         {

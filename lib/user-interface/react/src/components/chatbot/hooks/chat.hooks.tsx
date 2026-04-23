@@ -116,6 +116,61 @@ const finalizeToolCalls = (toolCallsAccumulator: { [index: number]: any }): any[
     }).filter((toolCall) => toolCall.name);
 };
 
+/**
+ * Bedrock (via LiteLLM) rejects requests when an assistant `tool_calls` block is not
+ * immediately followed by `tool` messages with matching `tool_call_id` for every call.
+ * Sliding-window history can cut between those messages; drop orphans so the payload is valid.
+ */
+const sanitizeOpenAiMessagesForToolPairing = (openAiMessages: any[]): any[] => {
+    const out: any[] = [];
+    let i = 0;
+    while (i < openAiMessages.length) {
+        const msg = openAiMessages[i];
+        if (msg.role === 'tool') {
+            i++;
+            continue;
+        }
+        if (msg.role === 'assistant' && Array.isArray(msg.tool_calls) && msg.tool_calls.length > 0) {
+            const pending = new Set(
+                msg.tool_calls.map((tc: any) => tc?.id).filter((id: unknown) => typeof id === 'string' && id.length > 0)
+            );
+            if (pending.size === 0) {
+                const stripped = { ...msg };
+                delete stripped.tool_calls;
+                out.push(stripped);
+                i++;
+                continue;
+            }
+            const toolMsgs: any[] = [];
+            let j = i + 1;
+            while (j < openAiMessages.length && openAiMessages[j].role === 'tool' && pending.size > 0) {
+                const tid = openAiMessages[j].tool_call_id;
+                if (typeof tid === 'string' && pending.has(tid)) {
+                    pending.delete(tid);
+                    toolMsgs.push(openAiMessages[j]);
+                    j++;
+                } else {
+                    break;
+                }
+            }
+            if (pending.size === 0) {
+                out.push(msg, ...toolMsgs);
+                i = j;
+            } else {
+                let k = i + 1;
+                while (k < openAiMessages.length && openAiMessages[k].role === 'tool') {
+                    k++;
+                }
+                i = k;
+            }
+        } else {
+            out.push(msg);
+            i++;
+        }
+    }
+    return out;
+};
+
 // Custom hook for chat generation
 export const useChatGeneration = ({
     chatConfiguration,
@@ -670,10 +725,7 @@ export const useChatGeneration = ({
 
                 const [systemMessage, ...initialRemainingMessages] = messages;
                 let remainingMessages = initialRemainingMessages.slice(-(chatConfiguration.sessionConfiguration.chatHistoryBufferSize * 2) - 1);
-
-                if (remainingMessages[0]?.role === MessageTypes.TOOL) {
-                    remainingMessages = remainingMessages.slice(1);
-                }
+                remainingMessages = sanitizeOpenAiMessagesForToolPairing(remainingMessages);
                 messages = [systemMessage, ...remainingMessages];
 
                 if (chatConfiguration.sessionConfiguration.streaming) {

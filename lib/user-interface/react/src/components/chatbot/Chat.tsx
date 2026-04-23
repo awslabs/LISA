@@ -69,6 +69,7 @@ import { useToolChain } from './hooks/useToolChain.hooks';
 import { useDynamicMaxRows } from './hooks/useDynamicMaxRows';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { buildMessageContent, buildMessageMetadata } from './utils/messageBuilder.utils';
+import { sessionHistoryHasPendingAssistantToolCalls } from './utils/sessionPersist.utils';
 import { formatContextAndTokenCount } from '../model-management/ModelManagementUtils';
 import { getButtonItems, useButtonActions } from './config/buttonConfig';
 import PromptPreview from './components/PromptPreview';
@@ -228,7 +229,17 @@ export default function Chat ({ sessionId, initialStack }) {
     // Ref to track if we're processing tool calls to prevent infinite loops
     const isProcessingToolCalls = useRef(false);
     const lastProcessedMessageIndex = useRef(-1);
+    /** Tracks loadingSession for detecting fetch completion; avoids auto-running MCP on hydrated history. */
+    const prevLoadingSessionRef = useRef(loadingSession);
     const startToolChainRef = useRef<((session: LisaChatSession) => Promise<void>) | undefined>(undefined);
+
+    useEffect(() => {
+        const finishedLoadingSession = prevLoadingSessionRef.current && !loadingSession;
+        prevLoadingSessionRef.current = loadingSession;
+        if (finishedLoadingSession && session.history.length > 0) {
+            lastProcessedMessageIndex.current = session.history.length - 1;
+        }
+    }, [loadingSession, session.history.length]);
 
     // Memoize enabled servers. When using an assistant stack with mcpServerIds, use those servers
     // directly (turned on for this session) regardless of user preferences; otherwise use preferences.
@@ -852,9 +863,16 @@ export default function Chat ({ sessionId, initialStack }) {
             if (session.history.length && !isProcessingToolCalls.current) {
                 const currentMessageIndex = session.history.length - 1;
 
-                // Update session if there are changes
+                // Update session if there are changes (skip while assistant still has unexecuted tool calls
+                // or output is streaming — otherwise we persist before MCP runs and reload replays a bad tail)
                 if (dirtySession) {
-                    if (session.history.at(-1)?.type === MessageTypes.AI && !auth.isLoading) {
+                    const canPersistAssistantTurn =
+                        session.history.at(-1)?.type === MessageTypes.AI &&
+                        !auth.isLoading &&
+                        !isStreaming &&
+                        !sessionHistoryHasPendingAssistantToolCalls(session.history);
+
+                    if (canPersistAssistantTurn) {
                         setDirtySession(false);
                         const message = session.history.at(-1);
                         if (session.history.at(-1).metadata.imageGeneration && Array.isArray(session.history.at(-1).content)) {
@@ -948,7 +966,7 @@ export default function Chat ({ sessionId, initialStack }) {
 
         handleToolCalls();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isRunning, session.history.length, dirtySession, chatConfiguration, chatAssistantId, effectiveStack?.stackId]);
+    }, [isRunning, isStreaming, session.history.length, dirtySession, chatConfiguration, chatAssistantId, effectiveStack?.stackId]);
 
     // Connection health check
     useEffect(() => {

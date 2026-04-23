@@ -204,7 +204,7 @@ MODEL_DEFINITIONS: dict[str, dict] = {
             "VLLM_CHAT_TEMPLATE": "/nvme/model/chat_template.jinja",
             "VLLM_KV_CACHE_DTYPE": "fp8",
             "VLLM_REASONING_PARSER_PLUGIN": "nano_v3_reasoning_parser.py",
-            "VLLM_REASONING_PARSER": "nano_v3.py",
+            "VLLM_REASONING_PARSER": "nano_v3",
         },
     },
     "nemo-nano-30b-nvfp4": {

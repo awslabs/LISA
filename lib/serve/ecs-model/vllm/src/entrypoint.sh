@@ -108,7 +108,9 @@ declare -a vars=("S3_BUCKET_MODELS" "LOCAL_MODEL_PATH" "MODEL_NAME" "S3_MOUNT_PO
 #
 # TOOL CALLING / FUNCTION CALLING (opt-in):
 #   VLLM_ENABLE_AUTO_TOOL_CHOICE - Enable automatic tool choice routing (set to "true" to enable)
-#   VLLM_TOOL_CALL_PARSER - Tool call parser name (hermes/mistral/llama3_json/qwen/etc.)
+#   VLLM_TOOL_CALL_PARSER - Tool call parser name (hermes/mistral/llama3_json/qwen/qwen3_coder/etc.)
+#   VLLM_REASONING_PARSER_PLUGIN - Path to custom reasoning parser plugin (e.g., nano_v3_reasoning_parser.py)
+#   VLLM_REASONING_PARSER - Reasoning parser name (e.g., nano_v3)
 #
 # ROCM SPECIFIC (AMD GPUs):
 #   VLLM_ROCM_USE_AITER - Enable AITER ops on ROCm (true/false)
@@ -265,6 +267,19 @@ fi
 if [[ -n "${VLLM_TOOL_CALL_PARSER}" ]]; then
     ADDITIONAL_ARGS="${ADDITIONAL_ARGS} --tool-call-parser ${VLLM_TOOL_CALL_PARSER}"
     echo "  --tool-call-parser ${VLLM_TOOL_CALL_PARSER}"
+fi
+
+# Reasoning parser plugin (for models with custom reasoning output formats)
+# e.g., NVIDIA Nemotron 3 Nano requires nano_v3_reasoning_parser.py
+if [[ -n "${VLLM_REASONING_PARSER_PLUGIN}" ]]; then
+    ADDITIONAL_ARGS="${ADDITIONAL_ARGS} --reasoning-parser-plugin ${VLLM_REASONING_PARSER_PLUGIN}"
+    echo "  --reasoning-parser-plugin ${VLLM_REASONING_PARSER_PLUGIN}"
+fi
+
+# Reasoning parser name (used with --reasoning-parser-plugin)
+if [[ -n "${VLLM_REASONING_PARSER}" ]]; then
+    ADDITIONAL_ARGS="${ADDITIONAL_ARGS} --reasoning-parser ${VLLM_REASONING_PARSER}"
+    echo "  --reasoning-parser ${VLLM_REASONING_PARSER}"
 fi
 
 if [[ "${VLLM_ASYNC_SCHEDULING}" == "true" ]]; then

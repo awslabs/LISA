@@ -41,7 +41,9 @@ LISA Serve supports configuring vLLM model serving through environment variables
 | Variable | Description | Default | Example |
 |----------|-------------|---------|---------|
 | `VLLM_ENABLE_AUTO_TOOL_CHOICE` | Enable automatic tool choice routing | `false` | `true` |
-| `VLLM_TOOL_CALL_PARSER` | Tool call parser implementation | - | `hermes`, `mistral`, `llama3_json`, `qwen` |
+| `VLLM_TOOL_CALL_PARSER` | Tool call parser implementation | - | `hermes`, `mistral`, `llama3_json`, `qwen`, `qwen3_coder` |
+| `VLLM_REASONING_PARSER_PLUGIN` | Path to custom reasoning parser plugin | - | `nano_v3_reasoning_parser.py` |
+| `VLLM_REASONING_PARSER` | Reasoning parser name | - | `nano_v3` |
 
 > **Note**: Tool calling requires both `VLLM_ENABLE_AUTO_TOOL_CHOICE=true` and specifying an appropriate `VLLM_TOOL_CALL_PARSER` for your model. See [vLLM Tool Calling Documentation](https://docs.vllm.ai/en/stable/features/tool_calling/) for details.
 

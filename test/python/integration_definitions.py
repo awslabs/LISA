@@ -203,12 +203,9 @@ MODEL_DEFINITIONS: dict[str, dict] = {
             "VLLM_TRUST_REMOTE_CODE": "true",
             "VLLM_CHAT_TEMPLATE": "/nvme/model/chat_template.jinja",
             "VLLM_KV_CACHE_DTYPE": "fp8",
-<<<<<<< Updated upstream
-            "VLLM_REASONING_PARSER_PLUGIN": "nano_v3_reasoning_parser.py",
-            "VLLM_REASONING_PARSER": "nano_v3.py",
-=======
+            "VLLM_ENABLE_AUTO_TOOL_CHOICE": "true",
+            "VLLM_TOOL_CALL_PARSER": "qwen3_coder",
             "VLLM_REASONING_PARSER": "nemotron_v3",
->>>>>>> Stashed changes
         },
     },
     "nemo-nano-30b-nvfp4": {

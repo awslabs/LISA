@@ -69,6 +69,7 @@ import { useToolChain } from './hooks/useToolChain.hooks';
 import { useDynamicMaxRows } from './hooks/useDynamicMaxRows';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { buildMessageContent, buildMessageMetadata } from './utils/messageBuilder.utils';
+import { formatContextAndTokenCount } from '../model-management/ModelManagementUtils';
 import { getButtonItems, useButtonActions } from './config/buttonConfig';
 import PromptPreview from './components/PromptPreview';
 import ChatPromptInput from './components/ChatPromptInput';
@@ -92,8 +93,7 @@ import { useGetStackQuery } from '@/shared/reducers/chat-assistant-stacks.reduce
 import { useListMcpToolsQuery } from '@/shared/reducers/mcp-tools.reducer';
 import ConfirmationModal from '@/shared/modal/confirmation-modal';
 import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
-import { conditionalDeps, isWorkbenchMcpServer } from '../utils';
-import { formatDate } from '@/shared/util/formats';
+import { isWorkbenchMcpServer } from '../utils';
 import DocumentSidePanel from './components/DocumentSidePanel';
 import { useDocumentSidePanel } from '@/shared/hooks/useDocumentSidePanel';
 
@@ -182,7 +182,6 @@ export default function Chat ({ sessionId, initialStack }) {
     const [dirtySession, setDirtySession] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
     const [useRag, setUseRag] = useState(false);
-    const [openAiTools, setOpenAiTools] = useState(undefined);
     const [preferences, setPreferences] = useState<UserPreferences>(undefined);
     const [modelFilterValue, setModelFilterValue] = useState('');
     const [hasUserInteractedWithModel, setHasUserInteractedWithModel] = useState(false);
@@ -242,11 +241,12 @@ export default function Chat ({ sessionId, initialStack }) {
             const ids = effectiveStack.mcpServerIds ?? [];
             return ids.length ? mcpServers.filter((server) => ids.includes(server.id)) : EMPTY_STACK_MCP_SERVERS;
         }
-        const base = userPreferences?.preferences?.mcp?.enabledServers
-            ? mcpServers.filter((server) => userPreferences.preferences.mcp.enabledServers.map((s) => s.id).includes(server.id))
+        const enabledServerPrefs = userPreferences?.preferences?.mcp?.enabledServers;
+        const base = enabledServerPrefs
+            ? mcpServers.filter((server) => enabledServerPrefs.map((s) => s.id).includes(server.id))
             : [];
         return base.length ? base : undefined;
-    }, [mcpServers, userPreferences?.preferences?.mcp?.enabledServers, effectiveStack]);
+    }, [mcpServers, userPreferences, effectiveStack]);
 
     // Tool call loop prevention
     const consecutiveToolCallCount = useRef(0);
@@ -589,7 +589,7 @@ export default function Chat ({ sessionId, initialStack }) {
     const isVideoGenerationMode = selectedModel?.modelType === ModelType.videogen;
 
     // Format MCP tools and optional Bedrock agent tools for OpenAI when they change
-    useEffect(() => {
+    const openAiTools = useMemo(() => {
         const ec = config?.configuration?.enabledComponents;
         let formattedMcp: Array<{ type: 'function'; function: Record<string, unknown> }> = [];
         if (ec?.mcpConnections && mcpTools.length > 0) {
@@ -617,7 +617,7 @@ export default function Chat ({ sessionId, initialStack }) {
         }
         const bedrockFragments = ec?.bedrockAgents ? bedrockOpenAiToolFragments : [];
         const merged = [...formattedMcp, ...bedrockFragments];
-        setOpenAiTools(merged.length > 0 ? merged : undefined);
+        return merged.length > 0 ? merged : undefined;
     }, [mcpTools, bedrockOpenAiToolFragments, config?.configuration?.enabledComponents]);
 
     const toolToServerMapMerged = useMemo(() => {
@@ -627,6 +627,7 @@ export default function Chat ({ sessionId, initialStack }) {
         return m;
     }, [toolToServerMap, bedrockFunctionToolIndex]);
 
+    const currentSessionId = session?.sessionId;
     const callToolWithBedrock = useCallback(async (toolName: string, args: any) => {
         if (toolName === 'invoke_bedrock_agent') {
             const match = enabledBedrockAgentsForChat.find((a) => a.agentId === args.agentId);
@@ -634,7 +635,7 @@ export default function Chat ({ sessionId, initialStack }) {
                 throw new Error('Agent is not enabled. Turn it on under Libraries → Agentic connections → Bedrock agents.');
             }
             const inputText = typeof args.inputText === 'string' ? args.inputText : JSON.stringify(args.inputText ?? '');
-            const sessionKey = session?.sessionId ? `${session.sessionId}:${args.agentId}` : undefined;
+            const sessionKey = currentSessionId ? `${currentSessionId}:${args.agentId}` : undefined;
             const res = await invokeBedrockAgent({
                 agentId: match.agentId,
                 agentAliasId: match.agentAliasId,
@@ -649,7 +650,7 @@ export default function Chat ({ sessionId, initialStack }) {
             if (!match) {
                 throw new Error('Agent is not enabled. Turn it on under Libraries → Agentic connections → Bedrock agents.');
             }
-            const sessionKey = session?.sessionId ? `${session.sessionId}:${spec.agentId}` : undefined;
+            const sessionKey = currentSessionId ? `${currentSessionId}:${spec.agentId}` : undefined;
             const res = await invokeBedrockAgent({
                 agentId: match.agentId,
                 agentAliasId: match.agentAliasId,
@@ -666,7 +667,7 @@ export default function Chat ({ sessionId, initialStack }) {
         callTool,
         invokeBedrockAgent,
         enabledBedrockAgentsForChat,
-        session?.sessionId,
+        currentSessionId,
         bedrockFunctionToolIndex,
     ]);
 
@@ -740,7 +741,9 @@ export default function Chat ({ sessionId, initialStack }) {
     });
 
     // Store the startToolChain function in a ref to avoid useEffect dependency issues
-    startToolChainRef.current = startToolChain;
+    useEffect(() => {
+        startToolChainRef.current = startToolChain;
+    }, [startToolChain]);
 
     const bedrockAgentIdForApprovalModal = useMemo(() => {
         if (!toolApprovalModal?.tool || !isBedrockManagedTool(toolApprovalModal.tool.name)) {
@@ -1239,8 +1242,8 @@ export default function Chat ({ sessionId, initialStack }) {
                 setInternalSessionId={setInternalSessionId}
                 setSession={setSession}
                 handleSendGenerateRequest={handleSendGenerateRequest}
-                // eslint-disable-next-line react-hooks/exhaustive-deps
-            />), conditionalDeps([modals.documentSummarization], [modals.documentSummarization], [modals.documentSummarization, openModal, closeModal, fileContext, setFileContext, setUserPrompt, userPrompt, selectedModel, setSelectedModel, chatConfiguration, setChatConfiguration, auth.user?.profile.sub, setInternalSessionId, setSession, handleSendGenerateRequest])) }
+
+            />), [modals.documentSummarization, openModal, closeModal, fileContext, setFileContext, setUserPrompt, userPrompt, selectedModel, setSelectedModel, chatConfiguration, setChatConfiguration, auth.user?.profile.sub, setInternalSessionId, setSession, handleSendGenerateRequest]) }
 
             {useMemo(() => (<SessionConfiguration
                 chatConfiguration={chatConfiguration}
@@ -1253,9 +1256,8 @@ export default function Chat ({ sessionId, initialStack }) {
                 session={session}
                 updateSession={updateSession}
                 ragConfig={ragConfig}
-                // eslint-disable-next-line react-hooks/exhaustive-deps
-            />), conditionalDeps([modals.sessionConfiguration], [modals.sessionConfiguration], [modals.sessionConfiguration, chatConfiguration, setChatConfiguration, selectedModel, isRunning, openModal, closeModal, config, session, updateSession, ragConfig]))}
 
+            />), [modals.sessionConfiguration, chatConfiguration, setChatConfiguration, selectedModel, isRunning, openModal, closeModal, config, session, updateSession, ragConfig])}
             {useMemo(() => (window.env.RAG_ENABLED ? <RagUploadModal
                 ragConfig={ragConfig}
                 showRagUploadModal={modals.ragUpload}
@@ -1270,9 +1272,8 @@ export default function Chat ({ sessionId, initialStack }) {
                 setFileContextName={setFileContextName}
                 setFileContextFiles={setFileContextFiles}
                 selectedModel={selectedModel}
-                // eslint-disable-next-line react-hooks/exhaustive-deps
-            />), conditionalDeps([modals.contextUpload], [modals.contextUpload], [modals.contextUpload, openModal, closeModal, fileContext, setFileContext, setFileContextName, setFileContextFiles, selectedModel]))}
 
+            />), [modals.contextUpload, openModal, closeModal, fileContext, setFileContext, setFileContextName, setFileContextFiles, selectedModel])}
             {useMemo(() => (<PromptTemplateModal
                 session={session}
                 showModal={modals.promptTemplate}
@@ -1285,8 +1286,7 @@ export default function Chat ({ sessionId, initialStack }) {
                 type={filterPromptTemplateType}
                 allowedDirectivePromptIds={effectiveStack ? (effectiveStack.directivePromptIds ?? []) : undefined}
                 // eslint-disable-next-line react-hooks/exhaustive-deps
-            />), conditionalDeps([modals.promptTemplate], [modals.promptTemplate], [modals.promptTemplate, session, openModal, closeModal, chatConfiguration, setChatConfiguration, promptTemplateKey, config, filterPromptTemplateType, effectiveStack?.directivePromptIds]))}
-
+            />), [modals.promptTemplate, session, openModal, closeModal, chatConfiguration, setChatConfiguration, promptTemplateKey, config, filterPromptTemplateType, effectiveStack?.directivePromptIds])}
             {/* Tool Approval Modal */}
             {toolApprovalModal && (
                 <ConfirmationModal
@@ -1390,7 +1390,7 @@ export default function Chat ({ sessionId, initialStack }) {
                 display: 'grid',
                 gridTemplateColumns: showDocSidePanel ? '1fr 1fr' : '1fr',
                 gap: '0',
-                height: 'calc(100vh - 20rem)',
+                height: 'calc(100vh - 21rem)',
                 overflow: 'hidden'
             }}>
                 {/* Chat messages area */}
@@ -1473,7 +1473,7 @@ export default function Chat ({ sessionId, initialStack }) {
             <div className='sticky bottom-8 mt-2'>
                 <form onSubmit={(e) => e.preventDefault()}>
                     <Form>
-                        <SpaceBetween size='m' direction='vertical'>
+                        <SpaceBetween size='xs' direction='vertical'>
                             <Grid
                                 gridDefinition={[
                                     { colspan: { default: 4 } },
@@ -1543,11 +1543,31 @@ export default function Chat ({ sessionId, initialStack }) {
                                                 <Icon name='gen-ai' variant='disabled' /> This model does not have Tool Calling enabled
                                             </Box>)}
                                     <Box textAlign='center'>
-                                        {!loadingSession && session.history.length > 0 && (currentSessionSummary?.lastUpdated) && (
-                                            <Box variant='small' color='text-status-inactive'>
-                                                Last updated: {formatDate(currentSessionSummary?.lastUpdated)}
-                                            </Box>
-                                        )}
+                                        {(() => {
+                                            // Look up contextWindow from the model list
+                                            const contextWindow = allModelsRaw?.find(
+                                                (m) => m.modelId === selectedModel?.modelId
+                                            )?.contextWindow;
+
+                                            if (!contextWindow || session.history.length === 0) return null;
+                                            // Sum live in-memory tokens for immediate UI updates after
+                                            // each response. Fall back to the DDB value on reload.
+                                            // Coerce to Number() because DDB Decimal values deserialize
+                                            // as strings, which cause string concatenation bugs.
+                                            const liveTokens = session.history.reduce((sum, msg) => {
+                                                const u = (msg as any).usage;
+                                                return sum + (Number(u?.completionTokens) || 0) + (Number(u?.promptTokens) || 0);
+                                            }, 0);
+
+                                            const usedTokens = liveTokens > 0
+                                                ? liveTokens
+                                                : (currentSessionSummary?.totalTokensUsed ?? 0);
+                                            if (!usedTokens) return null;
+
+                                            return (
+                                                `${formatContextAndTokenCount(usedTokens)} - Tokens Used`
+                                            );
+                                        })()}
                                     </Box>
                                     <Box float='right' variant='div'>
                                         <StatusIndicator type={isConnected ? 'success' : 'error'}>

@@ -23,8 +23,7 @@ from lisapy.evaluation.config import (
 )
 from pydantic import ValidationError
 
-VALID_CONFIG_YAML = textwrap.dedent(
-    """\
+VALID_CONFIG_YAML = textwrap.dedent("""\
     region: us-east-2
     k: 5
 
@@ -52,8 +51,7 @@ VALID_CONFIG_YAML = textwrap.dedent(
           repo_id: "pgvector-repo"
           collection_id: "default"
           s3_bucket: "s3://pg-bucket"
-"""
-)
+""")
 
 
 class TestEvalConfig:
@@ -80,45 +78,39 @@ class TestEvalConfig:
         assert source_map["score"] == "s3://bedrock-bucket/score_pdf_parsing.pdf"
 
     def test_default_k(self, tmp_path):
-        yaml = textwrap.dedent(
-            """\
+        yaml = textwrap.dedent("""\
             region: us-east-1
             documents:
               doc_a: "a.pdf"
             backends:
               bedrock_kb: []
               lisa_api: []
-        """
-        )
+        """)
         cfg_file = tmp_path / "config.yaml"
         cfg_file.write_text(yaml)
         config = load_eval_config(str(cfg_file))
         assert config.k == 5
 
     def test_missing_region_raises(self, tmp_path):
-        yaml = textwrap.dedent(
-            """\
+        yaml = textwrap.dedent("""\
             documents:
               doc_a: "a.pdf"
             backends:
               bedrock_kb: []
               lisa_api: []
-        """
-        )
+        """)
         cfg_file = tmp_path / "config.yaml"
         cfg_file.write_text(yaml)
         with pytest.raises(ValidationError):
             load_eval_config(str(cfg_file))
 
     def test_missing_documents_raises(self, tmp_path):
-        yaml = textwrap.dedent(
-            """\
+        yaml = textwrap.dedent("""\
             region: us-east-1
             backends:
               bedrock_kb: []
               lisa_api: []
-        """
-        )
+        """)
         cfg_file = tmp_path / "config.yaml"
         cfg_file.write_text(yaml)
         with pytest.raises(ValidationError):
@@ -130,8 +122,7 @@ class TestEvalConfig:
 
     def test_bedrock_only_config(self, tmp_path):
         """Config with only Bedrock KB, no LISA API backends."""
-        yaml = textwrap.dedent(
-            """\
+        yaml = textwrap.dedent("""\
             region: us-east-2
             documents:
               doc_a: "a.pdf"
@@ -140,8 +131,7 @@ class TestEvalConfig:
                 - name: "KB"
                   knowledge_base_id: "ABC123"
                   s3_bucket: "s3://bucket"
-        """
-        )
+        """)
         cfg_file = tmp_path / "config.yaml"
         cfg_file.write_text(yaml)
         config = load_eval_config(str(cfg_file))
@@ -176,8 +166,7 @@ class TestEvalConfigValidation:
     """Tests for k and documents validation on EvalConfig."""
 
     def test_k_zero_rejected(self, tmp_path):
-        yaml = textwrap.dedent(
-            """\
+        yaml = textwrap.dedent("""\
             region: us-east-1
             k: 0
             documents:
@@ -185,16 +174,14 @@ class TestEvalConfigValidation:
             backends:
               bedrock_kb: []
               lisa_api: []
-        """
-        )
+        """)
         cfg_file = tmp_path / "config.yaml"
         cfg_file.write_text(yaml)
         with pytest.raises(ValidationError, match="k"):
             load_eval_config(str(cfg_file))
 
     def test_k_negative_rejected(self, tmp_path):
-        yaml = textwrap.dedent(
-            """\
+        yaml = textwrap.dedent("""\
             region: us-east-1
             k: -1
             documents:
@@ -202,23 +189,20 @@ class TestEvalConfigValidation:
             backends:
               bedrock_kb: []
               lisa_api: []
-        """
-        )
+        """)
         cfg_file = tmp_path / "config.yaml"
         cfg_file.write_text(yaml)
         with pytest.raises(ValidationError, match="k"):
             load_eval_config(str(cfg_file))
 
     def test_empty_documents_rejected(self, tmp_path):
-        yaml = textwrap.dedent(
-            """\
+        yaml = textwrap.dedent("""\
             region: us-east-1
             documents: {}
             backends:
               bedrock_kb: []
               lisa_api: []
-        """
-        )
+        """)
         cfg_file = tmp_path / "config.yaml"
         cfg_file.write_text(yaml)
         with pytest.raises(ValidationError, match="documents"):

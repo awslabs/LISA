@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Authentication for FastAPI app."""
+
 import os
 import ssl
 import sys
@@ -181,11 +182,15 @@ class OIDCHTTPBearer(BaseHTTPMiddleware):
                     break
 
         if not valid:
+            # Use CORS_ALLOWED_ORIGIN (single value, injected by CorsOriginAspect) for the
+            # response header. This is distinct from CORS_ORIGINS used by FastAPI middleware,
+            # because Access-Control-Allow-Origin only accepts a single value.
+            cors_origin = os.environ.get("CORS_ALLOWED_ORIGIN", "*")
             return JSONResponse(
                 status_code=HTTP_401_UNAUTHORIZED,
                 content={"detail": "Unauthorized"},
                 headers={
-                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Origin": cors_origin,
                     "Access-Control-Allow-Methods": "*",
                     "Access-Control-Allow-Headers": "*",
                 },

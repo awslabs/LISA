@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Lambda functions for managing MCP Servers in AWS DynamoDB."""
+
 from __future__ import annotations
 
 import json
@@ -298,11 +299,9 @@ def list_mcp_servers(event: dict, context: dict) -> dict[str, Any]:
 def create(event: dict, context: dict) -> Any:
     """Create a new mcp server in DynamoDB."""
     user_id, _, _ = get_user_context(event)
-    body = json.loads(event["body"], parse_float=Decimal)
-    body["owner"] = (
-        user_id if body.get("owner", None) != "lisa:public" else body["owner"]
-    )  # Set the owner of the mcp server
-    mcp_server_model = McpServerModel(**body)
+    mcp_server_model = McpServerModel.model_validate_json(event["body"])
+    if not mcp_server_model.owner or mcp_server_model.owner != "lisa:public":
+        mcp_server_model.owner = user_id
 
     # Insert the new mcp server item into the DynamoDB table
     table.put_item(Item=mcp_server_model.model_dump(exclude_none=True))
@@ -314,9 +313,9 @@ def update(event: dict, context: dict) -> Any:
     """Update an existing mcp server in DynamoDB."""
     user_id, is_admin_user, groups = get_user_context(event)
     mcp_server_id = get_mcp_server_id(event)
-    body = json.loads(event["body"], parse_float=Decimal)
-    body["owner"] = user_id if body.get("owner", None) != "lisa:public" else body["owner"]
-    mcp_server_model = McpServerModel(**body)
+    mcp_server_model = McpServerModel.model_validate_json(event["body"])
+    if not mcp_server_model.owner or mcp_server_model.owner != "lisa:public":
+        mcp_server_model.owner = user_id
 
     if mcp_server_id != mcp_server_model.id:
         raise BadRequestException(f"URL id {mcp_server_id} doesn't match body id {mcp_server_model.id}")
@@ -373,14 +372,14 @@ def get_mcp_server_id(event: dict) -> str:
 def create_hosted_mcp_server(event: dict, context: dict) -> Any:
     """Trigger the state machine to create a LISA Hosted MCP server."""
     user_id, is_admin_user, groups = get_user_context(event)
-    body = json.loads(event["body"], parse_float=Decimal)
-    body["owner"] = user_id if body.get("owner", None) != "lisa:public" else body["owner"]
-    body["id"] = str(uuid.uuid4())
+    hosted_server_model = HostedMcpServerModel.model_validate_json(event["body"])
+    if not hosted_server_model.owner or hosted_server_model.owner != "lisa:public":
+        hosted_server_model.owner = user_id
+    # Always generate a new id for creation
+    hosted_server_model.id = str(uuid.uuid4())
 
     # Check if the user is authorized to create Hosted MCP server
     if is_admin_user:
-        # Validate and parse the hosted server configuration
-        hosted_server_model = HostedMcpServerModel(**body)
 
         # Check if normalized name is unique
         normalized_name = _normalize_server_name(hosted_server_model.name)
@@ -403,7 +402,7 @@ def create_hosted_mcp_server(event: dict, context: dict) -> Any:
         for item in items:
             existing_name = item.get("name", "")
             existing_normalized = _normalize_server_name(existing_name)
-            if existing_normalized == normalized_name and item.get("id") != body["id"]:
+            if existing_normalized == normalized_name and item.get("id") != hosted_server_model.id:
                 raise ConflictException(
                     f"Server name '{hosted_server_model.name}' conflicts with existing server '{existing_name}'. "
                     f"Normalized names must be unique (alphanumeric characters only)."
@@ -524,6 +523,9 @@ def update_hosted_mcp_server(event: dict, context: dict) -> Any:
     user_id, is_admin_user, groups = get_user_context(event)
     mcp_server_id = get_mcp_server_id(event)
 
+    # Parse and validate update request body via Pydantic
+    update_request = UpdateHostedMcpServerRequest.model_validate_json(event["body"])
+
     # Check if server exists
     response = table.query(KeyConditionExpression=Key("id").eq(mcp_server_id), Limit=1, ScanIndexForward=False)
     item = get_item(response)
@@ -539,10 +541,6 @@ def update_hosted_mcp_server(event: dict, context: dict) -> Any:
             f"Server cannot be updated when it is not in the '{HostedMcpServerStatus.IN_SERVICE}' or "
             f"'{HostedMcpServerStatus.STOPPED}' states"
         )
-
-    # Parse and validate update request
-    body = json.loads(event["body"], parse_float=Decimal)
-    update_request = UpdateHostedMcpServerRequest(**body)
 
     # Validate enable/disable state transitions
     if update_request.enabled is not None:

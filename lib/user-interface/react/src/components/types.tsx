@@ -137,6 +137,7 @@ export type LisaChatSession = {
     userId: string;
     startTime: string;
     lastUpdated?: string;  // Optional for backward compatibility
+    totalTokensUsed?: number;
     history: LisaChatMessage[];
     name?: string;
     firstHumanMessage?: MessageContent;

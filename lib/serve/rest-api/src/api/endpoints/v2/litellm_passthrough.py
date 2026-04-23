@@ -529,6 +529,23 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
             model_name = model_info.get("litellm_params", {}).get("model")
             logger.debug(f"model_id: {model_id}, model_name: {model_name}")
 
+    # For hosted_vllm models, ensure add_generation_prompt is passed through to vLLM.
+    # vLLM defaults this to True on its /v1/chat/completions endpoint, but LiteLLM's
+    # drop_params setting strips it before forwarding. Models with thinking/reasoning
+    # chat templates (e.g., Nemotron-3-Nano) require this flag so the template injects
+    # the opening <think> tag at the start of the assistant turn.
+    # We set add_generation_prompt as a top-level param and use allowed_openai_params
+    # to prevent LiteLLM's drop_params from stripping it.
+    if model_name and model_name.startswith("hosted_vllm/") and is_chat_route(api_path):
+        if "add_generation_prompt" not in params:
+            params["add_generation_prompt"] = True
+        # Tell LiteLLM to allow this vLLM-specific param through drop_params
+        raw_allowed = params.get("allowed_openai_params", [])
+        allowed = [v for v in raw_allowed if isinstance(v, str)] if isinstance(raw_allowed, list) else []
+        if "add_generation_prompt" not in allowed:
+            allowed.append("add_generation_prompt")
+        params["allowed_openai_params"] = allowed
+
     # Apply guardrails BEFORE sending to LiteLLM for chat/completions requests
     # This adds guardrail configuration to the request so LiteLLM enforces them
     is_chat_completion = is_chat_route(api_path)

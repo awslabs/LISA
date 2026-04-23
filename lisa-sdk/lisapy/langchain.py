@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Langchain adapter."""
+
 from collections.abc import Iterator, Mapping
 from typing import Any, cast
 

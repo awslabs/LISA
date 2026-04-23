@@ -13,16 +13,16 @@
 #   limitations under the License.
 
 """Lambda functions for managing MCP Tools in AWS S3."""
+
 import json
 import logging
 import os
-from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
 import boto3
 import botocore.exceptions
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from utilities.auth import is_admin
 from utilities.common_functions import api_wrapper, retry_config
 from utilities.exceptions import (
@@ -65,6 +65,18 @@ class MCPToolModel(BaseModel):
         if not self.id.endswith(".py"):
             return f"{self.id}.py"
         return self.id
+
+
+class MCPToolUpdateModel(BaseModel):
+    """A Pydantic model for updating an MCP Tool (id comes from path parameters)."""
+
+    contents: str
+
+
+class ValidateSyntaxRequest(BaseModel):
+    """Request model for Python syntax validation."""
+
+    code: str
 
 
 def _get_tool_from_s3(tool_id: str) -> MCPToolModel:
@@ -153,14 +165,7 @@ def create(event: dict, context: dict) -> Any:
         raise ForbiddenException("Only admin users can access tools.")
 
     try:
-        body = json.loads(event["body"], parse_float=Decimal)
-
-        # Ensure the required fields are present
-        if "id" not in body or "contents" not in body:
-            raise BadRequestException("Missing required fields: 'id' and 'contents' are required.")
-
-        # Create the tool model
-        tool_model = MCPToolModel(id=body["id"], contents=body["contents"])
+        tool_model = MCPToolModel.model_validate_json(event["body"])
 
         # Upload to S3
         s3_client.put_object(
@@ -171,12 +176,11 @@ def create(event: dict, context: dict) -> Any:
         )
 
         return tool_model.model_dump()
+    except ValidationError as e:
+        raise BadRequestException(f"Missing required fields: {e}") from e
     except botocore.exceptions.ClientError as e:
         logger.error("Error creating tool in S3: %s", e, exc_info=True)
         raise InternalServerErrorException(f"Failed to create tool: {e}") from e
-    except json.JSONDecodeError as e:
-        logger.error("Invalid JSON in request body: %s", e, exc_info=True)
-        raise BadRequestException(f"Invalid request body: {e}") from e
     except (NotFoundException, ForbiddenException, BadRequestException, InternalServerErrorException):
         raise
     except Exception as e:
@@ -195,17 +199,13 @@ def update(event: dict, context: dict) -> Any:
         if not tool_id:
             raise BadRequestException("Missing toolId parameter.")
 
-        body = json.loads(event["body"], parse_float=Decimal)
-
-        # Ensure the contents field is present
-        if "contents" not in body:
-            raise BadRequestException("Missing required field: 'contents' is required.")
+        update_model = MCPToolUpdateModel.model_validate_json(event["body"])
 
         # Check if the tool exists (will raise NotFoundException if not found)
         _get_tool_from_s3(tool_id)
 
-        # Create updated tool model
-        tool_model = MCPToolModel(id=tool_id, contents=body["contents"])
+        # Build the full tool model using the path parameter id
+        tool_model = MCPToolModel(id=tool_id, contents=update_model.contents)
 
         # Update in S3
         s3_client.put_object(
@@ -216,14 +216,13 @@ def update(event: dict, context: dict) -> Any:
         )
 
         return tool_model.model_dump()
+    except ValidationError as e:
+        raise BadRequestException("Missing required field: 'contents'") from e
     except (NotFoundException, ForbiddenException, BadRequestException, InternalServerErrorException):
         raise
     except botocore.exceptions.ClientError as e:
         logger.error("Error updating tool in S3: %s", e, exc_info=True)
         raise InternalServerErrorException(f"Failed to update tool: {e}") from e
-    except json.JSONDecodeError as e:
-        logger.error("Invalid JSON in request body: %s", e, exc_info=True)
-        raise BadRequestException(f"Invalid request body: {e}") from e
     except Exception as e:
         logger.error("Unexpected error updating tool: %s", e, exc_info=True)
         raise InternalServerErrorException(f"Failed to update tool: {e}") from e
@@ -268,21 +267,13 @@ def validate_syntax(event: dict, context: dict) -> dict[str, Any]:
         raise ForbiddenException("Only admin users can validate code syntax.")
 
     try:
-        body = json.loads(event["body"], parse_float=Decimal)
-
-        # Ensure the required field is present
-        if "code" not in body:
-            raise BadRequestException("Missing required field: 'code' is required.")
-
-        code = body["code"]
-        if not isinstance(code, str):
-            raise BadRequestException("Code must be a string.")
+        request = ValidateSyntaxRequest.model_validate_json(event["body"])
 
         logger.info("Validating Python code syntax")
 
         # Initialize the validator and validate the code
         validator = PythonSyntaxValidator()
-        result = validator.validate_code(code)
+        result = validator.validate_code(request.code)
 
         # Convert the dataclass to a dictionary for JSON serialization
         response = {
@@ -296,11 +287,10 @@ def validate_syntax(event: dict, context: dict) -> dict[str, Any]:
 
         return response
 
+    except ValidationError as e:
+        raise BadRequestException(f"Invalid request body: {e}") from e
     except (NotFoundException, ForbiddenException, BadRequestException, InternalServerErrorException):
         raise
-    except json.JSONDecodeError as e:
-        logger.error("Invalid JSON in request body: %s", e, exc_info=True)
-        raise BadRequestException(f"Invalid request body: {e}") from e
     except Exception as e:
         logger.error("Unexpected error validating syntax: %s", e, exc_info=True)
         raise InternalServerErrorException(f"Failed to validate syntax: {e}") from e

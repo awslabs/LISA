@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Inference handler."""
+
 from typing import Any
 
 import torch

@@ -252,6 +252,7 @@ class SessionSummary(BaseModel):
     lastUpdated: str | None = None
     isEncrypted: bool = False
     projectId: str | None = None
+    totalTokensUsed: int | None = None
 
 
 class PutSessionRequest(BaseModel):

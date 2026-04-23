@@ -55,7 +55,7 @@ export class RestApiGateway extends Construct {
             endpointTypes: [EndpointType.REGIONAL],
             deployOptions,
             defaultCorsPreflightOptions: {
-                allowOrigins: Cors.ALL_ORIGINS,
+                allowOrigins: config.corsAllowedOrigins,
                 allowHeaders: [...Cors.DEFAULT_HEADERS],
             },
             // Support binary media types used for documentation images and fonts

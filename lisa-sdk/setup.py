@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Setup LISA SDK."""
+
 from setuptools import setup
 
 if __name__ == "__main__":

@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Request processing middleware."""
+
 import time
 from collections.abc import Callable
 from typing import Any

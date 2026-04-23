@@ -95,7 +95,7 @@ export const useModelComparison = (models: IModel[], chatConfig: IChatConfigurat
         };
 
         return new ChatOpenAI(modelConfig);
-    }, [models, auth, chatConfig]);
+    }, [models, auth.user?.id_token, chatConfig]);
 
     const generateModelResponse = async (
         modelId: string,

@@ -54,7 +54,7 @@ class McpServerModel(BaseModel):
     created: str | None = Field(default_factory=iso_string)
 
     # Owner of the MCP user
-    owner: str
+    owner: str | None = Field(default=None)
 
     # URL of the MCP server
     url: str
@@ -139,7 +139,7 @@ class HostedMcpServerModel(BaseModel):
     created: str | None = Field(default_factory=iso_string)
 
     # Owner of the MCP server
-    owner: str
+    owner: str | None = Field(default=None)
 
     # Name of the MCP server
     name: str

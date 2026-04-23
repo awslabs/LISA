@@ -80,7 +80,7 @@ export class LisaApiBaseConstruct extends Construct {
                 {
                     allowedMethods: [HttpMethods.GET, HttpMethods.POST],
                     allowedHeaders: ['*'],
-                    allowedOrigins: ['*'],
+                    allowedOrigins: config.corsAllowedOrigins,
                     exposedHeaders: ['Access-Control-Allow-Origin'],
                 },
             ],
@@ -191,7 +191,7 @@ export class LisaApiBaseConstruct extends Construct {
             deploy: true,
             deployOptions,
             defaultCorsPreflightOptions: {
-                allowOrigins: Cors.ALL_ORIGINS,
+                allowOrigins: config.corsAllowedOrigins,
                 allowHeaders: [...Cors.DEFAULT_HEADERS],
             },
             // Support binary media types used for documentation images and fonts

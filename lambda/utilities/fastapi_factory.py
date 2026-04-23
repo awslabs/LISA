@@ -14,6 +14,8 @@
 
 """Factory for creating FastAPI applications with standard LISA configuration."""
 
+import os
+
 from fastapi import FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -71,9 +73,12 @@ def create_fastapi_app() -> FastAPI:
     # Middleware execution order: InputValidation -> AWSAPIGateway -> RequestLogging -> SecurityHeaders -> CORS
 
     # CORS middleware (executed last, added first)
+    _cors_origins_env = os.environ.get("CORS_ORIGINS", "*")
+    _cors_origins = [origin.strip() for origin in _cors_origins_env.split(",") if origin.strip()]
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=_cors_origins,
         allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],

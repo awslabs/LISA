@@ -96,7 +96,7 @@ export class McpServerApi extends Construct {
                 {
                     allowedMethods: [HttpMethods.GET, HttpMethods.POST],
                     allowedHeaders: ['*'],
-                    allowedOrigins: ['*'],
+                    allowedOrigins: config.corsAllowedOrigins,
                     exposedHeaders: ['Access-Control-Allow-Origin'],
                 },
             ],
@@ -132,7 +132,7 @@ export class McpServerApi extends Construct {
         // This ensures OPTIONS method is available even if the resource already existed
         // addCorsPreflight is idempotent - it won't create duplicate OPTIONS methods
         mcpResource.addCorsPreflight({
-            allowOrigins: Cors.ALL_ORIGINS,
+            allowOrigins: config.corsAllowedOrigins,
             allowHeaders: mcpBrowserCorsAllowHeaders,
         });
         const mcpResourceId = mcpResource.resourceId;

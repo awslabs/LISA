@@ -271,6 +271,7 @@ def test_read_success(s3_setup, lambda_context):
 
     # Create the event
     event = {
+        "httpMethod": "GET",
         "requestContext": {"authorizer": {"username": "test-admin"}},
         "pathParameters": {"toolId": SAMPLE_TOOL_ID},
     }
@@ -294,6 +295,7 @@ def test_read_not_admin(s3_setup, lambda_context):
     """Test unauthorized retrieval of tool."""
     # Create the event
     event = {
+        "httpMethod": "GET",
         "requestContext": {"authorizer": {"username": "regular-user"}},
         "pathParameters": {"toolId": SAMPLE_TOOL_ID},
     }
@@ -318,6 +320,7 @@ def test_read_not_found(s3_setup, lambda_context):
     """Test reading a non-existent tool."""
     # Create the event for a non-existent tool
     event = {
+        "httpMethod": "GET",
         "requestContext": {"authorizer": {"username": "test-admin"}},
         "pathParameters": {"toolId": "non_existent_tool.py"},
     }
@@ -342,6 +345,7 @@ def test_read_missing_tool_id(s3_setup, lambda_context):
     """Test reading without a toolId parameter."""
     # Create the event with missing pathParameters
     event = {
+        "httpMethod": "GET",
         "requestContext": {"authorizer": {"username": "test-admin"}},
         "pathParameters": {},
     }
@@ -376,7 +380,7 @@ def test_list_success(s3_setup, lambda_context):
     )
 
     # Create the event
-    event = {"requestContext": {"authorizer": {"username": "test-admin"}}}
+    event = {"httpMethod": "GET", "requestContext": {"authorizer": {"username": "test-admin"}}}
 
     # Import and test the function
     from mcp_workbench.lambda_functions import list as list_tools
@@ -423,7 +427,7 @@ def test_list_not_admin(s3_setup, lambda_context):
 def test_list_empty_bucket(s3_setup, lambda_context):
     """Test listing tools in an empty bucket."""
     # Create the event (bucket is already empty from s3_setup)
-    event = {"requestContext": {"authorizer": {"username": "test-admin"}}}
+    event = {"httpMethod": "GET", "requestContext": {"authorizer": {"username": "test-admin"}}}
 
     # Import and test the function
     from mcp_workbench.lambda_functions import list as list_tools
@@ -444,6 +448,7 @@ def test_create_success(s3_setup, lambda_context):
     """Test successful creation of a tool."""
     # Create the event
     event = {
+        "httpMethod": "POST",
         "requestContext": {"authorizer": {"username": "test-admin"}},
         "body": json.dumps({"id": "new_tool.py", "contents": SAMPLE_TOOL_CONTENT}),
     }
@@ -472,6 +477,7 @@ def test_create_without_py_extension(s3_setup, lambda_context):
     """Test creating a tool without .py extension."""
     # Create the event
     event = {
+        "httpMethod": "POST",
         "requestContext": {"authorizer": {"username": "test-admin"}},
         "body": json.dumps({"id": "new_tool", "contents": SAMPLE_TOOL_CONTENT}),
     }
@@ -523,6 +529,7 @@ def test_create_missing_fields(s3_setup, lambda_context):
     """Test creating a tool with missing required fields."""
     # Create the event with missing contents
     event = {
+        "httpMethod": "POST",
         "requestContext": {"authorizer": {"username": "test-admin"}},
         "body": json.dumps({"id": "incomplete_tool.py"}),
     }
@@ -561,6 +568,7 @@ def updated_function():
 
     # Create the event
     event = {
+        "httpMethod": "PUT",
         "requestContext": {"authorizer": {"username": "test-admin"}},
         "pathParameters": {"toolId": SAMPLE_TOOL_ID},
         "body": json.dumps({"contents": updated_content}),
@@ -615,6 +623,7 @@ def test_update_not_found(s3_setup, lambda_context):
     """Test updating a non-existent tool."""
     # Create the event for a non-existent tool
     event = {
+        "httpMethod": "PUT",
         "requestContext": {"authorizer": {"username": "test-admin"}},
         "pathParameters": {"toolId": "non_existent_tool.py"},
         "body": json.dumps({"contents": "Updated content"}),
@@ -640,6 +649,7 @@ def test_update_missing_tool_id(s3_setup, lambda_context):
     """Test updating without a toolId parameter."""
     # Create the event with missing pathParameters
     event = {
+        "httpMethod": "PUT",
         "requestContext": {"authorizer": {"username": "test-admin"}},
         "pathParameters": {},
         "body": json.dumps({"contents": "Updated content"}),
@@ -673,6 +683,7 @@ def test_update_missing_contents(s3_setup, lambda_context):
 
     # Create the event with missing contents
     event = {
+        "httpMethod": "PUT",
         "requestContext": {"authorizer": {"username": "test-admin"}},
         "pathParameters": {"toolId": SAMPLE_TOOL_ID},
         "body": json.dumps({}),
@@ -707,6 +718,7 @@ def test_delete_success(s3_setup, lambda_context):
 
     # Create the event
     event = {
+        "httpMethod": "DELETE",
         "requestContext": {"authorizer": {"username": "test-admin"}},
         "pathParameters": {"toolId": SAMPLE_TOOL_ID},
     }
@@ -762,6 +774,7 @@ def test_delete_not_found(s3_setup, lambda_context):
     """Test deleting a non-existent tool."""
     # Create the event for a non-existent tool
     event = {
+        "httpMethod": "DELETE",
         "requestContext": {"authorizer": {"username": "test-admin"}},
         "pathParameters": {"toolId": "non_existent_tool.py"},
     }
@@ -786,6 +799,7 @@ def test_delete_missing_tool_id(s3_setup, lambda_context):
     """Test deleting without a toolId parameter."""
     # Create the event with missing pathParameters
     event = {
+        "httpMethod": "DELETE",
         "requestContext": {"authorizer": {"username": "test-admin"}},
         "pathParameters": {},
     }

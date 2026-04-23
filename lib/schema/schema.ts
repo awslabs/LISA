@@ -57,6 +57,11 @@ export const ConfigSchema = RawConfigSchema.transform((rawConfig) => {
         deploymentPrefix: deploymentPrefix,
         tags: tags,
         awsRegionArn,
+        // Parse comma-separated CORS origins into an array for CDK constructs
+        corsAllowedOrigins: rawConfig.corsAllowedOrigins
+            .split(',')
+            .map((o: string) => o.trim())
+            .filter(Boolean),
     };
 });
 
@@ -98,6 +103,10 @@ export const PartialConfigSchema = RawConfigObject.partial().transform((rawConfi
         ...rawConfig,
         deploymentPrefix: deploymentPrefix,
         tags: tags,
+        corsAllowedOrigins: (rawConfig.corsAllowedOrigins ?? '*')
+            .split(',')
+            .map((o: string) => o.trim())
+            .filter(Boolean),
     };
 });
 

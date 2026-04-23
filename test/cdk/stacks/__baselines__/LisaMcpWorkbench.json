@@ -892,7 +892,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Lists available MCP Workbench tools",
         "Environment": {
@@ -974,7 +974,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Create MCP Workbench tools",
         "Environment": {
@@ -1056,7 +1056,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Get MCP Workbench tool",
         "Environment": {
@@ -1138,7 +1138,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Update MCP Workbench tool",
         "Environment": {
@@ -1220,7 +1220,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Delete MCP Workbench tool",
         "Environment": {
@@ -1302,7 +1302,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Validate Python code syntax",
         "Environment": {
@@ -1836,7 +1836,15 @@
         "TargetGroupAttributes": [
           {
             "Key": "stickiness.enabled",
-            "Value": "false"
+            "Value": "true"
+          },
+          {
+            "Key": "stickiness.type",
+            "Value": "lb_cookie"
+          },
+          {
+            "Key": "stickiness.lb_cookie.duration_seconds",
+            "Value": "86400"
           }
         ],
         "TargetType": "instance",
@@ -2124,7 +2132,7 @@
               "Timeout": 5
             },
             "Image": {
-              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:17563b1407db249d42ae7535fb51f911748a7435a2cb6c257d5a84276fdc398b"
+              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:36cdd7c336fe419f97db0a8cda7c05084783d5b27f7e5b4964aabdc48522a273"
             },
             "LogConfiguration": {
               "LogDriver": "awslogs",
@@ -2395,50 +2403,24 @@
                   "Resource": "arn:aws:logs:*:*:*"
                 },
                 {
-                  "Action": [
-                    "ecs:UpdateService",
-                    "ecs:DescribeServices",
-                    "ecs:DescribeClusters"
-                  ],
+                  "Action": "secretsmanager:GetSecretValue",
                   "Effect": "Allow",
-                  "Resource": [
-                    {
-                      "Fn::Join": [
-                        "",
-                        [
-                          "arn:aws:ecs:us-iso-east-1:*:cluster/",
-                          {
-                            "Ref": "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevCl64382BD1"
-                          },
-                          "*"
-                        ]
+                  "Resource": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "arn:",
+                        {
+                          "Ref": "AWS::Partition"
+                        },
+                        ":secretsmanager:us-iso-east-1:012345678901:secret:",
+                        {
+                          "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+                        },
+                        "-??????"
                       ]
-                    },
-                    {
-                      "Fn::Join": [
-                        "",
-                        [
-                          "arn:aws:ecs:us-iso-east-1:*:service/",
-                          {
-                            "Ref": "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevCl64382BD1"
-                          },
-                          "*/",
-                          {
-                            "Fn::GetAtt": [
-                              "McpWorkbenchMcpWorkbenchDedicatedEcstestlisaMCPWORKBENCHEc2SvcService33F2EBE7",
-                              "Name"
-                            ]
-                          },
-                          "*"
-                        ]
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "Action": "ssm:GetParameter",
-                  "Effect": "Allow",
-                  "Resource": "arn:aws:ssm:us-iso-east-1:*:parameter/dev/test-lisa/lisa/deploymentName"
+                    ]
+                  }
                 }
               ],
               "Version": "2012-10-17"
@@ -2448,45 +2430,42 @@
         ]
       }
     },
-    "McpWorkbenchS3EventHandlerLambdaSecurityGroup4B83DBDB": {
-      "Type": "AWS::EC2::SecurityGroup",
-      "Properties": {
-        "GroupDescription": "Automatic security group for Lambda Function LisaMcpWorkbenchS3EventHandlerLambdaDBF04951",
-        "SecurityGroupEgress": [
-          {
-            "CidrIp": "0.0.0.0/0",
-            "Description": "Allow all outbound traffic by default",
-            "IpProtocol": "-1"
-          }
-        ],
-        "VpcId": {
-          "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPC8B8C4E4BB8544CDA"
-        }
-      }
-    },
     "McpWorkbenchS3EventHandlerLambdaB4D5E3E4": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Environment": {
           "Variables": {
-            "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa",
-            "API_NAME": "MCPWorkbench",
-            "ECS_CLUSTER_NAME": {
-              "Ref": "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevCl64382BD1"
-            },
-            "MCPWORKBENCH_SERVICE_NAME": {
-              "Fn::GetAtt": [
-                "McpWorkbenchMcpWorkbenchDedicatedEcstestlisaMCPWORKBENCHEc2SvcService33F2EBE7",
-                "Name"
+            "MCP_WORKBENCH_ENDPOINT": {
+              "Fn::Join": [
+                "",
+                [
+                  "https://",
+                  {
+                    "Fn::GetAtt": [
+                      "McpWorkbenchMcpWorkbenchDedicatedEcstestlisadevMcpWorkbenchDedicatedALBF0559DE0",
+                      "DNSName"
+                    ]
+                  }
+                ]
               ]
+            },
+            "WORKBENCH_RESCAN_DELAY_SECONDS": "5",
+            "MCP_WORKBENCH_RESCAN_PATH": "v2/mcp/rescan",
+            "MANAGEMENT_KEY_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter"
             }
           }
         },
         "Handler": "mcp_workbench.s3_event_handler.handler",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
         "Role": {
           "Fn::GetAtt": [
             "McpWorkbenchS3EventHandlerRole545174C5",
@@ -2498,10 +2477,7 @@
         "VpcConfig": {
           "SecurityGroupIds": [
             {
-              "Fn::GetAtt": [
-                "McpWorkbenchS3EventHandlerLambdaSecurityGroup4B83DBDB",
-                "GroupId"
-              ]
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
             }
           ],
           "SubnetIds": [

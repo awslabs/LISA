@@ -1,3 +1,93 @@
+# v6.6.0
+
+## Key Features
+
+### VLLM Environment Support for Nemotron Models
+This release adds additional VLLM environment variables to support running Nemotron models within the LISA platform.
+
+**Environment Support:**
+- **VLLM**: Added new variables to configure VLLM environments for Nemotron model deployments.
+
+### Python Dependency Updates & Bug Fixes
+This release includes a comprehensive update to LISA's Python dependencies, bumping numerous packages to their latest versions. It also includes a few targeted bug fixes caught during the update process.
+
+**Dependency Updates:**
+- **fastapi**: 0.136.1
+- **pydantic**: 2.12.5 
+- **boto3**: 1.42.94
+- **transformers**: 5.6.1
+- **litellm[proxy]**: 1.83.12
+- **uvicorn**: 0.33.0
+- **pydantic-core**: 2.46.3
+- **langchain-openai**: 1.2.0
+- **langsmith**: Latest
+
+**Bug Fixes:**
+- Addressed several minor bugs uncovered during the dependency update process.
+
+### Token Usage and Context Window Visualization
+This feature introduces new capabilities to the LISA platform:
+
+- Ability to view cumulative token usage for each user session
+- Context window field added to model cards in the model management and model library pages
+- Ability to override the inferred context window using environment variables ( or ) for LISA-hosted models
+
+These improvements provide better visibility into model usage and performance for both users and administrators.
+
+### Security and Dependency Updates
+This release includes a number of security-focused updates and dependency bumps across the project:
+
+**Security Updates:**
+- **cryptography**: 46.0.5 → 46.0.7
+- **PyJWT**: 2.12.0 → 2.12.1
+
+**Dependency Updates:**
+- **boto3**: 1.40.76 → 1.42.93 (pinned), ≥1.42.59 (ranged) 
+- **requests**: 2.32.5 → 2.33.1
+- **psycopg2-binary**: 2.9.11 → 2.9.12
+- **cachetools**: 7.0.1 → 7.0.2
+
+These updates help keep the LISA platform secure and up-to-date with the latest library versions.
+
+### RAG Evaluation Module in LISA SDK
+A new RAG (Retrieval-Augmented Generation) evaluation module has been added to the LISA SDK. This allows users to measure retrieval quality across different backends, including Bedrock Knowledge Bases and LISA's own RAG backends (OpenSearch, PGVector). 
+
+The module takes a golden dataset of queries and expected documents, then produces Precision@k, Recall@k, and NDCG@k scores to help tune chunking strategies and compare the performance of different retrieval backends.
+
+### Bedrock Agent Integration
+LISA now includes native integration with Bedrock Agents, allowing administrators to add Bedrock Agents to a catalog for users to leverage within the platform. Users can opt-in to using a Bedrock Agent from within the agent management UI.
+
+### MCP Workbench Tool Lifecycle Improvements
+Several improvements have been made to the MCP Workbench tool lifecycle, including:
+
+- Streamlined tool registration and deregistration process (S3 → in-VPC HTTP rescan, FastMCP  / registry updates, shared server id)
+- Keeping the chat UI in sync with workbench tool files using the  hook
+- Merging OpenAI tool definitions, adding  routing, approval flow, and footer banner counts
+
+These changes make it easier to manage the lifecycle of MCP Workbench tools within the LISA platform.
+
+### Cypress CI Workflow Fixes
+The Cypress E2E CI workflows have been updated to correctly report the branch being tested in Slack notifications. Additionally, the nightly workflow now includes manual testing capabilities.
+
+## Key Changes
+- **Security**: Addressed several security vulnerabilities by updating dependencies like cryptography and PyJWT.
+- **Dependency Updates**: Bumped numerous Python and npm dependencies to their latest versions across the project.
+- **Bug Fixes**: Resolved a few minor bugs uncovered during the dependency update process.
+- **Performance**: Introduced token usage and context window visualization features to provide better insights into model performance.
+- **Integrations**: Added native support for Bedrock Agents, allowing users to leverage these external models within LISA.
+- **Tooling**: Improved the lifecycle management of MCP Workbench tools, streamlining registration, deregistration, and UI synchronization.
+- **CI/CD**: Fixed issues with branch reporting in Cypress E2E workflows and added manual testing capabilities to the nightly workflow.
+
+## Acknowledgements
+* @121983012+jmharold
+* @32586639+gingerknight
+* @bedanley
+* @drduhe
+* @estohlmann
+* @evmann
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v6.5.0..v6.6.0
+
 # v6.5.0
 
 ## Key Features

@@ -5,14 +5,14 @@
 numpy>=2.4.4
 
 # AWS SDK - Version constrained by litellm[proxy]==1.81.3 in rest-api
-# Standardized to boto3==1.42.93 for compatibility across all components
-boto3==1.42.93
+# Standardized to boto3==1.42.94 for compatibility across all components
+boto3==1.42.94
 
 aiohttp==3.13.5
 click==8.3.3
 cryptography==46.0.7
 fastapi_utils==0.8.0
-fastapi==0.136.0
+fastapi==0.136.1
 gunicorn==25.3.0
 langchain-community==0.4.1
 langchain-core==1.3.0
@@ -23,7 +23,7 @@ opensearch-py==3.1.0
 pgvector==0.4.2
 prisma==0.15.0
 psycopg2-binary==2.9.12
-pydantic==2.13.3
+pydantic==2.12.5
 PyJWT==2.12.1
 pynacl==1.6.2
 pypdf==6.10.2
@@ -33,4 +33,4 @@ requests-aws4auth==1.3.1
 requests==2.33.1
 # ASGI Server - Version constrained by litellm[proxy]==1.81.3 in rest-api
 # Standardized to 0.38.0 for compatibility across all components
-uvicorn==0.45.0
+uvicorn==0.33.0

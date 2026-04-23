@@ -448,11 +448,10 @@ def handle_finish_update(event: dict[str, Any], context: Any) -> dict[str, Any]:
     model_name = ddb_item["model_config"]["modelName"]
     inference_container = ddb_item["model_config"].get("inferenceContainer", "")
 
-    if inference_container:
-        if inference_container.lower() == "vllm":
-            # vLLM serves models with full HF repo name (e.g., "openai/gpt-oss-20b")
-            # hosted_vllm/ prefix ensures LiteLLM passes through the complete name
-            provider_prefix = "hosted_vllm"
+    if inference_container and inference_container.lower() == "vllm":
+        # vLLM serves models with full HF repo name (e.g., "openai/gpt-oss-20b")
+        # hosted_vllm/ prefix ensures LiteLLM passes through the complete name
+        provider_prefix = "hosted_vllm"
     else:
         # TGI and TEI use OpenAI-compatible APIs with model name stripping
         provider_prefix = "openai"

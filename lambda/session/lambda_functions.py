@@ -562,7 +562,7 @@ def put_session(event: dict, context: dict) -> SuccessResponse | dict:
         total_tokens_used = 0
         for msg in request.messages:
             usage = msg.get("usage") or {}
-            total_tokens_used += (usage.get("completionTokens") or 0) + (usage.get("promptTokens") or 0)
+            total_tokens_used += int(usage.get("completionTokens") or 0) + int(usage.get("promptTokens") or 0)
 
         # Encrypt sensitive data if encryption is enabled
         if encryption_enabled:

@@ -42,7 +42,7 @@ jobs:
     steps:
       - name: Get PR details
         id: pr
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             let pr;
@@ -70,7 +70,7 @@ jobs:
             core.setOutput('head_sha', pr.data.head.sha);
 
       - name: Clean up old AI review comments
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             // Get all PR comments
@@ -132,7 +132,7 @@ jobs:
 
       - name: React to trigger comment
         if: github.event_name == 'issue_comment'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             await github.rest.reactions.createForIssueComment({

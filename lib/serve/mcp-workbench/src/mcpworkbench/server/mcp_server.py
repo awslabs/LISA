@@ -177,8 +177,14 @@ class MCPWorkbenchServer:
             )
 
         # Add MCP mount
+        # GET /v2/mcp/ returns 200 so MCP clients (e.g. use-mcp) that probe with GET
+        # for SSE support don't surface a 405 error in the browser console.
+        async def mcp_get_probe(request: Request) -> JSONResponse:
+            return JSONResponse({"status": "ok", "transport": "streamable-http", "stateless": True})
+
         routes = [
             Route("/health", health_check),
+            Route("/v2/mcp", mcp_get_probe, methods=["GET"]),
             Mount("/v2/mcp", mcp_app),
         ]
 

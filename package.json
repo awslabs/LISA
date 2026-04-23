@@ -96,7 +96,7 @@
     "build:copy-deps": "node scripts/copy-deps.mjs",
     "update": "npm run update:npm && npm run update:py",
     "update:npm": "ncu --workspaces",
-    "update:py": "pcu lib/rag/ingestion/ingestion-image/requirements.txt -u && pcu lib/rag/layer/requirements.txt -u && pcu lib/core/layers/fastapi/requirements.txt -u && pcu lib/core/layers/authorizer/requirements.txt -u && pcu lib/core/layers/common/requirements.txt -u && pcu lib/serve/rest-api/src/requirements.txt -u && pcu lib/serve/mcp-workbench/requirements.txt -u && pcu lib/serve/ecs-model/embedding/instructor/src/requirements.txt -u && pcu lambda/requirements.txt -u && pcu lisa-sdk/pyproject.toml -u && pcu pyproject.toml -u"
+    "update:py": "find . \\( -name 'requirements*.txt' -o -name 'pyproject.toml' \\) -not -path '*/node_modules/*' -not -path '*/.venv/*' -not -path '*/cdk.out/*' -not -path '*/build/*' -not -path '*/lisa-sdk/requirements.txt' -exec sh -c 'echo \"Updating: {}\" && pcu {} -u' \\; && cd lisa-sdk && poetry lock"
   },
   "devDependencies": {
     "@aws-cdk/aws-lambda-python-alpha": "^2.250.0-alpha.0",

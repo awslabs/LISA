@@ -1044,6 +1044,7 @@ export const RawConfigObject = z.object({
     convertInlinePoliciesToManaged: z.boolean().optional().default(false).describe('Convert inline policies to managed policies'),
     iamRdsAuth: z.boolean().optional().default(false)
         .describe('Enable IAM authentication for RDS. When true (default), IAM authentication is used and the bootstrap password is deleted after setup. When false, password-based authentication is used. WARNING: Switching from true to false after deployment is not supported - the master password is permanently deleted when IAM auth is enabled. This is a one-way migration.'),
+    corsAllowedOrigins: z.string().default('*').describe('Cross origin request security policy')
 });
 
 export const RawConfigSchema = RawConfigObject

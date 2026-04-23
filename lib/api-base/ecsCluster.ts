@@ -392,9 +392,13 @@ export class ECSCluster extends Construct {
                 ? ecsConfig.loadBalancerConfig.domainName
                 : loadBalancer.loadBalancerDnsName;
         this.endpointUrl = `${protocol}://${domain}`;
-        baseEnvironment.CORS_ORIGINS = [loadBalancer.loadBalancerDnsName, ecsConfig.loadBalancerConfig.domainName].filter(Boolean)
-            .map((domain) => `${protocol}://${domain}`)
-            .concat('*')
+        baseEnvironment.CORS_ORIGINS = [
+            ...config.corsAllowedOrigins,
+            ...[loadBalancer.loadBalancerDnsName, ecsConfig.loadBalancerConfig.domainName]
+                .filter(Boolean)
+                .map((domain) => `${protocol}://${domain}`),
+        ]
+            .filter((v, i, a) => a.indexOf(v) === i) // deduplicate
             .join(',');
 
         // Store configuration for later use by addTask method

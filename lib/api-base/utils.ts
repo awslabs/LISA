@@ -85,13 +85,14 @@ export function registerAPIEndpoint (
     securityGroups: ISecurityGroup[],
     authorizer?: IAuthorizer,
     role?: IRole,
+    corsAllowedOrigins?: string[],
 ): IFunction {
     // Validate the function id
     const functionId = (
         funcDef.id ||
         [cdk.Stack.of(scope).stackName, funcDef.resource, funcDef.name, funcDef.disambiguator].filter(Boolean).join('-')
     ).replace(/[^a-zA-Z0-9-_]/g, '-').slice(0, 63);
-    const functionResource = getOrCreateResource(scope, api.root, funcDef.path.split('/'));
+    const functionResource = getOrCreateResource(scope, api.root, funcDef.path.split('/'), corsAllowedOrigins);
     let handler;
 
     if (funcDef.existingFunction) {
@@ -141,17 +142,17 @@ export function registerAPIEndpoint (
     return handler;
 }
 
-function getOrCreateResource (scope: Construct, parentResource: IResource, path: string[]): IResource {
+function getOrCreateResource (scope: Construct, parentResource: IResource, path: string[], corsAllowedOrigins?: string[]): IResource {
     let resource = parentResource.getResource(path[0]);
     if (!resource) {
         resource = parentResource.addResource(path[0]);
         resource.addCorsPreflight({
-            allowOrigins: Cors.ALL_ORIGINS,
+            allowOrigins: corsAllowedOrigins ?? Cors.ALL_ORIGINS,
             allowHeaders: Cors.DEFAULT_HEADERS,
         });
     }
     if (path.length > 1) {
-        return getOrCreateResource(scope, resource, path.slice(1));
+        return getOrCreateResource(scope, resource, path.slice(1), corsAllowedOrigins);
     }
     return resource;
 }

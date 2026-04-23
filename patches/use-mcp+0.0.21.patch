@@ -1,3 +1,41 @@
+diff --git a/node_modules/use-mcp/dist/index.js b/node_modules/use-mcp/dist/index.js
+index 1234567..abcdefg 100644
+--- a/node_modules/use-mcp/dist/index.js
++++ b/node_modules/use-mcp/dist/index.js
+@@ -5,6 +5,16 @@ import {
+ // src/auth/callback.ts
+ import { auth } from "@modelcontextprotocol/sdk/client/auth.js";
+ async function onMcpAuthorization() {
++  function escapeHtml(str) {
++    if (typeof str !== 'string') return '';
++    return str
++      .replace(/&/g, '&amp;')
++      .replace(/</g, '&lt;')
++      .replace(/>/g, '&gt;')
++      .replace(/"/g, '&quot;')
++      .replace(/'/g, '&#039;');
++  }
++
+   const queryParams = new URLSearchParams(window.location.search);
+   const code = queryParams.get("code");
+   const state = queryParams.get("state");
+@@ -72,12 +82,12 @@ async function onMcpAuthorization() {
+     try {
+       document.body.innerHTML = `
+             <div style="font-family: sans-serif; padding: 20px;">
+-            <h1>Authentication Error</h1>
+-            <p style="color: red; background-color: #ffebeb; border: 1px solid red; padding: 10px; border-radius: 4px;">
+-                ${errorMessage}
++            <h1>Authentication Error</h1>
++            <p style="color: red; background-color: #ffebeb; border: 1px solid red; padding: 10px; border-radius: 4px;">
++                ${escapeHtml(errorMessage)}
+             </p>
+             <p>You can close this window or <a href="#" onclick="window.close(); return false;">click here to close</a>.</p>
+-            <pre style="font-size: 0.8em; color: #555; margin-top: 20px; white-space: pre-wrap;">${err instanceof Error ? err.stack : ""}</pre>
++            <pre style="font-size: 0.8em; color: #555; margin-top: 20px; white-space: pre-wrap;">${escapeHtml(err instanceof Error ? err.stack : "")}</pre>
+             </div>
+         `;
+     } catch (displayError) {
 diff --git a/node_modules/use-mcp/dist/react/index.d.ts b/node_modules/use-mcp/dist/react/index.d.ts
 index 4647992..cd92dd7 100644
 --- a/node_modules/use-mcp/dist/react/index.d.ts

@@ -70,9 +70,12 @@ app.include_router(router)
 
 
 # Enable CORS
+_cors_origins_env = os.environ.get("CORS_ORIGINS", "*")
+_cors_origins = [origin.strip() for origin in _cors_origins_env.split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],

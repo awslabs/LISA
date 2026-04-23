@@ -54,6 +54,7 @@ import { LisaApiTokensStack } from './api-tokens';
 import fs from 'node:fs';
 import { VERSION_PATH } from './util';
 import { AdcLambdaCABundleAspect } from './util/adcCertBundleAspect';
+import { CorsOriginAspect } from './util/corsOriginAspect';
 
 
 export const VERSION: string = fs.readFileSync(VERSION_PATH, 'utf8').trim();
@@ -498,6 +499,12 @@ export class LisaServeApplicationStage extends Stage {
             const adcCABundleAspect = new AdcLambdaCABundleAspect();
             this.stacks.forEach((stack) => Aspects.of(stack).add(adcCABundleAspect));
         }
+
+        // Inject CORS_ALLOWED_ORIGIN env var into all Lambda functions and ECS containers.
+        // Note: FastAPI services also use CORS_ORIGINS (full comma-separated list) for middleware;
+        // CORS_ALLOWED_ORIGIN is used specifically for single-value response headers (e.g., 401 responses).
+        const corsOriginAspect = new CorsOriginAspect(config.corsAllowedOrigins.join(','));
+        this.stacks.forEach((stack) => Aspects.of(stack).add(corsOriginAspect));
 
         // Set resource tags if not isolated region
         if (!config.region.includes('iso')) {

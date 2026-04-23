@@ -69,6 +69,7 @@ export class McpServerDeployer extends Construct {
             'taskRole': props.config.roles?.ECSModelTaskRole,
             'certificateAuthorityBundle': props.config.certificateAuthorityBundle,
             'pypiConfig': props.config.pypiConfig,
+            'corsAllowedOrigins': props.config.corsAllowedOrigins,
             'permissionsBoundaryAspect': props.config.permissionsBoundaryAspect,
             'convertInlinePoliciesToManaged': props.config.convertInlinePoliciesToManaged,
         };

@@ -78,8 +78,8 @@ def chat_stacks_handlers(patch_is_admin_for_chat_stacks):
     for mod in list(sys.modules.keys()):
         if mod == "chat_assistant_stacks" or mod.startswith("chat_assistant_stacks."):
             del sys.modules[mod]
-    with patch("utilities.common_functions.retry_config", retry_config), patch(
-        "utilities.common_functions.api_wrapper", mock_api_wrapper
+    with patch("lisa.utilities.common_functions.retry_config", retry_config), patch(
+        "lisa.utilities.common_functions.api_wrapper", mock_api_wrapper
     ):
         from chat_assistant_stacks.lambda_functions import (
             create,
@@ -108,7 +108,7 @@ def _get_groups_from_event(event: dict) -> list:
 
 
 # Import real admin_only at load time (before test_repository_lambda patches it)
-from utilities.auth import admin_only as _real_admin_only
+from lisa.utilities.auth import admin_only as _real_admin_only
 
 
 @pytest.fixture(autouse=True)
@@ -123,9 +123,9 @@ def patch_is_admin_for_chat_stacks():
     with (
         patch("chat_assistant_stacks.lambda_functions.is_admin", mock_is_admin),
         patch("chat_assistant_stacks.lambda_functions.get_groups", _get_groups_from_event),
-        patch("utilities.auth.is_admin", mock_is_admin),
-        patch("utilities.auth.get_groups", _get_groups_from_event),
-        patch("utilities.auth.admin_only", _real_admin_only),
+        patch("lisa.utilities.auth.is_admin", mock_is_admin),
+        patch("lisa.utilities.auth.get_groups", _get_groups_from_event),
+        patch("lisa.utilities.auth.admin_only", _real_admin_only),
     ):
         yield mock_is_admin
 

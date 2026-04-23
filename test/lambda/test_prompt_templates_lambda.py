@@ -112,12 +112,12 @@ patch.dict(
 ).start()
 
 # Then patch the specific functions
-patch("utilities.auth.get_username", mock_common.get_username).start()
-patch("utilities.auth.get_groups", mock_common.get_groups).start()
-patch("utilities.auth.is_admin", mock_common.is_admin).start()
-patch("utilities.auth.get_user_context", mock_common.get_user_context).start()
-patch("utilities.common_functions.retry_config", retry_config).start()
-patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()  # Patch the API wrapper
+patch("lisa.utilities.auth.get_username", mock_common.get_username).start()
+patch("lisa.utilities.auth.get_groups", mock_common.get_groups).start()
+patch("lisa.utilities.auth.is_admin", mock_common.is_admin).start()
+patch("lisa.utilities.auth.get_user_context", mock_common.get_user_context).start()
+patch("lisa.utilities.common_functions.retry_config", retry_config).start()
+patch("lisa.utilities.common_functions.api_wrapper", mock_api_wrapper).start()  # Patch the API wrapper
 
 # Now import the lambda functions
 from prompt_templates.lambda_functions import _get_prompt_templates, create, delete, get, list_prompt, update

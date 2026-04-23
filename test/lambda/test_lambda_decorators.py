@@ -19,7 +19,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
-from utilities.lambda_decorators import api_wrapper, authorization_wrapper, ctx_context, get_lambda_context
+from lisa.utilities.lambda_decorators import api_wrapper, authorization_wrapper, ctx_context, get_lambda_context
 
 
 class TestApiWrapper:
@@ -108,7 +108,7 @@ class TestApiWrapper:
         body = json.loads(response["body"])
         assert body["function_name"] == "test-func-context"
 
-    @patch("utilities.lambda_decorators.logger")
+    @patch("lisa.utilities.lambda_decorators.logger")
     def test_request_logging(self, mock_logger):
         """Test api_wrapper logs requests."""
 

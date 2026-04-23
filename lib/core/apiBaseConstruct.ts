@@ -24,7 +24,7 @@ import { CfnResource, Duration, RemovalPolicy, Stack, StackProps } from 'aws-cdk
 import { ITable, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
-import { Code, Function, IFunction, LayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { IFunction, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 
 import { createCdkId } from '../core/utils';
 import { Vpc } from '../networking/vpc';
@@ -37,8 +37,7 @@ import {
     ServicePrincipal,
 } from 'aws-cdk-lib/aws-iam';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
-import { LAMBDA_PATH } from '../util';
-import { getPythonRuntime } from '../api-base/utils';
+import { definePythonLambda } from '../util';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { EventBus } from 'aws-cdk-lib/aws-events';
 import { BlockPublicAccess, Bucket, BucketEncryption, HttpMethods, IBucket } from 'aws-cdk-lib/aws-s3';
@@ -249,18 +248,17 @@ export class LisaApiBaseConstruct extends Construct {
         managementKeySecret.grantRead(rotationRole);
         managementKeySecret.grantWrite(rotationRole);
 
-        const rotationLambda = new Function(scope, createCdkId([scope.node.id, 'managementKeyRotationLambda']), {
-            runtime: getPythonRuntime(),
-            handler: 'management_key.handler',
-            code: Code.fromAsset(config.lambdaPath || LAMBDA_PATH),
+        const rotationLambda = definePythonLambda(scope, createCdkId([scope.node.id, 'managementKeyRotationLambda']), {
+            handlerDir: 'management_key',
+            entry: 'handler.handler',
+            config,
             timeout: Duration.minutes(5),
             environment: {
                 EVENT_BUS_NAME: managementEventBus.eventBusName,
             },
             role: rotationRole,
-            securityGroups: securityGroups,
-            vpc: vpc.vpc,
-            vpcSubnets: vpc.subnetSelection
+            securityGroups,
+            vpc,
         });
 
         managementKeySecret.addRotationSchedule('RotationSchedule', {
@@ -297,24 +295,22 @@ export class LisaApiBaseConstruct extends Construct {
             resources: [`arn:${config.partition}:secretsmanager:${config.region}:${config.accountNumber}:secret:*`],
         }));
 
-        // Get common layer for psycopg2
         const commonLayer = LayerVersion.fromLayerVersionArn(
             scope,
             'IamAuthCommonLayer',
             StringParameter.valueForStringParameter(scope, `${config.deploymentPrefix}/layerVersion/common`),
         );
 
-        const iamAuthSetupFn = new Function(scope, 'IamAuthSetupFn', {
+        const iamAuthSetupFn = definePythonLambda(scope, 'IamAuthSetupFn', {
             functionName: createCdkId([config.deploymentName, config.deploymentStage, 'iam_auth_setup']),
-            runtime: getPythonRuntime(),
-            handler: 'utilities.db_setup_iam_auth.handler',
-            code: Code.fromAsset(config.lambdaPath || LAMBDA_PATH),
+            handlerDir: 'db_setup_iam_auth',
+            entry: 'lambda_functions.handler',
+            config,
             timeout: Duration.minutes(2),
             memorySize: 256,
             role: iamAuthSetupRole,
-            vpc: vpc.vpc,
-            vpcSubnets: vpc.subnetSelection,
-            securityGroups: securityGroups,
+            vpc,
+            securityGroups,
             layers: [commonLayer],
         });
 

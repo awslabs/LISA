@@ -24,7 +24,7 @@ class TestSetupEnvironment:
     def test_setup_ssl_cert_file_when_not_set(self):
         """Test setting SSL_CERT_FILE when not already set."""
         # Import here to avoid module-level execution
-        from utilities.create_env_variables import setup_environment
+        from lisa.utilities.create_env_variables import setup_environment
 
         with patch.dict(os.environ, {}, clear=True):
             # Remove SSL_CERT_FILE from environment
@@ -37,7 +37,7 @@ class TestSetupEnvironment:
 
     def test_setup_ssl_cert_file_when_already_set(self):
         """Test that SSL_CERT_FILE is not overridden when already set."""
-        from utilities.create_env_variables import setup_environment
+        from lisa.utilities.create_env_variables import setup_environment
 
         existing_cert_path = "/custom/cert/path.pem"
         with patch.dict(os.environ, {"SSL_CERT_FILE": existing_cert_path}):
@@ -48,7 +48,7 @@ class TestSetupEnvironment:
     @patch("boto3.Session")
     def test_setup_aws_region_when_not_set(self, mock_session_class):
         """Test setting AWS_REGION when not already set."""
-        from utilities.create_env_variables import setup_environment
+        from lisa.utilities.create_env_variables import setup_environment
 
         # Mock boto3 session
         mock_session = Mock()
@@ -67,7 +67,7 @@ class TestSetupEnvironment:
     @patch("boto3.Session")
     def test_setup_aws_region_defaults_to_us_east_1(self, mock_session_class):
         """Test AWS_REGION defaults to us-east-1 when session has no region."""
-        from utilities.create_env_variables import setup_environment
+        from lisa.utilities.create_env_variables import setup_environment
 
         # Mock boto3 session with no region
         mock_session = Mock()
@@ -85,7 +85,7 @@ class TestSetupEnvironment:
 
     def test_setup_aws_region_when_already_set(self):
         """Test that AWS_REGION is not overridden when already set."""
-        from utilities.create_env_variables import setup_environment
+        from lisa.utilities.create_env_variables import setup_environment
 
         existing_region = "eu-west-1"
         with patch.dict(os.environ, {"AWS_REGION": existing_region}):
@@ -96,7 +96,7 @@ class TestSetupEnvironment:
     @patch("boto3.Session")
     def test_setup_environment_both_variables(self, mock_session_class):
         """Test setting both environment variables when neither are set."""
-        from utilities.create_env_variables import setup_environment
+        from lisa.utilities.create_env_variables import setup_environment
 
         # Mock boto3 session
         mock_session = Mock()

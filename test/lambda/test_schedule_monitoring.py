@@ -71,11 +71,11 @@ def sample_model_with_schedule():
 class TestScheduleMonitoring:
     """Test schedule monitoring Lambda function."""
 
-    @patch("models.scheduling.schedule_monitoring.autoscaling_client")
-    @patch("models.scheduling.schedule_monitoring.model_table")
+    @patch("lisa.domain.scheduling.schedule_monitoring.autoscaling_client")
+    @patch("lisa.domain.scheduling.schedule_monitoring.model_table")
     def test_lambda_handler_autoscaling_event_success(self, mock_model_table, mock_autoscaling_client, lambda_context):
         """Test successful autoscaling event handling."""
-        from models.scheduling.schedule_monitoring import lambda_handler
+        from lisa.domain.scheduling.schedule_monitoring import lambda_handler
 
         # Mock autoscaling event
         event = {
@@ -112,7 +112,7 @@ class TestScheduleMonitoring:
 
     def test_lambda_handler_sync_status_operation(self, lambda_context):
         """Test sync_status operation."""
-        from models.scheduling.schedule_monitoring import lambda_handler
+        from lisa.domain.scheduling.schedule_monitoring import lambda_handler
 
         # Test event for sync operation
         event = {"operation": "sync_status", "modelId": "test-model"}
@@ -125,7 +125,7 @@ class TestScheduleMonitoring:
 
     def test_lambda_handler_unknown_event(self, lambda_context):
         """Test handling of unknown event format."""
-        from models.scheduling.schedule_monitoring import lambda_handler
+        from lisa.domain.scheduling.schedule_monitoring import lambda_handler
 
         # Execute with empty event
         result = lambda_handler({}, lambda_context)
@@ -134,10 +134,10 @@ class TestScheduleMonitoring:
         assert result["statusCode"] == 200
         assert "Event processed (no action taken)" in result["message"]
 
-    @patch("models.scheduling.schedule_monitoring.model_table")
+    @patch("lisa.domain.scheduling.schedule_monitoring.model_table")
     def test_lambda_handler_exception(self, mock_model_table, lambda_context):
         """Test monitoring with exception."""
-        from models.scheduling.schedule_monitoring import lambda_handler
+        from lisa.domain.scheduling.schedule_monitoring import lambda_handler
 
         # Mock exception
         mock_model_table.scan.side_effect = Exception("DynamoDB error")
@@ -160,10 +160,10 @@ class TestScheduleMonitoring:
             # If it returns 200, it should still handle the error gracefully
             assert "message" in result
 
-    @patch("models.scheduling.schedule_monitoring.model_table")
+    @patch("lisa.domain.scheduling.schedule_monitoring.model_table")
     def test_find_model_by_asg_name_success(self, mock_model_table):
         """Test successful model lookup by ASG name."""
-        from models.scheduling.schedule_monitoring import find_model_by_asg_name
+        from lisa.domain.scheduling.schedule_monitoring import find_model_by_asg_name
 
         # Mock model table scan
         mock_model_table.scan.return_value = {"Items": [{"model_id": "test-model"}], "Count": 1}
@@ -173,10 +173,10 @@ class TestScheduleMonitoring:
         assert result == "test-model"
         mock_model_table.scan.assert_called_once()
 
-    @patch("models.scheduling.schedule_monitoring.model_table")
+    @patch("lisa.domain.scheduling.schedule_monitoring.model_table")
     def test_find_model_by_asg_name_not_found(self, mock_model_table):
         """Test model lookup when ASG not found."""
-        from models.scheduling.schedule_monitoring import find_model_by_asg_name
+        from lisa.domain.scheduling.schedule_monitoring import find_model_by_asg_name
 
         # Mock empty scan result
         mock_model_table.scan.return_value = {"Items": [], "Count": 0}
@@ -185,11 +185,11 @@ class TestScheduleMonitoring:
 
         assert result is None
 
-    @patch("models.scheduling.schedule_monitoring.model_table")
+    @patch("lisa.domain.scheduling.schedule_monitoring.model_table")
     def test_update_model_status_success(self, mock_model_table):
         """Test successful model status update."""
-        from models.domain_objects import ModelStatus
-        from models.scheduling.schedule_monitoring import update_model_status
+        from lisa.domain.domain_objects import ModelStatus
+        from lisa.domain.scheduling.schedule_monitoring import update_model_status
 
         mock_model_table.update_item.return_value = {}
 
@@ -205,10 +205,10 @@ class TestScheduleMonitoring:
 class TestScheduleMonitoringHelpers:
     """Test actual helper functions that exist in schedule monitoring."""
 
-    @patch("models.scheduling.schedule_monitoring.model_table")
+    @patch("lisa.domain.scheduling.schedule_monitoring.model_table")
     def test_get_model_info_success(self, mock_model_table):
         """Test successful model info retrieval."""
-        from models.scheduling.schedule_monitoring import get_model_info
+        from lisa.domain.scheduling.schedule_monitoring import get_model_info
 
         # Mock model table response
         mock_model_table.get_item.return_value = {"Item": {"model_id": "test-model", "model_status": "InService"}}
@@ -218,10 +218,10 @@ class TestScheduleMonitoringHelpers:
         assert result is not None
         assert result["model_id"] == "test-model"
 
-    @patch("models.scheduling.schedule_monitoring.model_table")
+    @patch("lisa.domain.scheduling.schedule_monitoring.model_table")
     def test_get_model_info_not_found(self, mock_model_table):
         """Test model info retrieval when model not found."""
-        from models.scheduling.schedule_monitoring import get_model_info
+        from lisa.domain.scheduling.schedule_monitoring import get_model_info
 
         # Mock model not found
         mock_model_table.get_item.return_value = {}
@@ -230,10 +230,10 @@ class TestScheduleMonitoringHelpers:
 
         assert result is None
 
-    @patch("models.scheduling.schedule_monitoring.model_table")
+    @patch("lisa.domain.scheduling.schedule_monitoring.model_table")
     def test_get_model_info_exception(self, mock_model_table):
         """Test model info retrieval with exception."""
-        from models.scheduling.schedule_monitoring import get_model_info
+        from lisa.domain.scheduling.schedule_monitoring import get_model_info
 
         # Mock exception
         mock_model_table.get_item.side_effect = Exception("DynamoDB error")
@@ -242,10 +242,10 @@ class TestScheduleMonitoringHelpers:
 
         assert result is None
 
-    @patch("models.scheduling.schedule_monitoring.model_table")
+    @patch("lisa.domain.scheduling.schedule_monitoring.model_table")
     def test_find_model_by_asg_name_exception(self, mock_model_table):
         """Test model lookup by ASG name with exception."""
-        from models.scheduling.schedule_monitoring import find_model_by_asg_name
+        from lisa.domain.scheduling.schedule_monitoring import find_model_by_asg_name
 
         # Mock exception
         mock_model_table.scan.side_effect = Exception("DynamoDB error")
@@ -254,11 +254,11 @@ class TestScheduleMonitoringHelpers:
 
         assert result is None
 
-    @patch("models.scheduling.schedule_monitoring.model_table")
+    @patch("lisa.domain.scheduling.schedule_monitoring.model_table")
     def test_update_model_status_exception(self, mock_model_table):
         """Test model status update with exception."""
-        from models.domain_objects import ModelStatus
-        from models.scheduling.schedule_monitoring import update_model_status
+        from lisa.domain.domain_objects import ModelStatus
+        from lisa.domain.scheduling.schedule_monitoring import update_model_status
 
         # Mock exception
         mock_model_table.update_item.side_effect = Exception("DynamoDB error")
@@ -271,9 +271,9 @@ class TestScheduleMonitoringHelpers:
 class TestScheduleMonitoringEdgeCases:
     """Test edge cases and additional coverage."""
 
-    @patch("models.scheduling.schedule_monitoring.update_model_status")
-    @patch("models.scheduling.schedule_monitoring.autoscaling_client")
-    @patch("models.scheduling.schedule_monitoring.find_model_by_asg_name")
+    @patch("lisa.domain.scheduling.schedule_monitoring.update_model_status")
+    @patch("lisa.domain.scheduling.schedule_monitoring.autoscaling_client")
+    @patch("lisa.domain.scheduling.schedule_monitoring.find_model_by_asg_name")
     def test_handle_successful_scaling_asg_not_found(
         self,
         mock_find_model,
@@ -281,7 +281,7 @@ class TestScheduleMonitoringEdgeCases:
         mock_update_model_status,
     ):
         """Test handle_successful_scaling when ASG not found."""
-        from models.scheduling.schedule_monitoring import handle_successful_scaling
+        from lisa.domain.scheduling.schedule_monitoring import handle_successful_scaling
 
         # Mock model found
         mock_find_model.return_value = "test-model"
@@ -298,11 +298,11 @@ class TestScheduleMonitoringEdgeCases:
         # Verify no status update
         mock_update_model_status.assert_not_called()
 
-    @patch("models.scheduling.schedule_monitoring.autoscaling_client")
+    @patch("lisa.domain.scheduling.schedule_monitoring.autoscaling_client")
     def test_handle_successful_scaling_client_error(self, mock_autoscaling_client):
         """Test handle_successful_scaling with ClientError."""
         from botocore.exceptions import ClientError
-        from models.scheduling.schedule_monitoring import handle_successful_scaling
+        from lisa.domain.scheduling.schedule_monitoring import handle_successful_scaling
 
         # Mock ClientError
         error_response = {"Error": {"Code": "Throttling", "Message": "Rate exceeded"}}
@@ -316,11 +316,11 @@ class TestScheduleMonitoringEdgeCases:
         assert result["statusCode"] == 500
         assert "Failed to check ASG state" in result["message"]
 
-    @patch("models.scheduling.schedule_monitoring.update_model_status")
-    @patch("models.scheduling.schedule_monitoring.autoscaling_client")
+    @patch("lisa.domain.scheduling.schedule_monitoring.update_model_status")
+    @patch("lisa.domain.scheduling.schedule_monitoring.autoscaling_client")
     def test_handle_successful_scaling_stopped_status(self, mock_autoscaling_client, mock_update_model_status):
         """Test handle_successful_scaling when model should be stopped."""
-        from models.scheduling.schedule_monitoring import handle_successful_scaling
+        from lisa.domain.scheduling.schedule_monitoring import handle_successful_scaling
 
         # Mock ASG with no instances in service
         mock_autoscaling_client.describe_auto_scaling_groups.return_value = {
@@ -334,12 +334,12 @@ class TestScheduleMonitoringEdgeCases:
         body = json.loads(result["body"])
         assert body["newStatus"] == "Stopped"
 
-    @patch("models.scheduling.schedule_monitoring.autoscaling_client")
-    @patch("models.scheduling.schedule_monitoring.get_model_info")
+    @patch("lisa.domain.scheduling.schedule_monitoring.autoscaling_client")
+    @patch("lisa.domain.scheduling.schedule_monitoring.get_model_info")
     def test_sync_model_status_client_error(self, mock_get_model_info, mock_autoscaling_client):
         """Test sync_model_status with ClientError."""
         from botocore.exceptions import ClientError
-        from models.scheduling.schedule_monitoring import sync_model_status
+        from lisa.domain.scheduling.schedule_monitoring import sync_model_status
 
         # Mock model info
         mock_get_model_info.return_value = {"auto_scaling_group": "test-asg"}
@@ -356,14 +356,14 @@ class TestScheduleMonitoringEdgeCases:
         with pytest.raises(ValueError, match="Failed to check ASG test-asg"):
             sync_model_status(event)
 
-    @patch("models.scheduling.schedule_monitoring.autoscaling_client")
-    @patch("models.scheduling.schedule_monitoring.update_model_status")
-    @patch("models.scheduling.schedule_monitoring.get_model_info")
+    @patch("lisa.domain.scheduling.schedule_monitoring.autoscaling_client")
+    @patch("lisa.domain.scheduling.schedule_monitoring.update_model_status")
+    @patch("lisa.domain.scheduling.schedule_monitoring.get_model_info")
     def test_sync_model_status_stopped_state(
         self, mock_get_model_info, mock_update_model_status, mock_autoscaling_client
     ):
         """Test sync_model_status when ASG shows stopped state."""
-        from models.scheduling.schedule_monitoring import sync_model_status
+        from lisa.domain.scheduling.schedule_monitoring import sync_model_status
 
         # Mock model info
         mock_get_model_info.return_value = {"auto_scaling_group": "test-asg"}
@@ -381,11 +381,11 @@ class TestScheduleMonitoringEdgeCases:
         body = json.loads(result["body"])
         assert body["newStatus"] == "Stopped"
 
-    @patch("models.scheduling.schedule_monitoring.autoscaling_client")
-    @patch("models.scheduling.schedule_monitoring.find_model_by_asg_name")
+    @patch("lisa.domain.scheduling.schedule_monitoring.autoscaling_client")
+    @patch("lisa.domain.scheduling.schedule_monitoring.find_model_by_asg_name")
     def test_handle_autoscaling_event_asg_not_found(self, mock_find_model, mock_autoscaling_client):
         """Test handle_autoscaling_event when ASG not associated with LISA models."""
-        from models.scheduling.schedule_monitoring import handle_autoscaling_event
+        from lisa.domain.scheduling.schedule_monitoring import handle_autoscaling_event
 
         # Mock model not found
         mock_find_model.return_value = None
@@ -402,10 +402,10 @@ class TestScheduleMonitoringEdgeCases:
         assert result["statusCode"] == 200
         assert result["message"] == "ASG not related to LISA models"
 
-    @patch("models.scheduling.schedule_monitoring.find_model_by_asg_name")
+    @patch("lisa.domain.scheduling.schedule_monitoring.find_model_by_asg_name")
     def test_handle_autoscaling_event_unsupported_type(self, mock_find_model):
         """Test handle_autoscaling_event with unsupported event type."""
-        from models.scheduling.schedule_monitoring import handle_autoscaling_event
+        from lisa.domain.scheduling.schedule_monitoring import handle_autoscaling_event
 
         # Mock model found so we get past the ASG check
         mock_find_model.return_value = "test-model"

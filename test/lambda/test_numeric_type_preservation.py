@@ -30,7 +30,7 @@ from unittest.mock import patch
 # Add the lambda directory to the path so we can import the utilities
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "lambda"))
 
-from utilities.session_encryption import (
+from lisa.utilities.session_encryption import (
     _deserialize_with_type_preservation,
     _serialize_with_type_preservation,
     decrypt_session_data,
@@ -48,7 +48,7 @@ class TestNumericTypePreservation(unittest.TestCase):
         os.environ["SESSION_ENCRYPTION_KEY_ARN"] = "arn:aws:kms:us-east-1:123456789012:key/test-key-id"
 
         # Mock KMS client to avoid actual AWS calls
-        self.kms_patcher = patch("utilities.session_encryption.kms_client")
+        self.kms_patcher = patch("lisa.utilities.session_encryption.kms_client")
         self.mock_kms = self.kms_patcher.start()
 
         # Mock KMS responses

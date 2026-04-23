@@ -18,14 +18,14 @@ from unittest.mock import MagicMock
 
 import pytest
 from botocore.exceptions import ClientError
-from utilities.bedrock_kb_discovery import (
+from lisa.utilities.bedrock_kb_discovery import (
     build_pipeline_configs_from_kb_config,
     discover_kb_data_sources,
     extract_s3_configuration,
     get_available_data_sources,
     list_knowledge_bases,
 )
-from utilities.validation import ValidationError
+from lisa.utilities.validation import ValidationError
 
 
 class TestListKnowledgeBases:

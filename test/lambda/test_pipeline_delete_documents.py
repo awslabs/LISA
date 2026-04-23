@@ -38,12 +38,12 @@ def setup_env(monkeypatch):
 
 def test_drop_opensearch_index(setup_env):
     """Test drop_opensearch_index delegates to service layer."""
-    from repository.pipeline_delete_documents import drop_opensearch_index
+    from lisa.rag.pipeline_delete_documents import drop_opensearch_index
 
     mock_service = Mock()
 
-    with patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo, patch(
-        "repository.pipeline_delete_documents.RepositoryServiceFactory"
+    with patch("lisa.rag.pipeline_delete_documents.vs_repo") as mock_vs_repo, patch(
+        "lisa.rag.pipeline_delete_documents.RepositoryServiceFactory"
     ) as mock_factory:
         mock_vs_repo.find_repository_by_id.return_value = {"repositoryId": "repo1", "type": "opensearch"}
         mock_factory.create_service.return_value = mock_service
@@ -55,12 +55,12 @@ def test_drop_opensearch_index(setup_env):
 
 def test_drop_opensearch_index_not_exists(setup_env):
     """Test drop_opensearch_index delegates to service layer even when index doesn't exist."""
-    from repository.pipeline_delete_documents import drop_opensearch_index
+    from lisa.rag.pipeline_delete_documents import drop_opensearch_index
 
     mock_service = Mock()
 
-    with patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo, patch(
-        "repository.pipeline_delete_documents.RepositoryServiceFactory"
+    with patch("lisa.rag.pipeline_delete_documents.vs_repo") as mock_vs_repo, patch(
+        "lisa.rag.pipeline_delete_documents.RepositoryServiceFactory"
     ) as mock_factory:
         mock_vs_repo.find_repository_by_id.return_value = {"repositoryId": "repo1", "type": "opensearch"}
         mock_factory.create_service.return_value = mock_service
@@ -72,12 +72,12 @@ def test_drop_opensearch_index_not_exists(setup_env):
 
 def test_drop_pgvector_collection(setup_env):
     """Test drop_pgvector_collection delegates to service layer."""
-    from repository.pipeline_delete_documents import drop_pgvector_collection
+    from lisa.rag.pipeline_delete_documents import drop_pgvector_collection
 
     mock_service = Mock()
 
-    with patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo, patch(
-        "repository.pipeline_delete_documents.RepositoryServiceFactory"
+    with patch("lisa.rag.pipeline_delete_documents.vs_repo") as mock_vs_repo, patch(
+        "lisa.rag.pipeline_delete_documents.RepositoryServiceFactory"
     ) as mock_factory:
         mock_vs_repo.find_repository_by_id.return_value = {"repositoryId": "repo1", "type": "pgvector"}
         mock_factory.create_service.return_value = mock_service
@@ -89,8 +89,8 @@ def test_drop_pgvector_collection(setup_env):
 
 def test_pipeline_delete_collection_opensearch(setup_env):
     """Test pipeline_delete_collection with OpenSearch repository."""
-    from models.domain_objects import IngestionJob, IngestionStatus, JobActionType
-    from utilities.repository_types import RepositoryType
+    from lisa.domain.domain_objects import IngestionJob, IngestionStatus, JobActionType
+    from lisa.utilities.repository_types import RepositoryType
 
     job = IngestionJob(
         repository_id="repo1",
@@ -101,17 +101,17 @@ def test_pipeline_delete_collection_opensearch(setup_env):
         job_type=JobActionType.COLLECTION_DELETION,
     )
 
-    with patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo, patch(
-        "repository.pipeline_delete_documents.drop_opensearch_index"
-    ) as mock_drop, patch("repository.pipeline_delete_documents.rag_document_repository") as mock_doc_repo, patch(
-        "repository.pipeline_delete_documents.collection_repo"
+    with patch("lisa.rag.pipeline_delete_documents.vs_repo") as mock_vs_repo, patch(
+        "lisa.rag.pipeline_delete_documents.drop_opensearch_index"
+    ) as mock_drop, patch("lisa.rag.pipeline_delete_documents.rag_document_repository") as mock_doc_repo, patch(
+        "lisa.rag.pipeline_delete_documents.collection_repo"
     ), patch(
-        "repository.pipeline_delete_documents.ingestion_job_repository"
+        "lisa.rag.pipeline_delete_documents.ingestion_job_repository"
     ) as mock_job_repo:
 
         mock_vs_repo.find_repository_by_id.return_value = {"type": RepositoryType.OPENSEARCH}
 
-        from repository.pipeline_delete_documents import pipeline_delete_collection
+        from lisa.rag.pipeline_delete_documents import pipeline_delete_collection
 
         pipeline_delete_collection(job)
 
@@ -122,8 +122,8 @@ def test_pipeline_delete_collection_opensearch(setup_env):
 
 def test_pipeline_delete_collection_bedrock_kb(setup_env):
     """Test pipeline_delete_collection with Bedrock KB repository."""
-    from models.domain_objects import IngestionJob, JobActionType
-    from utilities.repository_types import RepositoryType
+    from lisa.domain.domain_objects import IngestionJob, JobActionType
+    from lisa.utilities.repository_types import RepositoryType
 
     job = IngestionJob(
         repository_id="repo1",
@@ -134,14 +134,14 @@ def test_pipeline_delete_collection_bedrock_kb(setup_env):
         job_type=JobActionType.COLLECTION_DELETION,
     )
 
-    with patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo, patch(
-        "repository.pipeline_delete_documents.boto3"
-    ) as mock_boto3, patch("repository.pipeline_delete_documents.rag_document_repository") as mock_doc_repo, patch(
-        "repository.pipeline_delete_documents.collection_repo"
+    with patch("lisa.rag.pipeline_delete_documents.vs_repo") as mock_vs_repo, patch(
+        "lisa.rag.pipeline_delete_documents.boto3"
+    ) as mock_boto3, patch("lisa.rag.pipeline_delete_documents.rag_document_repository") as mock_doc_repo, patch(
+        "lisa.rag.pipeline_delete_documents.collection_repo"
     ), patch(
-        "repository.pipeline_delete_documents.ingestion_job_repository"
+        "lisa.rag.pipeline_delete_documents.ingestion_job_repository"
     ), patch(
-        "repository.pipeline_delete_documents.bulk_delete_documents_from_kb"
+        "lisa.rag.pipeline_delete_documents.bulk_delete_documents_from_kb"
     ) as mock_bulk_delete:
 
         mock_vs_repo.find_repository_by_id.return_value = {"type": RepositoryType.BEDROCK_KB}
@@ -157,7 +157,7 @@ def test_pipeline_delete_collection_bedrock_kb(setup_env):
         mock_dynamodb.Table.return_value = mock_table
         mock_boto3.resource.return_value = mock_dynamodb
 
-        from repository.pipeline_delete_documents import pipeline_delete_collection
+        from lisa.rag.pipeline_delete_documents import pipeline_delete_collection
 
         pipeline_delete_collection(job)
 
@@ -167,8 +167,8 @@ def test_pipeline_delete_collection_bedrock_kb(setup_env):
 
 def test_pipeline_delete_collection_failure(setup_env):
     """Test pipeline_delete_collection handles failures."""
-    from models.domain_objects import IngestionJob, IngestionStatus, JobActionType
-    from utilities.repository_types import RepositoryType
+    from lisa.domain.domain_objects import IngestionJob, IngestionStatus, JobActionType
+    from lisa.utilities.repository_types import RepositoryType
 
     job = IngestionJob(
         repository_id="repo1",
@@ -179,16 +179,16 @@ def test_pipeline_delete_collection_failure(setup_env):
         job_type=JobActionType.COLLECTION_DELETION,
     )
 
-    with patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo, patch(
-        "repository.pipeline_delete_documents.rag_document_repository"
-    ) as mock_doc_repo, patch("repository.pipeline_delete_documents.collection_repo") as mock_coll_repo, patch(
-        "repository.pipeline_delete_documents.ingestion_job_repository"
+    with patch("lisa.rag.pipeline_delete_documents.vs_repo") as mock_vs_repo, patch(
+        "lisa.rag.pipeline_delete_documents.rag_document_repository"
+    ) as mock_doc_repo, patch("lisa.rag.pipeline_delete_documents.collection_repo") as mock_coll_repo, patch(
+        "lisa.rag.pipeline_delete_documents.ingestion_job_repository"
     ) as mock_job_repo:
 
         mock_vs_repo.find_repository_by_id.return_value = {"type": RepositoryType.OPENSEARCH}
         mock_doc_repo.delete_all.side_effect = Exception("Delete failed")
 
-        from repository.pipeline_delete_documents import pipeline_delete_collection
+        from lisa.rag.pipeline_delete_documents import pipeline_delete_collection
 
         with pytest.raises(Exception):
             pipeline_delete_collection(job)
@@ -199,8 +199,8 @@ def test_pipeline_delete_collection_failure(setup_env):
 
 def test_pipeline_delete_document(setup_env):
     """Test pipeline_delete_document deletes single document."""
-    from models.domain_objects import IngestionJob, IngestionStatus, RagDocument
-    from utilities.repository_types import RepositoryType
+    from lisa.domain.domain_objects import IngestionJob, IngestionStatus, RagDocument
+    from lisa.utilities.repository_types import RepositoryType
 
     job = IngestionJob(
         repository_id="repo1",
@@ -211,7 +211,7 @@ def test_pipeline_delete_document(setup_env):
         document_id="doc1",
     )
 
-    from models.domain_objects import FixedChunkingStrategy
+    from lisa.domain.domain_objects import FixedChunkingStrategy
 
     rag_doc = RagDocument(
         repository_id="repo1",
@@ -224,16 +224,16 @@ def test_pipeline_delete_document(setup_env):
         chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
     )
 
-    with patch("repository.pipeline_delete_documents.rag_document_repository") as mock_doc_repo, patch(
-        "repository.pipeline_delete_documents.vs_repo"
-    ) as mock_vs_repo, patch("repository.pipeline_delete_documents.remove_document_from_vectorstore"), patch(
-        "repository.pipeline_delete_documents.ingestion_job_repository"
+    with patch("lisa.rag.pipeline_delete_documents.rag_document_repository") as mock_doc_repo, patch(
+        "lisa.rag.pipeline_delete_documents.vs_repo"
+    ) as mock_vs_repo, patch("lisa.rag.pipeline_delete_documents.remove_document_from_vectorstore"), patch(
+        "lisa.rag.pipeline_delete_documents.ingestion_job_repository"
     ) as mock_job_repo:
 
         mock_doc_repo.find_by_id.return_value = rag_doc
         mock_vs_repo.find_repository_by_id.return_value = {"type": RepositoryType.OPENSEARCH}
 
-        from repository.pipeline_delete_documents import pipeline_delete_document
+        from lisa.rag.pipeline_delete_documents import pipeline_delete_document
 
         pipeline_delete_document(job)
 
@@ -243,7 +243,7 @@ def test_pipeline_delete_document(setup_env):
 
 def test_pipeline_delete_document_not_found(setup_env):
     """Test pipeline_delete_document when document not found."""
-    from models.domain_objects import IngestionJob, IngestionStatus
+    from lisa.domain.domain_objects import IngestionJob, IngestionStatus
 
     job = IngestionJob(
         repository_id="repo1",
@@ -254,13 +254,13 @@ def test_pipeline_delete_document_not_found(setup_env):
         document_id="doc1",
     )
 
-    with patch("repository.pipeline_delete_documents.rag_document_repository") as mock_doc_repo, patch(
-        "repository.pipeline_delete_documents.ingestion_job_repository"
+    with patch("lisa.rag.pipeline_delete_documents.rag_document_repository") as mock_doc_repo, patch(
+        "lisa.rag.pipeline_delete_documents.ingestion_job_repository"
     ) as mock_job_repo:
 
         mock_doc_repo.find_by_id.return_value = None
 
-        from repository.pipeline_delete_documents import pipeline_delete_document
+        from lisa.rag.pipeline_delete_documents import pipeline_delete_document
 
         pipeline_delete_document(job)
 
@@ -284,7 +284,7 @@ def test_handle_pipeline_delete_event(setup_env):
         "repository.pipeline_ingest_handlers.vs_repo"
     ) as mock_vs_repo:
 
-        from models.domain_objects import FixedChunkingStrategy, RagDocument
+        from lisa.domain.domain_objects import FixedChunkingStrategy, RagDocument
 
         rag_doc = RagDocument(
             repository_id="repo1",
@@ -323,7 +323,7 @@ def test_handle_pipeline_delete_event_no_pipeline_config(setup_env):
 
 def test_pipeline_delete_routes_to_collection_deletion(setup_env):
     """Test pipeline_delete routes to collection deletion."""
-    from models.domain_objects import IngestionJob, JobActionType
+    from lisa.domain.domain_objects import IngestionJob, JobActionType
 
     job = IngestionJob(
         repository_id="repo1",
@@ -334,8 +334,8 @@ def test_pipeline_delete_routes_to_collection_deletion(setup_env):
         job_type=JobActionType.COLLECTION_DELETION,
     )
 
-    with patch("repository.pipeline_delete_documents.pipeline_delete_collection") as mock_delete_collection:
-        from repository.pipeline_delete_documents import pipeline_delete
+    with patch("lisa.rag.pipeline_delete_documents.pipeline_delete_collection") as mock_delete_collection:
+        from lisa.rag.pipeline_delete_documents import pipeline_delete
 
         pipeline_delete(job)
 
@@ -344,7 +344,7 @@ def test_pipeline_delete_routes_to_collection_deletion(setup_env):
 
 def test_pipeline_delete_routes_to_document_deletion(setup_env):
     """Test pipeline_delete routes to document deletion."""
-    from models.domain_objects import IngestionJob
+    from lisa.domain.domain_objects import IngestionJob
 
     job = IngestionJob(
         repository_id="repo1",
@@ -354,8 +354,8 @@ def test_pipeline_delete_routes_to_document_deletion(setup_env):
         username="user1",
     )
 
-    with patch("repository.pipeline_delete_documents.pipeline_delete_document") as mock_delete_document:
-        from repository.pipeline_delete_documents import pipeline_delete
+    with patch("lisa.rag.pipeline_delete_documents.pipeline_delete_document") as mock_delete_document:
+        from lisa.rag.pipeline_delete_documents import pipeline_delete
 
         pipeline_delete(job)
 
@@ -364,8 +364,14 @@ def test_pipeline_delete_routes_to_document_deletion(setup_env):
 
 def test_pipeline_delete_documents_batch(setup_env):
     """Test pipeline_delete_documents processes batch deletion."""
-    from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, JobActionType, RagDocument
-    from utilities.repository_types import RepositoryType
+    from lisa.domain.domain_objects import (
+        FixedChunkingStrategy,
+        IngestionJob,
+        IngestionStatus,
+        JobActionType,
+        RagDocument,
+    )
+    from lisa.utilities.repository_types import RepositoryType
 
     job = IngestionJob(
         repository_id="repo1",
@@ -391,16 +397,16 @@ def test_pipeline_delete_documents_batch(setup_env):
         for i in range(1, 4)
     ]
 
-    with patch("repository.pipeline_delete_documents.rag_document_repository") as mock_doc_repo, patch(
-        "repository.pipeline_delete_documents.vs_repo"
-    ) as mock_vs_repo, patch("repository.pipeline_delete_documents.remove_document_from_vectorstore"), patch(
-        "repository.pipeline_delete_documents.ingestion_job_repository"
+    with patch("lisa.rag.pipeline_delete_documents.rag_document_repository") as mock_doc_repo, patch(
+        "lisa.rag.pipeline_delete_documents.vs_repo"
+    ) as mock_vs_repo, patch("lisa.rag.pipeline_delete_documents.remove_document_from_vectorstore"), patch(
+        "lisa.rag.pipeline_delete_documents.ingestion_job_repository"
     ) as mock_job_repo:
 
         mock_doc_repo.find_by_id.side_effect = rag_docs
         mock_vs_repo.find_repository_by_id.return_value = {"type": RepositoryType.OPENSEARCH}
 
-        from repository.pipeline_delete_documents import pipeline_delete_documents
+        from lisa.rag.pipeline_delete_documents import pipeline_delete_documents
 
         pipeline_delete_documents(job)
 
@@ -410,8 +416,14 @@ def test_pipeline_delete_documents_batch(setup_env):
 
 def test_pipeline_delete_documents_batch_with_failures(setup_env):
     """Test pipeline_delete_documents handles partial failures."""
-    from models.domain_objects import FixedChunkingStrategy, IngestionJob, IngestionStatus, JobActionType, RagDocument
-    from utilities.repository_types import RepositoryType
+    from lisa.domain.domain_objects import (
+        FixedChunkingStrategy,
+        IngestionJob,
+        IngestionStatus,
+        JobActionType,
+        RagDocument,
+    )
+    from lisa.utilities.repository_types import RepositoryType
 
     job = IngestionJob(
         repository_id="repo1",
@@ -434,17 +446,17 @@ def test_pipeline_delete_documents_batch_with_failures(setup_env):
         chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
     )
 
-    with patch("repository.pipeline_delete_documents.rag_document_repository") as mock_doc_repo, patch(
-        "repository.pipeline_delete_documents.vs_repo"
-    ) as mock_vs_repo, patch("repository.pipeline_delete_documents.remove_document_from_vectorstore"), patch(
-        "repository.pipeline_delete_documents.ingestion_job_repository"
+    with patch("lisa.rag.pipeline_delete_documents.rag_document_repository") as mock_doc_repo, patch(
+        "lisa.rag.pipeline_delete_documents.vs_repo"
+    ) as mock_vs_repo, patch("lisa.rag.pipeline_delete_documents.remove_document_from_vectorstore"), patch(
+        "lisa.rag.pipeline_delete_documents.ingestion_job_repository"
     ) as mock_job_repo:
 
         # First succeeds, second fails, third succeeds
         mock_doc_repo.find_by_id.side_effect = [rag_doc1, Exception("Delete failed"), rag_doc1]
         mock_vs_repo.find_repository_by_id.return_value = {"type": RepositoryType.OPENSEARCH}
 
-        from repository.pipeline_delete_documents import pipeline_delete_documents
+        from lisa.rag.pipeline_delete_documents import pipeline_delete_documents
 
         pipeline_delete_documents(job)
 
@@ -453,7 +465,7 @@ def test_pipeline_delete_documents_batch_with_failures(setup_env):
 
 def test_pipeline_delete_documents_batch_exceeds_limit(setup_env):
     """Test pipeline_delete_documents rejects batch over 100 documents."""
-    from models.domain_objects import IngestionJob, JobActionType
+    from lisa.domain.domain_objects import IngestionJob, JobActionType
 
     job = IngestionJob(
         repository_id="repo1",
@@ -465,8 +477,8 @@ def test_pipeline_delete_documents_batch_exceeds_limit(setup_env):
         document_ids=[f"doc{i}" for i in range(101)],
     )
 
-    with patch("repository.pipeline_delete_documents.ingestion_job_repository") as mock_job_repo:
-        from repository.pipeline_delete_documents import pipeline_delete_documents
+    with patch("lisa.rag.pipeline_delete_documents.ingestion_job_repository") as mock_job_repo:
+        from lisa.rag.pipeline_delete_documents import pipeline_delete_documents
 
         with pytest.raises(Exception):
             pipeline_delete_documents(job)
@@ -476,7 +488,7 @@ def test_pipeline_delete_documents_batch_exceeds_limit(setup_env):
 
 def test_pipeline_delete_routes_to_batch_deletion(setup_env):
     """Test pipeline_delete routes to batch document deletion."""
-    from models.domain_objects import IngestionJob, JobActionType
+    from lisa.domain.domain_objects import IngestionJob, JobActionType
 
     job = IngestionJob(
         repository_id="repo1",
@@ -488,8 +500,8 @@ def test_pipeline_delete_routes_to_batch_deletion(setup_env):
         document_ids=["doc1", "doc2"],
     )
 
-    with patch("repository.pipeline_delete_documents.pipeline_delete_documents") as mock_delete_documents:
-        from repository.pipeline_delete_documents import pipeline_delete
+    with patch("lisa.rag.pipeline_delete_documents.pipeline_delete_documents") as mock_delete_documents:
+        from lisa.rag.pipeline_delete_documents import pipeline_delete
 
         pipeline_delete(job)
 

@@ -17,7 +17,7 @@
 import json
 
 import pytest
-from utilities.event_parser import (
+from lisa.utilities.event_parser import (
     get_bearer_token,
     get_id_token,
     get_principal_id,

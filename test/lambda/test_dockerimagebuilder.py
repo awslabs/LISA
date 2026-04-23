@@ -59,7 +59,7 @@ def test_handler_success(lambda_context):
     mock_instance = MagicMock()
     mock_instance.instance_id = "i-1234567890abcdef0"
 
-    with patch("dockerimagebuilder.boto3") as mock_boto3:
+    with patch("dockerimagebuilder.lambda_functions.boto3") as mock_boto3:
         # Setup mocks
         mock_boto3.resource.return_value = mock_ec2_resource
         mock_boto3.client.return_value = mock_ssm_client
@@ -107,7 +107,7 @@ def test_handler_without_subnet_id(lambda_context):
         mock_instance = MagicMock()
         mock_instance.instance_id = "i-1234567890abcdef0"
 
-        with patch("dockerimagebuilder.boto3") as mock_boto3:
+        with patch("dockerimagebuilder.lambda_functions.boto3") as mock_boto3:
             # Setup mocks
             mock_boto3.resource.return_value = mock_ec2_resource
             mock_boto3.client.return_value = mock_ssm_client
@@ -140,7 +140,7 @@ def test_handler_client_error(lambda_context):
     mock_ec2_resource = MagicMock()
     mock_ssm_client = MagicMock()
 
-    with patch("dockerimagebuilder.boto3") as mock_boto3:
+    with patch("dockerimagebuilder.lambda_functions.boto3") as mock_boto3:
         # Setup mocks
         mock_boto3.resource.return_value = mock_ec2_resource
         mock_boto3.client.return_value = mock_ssm_client
@@ -165,7 +165,7 @@ def test_handler_ssm_error(lambda_context):
     mock_ec2_resource = MagicMock()
     mock_ssm_client = MagicMock()
 
-    with patch("dockerimagebuilder.boto3") as mock_boto3:
+    with patch("dockerimagebuilder.lambda_functions.boto3") as mock_boto3:
         # Setup mocks
         mock_boto3.resource.return_value = mock_ec2_resource
         mock_boto3.client.return_value = mock_ssm_client
@@ -190,7 +190,7 @@ def test_user_data_template_rendering(lambda_context):
     mock_instance = MagicMock()
     mock_instance.instance_id = "i-1234567890abcdef0"
 
-    with patch("dockerimagebuilder.boto3") as mock_boto3:
+    with patch("dockerimagebuilder.lambda_functions.boto3") as mock_boto3:
         # Setup mocks
         mock_boto3.resource.return_value = mock_ec2_resource
         mock_boto3.client.return_value = mock_ssm_client

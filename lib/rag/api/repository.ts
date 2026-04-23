@@ -24,7 +24,6 @@ import { Construct } from 'constructs';
 import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../../api-base/utils';
 import { BaseProps } from '../../schema';
 import { Vpc } from '../../networking/vpc';
-import { LAMBDA_PATH } from '../../util';
 
 /**
  * Properties for RepositoryAPI Construct.
@@ -300,12 +299,11 @@ export class RepositoryApi extends Construct {
             }
         ];
 
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         apis.forEach((f) => {
             const lambdaFunction = registerAPIEndpoint(
                 this,
                 restApi,
-                lambdaPath,
+                config,
                 commonLayers,
                 f,
                 getPythonRuntime(),

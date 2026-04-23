@@ -182,8 +182,8 @@ patch.dict(
 ).start()
 
 # Patch the specific functions in utilities.common_functions
-patch("utilities.common_functions.retry_config", retry_config).start()
-patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()
+patch("lisa.utilities.common_functions.retry_config", retry_config).start()
+patch("lisa.utilities.common_functions.api_wrapper", mock_api_wrapper).start()
 
 # Also patch the api_wrapper in the metrics module specifically
 patch("metrics.lambda_functions.api_wrapper", mock_api_wrapper).start()

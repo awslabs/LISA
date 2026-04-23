@@ -18,7 +18,7 @@ import * as cdk from 'aws-cdk-lib';
 import { IdentitySource, RequestAuthorizer } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { IRole } from 'aws-cdk-lib/aws-iam';
-import { Code, Function, LayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
@@ -26,9 +26,8 @@ import { BaseProps } from '../schema';
 import { createCdkId } from '../core/utils';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { Vpc } from '../networking/vpc';
-import { getPythonRuntime } from './utils';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { LAMBDA_PATH } from '../util';
+import { definePythonLambda } from '../util';
 import { getAuditLoggingEnv } from './auditEnv';
 
 /**
@@ -77,13 +76,11 @@ export class CustomAuthorizer extends Construct {
             StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/authorizer`),
         );
 
-        // Create Lambda authorizer
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
-        const authorizerLambda = new Function(this, 'AuthorizerLambda', {
-            runtime: getPythonRuntime(),
-            handler: 'authorizer.lambda_functions.lambda_handler',
+        const authorizerLambda = definePythonLambda(this, 'AuthorizerLambda', {
+            handlerDir: 'authorizer',
+            entry: 'lambda_functions.lambda_handler',
             functionName: `${cdk.Stack.of(this).stackName}-lambda-authorizer`,
-            code: Code.fromAsset(lambdaPath),
+            config,
             description: 'REST API and UI Authorization Lambda',
             timeout: cdk.Duration.seconds(30),
             memorySize: 128,
@@ -99,10 +96,9 @@ export class CustomAuthorizer extends Construct {
                 ...(tokenTable ? { TOKEN_TABLE_NAME: tokenTable?.tableName } : {}),
                 ...getAuditLoggingEnv(config),
             },
-            role: role,
-            vpc: vpc.vpc,
-            securityGroups: securityGroups,
-            vpcSubnets: vpc.subnetSelection
+            role,
+            vpc,
+            securityGroups,
         });
 
         if (tokenTable){

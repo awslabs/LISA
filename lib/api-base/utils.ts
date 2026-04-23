@@ -37,9 +37,12 @@ import {
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { RetentionDays } from 'aws-cdk-lib/aws-logs';
-import { CfnPermission, Code, Function, IFunction, ILayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { CfnPermission, Function, IFunction, ILayerVersion, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { Vpc } from '../networking/vpc';
+import { Config } from '../schema';
+import { lambdaCodeAsset, LambdaHandler } from '../util/lambdaCode';
+import { getLisaSharedLayer } from '../util/lambdaLayers';
 
 /**
  * Type representing python lambda function
@@ -61,23 +64,25 @@ export type PythonLambdaFunction = {
 };
 
 /**
- * Registers API endpoints for Python lambda functions
+ * Registers API endpoints for Python lambda functions.
+ *
  * @param scope a CDK construct
  * @param api the REST APIGateway this Lambda endpoint will be added to
- * @param authorizer the authorizer Lambda function for authenticating calls to this endpoint
- * @param lambdaSourcePath the file path to the source code for this Lambda function
- * @param layers the Lambda LayerVersion to use across Lambda functions
+ * @param config LISA config (used to resolve prebuilt `lambdaPath` zip asset,
+ *   if any; otherwise the handler directory under `lambda/handlers/` is used).
+ * @param layers Lambda layers shared across this function's runtime. Must
+ *   include the `LisaSharedLayer` so handlers can `import lisa.*`.
  * @param funcDef the properties of this Lambda function such as the name, path, and method
  * @param pythonRuntime the configured Python runtime
- * @param role the IAM execution role of this Lambda function
  * @param vpc the VPC this Lambda function will exist inside
  * @param securityGroups security groups for Lambdas
- * @returns
+ * @param authorizer the authorizer Lambda function for authenticating calls to this endpoint
+ * @param role the IAM execution role of this Lambda function
  */
 export function registerAPIEndpoint (
     scope: Construct,
     api: IRestApi,
-    lambdaSourcePath: string,
+    config: Config,
     layers: ILayerVersion[],
     funcDef: PythonLambdaFunction,
     pythonRuntime: Runtime,
@@ -113,15 +118,15 @@ export function registerAPIEndpoint (
         handler = new Function(scope, functionId, {
             functionName: functionId,
             runtime: pythonRuntime,
-            handler: `${funcDef.resource}.lambda_functions.${funcDef.name}`,
-            code: Code.fromAsset(lambdaSourcePath),
+            handler: `lambda_functions.${funcDef.name}`,
+            code: lambdaCodeAsset(funcDef.resource as LambdaHandler, config),
             description: funcDef.description,
             environment: {
                 ...funcDef.environment,
             },
             timeout: funcDef.timeout || Duration.seconds(180),
             memorySize: 512,
-            layers,
+            layers: [getLisaSharedLayer(scope, config), ...layers],
             role,
             vpc: vpc.vpc,
             securityGroups,

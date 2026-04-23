@@ -24,7 +24,7 @@ import {
     Role,
     ServicePrincipal,
 } from 'aws-cdk-lib/aws-iam';
-import { Code, Function } from 'aws-cdk-lib/aws-lambda';
+import { Function } from 'aws-cdk-lib/aws-lambda';
 import { Duration, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import { BlockPublicAccess, Bucket, BucketEncryption, IBucket } from 'aws-cdk-lib/aws-s3';
 import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
@@ -33,8 +33,7 @@ import { createCdkId } from '../core/utils';
 import { BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
 import { Roles } from '../core/iam/roles';
-import { getPythonRuntime } from '../api-base/utils';
-import { ECS_MODEL_PATH, LAMBDA_PATH } from '../util';
+import { definePythonLambda, ECS_MODEL_PATH } from '../util';
 
 export type DockerImageBuilderProps = BaseProps & {
     bucketAccessLogsBucket: IBucket;
@@ -90,13 +89,12 @@ export class DockerImageBuilder extends Construct {
             role: ec2InstanceProfileRole,
         });
 
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         const functionId = createCdkId([stackName, 'docker-image-builder']);
-        this.dockerImageBuilderFn = new Function(this, functionId, {
+        this.dockerImageBuilderFn = definePythonLambda(this, functionId, {
             functionName: functionId,
-            runtime: getPythonRuntime(),
-            handler: 'dockerimagebuilder.handler',
-            code: Code.fromAsset(lambdaPath),
+            handlerDir: 'dockerimagebuilder',
+            entry: 'lambda_functions.handler',
+            config,
             timeout: Duration.minutes(1),
             memorySize: 1024,
             role: ec2BuilderRole,
@@ -108,8 +106,7 @@ export class DockerImageBuilder extends Construct {
                 'LISA_IMAGEBUILDER_VOLUME_SIZE': String(config.imageBuilderVolumeSize),
                 ...props.vpc.subnetSelection?.subnets && props.vpc.subnetSelection?.subnets[0].subnetId ? {'LISA_SUBNET_ID': props.vpc.subnetSelection?.subnets[0].subnetId} : {}
             },
-            vpc: props.vpc.vpc,
-            vpcSubnets: props.vpc.subnetSelection,
+            vpc: props.vpc,
             securityGroups: props.securityGroups,
         });
     }

@@ -18,7 +18,7 @@ import json
 from datetime import datetime
 from decimal import Decimal
 
-from utilities.response_builder import DecimalEncoder, generate_exception_response, generate_html_response
+from lisa.utilities.response_builder import DecimalEncoder, generate_exception_response, generate_html_response
 
 
 class TestDecimalEncoder:

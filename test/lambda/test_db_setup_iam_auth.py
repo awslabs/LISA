@@ -36,7 +36,7 @@ os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 os.environ["AWS_REGION"] = "us-east-1"
 
 # Import the module to test
-from utilities.db_setup_iam_auth import create_db_user, delete_bootstrap_secret, get_db_credentials, handler
+from db_setup_iam_auth.lambda_functions import create_db_user, delete_bootstrap_secret, get_db_credentials, handler
 
 
 @pytest.fixture(scope="function")
@@ -76,7 +76,7 @@ def test_get_db_credentials_success():
     secret_value = {"username": "test-user", "password": "test-password"}
 
     # Mock the secrets manager client directly
-    with patch("utilities.db_setup_iam_auth.boto3.client") as mock_client:
+    with patch("db_setup_iam_auth.lambda_functions.boto3.client") as mock_client:
         mock_secretsmanager = MagicMock()
         mock_client.return_value = mock_secretsmanager
 
@@ -96,7 +96,7 @@ def test_get_db_credentials_success():
 
 def test_get_db_credentials_not_found():
     """Test handling when secret is not found (returns None)."""
-    with patch("utilities.db_setup_iam_auth.boto3.client") as mock_client:
+    with patch("db_setup_iam_auth.lambda_functions.boto3.client") as mock_client:
         mock_secretsmanager = MagicMock()
         mock_client.return_value = mock_secretsmanager
         mock_secretsmanager.get_secret_value.side_effect = ClientError(
@@ -110,7 +110,7 @@ def test_get_db_credentials_not_found():
 
 def test_get_db_credentials_error():
     """Test error handling when Secrets Manager fails with non-ResourceNotFound error."""
-    with patch("utilities.db_setup_iam_auth.boto3.client") as mock_client:
+    with patch("db_setup_iam_auth.lambda_functions.boto3.client") as mock_client:
         mock_secretsmanager = MagicMock()
         mock_client.return_value = mock_secretsmanager
         mock_secretsmanager.get_secret_value.side_effect = ClientError(
@@ -126,7 +126,7 @@ def test_delete_bootstrap_secret_success():
     """Test successful deletion of bootstrap secret."""
     secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:test-secret"
 
-    with patch("utilities.db_setup_iam_auth.boto3.client") as mock_client:
+    with patch("db_setup_iam_auth.lambda_functions.boto3.client") as mock_client:
         mock_secretsmanager = MagicMock()
         mock_client.return_value = mock_secretsmanager
 
@@ -141,7 +141,7 @@ def test_delete_bootstrap_secret_already_deleted():
     """Test handling when secret is already deleted."""
     secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:test-secret"
 
-    with patch("utilities.db_setup_iam_auth.boto3.client") as mock_client:
+    with patch("db_setup_iam_auth.lambda_functions.boto3.client") as mock_client:
         mock_secretsmanager = MagicMock()
         mock_client.return_value = mock_secretsmanager
         mock_secretsmanager.delete_secret.side_effect = ClientError(
@@ -157,7 +157,7 @@ def test_delete_bootstrap_secret_error():
     """Test handling when secret deletion fails."""
     secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:test-secret"
 
-    with patch("utilities.db_setup_iam_auth.boto3.client") as mock_client:
+    with patch("db_setup_iam_auth.lambda_functions.boto3.client") as mock_client:
         mock_secretsmanager = MagicMock()
         mock_client.return_value = mock_secretsmanager
         mock_secretsmanager.delete_secret.side_effect = ClientError(
@@ -176,7 +176,7 @@ def test_create_db_user_success(mock_psycopg2_connection):
     # Mock the psycopg2.connect function
     with patch("psycopg2.connect", return_value=mock_conn):
         # Mock get_db_credentials
-        with patch("utilities.db_setup_iam_auth.get_db_credentials") as mock_get_credentials:
+        with patch("db_setup_iam_auth.lambda_functions.get_db_credentials") as mock_get_credentials:
             mock_get_credentials.return_value = {"password": "test-password"}
 
             # Call the function
@@ -247,7 +247,7 @@ def test_create_db_user_existing_user(mock_psycopg2_connection):
     # Mock the psycopg2.connect function
     with patch("psycopg2.connect", return_value=mock_conn):
         # Mock get_db_credentials
-        with patch("utilities.db_setup_iam_auth.get_db_credentials") as mock_get_credentials:
+        with patch("db_setup_iam_auth.lambda_functions.get_db_credentials") as mock_get_credentials:
             mock_get_credentials.return_value = {"password": "test-password"}
 
             # Call the function - should not raise an exception
@@ -280,7 +280,7 @@ def test_create_db_user_error(mock_psycopg2_connection):
     # Mock the psycopg2.connect function
     with patch("psycopg2.connect", return_value=mock_conn):
         # Mock get_db_credentials
-        with patch("utilities.db_setup_iam_auth.get_db_credentials") as mock_get_credentials:
+        with patch("db_setup_iam_auth.lambda_functions.get_db_credentials") as mock_get_credentials:
             mock_get_credentials.return_value = {"password": "test-password"}
 
             # Call the function and assert it raises the expected exception
@@ -309,7 +309,7 @@ def test_create_db_user_grant_error(mock_psycopg2_connection):
     # Mock the psycopg2.connect function
     with patch("psycopg2.connect", return_value=mock_conn):
         # Mock get_db_credentials
-        with patch("utilities.db_setup_iam_auth.get_db_credentials") as mock_get_credentials:
+        with patch("db_setup_iam_auth.lambda_functions.get_db_credentials") as mock_get_credentials:
             mock_get_credentials.return_value = {"password": "test-password"}
 
             # Call the function and assert it raises the expected exception
@@ -339,7 +339,7 @@ def test_handler_success(lambda_context):
         "iamName": "test-iam-user",
     }
 
-    with patch("utilities.db_setup_iam_auth.create_db_user") as mock_create_db_user:
+    with patch("db_setup_iam_auth.lambda_functions.create_db_user") as mock_create_db_user:
         mock_create_db_user.return_value = True
 
         response = handler(event, lambda_context)
@@ -388,7 +388,7 @@ def test_handler_create_db_user_error(lambda_context):
     }
 
     # Mock the create_db_user function to raise an exception
-    with patch("utilities.db_setup_iam_auth.create_db_user") as mock_create_db_user:
+    with patch("db_setup_iam_auth.lambda_functions.create_db_user") as mock_create_db_user:
         mock_create_db_user.side_effect = Exception("Database connection failed")
 
         # Handler catches exceptions and returns 500

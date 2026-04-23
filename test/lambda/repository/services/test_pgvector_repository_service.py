@@ -24,7 +24,7 @@ os.environ.setdefault("AWS_REGION", "us-east-1")
 os.environ.setdefault("RAG_DOCUMENT_TABLE", "test-doc-table")
 os.environ.setdefault("RAG_SUB_DOCUMENT_TABLE", "test-subdoc-table")
 
-from repository.services.pgvector_repository_service import PGVectorRepositoryService
+from lisa.rag.services.pgvector_repository_service import PGVectorRepositoryService
 
 
 @pytest.fixture
@@ -55,7 +55,7 @@ class TestPGVectorRepositoryService:
         mock_vector_store = MagicMock()
         mock_vector_store.delete_collection.return_value = None
 
-        with patch("repository.services.pgvector_repository_service.RagEmbeddings"):
+        with patch("lisa.rag.services.pgvector_repository_service.RagEmbeddings"):
             with patch.object(pgvector_service, "_get_vector_store_client", return_value=mock_vector_store):
                 pgvector_service._drop_collection_index("test-collection")
 
@@ -65,7 +65,7 @@ class TestPGVectorRepositoryService:
         """Test dropping collection when vector store doesn't support deletion."""
         mock_vector_store = MagicMock(spec=[])  # No delete_collection method
 
-        with patch("repository.services.pgvector_repository_service.RagEmbeddings"):
+        with patch("lisa.rag.services.pgvector_repository_service.RagEmbeddings"):
             with patch.object(pgvector_service, "_get_vector_store_client", return_value=mock_vector_store):
                 # Should not raise exception
                 pgvector_service._drop_collection_index("test-collection")
@@ -75,7 +75,7 @@ class TestPGVectorRepositoryService:
         mock_vector_store = MagicMock()
         mock_vector_store.delete_collection.side_effect = Exception("Database error")
 
-        with patch("repository.services.pgvector_repository_service.RagEmbeddings"):
+        with patch("lisa.rag.services.pgvector_repository_service.RagEmbeddings"):
             with patch.object(pgvector_service, "_get_vector_store_client", return_value=mock_vector_store):
                 # Should not raise exception
                 pgvector_service._drop_collection_index("test-collection")

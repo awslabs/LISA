@@ -21,8 +21,12 @@ import unittest
 from unittest.mock import MagicMock
 
 from langchain_core.documents import Document
-from models.domain_objects import ChunkingStrategyType, FixedChunkingStrategy, NoneChunkingStrategy
-from utilities.chunking_strategy_factory import ChunkingStrategyFactory, FixedSizeChunkingHandler, NoneChunkingHandler
+from lisa.domain.domain_objects import ChunkingStrategyType, FixedChunkingStrategy, NoneChunkingStrategy
+from lisa.utilities.chunking_strategy_factory import (
+    ChunkingStrategyFactory,
+    FixedSizeChunkingHandler,
+    NoneChunkingHandler,
+)
 
 # Add parent directory to path for imports
 sys.path.insert(0, "..")
@@ -192,7 +196,7 @@ class TestBackwardCompatibility(unittest.TestCase):
 
     def test_default_strategy_is_fixed(self):
         """Test default strategy remains FIXED."""
-        from utilities.chunking_strategy_factory import DEFAULT_STRATEGY
+        from lisa.utilities.chunking_strategy_factory import DEFAULT_STRATEGY
 
         self.assertEqual(DEFAULT_STRATEGY.type, ChunkingStrategyType.FIXED)
         self.assertEqual(DEFAULT_STRATEGY.size, 512)

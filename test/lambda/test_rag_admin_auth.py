@@ -46,11 +46,11 @@ def lambda_context():
 @pytest.fixture(autouse=True)
 def clear_modules():
     for mod in list(sys.modules):
-        if "utilities.auth" in mod:
+        if "lisa.utilities.auth" in mod:
             del sys.modules[mod]
     yield
     for mod in list(sys.modules):
-        if "utilities.auth" in mod:
+        if "lisa.utilities.auth" in mod:
             del sys.modules[mod]
 
 
@@ -59,7 +59,7 @@ def clear_modules():
 
 def test_check_rag_admin_access_returns_true_when_in_group():
     with patch.dict(os.environ, {"RAG_ADMIN_GROUP": "rag-admins"}):
-        from utilities.auth_provider import OIDCAuthorizationProvider
+        from lisa.utilities.auth_provider import OIDCAuthorizationProvider
 
         provider = OIDCAuthorizationProvider()
         assert provider.check_rag_admin_access("user1", ["rag-admins", "users"]) is True
@@ -68,7 +68,7 @@ def test_check_rag_admin_access_returns_true_when_in_group():
 @pytest.mark.parametrize("groups", [["users"], []])
 def test_check_rag_admin_access_returns_false_when_not_in_group(groups):
     with patch.dict(os.environ, {"RAG_ADMIN_GROUP": "rag-admins"}):
-        from utilities.auth_provider import OIDCAuthorizationProvider
+        from lisa.utilities.auth_provider import OIDCAuthorizationProvider
 
         provider = OIDCAuthorizationProvider()
         assert provider.check_rag_admin_access("user1", groups) is False
@@ -76,7 +76,7 @@ def test_check_rag_admin_access_returns_false_when_not_in_group(groups):
 
 def test_check_rag_admin_access_returns_false_when_env_var_empty():
     with patch.dict(os.environ, {"RAG_ADMIN_GROUP": ""}):
-        from utilities.auth_provider import OIDCAuthorizationProvider
+        from lisa.utilities.auth_provider import OIDCAuthorizationProvider
 
         provider = OIDCAuthorizationProvider()
         assert provider.check_rag_admin_access("user1", ["rag-admins"]) is False
@@ -84,7 +84,7 @@ def test_check_rag_admin_access_returns_false_when_env_var_empty():
 
 def test_check_rag_admin_access_is_case_sensitive():
     with patch.dict(os.environ, {"RAG_ADMIN_GROUP": "RAG-Admins"}):
-        from utilities.auth_provider import OIDCAuthorizationProvider
+        from lisa.utilities.auth_provider import OIDCAuthorizationProvider
 
         provider = OIDCAuthorizationProvider()
         assert provider.check_rag_admin_access("user1", ["rag-admins"]) is False
@@ -97,7 +97,7 @@ def test_check_rag_admin_access_is_case_sensitive():
 def test_is_rag_admin_extracts_from_event_context():
     event = {"requestContext": {"authorizer": {"username": "rag-user", "groups": '["rag-admins", "users"]'}}}
     with patch.dict(os.environ, {"RAG_ADMIN_GROUP": "rag-admins"}):
-        from utilities.auth import is_rag_admin
+        from lisa.utilities.auth import is_rag_admin
 
         assert is_rag_admin(event) is True
 
@@ -108,7 +108,7 @@ def test_is_rag_admin_extracts_from_event_context():
 def test_rag_admin_or_admin_allows_admin(lambda_context):
     event = {"requestContext": {"authorizer": {"username": "admin-user", "groups": '["admins"]'}}}
     with patch.dict(os.environ, {"ADMIN_GROUP": "admins", "RAG_ADMIN_GROUP": "rag-admins"}):
-        from utilities.auth import rag_admin_or_admin
+        from lisa.utilities.auth import rag_admin_or_admin
 
         @rag_admin_or_admin
         def test_func(event, context):
@@ -120,7 +120,7 @@ def test_rag_admin_or_admin_allows_admin(lambda_context):
 def test_rag_admin_or_admin_allows_rag_admin(lambda_context):
     event = {"requestContext": {"authorizer": {"username": "rag-user", "groups": '["rag-admins"]'}}}
     with patch.dict(os.environ, {"ADMIN_GROUP": "admins", "RAG_ADMIN_GROUP": "rag-admins"}):
-        from utilities.auth import rag_admin_or_admin
+        from lisa.utilities.auth import rag_admin_or_admin
 
         @rag_admin_or_admin
         def test_func(event, context):
@@ -132,8 +132,8 @@ def test_rag_admin_or_admin_allows_rag_admin(lambda_context):
 def test_rag_admin_or_admin_blocks_regular_user(lambda_context):
     event = {"requestContext": {"authorizer": {"username": "regular-user", "groups": '["users"]'}}}
     with patch.dict(os.environ, {"ADMIN_GROUP": "admins", "RAG_ADMIN_GROUP": "rag-admins"}):
-        from utilities.auth import rag_admin_or_admin
-        from utilities.exceptions import ForbiddenException
+        from lisa.utilities.auth import rag_admin_or_admin
+        from lisa.utilities.exceptions import ForbiddenException
 
         @rag_admin_or_admin
         def test_func(event, context):
@@ -148,8 +148,8 @@ def test_rag_admin_or_admin_blocks_regular_user(lambda_context):
 def test_rag_admin_or_admin_blocks_when_no_groups(lambda_context):
     event = {"requestContext": {"authorizer": {"username": "user1", "groups": "[]"}}}
     with patch.dict(os.environ, {"ADMIN_GROUP": "admins", "RAG_ADMIN_GROUP": "rag-admins"}):
-        from utilities.auth import rag_admin_or_admin
-        from utilities.exceptions import ForbiddenException
+        from lisa.utilities.auth import rag_admin_or_admin
+        from lisa.utilities.exceptions import ForbiddenException
 
         @rag_admin_or_admin
         def test_func(event, context):

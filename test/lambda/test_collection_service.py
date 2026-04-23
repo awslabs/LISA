@@ -21,7 +21,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../lambda"))
 
-from models.domain_objects import CollectionStatus, FixedChunkingStrategy, RagCollectionConfig
+from lisa.domain.domain_objects import CollectionStatus, FixedChunkingStrategy, RagCollectionConfig
 
 
 @pytest.fixture(autouse=True)
@@ -39,7 +39,7 @@ def setup_env(monkeypatch):
 
 def test_create_collection():
     """Test collection creation"""
-    from repository.collection_service import CollectionService
+    from lisa.rag.collection_service import CollectionService
 
     mock_repo = Mock()
     mock_vector_store_repo = Mock()
@@ -67,7 +67,7 @@ def test_create_collection():
 
 def test_get_collection():
     """Test get collection"""
-    from repository.collection_service import CollectionService
+    from lisa.rag.collection_service import CollectionService
 
     mock_repo = Mock()
     mock_vector_store_repo = Mock()
@@ -95,7 +95,7 @@ def test_get_collection():
 def test_list_collections():
     """Test list collections"""
 
-    from repository.collection_service import CollectionService
+    from lisa.rag.collection_service import CollectionService
 
     mock_repo = Mock()
     mock_vector_store_repo = Mock()
@@ -137,7 +137,7 @@ def test_delete_collection():
     """Test delete regular collection (full deletion)"""
     from unittest.mock import patch
 
-    from repository.collection_service import CollectionService
+    from lisa.rag.collection_service import CollectionService
 
     mock_repo = Mock()
     mock_vector_store_repo = Mock()
@@ -163,8 +163,8 @@ def test_delete_collection():
     mock_ingestion_job_repo = Mock()
     mock_ingestion_service = Mock()
 
-    with patch("repository.collection_service.IngestionJobRepository", return_value=mock_ingestion_job_repo), patch(
-        "repository.collection_service.DocumentIngestionService", return_value=mock_ingestion_service
+    with patch("lisa.rag.collection_service.IngestionJobRepository", return_value=mock_ingestion_job_repo), patch(
+        "lisa.rag.collection_service.DocumentIngestionService", return_value=mock_ingestion_service
     ):
 
         result = service.delete_collection(
@@ -192,7 +192,7 @@ def test_delete_default_collection():
     """Test delete default collection (partial deletion)"""
     from unittest.mock import patch
 
-    from repository.collection_service import CollectionService
+    from lisa.rag.collection_service import CollectionService
 
     mock_repo = Mock()
     mock_vector_store_repo = Mock()
@@ -203,8 +203,8 @@ def test_delete_default_collection():
     mock_ingestion_job_repo = Mock()
     mock_ingestion_service = Mock()
 
-    with patch("repository.collection_service.IngestionJobRepository", return_value=mock_ingestion_job_repo), patch(
-        "repository.collection_service.DocumentIngestionService", return_value=mock_ingestion_service
+    with patch("lisa.rag.collection_service.IngestionJobRepository", return_value=mock_ingestion_job_repo), patch(
+        "lisa.rag.collection_service.DocumentIngestionService", return_value=mock_ingestion_service
     ):
 
         result = service.delete_collection(
@@ -283,7 +283,7 @@ def test_create_collection_lambda_with_embedding_model():
 
     with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
         "repository.lambda_functions.collection_service"
-    ) as mock_service, patch("utilities.auth.is_admin") as mock_is_admin:
+    ) as mock_service, patch("lisa.utilities.auth.is_admin") as mock_is_admin:
 
         mock_get_repo.return_value = mock_repository
         mock_service.create_collection.return_value = mock_collection
@@ -348,7 +348,7 @@ def test_create_collection_lambda_without_embedding_model_with_repository_defaul
 
     with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
         "repository.lambda_functions.collection_service"
-    ) as mock_service, patch("utilities.auth.is_admin") as mock_is_admin:
+    ) as mock_service, patch("lisa.utilities.auth.is_admin") as mock_is_admin:
 
         mock_get_repo.return_value = mock_repository
         mock_service.create_collection.return_value = mock_collection
@@ -403,7 +403,7 @@ def test_create_collection_lambda_without_embedding_model_no_repository_default(
 
     with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
         "repository.lambda_functions.collection_service"
-    ) as mock_service, patch("utilities.auth.is_admin") as mock_is_admin:
+    ) as mock_service, patch("lisa.utilities.auth.is_admin") as mock_is_admin:
 
         mock_get_repo.return_value = mock_repository
         mock_is_admin.return_value = True  # Mock admin check to pass
@@ -465,7 +465,7 @@ def test_create_collection_lambda_original_payload():
 
     with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
         "repository.lambda_functions.collection_service"
-    ) as mock_service, patch("utilities.auth.is_admin") as mock_is_admin:
+    ) as mock_service, patch("lisa.utilities.auth.is_admin") as mock_is_admin:
 
         mock_get_repo.return_value = mock_repository
         mock_service.create_collection.return_value = mock_collection

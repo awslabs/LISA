@@ -21,17 +21,16 @@ import {
     Role,
     ServicePrincipal,
 } from 'aws-cdk-lib/aws-iam';
-import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Provider } from 'aws-cdk-lib/custom-resources';
 import { Construct } from 'constructs';
 
-import { getPythonRuntime } from '../api-base/utils';
 import { APP_MANAGEMENT_KEY, BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
-import { LAMBDA_PATH } from '../util';
+import { definePythonLambda } from '../util';
 
 export type LiteLLMSyncConstructProps = {
     modelTable: ITable;
@@ -50,7 +49,6 @@ export class LiteLLMSyncConstruct extends Construct {
         super(scope, id);
 
         const { config, modelTable, lambdaLayers, vpc, securityGroups } = props;
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
 
         const managementKeyName = StringParameter.valueForStringParameter(
             this,
@@ -92,10 +90,10 @@ export class LiteLLMSyncConstruct extends Construct {
             resources: ['*'],
         }));
 
-        const litellmModelSyncLambda = new Function(this, 'LiteLLMModelSync', {
-            runtime: getPythonRuntime(),
-            handler: 'models.litellm_model_sync.handler',
-            code: Code.fromAsset(lambdaPath),
+        const litellmModelSyncLambda = definePythonLambda(this, 'LiteLLMModelSync', {
+            handlerDir: 'models',
+            entry: 'litellm_model_sync.handler',
+            config,
             layers: lambdaLayers,
             environment: {
                 MODEL_TABLE_NAME: modelTable.tableName,
@@ -105,9 +103,8 @@ export class LiteLLMSyncConstruct extends Construct {
                 RESTAPI_SSL_CERT_ARN: config.restApiConfig?.sslCertIamArn ?? '',
             },
             role: litellmSyncRole,
-            vpc: vpc.vpc,
-            vpcSubnets: vpc.subnetSelection,
-            securityGroups: securityGroups,
+            vpc,
+            securityGroups,
             timeout: Duration.minutes(10),
             description: 'Sync all models from DynamoDB to LiteLLM when the LiteLLM database is created or updated',
         });

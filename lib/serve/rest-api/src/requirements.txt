@@ -1,7 +1,8 @@
 # AWS SDK Dependencies
-# Keep boto3 aligned with LiteLLM / RDS IAM token refresh expectations.
-# litellm[proxy]==1.83.11 pins boto3==1.42.59
-boto3>=1.42.59,<1.43.0
+# Keep boto3 aligned with LiteLLM / RDS IAM token refresh expectations (loose range, not hard-pinned).
+# Upper bound widened to <2.0.0 because litellm[proxy] 1.83.3+ hard-pins a specific
+# 1.42.x boto3 (e.g. 1.42.59 in 1.83.9/1.83.10); pip must be free to select it.
+boto3>=1.40.76,<2.0.0
 
 # OpenTelemetry - Optional for LiteLLM Weave integration, silences import warnings
 opentelemetry-api>=1.41.0

@@ -19,22 +19,19 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import { IRole, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
-import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
-import * as path from 'path';
 
 import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../api-base/utils';
 import { BaseProps } from '../schema';
 import { createLambdaRole } from '../core/utils';
 import { Vpc } from '../networking/vpc';
 import { getAuditLoggingEnv } from '../api-base/auditEnv';
-import { LAMBDA_PATH } from '../util';
+import { definePythonLambda, getPythonLambdaLayers } from '../util';
 import { Duration, RemovalPolicy } from 'aws-cdk-lib';
 
 /**
@@ -58,12 +55,7 @@ export class MetricsConstruct extends Construct {
 
         const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
 
-        // Get common layer based on arn from SSM due to issues with cross stack references
-        const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
-            this,
-            'metrics-common-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
-        );
+        const lambdaLayers = getPythonLambdaLayers(this, config, ['common'], 'Metrics');
 
         // Create Usage Metrics table
         const usageMetricsTable = new dynamodb.Table(this, 'UsageMetricsTable', {
@@ -470,13 +462,12 @@ export class MetricsConstruct extends Construct {
             resources: ['*']
         }));
 
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         metricsApis.forEach((f) => {
             registerAPIEndpoint(
                 this,
                 restApi,
-                lambdaPath,
-                [commonLambdaLayer],
+                config,
+                lambdaLayers,
                 f,
                 getPythonRuntime(),
                 vpc,
@@ -487,17 +478,16 @@ export class MetricsConstruct extends Construct {
         });
 
         // Scheduled metrics Lambda to count unique users and group membership daily
-        const scheduledMetricsLambda = new lambda.Function(this, 'DailyMetricsLambda', {
-            runtime: getPythonRuntime(),
-            code: lambda.Code.fromAsset(path.join(lambdaPath)),
-            handler: 'metrics/lambda_functions.daily_metrics_handler',
+        const scheduledMetricsLambda = definePythonLambda(this, 'DailyMetricsLambda', {
+            handlerDir: 'metrics',
+            entry: 'lambda_functions.daily_metrics_handler',
+            config,
+            layers: lambdaLayers,
             environment: env,
-            vpc: vpc.vpc,
-            vpcSubnets: vpc.subnetSelection,
-            securityGroups: securityGroups,
+            vpc,
+            securityGroups,
             timeout: Duration.minutes(2),
             role: lambdaRole,
-            layers: [commonLambdaLayer],
         });
 
         // EventBridge rule to trigger the UniqueUsersMetric lambda daily
@@ -507,17 +497,16 @@ export class MetricsConstruct extends Construct {
         });
 
         // Create Lambda function for processing SQS events
-        const metricsProcessorLambda = new lambda.Function(this, 'UsageMetricsProcessor', {
-            runtime: getPythonRuntime(),
-            code: lambda.Code.fromAsset(path.join(lambdaPath)),
-            handler: 'metrics.lambda_functions.process_metrics_sqs_event',
+        const metricsProcessorLambda = definePythonLambda(this, 'UsageMetricsProcessor', {
+            handlerDir: 'metrics',
+            entry: 'lambda_functions.process_metrics_sqs_event',
+            config,
+            layers: lambdaLayers,
             environment: env,
-            vpc: vpc.vpc,
-            vpcSubnets: vpc.subnetSelection,
-            securityGroups: securityGroups,
+            vpc,
+            securityGroups,
             timeout: Duration.minutes(2),
             role: lambdaRole,
-            layers: [commonLambdaLayer],
         });
 
         // Add SQS event source to the Lambda function

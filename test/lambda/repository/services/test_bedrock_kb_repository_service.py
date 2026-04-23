@@ -24,9 +24,9 @@ os.environ.setdefault("AWS_REGION", "us-east-1")
 os.environ.setdefault("RAG_DOCUMENT_TABLE", "test-doc-table")
 os.environ.setdefault("RAG_SUB_DOCUMENT_TABLE", "test-subdoc-table")
 
-from models.domain_objects import CollectionStatus, IngestionJob, IngestionType, NoneChunkingStrategy, RagDocument
-from repository.rag_document_repo import RagDocumentRepository
-from repository.services.bedrock_kb_repository_service import BedrockKBRepositoryService
+from lisa.domain.domain_objects import CollectionStatus, IngestionJob, IngestionType, NoneChunkingStrategy, RagDocument
+from lisa.rag.rag_document_repo import RagDocumentRepository
+from lisa.rag.services.bedrock_kb_repository_service import BedrockKBRepositoryService
 
 
 @pytest.fixture
@@ -98,7 +98,7 @@ class TestBedrockKBRepositoryService:
         mock_rag_document_repo.save.return_value = None
 
         with patch(
-            "repository.services.bedrock_kb_repository_service.RagDocumentRepository",
+            "lisa.rag.services.bedrock_kb_repository_service.RagDocumentRepository",
             return_value=mock_rag_document_repo,
         ):
             result = bedrock_kb_service.ingest_document(sample_ingestion_job, [], [])
@@ -126,7 +126,7 @@ class TestBedrockKBRepositoryService:
         mock_rag_document_repo.save.return_value = None
 
         with patch(
-            "repository.services.bedrock_kb_repository_service.RagDocumentRepository",
+            "lisa.rag.services.bedrock_kb_repository_service.RagDocumentRepository",
             return_value=mock_rag_document_repo,
         ):
             result = bedrock_kb_service.ingest_document(sample_ingestion_job, [], [])
@@ -151,7 +151,7 @@ class TestBedrockKBRepositoryService:
         mock_s3_client = MagicMock()
         mock_bedrock_agent_client = MagicMock()
 
-        with patch("repository.services.bedrock_kb_repository_service.delete_document_from_kb") as mock_delete:
+        with patch("lisa.rag.services.bedrock_kb_repository_service.delete_document_from_kb") as mock_delete:
             bedrock_kb_service.delete_document(document, mock_s3_client, mock_bedrock_agent_client)
             mock_delete.assert_called_once()
 
@@ -190,7 +190,7 @@ class TestBedrockKBRepositoryService:
 
         with patch("boto3.resource", return_value=mock_dynamodb):
             with patch(
-                "repository.services.bedrock_kb_repository_service.bulk_delete_documents_from_kb"
+                "lisa.rag.services.bedrock_kb_repository_service.bulk_delete_documents_from_kb"
             ) as mock_bulk_delete:
                 bedrock_kb_service.delete_collection("ds-456", mock_s3_client, mock_bedrock_agent_client)
 

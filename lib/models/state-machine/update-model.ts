@@ -17,7 +17,7 @@
 
 import { BaseProps } from '../../schema';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { IStringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -35,8 +35,7 @@ import {
     WaitTime,
 } from 'aws-cdk-lib/aws-stepfunctions';
 import { Vpc } from '../../networking/vpc';
-import { getPythonRuntime } from '../../api-base/utils';
-import { LAMBDA_PATH } from '../../util';
+import { definePythonLambda } from '../../util';
 
 type UpdateModelStateMachineProps = BaseProps & {
     modelTable: ITable,
@@ -82,123 +81,52 @@ export class UpdateModelStateMachine extends Construct {
             RESTAPI_SSL_CERT_ARN: config.restApiConfig?.sslCertIamArn ?? '',
             LITELLM_CONFIG_OBJ: JSON.stringify(config.litellmConfig),
         };
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
-        const handleJobIntake = new LambdaInvoke(this, 'HandleJobIntake', {
-            lambdaFunction: new Function(this, 'HandleJobIntakeFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'models.state_machine.update_model.handle_job_intake',
-                code: Code.fromAsset(lambdaPath),
+        const makeFn = (id: string, entry: string) =>
+            definePythonLambda(this, id, {
+                handlerDir: 'models',
+                entry,
+                config,
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
+                role,
+                vpc,
+                securityGroups,
                 layers: lambdaLayers,
-                environment: environment,
-            }),
+                environment,
+            });
+
+        const handleJobIntake = new LambdaInvoke(this, 'HandleJobIntake', {
+            lambdaFunction: makeFn('HandleJobIntakeFunc', 'state_machine.update_model.handle_job_intake'),
             outputPath: OUTPUT_PATH,
         });
 
         const handlePollCapacity = new LambdaInvoke(this, 'HandlePollCapacity', {
-            lambdaFunction: new Function(this, 'HandlePollCapacityFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'models.state_machine.update_model.handle_poll_capacity',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('HandlePollCapacityFunc', 'state_machine.update_model.handle_poll_capacity'),
             outputPath: OUTPUT_PATH,
         });
 
         const handleEcsUpdate = new LambdaInvoke(this, 'HandleEcsUpdate', {
-            lambdaFunction: new Function(this, 'HandleEcsUpdateFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'models.state_machine.update_model.handle_ecs_update',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('HandleEcsUpdateFunc', 'state_machine.update_model.handle_ecs_update'),
             outputPath: OUTPUT_PATH,
         });
 
         const handlePollEcsDeployment = new LambdaInvoke(this, 'HandlePollEcsDeployment', {
-            lambdaFunction: new Function(this, 'HandlePollEcsDeploymentFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'models.state_machine.update_model.handle_poll_ecs_deployment',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('HandlePollEcsDeploymentFunc', 'state_machine.update_model.handle_poll_ecs_deployment'),
             outputPath: OUTPUT_PATH,
         });
 
         const handleUpdateGuardrails = new LambdaInvoke(this, 'HandleUpdateGuardrails', {
-            lambdaFunction: new Function(this, 'HandleUpdateGuardrailsFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'models.state_machine.update_model.handle_update_guardrails',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('HandleUpdateGuardrailsFunc', 'state_machine.update_model.handle_update_guardrails'),
             outputPath: OUTPUT_PATH,
         });
 
         const handleFinishUpdate = new LambdaInvoke(this, 'HandleFinishUpdate', {
-            lambdaFunction: new Function(this, 'HandleFinishUpdateFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'models.state_machine.update_model.handle_finish_update',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('HandleFinishUpdateFunc', 'state_machine.update_model.handle_finish_update'),
             outputPath: OUTPUT_PATH,
         });
 
         const handleFailure = new LambdaInvoke(this, 'HandleFailure', {
-            lambdaFunction: new Function(this, 'HandleFailureFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'models.state_machine.update_model.handle_failure',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('HandleFailureFunc', 'state_machine.update_model.handle_failure'),
             outputPath: OUTPUT_PATH,
         });
 

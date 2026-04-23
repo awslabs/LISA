@@ -31,7 +31,6 @@ import {
     Role,
     ServicePrincipal,
 } from 'aws-cdk-lib/aws-iam';
-import { Code, Function, LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { CustomResource, Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { Provider } from 'aws-cdk-lib/custom-resources';
@@ -52,7 +51,7 @@ import { IBucket } from 'aws-cdk-lib/aws-s3';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { createCdkId, createLambdaRole } from '../core/utils';
 import { Roles } from '../core/iam/roles';
-import { LAMBDA_PATH } from '../util';
+import { definePythonLambda, getPythonLambdaLayers } from '../util';
 import { LiteLLMSyncConstruct } from './litellm-sync';
 
 /**
@@ -92,7 +91,6 @@ export class ModelsApi extends Construct {
             );
             return Table.fromTableName(this, 'GuardrailsTable', guardrailsTableNamePs.stringValue);
         })();
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
 
         const lisaServeEndpointUrlPs = props.lisaServeEndpointUrlPs ?? StringParameter.fromStringParameterName(
             scope,
@@ -100,20 +98,7 @@ export class ModelsApi extends Construct {
             `${config.deploymentPrefix}/lisaServeRestApiUri`,
         );
 
-        // Get common layer based on arn from SSM due to issues with cross stack references
-        const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
-            this,
-            'models-common-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
-        );
-
-        const fastapiLambdaLayer = LayerVersion.fromLayerVersionArn(
-            this,
-            'models-fastapi-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/fastapi`),
-        );
-
-        const lambdaLayers = [commonLambdaLayer, fastapiLambdaLayer];
+        const lambdaLayers = getPythonLambdaLayers(this, config, ['common', 'fastapi'], 'ModelsApi');
         const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
             restApiId: restApiId,
             rootResourceId: rootResourceId,
@@ -173,26 +158,25 @@ export class ModelsApi extends Construct {
             this.createStateMachineLambdaRole(modelTable.tableArn, guardrailsTable.tableArn, dockerImageBuilder.dockerImageBuilderFn.functionArn,
                 ecsModelDeployer.ecsModelDeployerFn.functionArn, lisaServeEndpointUrlPs.parameterArn, managementKeyName, config);
 
-        const scheduleManagementLambda = new Function(this, 'ScheduleManagement', {
-            runtime: getPythonRuntime(),
-            handler: 'models.scheduling.schedule_management.lambda_handler',
-            code: Code.fromAsset(lambdaPath),
+        const scheduleManagementLambda = definePythonLambda(this, 'ScheduleManagement', {
+            handlerDir: 'models',
+            entry: 'lisa.domain.scheduling.schedule_management.lambda_handler',
+            config,
             layers: lambdaLayers,
             environment: {
                 MODEL_TABLE_NAME: modelTable.tableName,
             },
             role: stateMachinesLambdaRole,
-            vpc: vpc.vpc,
-            vpcSubnets: vpc.subnetSelection,
-            securityGroups: securityGroups,
+            vpc,
+            securityGroups,
             timeout: Duration.minutes(5),
             description: 'Manages Auto Scaling scheduled actions for LISA model scheduling',
         });
 
-        const scheduleMonitoringLambda = new Function(this, 'ScheduleMonitoring', {
-            runtime: getPythonRuntime(),
-            handler: 'models.scheduling.schedule_monitoring.lambda_handler',
-            code: Code.fromAsset(lambdaPath),
+        const scheduleMonitoringLambda = definePythonLambda(this, 'ScheduleMonitoring', {
+            handlerDir: 'models',
+            entry: 'lisa.domain.scheduling.schedule_monitoring.lambda_handler',
+            config,
             layers: lambdaLayers,
             environment: {
                 MODEL_TABLE_NAME: modelTable.tableName,
@@ -202,9 +186,8 @@ export class ModelsApi extends Construct {
                 REST_API_VERSION: 'v2',
             },
             role: stateMachinesLambdaRole,
-            vpc: vpc.vpc,
-            vpcSubnets: vpc.subnetSelection,
-            securityGroups: securityGroups,
+            vpc,
+            securityGroups,
             timeout: Duration.minutes(5),
             description: 'Processes Auto Scaling Group CloudWatch events to update model status',
         });
@@ -307,7 +290,7 @@ export class ModelsApi extends Construct {
         const lambdaFunction = registerAPIEndpoint(
             this,
             restApi,
-            lambdaPath,
+            config,
             lambdaLayers,
             {
                 name: 'handler',
@@ -386,7 +369,7 @@ export class ModelsApi extends Construct {
             registerAPIEndpoint(
                 this,
                 restApi,
-                lambdaPath,
+                config,
                 lambdaLayers,
                 f,
                 getPythonRuntime(),
@@ -497,10 +480,10 @@ export class ModelsApi extends Construct {
         lambdaFunction.role!.attachInlinePolicy(workflowPermissions);
 
         // Model API key cleanup - runs once per deployment version
-        const modelApiKeyCleanupLambda = new Function(this, 'ModelApiKeyCleanup', {
-            runtime: getPythonRuntime(),
-            handler: 'models.model_api_key_cleanup.lambda_handler',
-            code: Code.fromAsset(lambdaPath),
+        const modelApiKeyCleanupLambda = definePythonLambda(this, 'ModelApiKeyCleanup', {
+            handlerDir: 'models',
+            entry: 'model_api_key_cleanup.lambda_handler',
+            config,
             layers: lambdaLayers,
             environment: {
                 LISA_API_URL_PS_NAME: lisaServeEndpointUrlPs.parameterName,
@@ -509,9 +492,8 @@ export class ModelsApi extends Construct {
                 DEPLOYMENT_PREFIX: config.deploymentPrefix || '',
             },
             role: stateMachinesLambdaRole,
-            vpc: vpc.vpc,
-            vpcSubnets: vpc.subnetSelection,
-            securityGroups: securityGroups,
+            vpc,
+            securityGroups,
             timeout: Duration.minutes(5),
             description: 'Remove api_key from existing Bedrock models to fix Invalid API Key format errors',
         });
@@ -533,10 +515,10 @@ export class ModelsApi extends Construct {
         // The static PhysicalResourceId returned by the Lambda handler ('context-window-backfill')
         // combined with a stable CDK construct ID means CloudFormation will never trigger this
         // Lambda again on subsequent deployments unless the resource is explicitly deleted.
-        const contextWindowBackfillLambda = new Function(this, 'ContextWindowBackfill', {
-            runtime: getPythonRuntime(),
-            handler: 'models.model_context_window_backfill.lambda_handler',
-            code: Code.fromAsset(lambdaPath),
+        const contextWindowBackfillLambda = definePythonLambda(this, 'ContextWindowBackfill', {
+            handlerDir: 'models',
+            entry: 'model_context_window_backfill.lambda_handler',
+            config,
             layers: lambdaLayers,
             environment: {
                 MODEL_TABLE_NAME: modelTable.tableName,
@@ -547,9 +529,8 @@ export class ModelsApi extends Construct {
                 RESTAPI_SSL_CERT_ARN: config.restApiConfig?.sslCertIamArn ?? '',
             },
             role: stateMachinesLambdaRole,
-            vpc: vpc.vpc,
-            vpcSubnets: vpc.subnetSelection,
-            securityGroups: securityGroups,
+            vpc,
+            securityGroups,
             timeout: Duration.minutes(15),
             description: 'One-time backfill of context_window for existing model DynamoDB records',
         });

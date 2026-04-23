@@ -20,6 +20,8 @@ export const ROOT_PATH = path.resolve(path.join(__dirname, '..', '..'));
 export const VERSION_PATH = path.join(ROOT_PATH, 'VERSION');
 
 export const LAMBDA_PATH = path.join(ROOT_PATH, 'lambda');
+export const LAMBDA_HANDLERS_PATH = path.join(LAMBDA_PATH, 'handlers');
+export const LAMBDA_SHARED_PATH = path.join(LAMBDA_PATH, 'shared');
 export const COMMON_LAYER_PATH = path.join(ROOT_PATH, 'lib', 'core', 'layers', 'common');
 export const FASTAPI_LAYER_PATH = path.join(ROOT_PATH, 'lib', 'core', 'layers', 'fastapi');
 export const AUTHORIZER_LAYER_PATH = path.join(ROOT_PATH, 'lib', 'core', 'layers', 'authorizer');

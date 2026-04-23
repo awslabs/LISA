@@ -18,7 +18,6 @@ import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { Effect, IRole, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
-import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Key } from 'aws-cdk-lib/aws-kms';
 import { Construct } from 'constructs';
@@ -28,7 +27,7 @@ import { BaseProps, RemovalPolicy } from '../../schema';
 import { createLambdaRole } from '../../core/utils';
 import { getAuditLoggingEnv } from '../../api-base/auditEnv';
 import { Vpc } from '../../networking/vpc';
-import { LAMBDA_PATH } from '../../util';
+import { getPythonLambdaLayers } from '../../util';
 
 /**
  * Properties for SessionApi Construct.
@@ -63,19 +62,7 @@ export class SessionApi extends Construct {
 
         const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc, configTable, projectsTableName } = props;
 
-        // Get common layer based on arn from SSM due to issues with cross stack references
-        const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
-            this,
-            'session-common-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
-        );
-
-        // Get FastAPI layer for cryptography support
-        const fastapiLambdaLayer = LayerVersion.fromLayerVersionArn(
-            this,
-            'session-fastapi-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/fastapi`),
-        );
+        const lambdaLayers = getPythonLambdaLayers(this, config, ['common', 'fastapi'], 'Session');
 
         // Create DynamoDB table to handle chat sessions
         this.sessionTable = new dynamodb.Table(this, 'SessionsTable', {
@@ -172,12 +159,12 @@ export class SessionApi extends Construct {
             })
         );
 
-        // Add BatchGetItem permission on projects table for projectId validation in list_sessions
+        // GetItem on projects table for projectId validation in list_sessions (per project id)
         if (projectsTableName) {
             lambdaRole.addToPrincipalPolicy(
                 new PolicyStatement({
                     effect: Effect.ALLOW,
-                    actions: ['dynamodb:BatchGetItem'],
+                    actions: ['dynamodb:GetItem'],
                     resources: [`arn:${config.partition}:dynamodb:${config.region}:${config.accountNumber}:table/${projectsTableName}`]
                 })
             );
@@ -273,13 +260,12 @@ export class SessionApi extends Construct {
             },
         ];
 
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         apis.forEach((f) => {
             const lambdaFunction = registerAPIEndpoint(
                 this,
                 restApi,
-                lambdaPath,
-                [commonLambdaLayer, fastapiLambdaLayer],
+                config,
+                lambdaLayers,
                 f,
                 getPythonRuntime(),
                 vpc,

@@ -14,7 +14,7 @@
 
 """Unit tests for IngestionType enum and document provenance tracking."""
 
-from models.domain_objects import IngestionType, NoneChunkingStrategy, RagDocument
+from lisa.domain.domain_objects import IngestionType, NoneChunkingStrategy, RagDocument
 
 
 class TestIngestionType:

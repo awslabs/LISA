@@ -18,7 +18,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 from botocore.exceptions import ClientError
-from utilities.rds_auth import generate_auth_token
+from lisa.utilities.rds_auth import generate_auth_token
 
 
 class TestRdsAuth:

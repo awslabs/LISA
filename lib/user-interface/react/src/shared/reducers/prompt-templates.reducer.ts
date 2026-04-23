@@ -53,9 +53,9 @@ export const promptTemplateApi = createApi({
     reducerPath: 'promptTemplates',
     baseQuery: lisaBaseQuery(),
     tagTypes: ['promptTemplates'],
-    refetchOnFocus: true,
-    refetchOnMountOrArgChange: true,
-    keepUnusedDataFor: 60, // Keep cache for 60s to prevent cancellation during rapid navigation
+    refetchOnFocus: false,
+    refetchOnMountOrArgChange: 30,
+    keepUnusedDataFor: 300,
     endpoints: (builder) => ({
         createPromptTemplate: builder.mutation<PromptTemplate, NewPromptTemplate>({
             query: (promptTemplate) => ({

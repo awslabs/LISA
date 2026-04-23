@@ -27,7 +27,7 @@ import { Construct } from 'constructs';
 import { Duration } from 'aws-cdk-lib';
 import { BaseProps } from '../../schema';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT, OUTPUT_PATH, POLLING_TIMEOUT } from './constants';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
@@ -35,8 +35,7 @@ import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Repository } from 'aws-cdk-lib/aws-ecr';
 import { IStringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Vpc } from '../../networking/vpc';
-import { getPythonRuntime } from '../../api-base/utils';
-import { LAMBDA_PATH } from '../../util';
+import { definePythonLambda } from '../../util';
 
 type CreateModelStateMachineProps = BaseProps & {
     modelTable: ITable,
@@ -64,7 +63,6 @@ export class CreateModelStateMachine extends Construct {
         super(scope, id);
 
         const { config, modelTable, guardrailsTable, lambdaLayers, dockerImageBuilderFnArn, ecsModelDeployerFnArn, ecsModelImageRepository, role, vpc, securityGroups, restApiContainerEndpointPs, managementKeyName, executionRole } = props;
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         const environment = {
             DOCKER_IMAGE_BUILDER_FN_ARN: dockerImageBuilderFnArn,
             ECR_REPOSITORY_ARN: ecsModelImageRepository.repositoryArn,
@@ -82,73 +80,39 @@ export class CreateModelStateMachine extends Construct {
             MODELS_BUCKET_NAME: config.s3BucketModels ?? '',
         };
 
-        const setModelToCreating = new LambdaInvoke(this, 'SetModelToCreating', {
-            lambdaFunction: new Function(this, 'SetModelToCreatingFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'models.state_machine.create_model.handle_set_model_to_creating',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
+        const makeFn = (id: string, entry: string, extraEnv: Record<string, string> = {}, timeout = LAMBDA_TIMEOUT) =>
+            definePythonLambda(this, id, {
+                handlerDir: 'models',
+                entry,
+                config,
+                timeout,
                 memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
+                role,
+                vpc,
+                securityGroups,
                 layers: lambdaLayers,
-                environment: environment,
-            }),
+                environment: { ...environment, ...extraEnv },
+            });
+
+        const setModelToCreating = new LambdaInvoke(this, 'SetModelToCreating', {
+            lambdaFunction: makeFn('SetModelToCreatingFunc', 'state_machine.create_model.handle_set_model_to_creating'),
             outputPath: OUTPUT_PATH,
         });
 
         const createModelInfraChoice = new Choice(this, 'CreateModelInfraChoice');
 
         const startCopyDockerImage = new LambdaInvoke(this, 'StartCopyDockerImage', {
-            lambdaFunction: new Function(this, 'StartCopyDockerImageFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'models.state_machine.create_model.handle_start_copy_docker_image',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('StartCopyDockerImageFunc', 'state_machine.create_model.handle_start_copy_docker_image'),
             outputPath: OUTPUT_PATH,
         });
 
         const pollDockerImageAvailable = new LambdaInvoke(this, 'PollDockerImageAvailable', {
-            lambdaFunction: new Function(this, 'PollDockerImageAvailableFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'models.state_machine.create_model.handle_poll_docker_image_available',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('PollDockerImageAvailableFunc', 'state_machine.create_model.handle_poll_docker_image_available'),
             outputPath: OUTPUT_PATH,
         });
 
         const handleFailureState = new LambdaInvoke(this, 'HandleFailure', {
-            lambdaFunction: new Function(this, 'HandleFailureFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'models.state_machine.create_model.handle_failure',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('HandleFailureFunc', 'state_machine.create_model.handle_failure'),
             outputPath: OUTPUT_PATH,
         });
 
@@ -159,36 +123,12 @@ export class CreateModelStateMachine extends Construct {
         });
 
         const startCreateStack = new LambdaInvoke(this, 'StartCreateStack', {
-            lambdaFunction: new Function(this, 'StartCreateStackFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'models.state_machine.create_model.handle_start_create_stack',
-                code: Code.fromAsset(lambdaPath),
-                timeout: Duration.minutes(8),
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('StartCreateStackFunc', 'state_machine.create_model.handle_start_create_stack', {}, Duration.minutes(8)),
             outputPath: OUTPUT_PATH,
         });
 
         const pollCreateStack = new LambdaInvoke(this, 'PollCreateStack', {
-            lambdaFunction: new Function(this, 'PollCreateStackFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'models.state_machine.create_model.handle_poll_create_stack',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('PollCreateStackFunc', 'state_machine.create_model.handle_poll_create_stack'),
             outputPath: OUTPUT_PATH,
         });
 
@@ -199,19 +139,7 @@ export class CreateModelStateMachine extends Construct {
         });
 
         const pollModelReady = new LambdaInvoke(this, 'PollModelReady', {
-            lambdaFunction: new Function(this, 'PollModelReadyFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'models.state_machine.create_model.handle_poll_model_ready',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('PollModelReadyFunc', 'state_machine.create_model.handle_poll_model_ready'),
             outputPath: OUTPUT_PATH,
         });
 
@@ -222,73 +150,24 @@ export class CreateModelStateMachine extends Construct {
         });
 
         const createSchedule = new LambdaInvoke(this, 'CreateSchedule', {
-            lambdaFunction: new Function(this, 'CreateScheduleFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'models.state_machine.schedule_handlers.handle_schedule_creation',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: {
-                    ...environment,
-                    SCHEDULE_MANAGEMENT_FUNCTION_NAME: props.scheduleManagementFunctionName,
-                },
+            lambdaFunction: makeFn('CreateScheduleFunc', 'state_machine.schedule_handlers.handle_schedule_creation', {
+                SCHEDULE_MANAGEMENT_FUNCTION_NAME: props.scheduleManagementFunctionName,
             }),
             outputPath: OUTPUT_PATH,
         });
 
         const addModelToLitellm = new LambdaInvoke(this, 'AddModelToLitellm', {
-            lambdaFunction: new Function(this, 'AddModelToLitellmFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'models.state_machine.create_model.handle_add_model_to_litellm',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('AddModelToLitellmFunc', 'state_machine.create_model.handle_add_model_to_litellm'),
             outputPath: OUTPUT_PATH,
         });
 
         const enrichContextWindow = new LambdaInvoke(this, 'EnrichContextWindow', {
-            lambdaFunction: new Function(this, 'EnrichContextWindowFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'models.state_machine.create_model.handle_enrich_context_window',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('EnrichContextWindowFunc', 'state_machine.create_model.handle_enrich_context_window'),
             outputPath: OUTPUT_PATH,
         });
 
         const addGuardrailsToLitellm = new LambdaInvoke(this, 'AddGuardrailsToLitellm', {
-            lambdaFunction: new Function(this, 'AddGuardrailsToLitellmFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'models.state_machine.create_model.handle_add_guardrails_to_litellm',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('AddGuardrailsToLitellmFunc', 'state_machine.create_model.handle_add_guardrails_to_litellm'),
             outputPath: OUTPUT_PATH,
         });
 

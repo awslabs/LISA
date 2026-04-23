@@ -27,7 +27,7 @@ os.environ["AWS_REGION"] = "us-east-1"
 # Add the lambda directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../"))
 
-from utilities.encoders import convert_decimal
+from lisa.utilities.encoders import convert_decimal
 
 
 def test_convert_decimal_with_decimal():

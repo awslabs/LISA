@@ -16,7 +16,7 @@
 
 import { BaseProps } from '../../schema';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { IRole } from 'aws-cdk-lib/aws-iam';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { Construct } from 'constructs';
@@ -31,8 +31,7 @@ import {
     Wait,
 } from 'aws-cdk-lib/aws-stepfunctions';
 import { Vpc } from '../../networking/vpc';
-import { getPythonRuntime } from '../../api-base/utils';
-import { LAMBDA_PATH } from '../../util';
+import { definePythonLambda } from '../../util';
 
 type UpdateMcpServerStateMachineProps = BaseProps & {
     mcpServerTable: ITable,
@@ -67,89 +66,42 @@ export class UpdateMcpServerStateMachine extends Construct {
             MCP_SERVERS_TABLE_NAME: mcpServerTable.tableName,
             DEPLOYMENT_PREFIX: config.deploymentPrefix ?? '',
         };
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
-        const handleJobIntake = new LambdaInvoke(this, 'HandleJobIntake', {
-            lambdaFunction: new Function(this, 'HandleJobIntakeFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'mcp_server.state_machine.update_mcp_server.handle_job_intake',
-                code: Code.fromAsset(lambdaPath),
+        const makeFn = (id: string, entry: string) =>
+            definePythonLambda(this, id, {
+                handlerDir: 'mcp_server',
+                entry,
+                config,
                 timeout: LAMBDA_TIMEOUT,
                 memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
+                role,
+                vpc,
+                securityGroups,
                 layers: lambdaLayers,
-                environment: environment,
-            }),
+                environment,
+            });
+
+        const handleJobIntake = new LambdaInvoke(this, 'HandleJobIntake', {
+            lambdaFunction: makeFn('HandleJobIntakeFunc', 'state_machine.update_mcp_server.handle_job_intake'),
             outputPath: OUTPUT_PATH,
         });
 
         const handlePollCapacity = new LambdaInvoke(this, 'HandlePollCapacity', {
-            lambdaFunction: new Function(this, 'HandlePollCapacityFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'mcp_server.state_machine.update_mcp_server.handle_poll_capacity',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('HandlePollCapacityFunc', 'state_machine.update_mcp_server.handle_poll_capacity'),
             outputPath: OUTPUT_PATH,
         });
 
         const handleEcsUpdate = new LambdaInvoke(this, 'HandleEcsUpdate', {
-            lambdaFunction: new Function(this, 'HandleEcsUpdateFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'mcp_server.state_machine.update_mcp_server.handle_ecs_update',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('HandleEcsUpdateFunc', 'state_machine.update_mcp_server.handle_ecs_update'),
             outputPath: OUTPUT_PATH,
         });
 
         const handlePollEcsDeployment = new LambdaInvoke(this, 'HandlePollEcsDeployment', {
-            lambdaFunction: new Function(this, 'HandlePollEcsDeploymentFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'mcp_server.state_machine.update_mcp_server.handle_poll_ecs_deployment',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('HandlePollEcsDeploymentFunc', 'state_machine.update_mcp_server.handle_poll_ecs_deployment'),
             outputPath: OUTPUT_PATH,
         });
 
         const handleFinishUpdate = new LambdaInvoke(this, 'HandleFinishUpdate', {
-            lambdaFunction: new Function(this, 'HandleFinishUpdateFunc', {
-                runtime: getPythonRuntime(),
-                handler: 'mcp_server.state_machine.update_mcp_server.handle_finish_update',
-                code: Code.fromAsset(lambdaPath),
-                timeout: LAMBDA_TIMEOUT,
-                memorySize: LAMBDA_MEMORY,
-                role: role,
-                vpc: vpc.vpc,
-                vpcSubnets: vpc.subnetSelection,
-                securityGroups: securityGroups,
-                layers: lambdaLayers,
-                environment: environment,
-            }),
+            lambdaFunction: makeFn('HandleFinishUpdateFunc', 'state_machine.update_mcp_server.handle_finish_update'),
             outputPath: OUTPUT_PATH,
         });
 

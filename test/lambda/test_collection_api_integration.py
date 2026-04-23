@@ -28,7 +28,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../lambda"))
 
-from models.domain_objects import (
+from lisa.domain.domain_objects import (
     CollectionSortBy,
     CollectionStatus,
     FixedChunkingStrategy,
@@ -144,7 +144,7 @@ def mock_dynamodb_tables():
 @pytest.fixture
 def integration_collection_service(mock_dynamodb_tables):
     """Service with real repository implementations (mocked DynamoDB)."""
-    from repository.collection_service import CollectionService
+    from lisa.rag.collection_service import CollectionService
 
     # Create mock repositories that use the test data
     collection_repo = Mock()

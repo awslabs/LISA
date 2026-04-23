@@ -37,7 +37,7 @@ from utils.guardrails import (
     is_guardrail_violation,
 )
 from utils.metrics import extract_token_usage, publish_metrics_event
-from utils.request_utils import get_lisa_end_user_id
+from utils.request_utils import get_lisa_end_user_id, strip_unsupported_model_params
 from utils.route_utils import is_anthropic_route, is_chat_route, is_lisa_public_route, is_openai_route
 
 # Local LiteLLM installation URL. By default, LiteLLM runs on port 4000. Change the port here if the
@@ -529,6 +529,13 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
             model_name = model_info.get("litellm_params", {}).get("model")
             logger.debug(f"model_id: {model_id}, model_name: {model_name}")
 
+    # Drop parameters the target model is known to reject (e.g. Anthropic
+    # Claude Opus 4.7 deprecated ``top_p``). LiteLLM's ``drop_params`` flag only
+    # covers provider quirks it already knows about, so we backstop recent
+    # deprecations here until LiteLLM's provider map catches up.
+    stripped = strip_unsupported_model_params(params, model_name)
+    if stripped:
+        logger.info(f"Stripped unsupported parameter(s) {stripped} for model " f"id={model_id} path={model_name}")
     # For hosted_vllm models, ensure add_generation_prompt is passed through to vLLM.
     # vLLM defaults this to True on its /v1/chat/completions endpoint, but LiteLLM's
     # drop_params setting strips it before forwarding. Models with thinking/reasoning

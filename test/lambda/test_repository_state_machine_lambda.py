@@ -143,7 +143,7 @@ class TestCleanupRepoDocs:
     def test_cleanup_repo_docs_success(self, lambda_context):
         """Test successful cleanup of repository documents."""
         # Import the function here to avoid import issues
-        from models.domain_objects import IngestionType
+        from lisa.domain.domain_objects import IngestionType
         from repository.state_machine.cleanup_repo_docs import lambda_handler as cleanup_repo_docs_handler
 
         mock_doc_repo = MagicMock()
@@ -193,7 +193,7 @@ class TestCleanupRepoDocs:
 
     def test_cleanup_repo_docs_with_last_evaluated(self, lambda_context):
         """Test cleanup with lastEvaluated key for pagination."""
-        from models.domain_objects import IngestionType
+        from lisa.domain.domain_objects import IngestionType
         from repository.state_machine.cleanup_repo_docs import lambda_handler as cleanup_repo_docs_handler
 
         # Create mock document repository
@@ -296,7 +296,7 @@ class TestCleanupRepoDocs:
 
     def test_cleanup_repo_docs_delete_error(self, lambda_context):
         """Test cleanup when document deletion fails."""
-        from models.domain_objects import IngestionType
+        from lisa.domain.domain_objects import IngestionType
         from repository.state_machine.cleanup_repo_docs import lambda_handler as cleanup_repo_docs_handler
 
         # Create mock document repository

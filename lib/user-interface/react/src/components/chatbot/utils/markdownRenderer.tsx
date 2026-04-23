@@ -14,14 +14,38 @@
  limitations under the License.
  */
 
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { ButtonGroup, StatusIndicator } from '@cloudscape-design/components';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
-import MermaidDiagram from '../components/MermaidDiagram';
+
+// Lazy-loaded so mermaid (~1.5 MB) is only downloaded when a message
+// actually contains a ```mermaid code block.
+const MermaidDiagram = lazy(() => import('../components/MermaidDiagram'));
+
+// Lazy-loaded so react-syntax-highlighter + prism language files are only
+// downloaded when the first fenced code block is rendered.
+const SyntaxHighlightedCode = lazy(() => import('../components/SyntaxHighlightedCode'));
+
+const CodeBlockFallback: React.FC<{ code: string; isDarkMode: boolean }> = ({ code, isDarkMode }) => (
+    <pre
+        style={{
+            backgroundColor: isDarkMode ? '#1e1e1e' : '#f5f5f5',
+            color: isDarkMode ? '#d4d4d4' : '#333333',
+            padding: '16px',
+            borderRadius: '6px',
+            overflow: 'auto',
+            fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+            fontSize: '14px',
+            lineHeight: '1.45',
+            margin: '0',
+            textWrap: 'wrap',
+        }}
+    >
+        <code style={{ backgroundColor: 'transparent', padding: '0', color: 'inherit' }}>{code}</code>
+    </pre>
+);
 
 /**
  * Shared markdown plugins configuration
@@ -75,14 +99,14 @@ export const getMarkdownComponents = (
                             variant='icon'
                         />
                     </div>
-                    <SyntaxHighlighter
-                        style={isDarkMode ? oneDark : oneLight}
-                        language={language}
-                        PreTag='div'
-                        {...props}
-                    >
-                        {code}
-                    </SyntaxHighlighter>
+                    <Suspense fallback={<CodeBlockFallback code={code} isDarkMode={isDarkMode} />}>
+                        <SyntaxHighlightedCode
+                            language={language}
+                            code={code}
+                            isDarkMode={isDarkMode}
+                            highlighterProps={props}
+                        />
+                    </Suspense>
                 </div>
             );
         };
@@ -164,11 +188,28 @@ export const getMarkdownComponents = (
 
         return match ? (
             match[1] === 'mermaid' ? (
-                <MermaidDiagram
-                    chart={codeString}
-                    isStreaming={isStreaming}
-                    onRenderComplete={onMermaidRenderComplete}
-                />
+                <Suspense
+                    fallback={
+                        <div
+                            style={{
+                                padding: '12px',
+                                backgroundColor: isDarkMode ? '#1a1a1a' : '#f5f5f5',
+                                border: isDarkMode ? '1px solid #444' : '1px solid #ddd',
+                                borderRadius: '4px',
+                                color: isDarkMode ? '#888' : '#666',
+                                textAlign: 'center',
+                            }}
+                        >
+                            Loading diagram renderer…
+                        </div>
+                    }
+                >
+                    <MermaidDiagram
+                        chart={codeString}
+                        isStreaming={isStreaming}
+                        onRenderComplete={onMermaidRenderComplete}
+                    />
+                </Suspense>
             ) : (
                 <CodeBlockWithCopyButton language={match[1]} code={codeString} />
             )

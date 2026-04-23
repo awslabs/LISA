@@ -36,23 +36,113 @@ import ColorSchemeContext from './shared/color-scheme.provider';
 import { applyMode, Mode } from '@cloudscape-design/global-styles';
 import { useAnnouncementNotifier } from './shared/hooks/useAnnouncementNotifier';
 
-const Home = lazy(() => import('./pages/Home'));
-const Chatbot = lazy(() => import('./pages/Chatbot'));
-const ModelManagement = lazy(() => import('./pages/ModelManagement'));
-const McpManagement = lazy(() => import('./pages/McpManagement'));
-const ModelLibrary = lazy(() => import('./pages/ModelLibrary'));
-const RepositoryManagement = lazy(() => import('./pages/RepositoryManagement'));
-const ApiTokenManagement = lazy(() => import('./pages/ApiTokenManagement'));
-const UserApiToken = lazy(() => import('./pages/UserApiToken'));
-const Configuration = lazy(() => import('./pages/Configuration'));
-const DocumentLibrary = lazy(() => import('./pages/DocumentLibrary'));
-const CollectionLibrary = lazy(() => import('./pages/CollectionLibrary'));
-const PromptTemplatesLibrary = lazy(() => import('./pages/PromptTemplatesLibrary'));
-const McpServers = lazy(() => import('@/pages/Mcp'));
-const ModelComparisonPage = lazy(() => import('./pages/ModelComparison'));
-const McpWorkbench = lazy(() => import('./pages/McpWorkbench'));
-const ChatAssistantStacks = lazy(() => import('./pages/ChatAssistantStacks'));
-const BedrockAgentManagement = lazy(() => import('./pages/BedrockAgentManagement'));
+/**
+ * Import factories are kept as named constants so the exact same function
+ * reference is used for both `React.lazy` and the idle-time prefetch pass
+ * below. Rollup/Vite de-duplicates dynamic imports by string literal, so
+ * calling the factory a second time after prefetch is a cache hit and
+ * subsequent route navigation is instant.
+ */
+const importers = {
+    Home: () => import('./pages/Home'),
+    Chatbot: () => import('./pages/Chatbot'),
+    ModelManagement: () => import('./pages/ModelManagement'),
+    McpManagement: () => import('./pages/McpManagement'),
+    ModelLibrary: () => import('./pages/ModelLibrary'),
+    RepositoryManagement: () => import('./pages/RepositoryManagement'),
+    ApiTokenManagement: () => import('./pages/ApiTokenManagement'),
+    UserApiToken: () => import('./pages/UserApiToken'),
+    Configuration: () => import('./pages/Configuration'),
+    DocumentLibrary: () => import('./pages/DocumentLibrary'),
+    CollectionLibrary: () => import('./pages/CollectionLibrary'),
+    PromptTemplatesLibrary: () => import('./pages/PromptTemplatesLibrary'),
+    McpServers: () => import('@/pages/Mcp'),
+    ModelComparisonPage: () => import('./pages/ModelComparison'),
+    McpWorkbench: () => import('./pages/McpWorkbench'),
+    ChatAssistantStacks: () => import('./pages/ChatAssistantStacks'),
+    BedrockAgentManagement: () => import('./pages/BedrockAgentManagement'),
+} as const;
+
+const Home = lazy(importers.Home);
+const Chatbot = lazy(importers.Chatbot);
+const ModelManagement = lazy(importers.ModelManagement);
+const McpManagement = lazy(importers.McpManagement);
+const ModelLibrary = lazy(importers.ModelLibrary);
+const RepositoryManagement = lazy(importers.RepositoryManagement);
+const ApiTokenManagement = lazy(importers.ApiTokenManagement);
+const UserApiToken = lazy(importers.UserApiToken);
+const Configuration = lazy(importers.Configuration);
+const DocumentLibrary = lazy(importers.DocumentLibrary);
+const CollectionLibrary = lazy(importers.CollectionLibrary);
+const PromptTemplatesLibrary = lazy(importers.PromptTemplatesLibrary);
+const McpServers = lazy(importers.McpServers);
+const ModelComparisonPage = lazy(importers.ModelComparisonPage);
+const McpWorkbench = lazy(importers.McpWorkbench);
+const ChatAssistantStacks = lazy(importers.ChatAssistantStacks);
+const BedrockAgentManagement = lazy(importers.BedrockAgentManagement);
+
+/**
+ * Schedule a callback for when the browser is idle, falling back to a
+ * small timeout on browsers (e.g. Safari) without `requestIdleCallback`.
+ */
+const scheduleIdle = (callback: () => void, timeout = 2000): number => {
+    const w = window as typeof window & {
+        requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+    };
+    if (typeof w.requestIdleCallback === 'function') {
+        return w.requestIdleCallback(callback, { timeout });
+    }
+    return window.setTimeout(callback, timeout);
+};
+
+/**
+ * Warm the Vite/Rollup dynamic-import cache for every routable page while
+ * the browser is idle. Triggered after authentication + configuration load,
+ * so that clicking any top-nav item after the initial load feels instant.
+ *
+ * Ordered by expected user priority: the chatbot is the default landing
+ * surface, then the library pages an ordinary user typically visits next,
+ * then admin pages last.
+ */
+const prefetchRouteChunks = (config?: IConfiguration, isAdmin?: boolean): void => {
+    const enabled = config?.configuration?.enabledComponents;
+    const plan: Array<() => Promise<unknown>> = [
+        importers.Chatbot,
+        importers.Home,
+    ];
+
+    if (enabled?.modelLibrary) plan.push(importers.ModelLibrary);
+    if (enabled?.showRagLibrary) plan.push(importers.CollectionLibrary, importers.DocumentLibrary);
+    if (enabled?.showPromptTemplateLibrary) plan.push(importers.PromptTemplatesLibrary);
+    if (enabled?.mcpConnections || enabled?.bedrockAgents) plan.push(importers.McpServers);
+    if (enabled?.enableUserApiTokens) plan.push(importers.UserApiToken);
+    if (enabled?.enableModelComparisonUtility) plan.push(importers.ModelComparisonPage);
+
+    if (isAdmin) {
+        plan.push(
+            importers.Configuration,
+            importers.ModelManagement,
+            importers.ApiTokenManagement,
+        );
+        if (window.env.RAG_ENABLED) plan.push(importers.RepositoryManagement);
+        if (window.env.HOSTED_MCP_ENABLED) plan.push(importers.McpManagement);
+        if (enabled?.showMcpWorkbench) plan.push(importers.McpWorkbench);
+        if (enabled?.bedrockAgents) plan.push(importers.BedrockAgentManagement);
+        if (enabled?.chatAssistantStacks) plan.push(importers.ChatAssistantStacks);
+    }
+
+    // Fetch chunks one at a time during idle windows so prefetching never
+    // competes with user-initiated requests or the main thread.
+    let index = 0;
+    const pump = () => {
+        if (index >= plan.length) return;
+        const next = plan[index++];
+        scheduleIdle(() => {
+            next().catch(() => { /* Swallow prefetch failures; the real navigation will surface errors. */ }).finally(pump);
+        });
+    };
+    pump();
+};
 
 export type RouteProps = {
     children: ReactElement[] | ReactElement;
@@ -121,23 +211,43 @@ const ApiUserRoute = ({ children }: RouteProps) => {
     }
 };
 
+/**
+ * Rendered while a not-yet-cached route chunk is downloading. Kept deliberately
+ * unobtrusive: route chunks are prefetched during idle time (see
+ * `prefetchRouteChunks`), so in practice this fallback only appears briefly on
+ * the very first navigation after login. A small inline indicator preserves
+ * layout context and is less jarring than blanking the content area.
+ */
 const RouteLoadingFallback = () => (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <Spinner size='large' />
-        <Box margin={{ left: 's' }}>Loading page...</Box>
-    </div>
+    <Box textAlign='center' padding={{ vertical: 'xl' }}>
+        <Spinner size='normal' />
+        <Box variant='small' color='text-status-inactive' padding={{ top: 'xs' }}>
+            Loading…
+        </Box>
+    </Box>
 );
 
 function App () {
     const [nav, setNav] = useState(null);
     const confirmationModal: ConfirmationModalProps = useAppSelector((state) => state.modal.confirmationModal);
     const auth = useAuth();
+    const isAdmin = useAppSelector(selectCurrentUserIsAdmin);
     const { data: fullConfig, isLoading: configLoading } = useGetConfigurationQuery('global', {
         skip: !auth.isAuthenticated || auth.isLoading || !auth.user
     });
     const config = fullConfig?.[0];
 
     useAnnouncementNotifier(config);
+
+    // Prefetch every route chunk the signed-in user can reach, once, during
+    // idle time. Turns subsequent route navigation into a cache hit.
+    const [prefetchTriggered, setPrefetchTriggered] = useState(false);
+    useEffect(() => {
+        if (prefetchTriggered) return;
+        if (!auth.isAuthenticated || !config) return;
+        setPrefetchTriggered(true);
+        prefetchRouteChunks(config, isAdmin);
+    }, [auth.isAuthenticated, config, isAdmin, prefetchTriggered]);
 
     const [colorScheme, setColorScheme] = useState(() => {
         // Check to see if Media-Queries are supported

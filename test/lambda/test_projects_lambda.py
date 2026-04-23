@@ -43,7 +43,7 @@ os.environ.setdefault("GENERATED_IMAGES_S3_BUCKET_NAME", "bucket")
 
 
 def _mock_api_wrapper(_func=None, **kwargs):
-    from utilities.response_builder import generate_exception_response, generate_html_response
+    from lisa.utilities.response_builder import generate_exception_response, generate_html_response
 
     def decorator(func):
         @functools.wraps(func)
@@ -65,7 +65,7 @@ def _mock_api_wrapper(_func=None, **kwargs):
 
 mock_create_env = MagicMock()
 patch.dict("sys.modules", {"create_env_variables": mock_create_env}).start()
-patch("utilities.common_functions.api_wrapper", _mock_api_wrapper).start()
+patch("lisa.utilities.common_functions.api_wrapper", _mock_api_wrapper).start()
 
 from projects.lambda_functions import (  # noqa: E402
     _config_cache,

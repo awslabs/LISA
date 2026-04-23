@@ -18,7 +18,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from botocore.exceptions import ClientError
-from repository.s3_metadata_manager import S3MetadataManager
+from lisa.rag.s3_metadata_manager import S3MetadataManager
 
 
 @pytest.fixture

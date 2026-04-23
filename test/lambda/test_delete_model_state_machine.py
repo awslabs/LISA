@@ -62,10 +62,12 @@ patch.dict(
 ).start()
 
 # Then patch the specific functions
-patch("utilities.common_functions.get_cert_path", mock_common.get_cert_path).start()
-patch("utilities.common_functions.get_rest_api_container_endpoint", mock_common.get_rest_api_container_endpoint).start()
-patch("utilities.common_functions.retry_config", retry_config).start()
-patch("models.clients.litellm_client.LiteLLMClient", return_value=mock_litellm_client).start()
+patch("lisa.utilities.common_functions.get_cert_path", mock_common.get_cert_path).start()
+patch(
+    "lisa.utilities.common_functions.get_rest_api_container_endpoint", mock_common.get_rest_api_container_endpoint
+).start()
+patch("lisa.utilities.common_functions.retry_config", retry_config).start()
+patch("lisa.domain.clients.litellm_client.LiteLLMClient", return_value=mock_litellm_client).start()
 
 # Mock boto3 clients
 mock_cfn = MagicMock()
@@ -104,7 +106,7 @@ def mock_boto3_client(*args, **kwargs):
 # Note: This module needs global boto3.client patch for import-time dependencies
 patch("boto3.client", side_effect=mock_boto3_client).start()
 
-from models.domain_objects import ModelStatus
+from lisa.domain.domain_objects import ModelStatus
 
 # Now import the state machine functions
 from models.state_machine.delete_model import (

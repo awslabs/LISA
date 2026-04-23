@@ -30,7 +30,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../lambda"))
 
-from models.domain_objects import (
+from lisa.domain.domain_objects import (
     CollectionSortBy,
     CollectionStatus,
     FixedChunkingStrategy,
@@ -78,7 +78,7 @@ def mock_vector_store_repo():
 @pytest.fixture
 def collection_service(mock_collection_repo, mock_vector_store_repo):
     """Create service with injected mock dependencies."""
-    from repository.collection_service import CollectionService
+    from lisa.rag.collection_service import CollectionService
 
     return CollectionService(collection_repo=mock_collection_repo, vector_store_repo=mock_vector_store_repo)
 

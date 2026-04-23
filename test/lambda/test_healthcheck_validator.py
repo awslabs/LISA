@@ -15,7 +15,7 @@
 """Unit tests for ECS healthcheck command validator."""
 
 import pytest
-from utilities.healthcheck_validator import validate_healthcheck_command
+from lisa.utilities.healthcheck_validator import validate_healthcheck_command
 
 
 class TestValidHealthcheckFormats:

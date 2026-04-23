@@ -35,7 +35,7 @@ os.environ["AWS_REGION"] = "us-east-1"
 
 # Import after environment setup
 # Import from specific modules (refactored structure)
-from utilities.aws_helpers import (
+from lisa.utilities.aws_helpers import (
     get_account_and_partition,
     get_cert_path,
     get_lambda_role_name,
@@ -43,11 +43,11 @@ from utilities.aws_helpers import (
 )
 
 # Import logging components from common_functions (still there)
-from utilities.common_functions import LambdaContextFilter
-from utilities.dict_helpers import get_item, get_property_path, merge_fields
-from utilities.event_parser import get_bearer_token, get_id_token, get_principal_id, get_session_id
-from utilities.lambda_decorators import api_wrapper, authorization_wrapper
-from utilities.response_builder import DecimalEncoder, generate_exception_response, generate_html_response
+from lisa.utilities.common_functions import LambdaContextFilter
+from lisa.utilities.dict_helpers import get_item, get_property_path, merge_fields
+from lisa.utilities.event_parser import get_bearer_token, get_id_token, get_principal_id, get_session_id
+from lisa.utilities.lambda_decorators import api_wrapper, authorization_wrapper
+from lisa.utilities.response_builder import DecimalEncoder, generate_exception_response, generate_html_response
 
 # =====================
 # Test LambdaContextFilter
@@ -56,7 +56,7 @@ from utilities.response_builder import DecimalEncoder, generate_exception_respon
 
 def test_lambda_context_filter_with_context():
     """Test LambdaContextFilter with valid context."""
-    from utilities.lambda_decorators import ctx_context
+    from lisa.utilities.lambda_decorators import ctx_context
 
     # Create a mock context
     mock_context = SimpleNamespace(aws_request_id="test-request-id", function_name="test-function")
@@ -82,7 +82,7 @@ def test_lambda_context_filter_without_context():
     record = MagicMock()
 
     # Mock the ctx_context module-level import to raise LookupError
-    with patch("utilities.common_functions.ctx_context") as mock_ctx:
+    with patch("lisa.utilities.common_functions.ctx_context") as mock_ctx:
         mock_ctx.get.side_effect = LookupError("No context")
 
         result = filter.filter(record)
@@ -412,7 +412,7 @@ def test_get_cert_path_iam_error():
 # =====================
 
 
-@patch("utilities.aws_helpers.ssm_client")
+@patch("lisa.utilities.aws_helpers.ssm_client")
 @patch.dict(os.environ, {"LISA_API_URL_PS_NAME": "/lisa/api/url", "REST_API_VERSION": "v2"})
 def test_get_rest_api_container_endpoint(mock_ssm):
     """Test get_rest_api_container_endpoint retrieves endpoint from SSM."""
@@ -532,7 +532,7 @@ def test_merge_fields_nested_missing():
 # =====================
 
 
-@patch("utilities.aws_helpers.boto3.client")
+@patch("lisa.utilities.aws_helpers.boto3.client")
 def test_get_lambda_role_name(mock_boto_client):
     """Test get_lambda_role_name extracts role name from ARN."""
     mock_sts = MagicMock()

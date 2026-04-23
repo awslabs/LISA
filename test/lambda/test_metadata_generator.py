@@ -15,9 +15,9 @@
 """Unit tests for MetadataGenerator."""
 
 import pytest
-from models.domain_objects import CollectionMetadata, RagCollectionConfig
-from repository.metadata_generator import MetadataGenerator
-from utilities.validation import ValidationError
+from lisa.domain.domain_objects import CollectionMetadata, RagCollectionConfig
+from lisa.rag.metadata_generator import MetadataGenerator
+from lisa.utilities.validation import ValidationError
 
 
 @pytest.fixture

@@ -15,7 +15,7 @@
 """Unit tests for header_sanitizer module."""
 
 import pytest
-from utilities.header_sanitizer import (
+from lisa.utilities.header_sanitizer import (
     get_sanitized_headers_for_logging,
     sanitize_headers,
 )

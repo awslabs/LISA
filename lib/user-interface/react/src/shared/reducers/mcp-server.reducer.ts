@@ -75,9 +75,9 @@ export const mcpServerApi = createApi({
     reducerPath: 'mcpServers',
     baseQuery: lisaBaseQuery(),
     tagTypes: ['mcpServers', 'bedrockAgents', 'bedrockApprovals'],
-    refetchOnFocus: true,
-    refetchOnMountOrArgChange: true,
-    keepUnusedDataFor: 60, // Keep cache for 60s to prevent cancellation during rapid navigation
+    refetchOnFocus: false,
+    refetchOnMountOrArgChange: 30,
+    keepUnusedDataFor: 300,
     endpoints: (builder) => ({
         createMcpServer: builder.mutation<McpServer, NewMcpServer>({
             query: (mcpServer) => ({

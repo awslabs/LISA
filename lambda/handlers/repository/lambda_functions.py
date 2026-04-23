@@ -112,11 +112,16 @@ def list_all(event: dict, context: dict) -> list[dict[str, Any]]:
     """
     _, is_admin, groups = get_user_context(event)
     registered_repositories = vs_repo.get_registered_repositories()
-    return [
-        repo
-        for repo in registered_repositories
-        if is_admin or user_has_group_access(groups, repo.get("allowedGroups", []))
-    ]
+    result = []
+    for repo in registered_repositories:
+        if is_admin or user_has_group_access(groups, repo.get("allowedGroups", [])):
+            try:
+                service = RepositoryServiceFactory.create_service(repo)
+                repo["supportsHybridSearch"] = service.supports_hybrid_search()
+            except Exception:
+                repo["supportsHybridSearch"] = False
+            result.append(repo)
+    return result
 
 
 @api_wrapper

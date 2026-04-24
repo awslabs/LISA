@@ -892,7 +892,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
         },
         "Description": "Lists available MCP Workbench tools",
         "Environment": {
@@ -974,7 +974,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
         },
         "Description": "Create MCP Workbench tools",
         "Environment": {
@@ -1056,7 +1056,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
         },
         "Description": "Get MCP Workbench tool",
         "Environment": {
@@ -1138,7 +1138,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
         },
         "Description": "Update MCP Workbench tool",
         "Environment": {
@@ -1220,7 +1220,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
         },
         "Description": "Delete MCP Workbench tool",
         "Environment": {
@@ -1302,7 +1302,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
         },
         "Description": "Validate Python code syntax",
         "Environment": {
@@ -1836,15 +1836,7 @@
         "TargetGroupAttributes": [
           {
             "Key": "stickiness.enabled",
-            "Value": "true"
-          },
-          {
-            "Key": "stickiness.type",
-            "Value": "lb_cookie"
-          },
-          {
-            "Key": "stickiness.lb_cookie.duration_seconds",
-            "Value": "86400"
+            "Value": "false"
           }
         ],
         "TargetType": "instance",
@@ -2132,7 +2124,7 @@
               "Timeout": 5
             },
             "Image": {
-              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:36cdd7c336fe419f97db0a8cda7c05084783d5b27f7e5b4964aabdc48522a273"
+              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:dfd62ac1328fb8518b674f748ff6df2f0dcf56016b3866e13944e7726ef0e6da"
             },
             "LogConfiguration": {
               "LogDriver": "awslogs",
@@ -2435,7 +2427,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
         },
         "Environment": {
           "Variables": {

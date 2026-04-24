@@ -17,10 +17,10 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@cloudscape-design/chat-components": "^1.0.120",
+    "@cloudscape-design/chat-components": "^1.0.122",
     "@cloudscape-design/collection-hooks": "^1.0.90",
     "@cloudscape-design/component-toolkit": "^1.0.0-beta.157",
-    "@cloudscape-design/components": "^3.0.1282",
+    "@cloudscape-design/components": "^3.0.1284",
     "@cloudscape-design/global-styles": "^1.0.57",
     "@fortawesome/fontawesome-svg-core": "^7.2.0",
     "@fortawesome/free-regular-svg-icons": "^7.2.0",

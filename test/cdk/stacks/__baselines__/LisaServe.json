@@ -556,7 +556,15 @@
         "TargetGroupAttributes": [
           {
             "Key": "stickiness.enabled",
-            "Value": "false"
+            "Value": "true"
+          },
+          {
+            "Key": "stickiness.type",
+            "Value": "lb_cookie"
+          },
+          {
+            "Key": "stickiness.lb_cookie.duration_seconds",
+            "Value": "86400"
           }
         ],
         "TargetType": "instance",
@@ -863,8 +871,8 @@
                 "Value": "us-iso-east-1"
               },
               {
-                "Name": "THREADS",
-                "Value": "4"
+                "Name": "WORKER_COUNT",
+                "Value": "2"
               },
               {
                 "Name": "USE_AUTH",
@@ -901,6 +909,22 @@
                 }
               },
               {
+                "Name": "RATE_LIMIT_RPM",
+                "Value": "60"
+              },
+              {
+                "Name": "RATE_LIMIT_BURST",
+                "Value": "10"
+              },
+              {
+                "Name": "RATE_LIMIT_ENABLED",
+                "Value": "true"
+              },
+              {
+                "Name": "RATE_LIMIT_OVERRIDES",
+                "Value": "{}"
+              },
+              {
                 "Name": "TOKEN_TABLE_NAME",
                 "Value": {
                   "Ref": "TokenTableNameParameterParameter"
@@ -932,14 +956,13 @@
                   "Fn::Join": [
                     "",
                     [
-                      "https://",
+                      "*,https://",
                       {
                         "Fn::GetAtt": [
                           "RestApiECSClustertestlisadevRESTALB34F3E71E",
                           "DNSName"
                         ]
-                      },
-                      ",*"
+                      }
                     ]
                   ]
                 }
@@ -960,12 +983,6 @@
                 "Name": "LITELLM_DB_INFO_PS_NAME",
                 "Value": {
                   "Ref": "LiteLLMDbConnectionInfoStringParameter1408D668"
-                }
-              },
-              {
-                "Name": "REGISTERED_MODELS_PS_NAME",
-                "Value": {
-                  "Ref": "RegisteredModelsStringParameter36CC6A6A"
                 }
               },
               {
@@ -1044,7 +1061,7 @@
               "Timeout": 5
             },
             "Image": {
-              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:e78525b6bb5b8bc5ade97f2e77f098631c0d8ab1ec0aacf3bef85ade3a021c25"
+              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:644d776ce6ba98bbdfb39215daa662b762e4b21c9d2ebbaba0d428bb700249ca"
             },
             "LogConfiguration": {
               "LogDriver": "awslogs",
@@ -1623,7 +1640,7 @@
                   }
                 ]
               },
-              "\\\",\\\"timestamp\\\":\\\"2026-04-03T17:34:22.576Z\\\"}\"}}"
+              "\\\",\\\"timestamp\\\":\\\"2026-04-23T21:40:13.034Z\\\"}\"}}"
             ]
           ]
         },
@@ -1670,7 +1687,7 @@
                   }
                 ]
               },
-              "\\\",\\\"timestamp\\\":\\\"2026-04-03T17:34:22.576Z\\\"}\"}}"
+              "\\\",\\\"timestamp\\\":\\\"2026-04-23T21:40:13.034Z\\\"}\"}}"
             ]
           ]
         },

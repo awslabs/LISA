@@ -1,3 +1,49 @@
+# v6.6.0
+
+## Key Features
+
+### Token Usage and Context Window Visibility
+
+LISA now provides improved observability for model usage and configuration:
+
+- View cumulative token usage for each user session.
+- Display a context window field in model cards across Model Management and Model Library.
+- Support overriding inferred context windows for LISA-hosted models through environment configuration.
+
+### Bedrock Agent Integration
+
+LISA now includes native Bedrock Agent integration, giving administrators a streamlined way to publish Bedrock Agents in the platform catalog and make them available to end users.
+
+Users can opt in to these agents directly from the Agent Management UI, which makes it easier to adopt Bedrock-powered workflows without separate integration steps.
+
+### LISA Serve Throttling
+
+LISA Serve now includes throttling controls to better protect service stability under bursty or high-volume traffic patterns.
+
+These controls help prevent noisy-neighbor behavior, improve predictability during traffic spikes, and provide a stronger baseline for multi-tenant reliability.
+
+### Security Hardening
+
+CORS origins are now configurable via a new `corsAllowedOrigins` allowlist that is threaded through all API Gateways, Lambdas, FastAPI services, and MCP server components via a new CDK aspect, replacing permissive defaults. Additionally, client-side OAuth callback validation, safe error rendering in the UI, and stricter Pydantic request parsing for MCP Server and Workbench Lambdas reduce injection and untrusted-input risks.
+
+## Other Key Changes
+
+- Dependency and security maintenance updates across Python and npm packages.
+- Minor reliability fixes discovered during routine update work.
+- Small MCP Workbench lifecycle improvements for tool synchronization and routing.
+- Cypress CI workflow fixes for branch reporting and manual nightly test support.
+- Incremental SDK improvements, including RAG evaluation support.
+
+
+## Acknowledgements
+* @bedanley
+* @drduhe
+* @estohlmann
+* @gingerknight
+* @jmharold
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v6.5.0..v6.6.0
+
 # v6.5.0
 
 ## Key Features

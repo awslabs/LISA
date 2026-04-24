@@ -77,6 +77,41 @@
         }
       }
     },
+    "McpApiBedrockAgentApprovalsTableA884BFE7": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "agentId",
+            "AttributeType": "S"
+          }
+        ],
+        "BillingMode": "PAY_PER_REQUEST",
+        "DeletionProtectionEnabled": false,
+        "KeySchema": [
+          {
+            "AttributeName": "agentId",
+            "KeyType": "HASH"
+          }
+        ],
+        "SSESpecification": {
+          "SSEEnabled": true
+        }
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
+    "McpApiBedrockAgentApprovalsTableNameParameter6ACAA326": {
+      "Type": "AWS::SSM::Parameter",
+      "Properties": {
+        "Description": "DynamoDB table for admin-approved Bedrock agents (catalog)",
+        "Name": "/dev/test-lisa/lisa/table/bedrockAgentApprovalsTable",
+        "Type": "String",
+        "Value": {
+          "Ref": "McpApiBedrockAgentApprovalsTableA884BFE7"
+        }
+      }
+    },
     "McpApiRestApimcpserver98B9AA02": {
       "Type": "AWS::ApiGateway::Resource",
       "Properties": {
@@ -666,6 +701,900 @@
         }
       }
     },
+    "McpApiRestApibedrockagents13C1431D": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputFnGetAttLisaApiBaseRestApiBD7EFE41RootResourceId15433D4A"
+        },
+        "PathPart": "bedrock-agents",
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsOPTIONS33971386": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "Integration": {
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+              },
+              "StatusCode": "204"
+            }
+          ],
+          "RequestTemplates": {
+            "application/json": "{ statusCode: 200 }"
+          },
+          "Type": "MOCK"
+        },
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "StatusCode": "204"
+          }
+        ],
+        "ResourceId": {
+          "Ref": "McpApiRestApibedrockagents13C1431D"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsapprovalA7BDA8CF": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Ref": "McpApiRestApibedrockagents13C1431D"
+        },
+        "PathPart": "approval",
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsapprovalOPTIONS4823883E": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "Integration": {
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+              },
+              "StatusCode": "204"
+            }
+          ],
+          "RequestTemplates": {
+            "application/json": "{ statusCode: 200 }"
+          },
+          "Type": "MOCK"
+        },
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "StatusCode": "204"
+          }
+        ],
+        "ResourceId": {
+          "Ref": "McpApiRestApibedrockagentsapprovalA7BDA8CF"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsapprovalagentId396CAA18": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Ref": "McpApiRestApibedrockagentsapprovalA7BDA8CF"
+        },
+        "PathPart": "{agentId}",
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsapprovalagentIdOPTIONS1876BA02": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "Integration": {
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+              },
+              "StatusCode": "204"
+            }
+          ],
+          "RequestTemplates": {
+            "application/json": "{ statusCode: 200 }"
+          },
+          "Type": "MOCK"
+        },
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "StatusCode": "204"
+          }
+        ],
+        "ResourceId": {
+          "Ref": "McpApiRestApibedrockagentsapprovalagentId396CAA18"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsapprovalagentIdPUTApiPermissionLisaChatMcpApiRestApi21151341PUTbedrockagentsapprovalagentId258C284E": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpApiLisaChatmcpserverputbedrockagentapproval9F3A9804",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/PUT/bedrock-agents/approval/*"
+            ]
+          ]
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsapprovalagentIdPUTApiPermissionTestLisaChatMcpApiRestApi21151341PUTbedrockagentsapprovalagentIdD290670E": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpApiLisaChatmcpserverputbedrockagentapproval9F3A9804",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/PUT/bedrock-agents/approval/*"
+            ]
+          ]
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsapprovalagentIdPUT363FA62D": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "PUT",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "McpApiLisaChatmcpserverputbedrockagentapproval9F3A9804",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "McpApiRestApibedrockagentsapprovalagentId396CAA18"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsapprovalagentIdDELETEApiPermissionLisaChatMcpApiRestApi21151341DELETEbedrockagentsapprovalagentId3410F14B": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpApiLisaChatmcpserverdeletebedrockagentapprovalA3E22990",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/DELETE/bedrock-agents/approval/*"
+            ]
+          ]
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsapprovalagentIdDELETEApiPermissionTestLisaChatMcpApiRestApi21151341DELETEbedrockagentsapprovalagentIdC246CC23": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpApiLisaChatmcpserverdeletebedrockagentapprovalA3E22990",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/DELETE/bedrock-agents/approval/*"
+            ]
+          ]
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsapprovalagentIdDELETE3AC4E913": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "DELETE",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "McpApiLisaChatmcpserverdeletebedrockagentapprovalA3E22990",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "McpApiRestApibedrockagentsapprovalagentId396CAA18"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsapprovalsC2D7C2E2": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Ref": "McpApiRestApibedrockagents13C1431D"
+        },
+        "PathPart": "approvals",
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsapprovalsOPTIONSE7A61BC1": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "Integration": {
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+              },
+              "StatusCode": "204"
+            }
+          ],
+          "RequestTemplates": {
+            "application/json": "{ statusCode: 200 }"
+          },
+          "Type": "MOCK"
+        },
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "StatusCode": "204"
+          }
+        ],
+        "ResourceId": {
+          "Ref": "McpApiRestApibedrockagentsapprovalsC2D7C2E2"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsapprovalsGETApiPermissionLisaChatMcpApiRestApi21151341GETbedrockagentsapprovals8D28EEF8": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpApiLisaChatmcpserverlistbedrockagentapprovals795F9633",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/GET/bedrock-agents/approvals"
+            ]
+          ]
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsapprovalsGETApiPermissionTestLisaChatMcpApiRestApi21151341GETbedrockagentsapprovals8E86789C": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpApiLisaChatmcpserverlistbedrockagentapprovals795F9633",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/GET/bedrock-agents/approvals"
+            ]
+          ]
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsapprovalsGET34726BA7": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "GET",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "McpApiLisaChatmcpserverlistbedrockagentapprovals795F9633",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "McpApiRestApibedrockagentsapprovalsC2D7C2E2"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsdiscoveryE59E237D": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Ref": "McpApiRestApibedrockagents13C1431D"
+        },
+        "PathPart": "discovery",
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsdiscoveryOPTIONS60EC8D2A": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "Integration": {
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+              },
+              "StatusCode": "204"
+            }
+          ],
+          "RequestTemplates": {
+            "application/json": "{ statusCode: 200 }"
+          },
+          "Type": "MOCK"
+        },
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "StatusCode": "204"
+          }
+        ],
+        "ResourceId": {
+          "Ref": "McpApiRestApibedrockagentsdiscoveryE59E237D"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsdiscoveryGETApiPermissionLisaChatMcpApiRestApi21151341GETbedrockagentsdiscoveryC0D31D91": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpApiLisaChatmcpserverlistbedrockagentsdiscovery7BCED147",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/GET/bedrock-agents/discovery"
+            ]
+          ]
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsdiscoveryGETApiPermissionTestLisaChatMcpApiRestApi21151341GETbedrockagentsdiscoveryDDB2D413": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpApiLisaChatmcpserverlistbedrockagentsdiscovery7BCED147",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/GET/bedrock-agents/discovery"
+            ]
+          ]
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsdiscoveryGET2C8794B5": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "GET",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "McpApiLisaChatmcpserverlistbedrockagentsdiscovery7BCED147",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "McpApiRestApibedrockagentsdiscoveryE59E237D"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsinvokeDF814A73": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Ref": "McpApiRestApibedrockagents13C1431D"
+        },
+        "PathPart": "invoke",
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsinvokeOPTIONS18DB19D9": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "Integration": {
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+              },
+              "StatusCode": "204"
+            }
+          ],
+          "RequestTemplates": {
+            "application/json": "{ statusCode: 200 }"
+          },
+          "Type": "MOCK"
+        },
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "StatusCode": "204"
+          }
+        ],
+        "ResourceId": {
+          "Ref": "McpApiRestApibedrockagentsinvokeDF814A73"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsinvokePOSTApiPermissionLisaChatMcpApiRestApi21151341POSTbedrockagentsinvokeBAC55748": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpApiLisaChatmcpserverinvokebedrockagent38EB16C9",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/POST/bedrock-agents/invoke"
+            ]
+          ]
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsinvokePOSTApiPermissionTestLisaChatMcpApiRestApi21151341POSTbedrockagentsinvoke759C42E5": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpApiLisaChatmcpserverinvokebedrockagent38EB16C9",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/POST/bedrock-agents/invoke"
+            ]
+          ]
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsinvokePOST5D410157": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "POST",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "McpApiLisaChatmcpserverinvokebedrockagent38EB16C9",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "McpApiRestApibedrockagentsinvokeDF814A73"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsGETApiPermissionLisaChatMcpApiRestApi21151341GETbedrockagentsA434003F": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpApiLisaChatmcpserverlistbedrockagents030E1DB4",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/GET/bedrock-agents"
+            ]
+          ]
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsGETApiPermissionTestLisaChatMcpApiRestApi21151341GETbedrockagents9B07B703": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "McpApiLisaChatmcpserverlistbedrockagents030E1DB4",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/GET/bedrock-agents"
+            ]
+          ]
+        }
+      }
+    },
+    "McpApiRestApibedrockagentsGETD5281F10": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "GET",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "McpApiLisaChatmcpserverlistbedrockagents030E1DB4",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "McpApiRestApibedrockagents13C1431D"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
     "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F": {
       "Type": "AWS::IAM::Role",
       "Properties": {
@@ -753,6 +1682,19 @@
       "Properties": {
         "PolicyDocument": {
           "Statement": [
+            {
+              "Action": [
+                "bedrock:ListAgents",
+                "bedrock:GetAgent",
+                "bedrock:ListAgentAliases",
+                "bedrock:GetAgentAlias",
+                "bedrock:ListAgentActionGroups",
+                "bedrock:GetAgentActionGroup",
+                "bedrock:InvokeAgent"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            },
             {
               "Action": [
                 "dynamodb:BatchGetItem",
@@ -883,6 +1825,44 @@
                   ]
                 }
               ]
+            },
+            {
+              "Action": [
+                "dynamodb:BatchGetItem",
+                "dynamodb:Query",
+                "dynamodb:GetItem",
+                "dynamodb:Scan",
+                "dynamodb:ConditionCheckItem",
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:DescribeTable"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "McpApiBedrockAgentApprovalsTableA884BFE7",
+                    "Arn"
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "McpApiBedrockAgentApprovalsTableA884BFE7",
+                    "Arn"
+                  ]
+                }
+              ]
             }
           ],
           "Version": "2012-10-17"
@@ -895,12 +1875,122 @@
         ]
       }
     },
+    "McpApiLisaMcpServerApiLambdaExecutionRoleOverflowPolicy180020FB1": {
+      "Type": "AWS::IAM::ManagedPolicy",
+      "Properties": {
+        "Description": "Part of the policies for LisaChat/McpApi/LisaMcpServerApiLambdaExecutionRole",
+        "Path": "/",
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "McpApiBedrockAgentApprovalsTableA884BFE7",
+                    "Arn"
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "dynamodb:BatchGetItem",
+                "dynamodb:Query",
+                "dynamodb:GetItem",
+                "dynamodb:Scan",
+                "dynamodb:ConditionCheckItem",
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:DescribeTable"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "McpApiBedrockAgentApprovalsTableA884BFE7",
+                    "Arn"
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Roles": [
+          {
+            "Ref": "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F"
+          }
+        ]
+      }
+    },
+    "McpApiLisaMcpServerApiLambdaExecutionRoleOverflowPolicy2C9BEFCE1": {
+      "Type": "AWS::IAM::ManagedPolicy",
+      "Properties": {
+        "Description": "Part of the policies for LisaChat/McpApi/LisaMcpServerApiLambdaExecutionRole",
+        "Path": "/",
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "McpApiBedrockAgentApprovalsTableA884BFE7",
+                    "Arn"
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "dynamodb:BatchGetItem",
+                "dynamodb:Query",
+                "dynamodb:GetItem",
+                "dynamodb:Scan",
+                "dynamodb:ConditionCheckItem",
+                "dynamodb:BatchWriteItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:DescribeTable"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "McpApiBedrockAgentApprovalsTableA884BFE7",
+                    "Arn"
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Roles": [
+          {
+            "Ref": "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F"
+          }
+        ]
+      }
+    },
     "McpApiLisaChatmcpserverlistmcpservers010AAA79": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Lists available mcp servers for user",
         "Environment": {
@@ -910,6 +2000,9 @@
               "Ref": "McpApiMcpServersTable96D5EF7B"
             },
             "MCP_SERVERS_BY_OWNER_INDEX_NAME": "byOwner",
+            "BEDROCK_AGENT_APPROVALS_TABLE_NAME": {
+              "Ref": "McpApiBedrockAgentApprovalsTableA884BFE7"
+            },
             "LISA_AUDIT_ENABLED": "false",
             "LISA_AUDIT_AUDIT_ALL": "false",
             "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
@@ -957,6 +2050,8 @@
       },
       "DependsOn": [
         "McpApiLisaMcpServerApiLambdaExecutionRoleDefaultPolicy53645ED0",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleOverflowPolicy180020FB1",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleOverflowPolicy2C9BEFCE1",
         "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F"
       ]
     },
@@ -988,7 +2083,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Returns the selected mcp server",
         "Environment": {
@@ -998,6 +2093,9 @@
               "Ref": "McpApiMcpServersTable96D5EF7B"
             },
             "MCP_SERVERS_BY_OWNER_INDEX_NAME": "byOwner",
+            "BEDROCK_AGENT_APPROVALS_TABLE_NAME": {
+              "Ref": "McpApiBedrockAgentApprovalsTableA884BFE7"
+            },
             "LISA_AUDIT_ENABLED": "false",
             "LISA_AUDIT_AUDIT_ALL": "false",
             "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
@@ -1045,6 +2143,8 @@
       },
       "DependsOn": [
         "McpApiLisaMcpServerApiLambdaExecutionRoleDefaultPolicy53645ED0",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleOverflowPolicy180020FB1",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleOverflowPolicy2C9BEFCE1",
         "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F"
       ]
     },
@@ -1076,7 +2176,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Creates the mcp server",
         "Environment": {
@@ -1086,6 +2186,9 @@
               "Ref": "McpApiMcpServersTable96D5EF7B"
             },
             "MCP_SERVERS_BY_OWNER_INDEX_NAME": "byOwner",
+            "BEDROCK_AGENT_APPROVALS_TABLE_NAME": {
+              "Ref": "McpApiBedrockAgentApprovalsTableA884BFE7"
+            },
             "LISA_AUDIT_ENABLED": "false",
             "LISA_AUDIT_AUDIT_ALL": "false",
             "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
@@ -1133,6 +2236,8 @@
       },
       "DependsOn": [
         "McpApiLisaMcpServerApiLambdaExecutionRoleDefaultPolicy53645ED0",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleOverflowPolicy180020FB1",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleOverflowPolicy2C9BEFCE1",
         "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F"
       ]
     },
@@ -1164,7 +2269,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Deletes selected mcp server",
         "Environment": {
@@ -1174,6 +2279,9 @@
               "Ref": "McpApiMcpServersTable96D5EF7B"
             },
             "MCP_SERVERS_BY_OWNER_INDEX_NAME": "byOwner",
+            "BEDROCK_AGENT_APPROVALS_TABLE_NAME": {
+              "Ref": "McpApiBedrockAgentApprovalsTableA884BFE7"
+            },
             "LISA_AUDIT_ENABLED": "false",
             "LISA_AUDIT_AUDIT_ALL": "false",
             "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
@@ -1221,6 +2329,8 @@
       },
       "DependsOn": [
         "McpApiLisaMcpServerApiLambdaExecutionRoleDefaultPolicy53645ED0",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleOverflowPolicy180020FB1",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleOverflowPolicy2C9BEFCE1",
         "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F"
       ]
     },
@@ -1252,7 +2362,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Creates or updates selected mcp server",
         "Environment": {
@@ -1262,6 +2372,9 @@
               "Ref": "McpApiMcpServersTable96D5EF7B"
             },
             "MCP_SERVERS_BY_OWNER_INDEX_NAME": "byOwner",
+            "BEDROCK_AGENT_APPROVALS_TABLE_NAME": {
+              "Ref": "McpApiBedrockAgentApprovalsTableA884BFE7"
+            },
             "LISA_AUDIT_ENABLED": "false",
             "LISA_AUDIT_AUDIT_ALL": "false",
             "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
@@ -1309,6 +2422,8 @@
       },
       "DependsOn": [
         "McpApiLisaMcpServerApiLambdaExecutionRoleDefaultPolicy53645ED0",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleOverflowPolicy180020FB1",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleOverflowPolicy2C9BEFCE1",
         "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F"
       ]
     },
@@ -1328,6 +2443,564 @@
               "/aws/lambda/",
               {
                 "Ref": "McpApiLisaChatmcpserverupdate2F094A10"
+              }
+            ]
+          ]
+        },
+        "RetentionInDays": 30
+      }
+    },
+    "McpApiLisaChatmcpserverputbedrockagentapproval9F3A9804": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+        },
+        "Description": "Admin: upsert Bedrock agent catalog entry",
+        "Environment": {
+          "Variables": {
+            "ADMIN_GROUP": "",
+            "MCP_SERVERS_TABLE_NAME": {
+              "Ref": "McpApiMcpServersTable96D5EF7B"
+            },
+            "MCP_SERVERS_BY_OWNER_INDEX_NAME": "byOwner",
+            "BEDROCK_AGENT_APPROVALS_TABLE_NAME": {
+              "Ref": "McpApiBedrockAgentApprovalsTableA884BFE7"
+            },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
+          }
+        },
+        "FunctionName": "LisaChat-mcp_server-put_bedrock_agent_approval",
+        "Handler": "mcp_server.lambda_functions.put_bedrock_agent_approval",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "McpApiLisaMcpServerApiLambdaExecutionRoleDefaultPolicy53645ED0",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleOverflowPolicy180020FB1",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleOverflowPolicy2C9BEFCE1",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F"
+      ]
+    },
+    "McpApiLisaChatmcpserverputbedrockagentapprovalLogRetention561A72F3": {
+      "Type": "Custom::LogRetention",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "McpApiLisaChatmcpserverputbedrockagentapproval9F3A9804"
+              }
+            ]
+          ]
+        },
+        "RetentionInDays": 30
+      }
+    },
+    "McpApiLisaChatmcpserverdeletebedrockagentapprovalA3E22990": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+        },
+        "Description": "Admin: remove Bedrock agent from catalog",
+        "Environment": {
+          "Variables": {
+            "ADMIN_GROUP": "",
+            "MCP_SERVERS_TABLE_NAME": {
+              "Ref": "McpApiMcpServersTable96D5EF7B"
+            },
+            "MCP_SERVERS_BY_OWNER_INDEX_NAME": "byOwner",
+            "BEDROCK_AGENT_APPROVALS_TABLE_NAME": {
+              "Ref": "McpApiBedrockAgentApprovalsTableA884BFE7"
+            },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
+          }
+        },
+        "FunctionName": "LisaChat-mcp_server-delete_bedrock_agent_approval",
+        "Handler": "mcp_server.lambda_functions.delete_bedrock_agent_approval",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "McpApiLisaMcpServerApiLambdaExecutionRoleDefaultPolicy53645ED0",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleOverflowPolicy180020FB1",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleOverflowPolicy2C9BEFCE1",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F"
+      ]
+    },
+    "McpApiLisaChatmcpserverdeletebedrockagentapprovalLogRetentionCA9DAA5A": {
+      "Type": "Custom::LogRetention",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "McpApiLisaChatmcpserverdeletebedrockagentapprovalA3E22990"
+              }
+            ]
+          ]
+        },
+        "RetentionInDays": 30
+      }
+    },
+    "McpApiLisaChatmcpserverlistbedrockagentapprovals795F9633": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+        },
+        "Description": "Admin: list all Bedrock agent catalog entries",
+        "Environment": {
+          "Variables": {
+            "ADMIN_GROUP": "",
+            "MCP_SERVERS_TABLE_NAME": {
+              "Ref": "McpApiMcpServersTable96D5EF7B"
+            },
+            "MCP_SERVERS_BY_OWNER_INDEX_NAME": "byOwner",
+            "BEDROCK_AGENT_APPROVALS_TABLE_NAME": {
+              "Ref": "McpApiBedrockAgentApprovalsTableA884BFE7"
+            },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
+          }
+        },
+        "FunctionName": "LisaChat-mcp_server-list_bedrock_agent_approvals",
+        "Handler": "mcp_server.lambda_functions.list_bedrock_agent_approvals",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "McpApiLisaMcpServerApiLambdaExecutionRoleDefaultPolicy53645ED0",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleOverflowPolicy180020FB1",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleOverflowPolicy2C9BEFCE1",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F"
+      ]
+    },
+    "McpApiLisaChatmcpserverlistbedrockagentapprovalsLogRetention89B959CA": {
+      "Type": "Custom::LogRetention",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "McpApiLisaChatmcpserverlistbedrockagentapprovals795F9633"
+              }
+            ]
+          ]
+        },
+        "RetentionInDays": 30
+      }
+    },
+    "McpApiLisaChatmcpserverlistbedrockagentsdiscovery7BCED147": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+        },
+        "Description": "Admin: full Bedrock agent account scan",
+        "Environment": {
+          "Variables": {
+            "ADMIN_GROUP": "",
+            "MCP_SERVERS_TABLE_NAME": {
+              "Ref": "McpApiMcpServersTable96D5EF7B"
+            },
+            "MCP_SERVERS_BY_OWNER_INDEX_NAME": "byOwner",
+            "BEDROCK_AGENT_APPROVALS_TABLE_NAME": {
+              "Ref": "McpApiBedrockAgentApprovalsTableA884BFE7"
+            },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
+          }
+        },
+        "FunctionName": "LisaChat-mcp_server-list_bedrock_agents_discovery",
+        "Handler": "mcp_server.lambda_functions.list_bedrock_agents_discovery",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "McpApiLisaMcpServerApiLambdaExecutionRoleDefaultPolicy53645ED0",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleOverflowPolicy180020FB1",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleOverflowPolicy2C9BEFCE1",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F"
+      ]
+    },
+    "McpApiLisaChatmcpserverlistbedrockagentsdiscoveryLogRetention99C30C41": {
+      "Type": "Custom::LogRetention",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "McpApiLisaChatmcpserverlistbedrockagentsdiscovery7BCED147"
+              }
+            ]
+          ]
+        },
+        "RetentionInDays": 30
+      }
+    },
+    "McpApiLisaChatmcpserverinvokebedrockagent38EB16C9": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+        },
+        "Description": "Invoke a Bedrock Agent and return aggregated text",
+        "Environment": {
+          "Variables": {
+            "ADMIN_GROUP": "",
+            "MCP_SERVERS_TABLE_NAME": {
+              "Ref": "McpApiMcpServersTable96D5EF7B"
+            },
+            "MCP_SERVERS_BY_OWNER_INDEX_NAME": "byOwner",
+            "BEDROCK_AGENT_APPROVALS_TABLE_NAME": {
+              "Ref": "McpApiBedrockAgentApprovalsTableA884BFE7"
+            },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
+          }
+        },
+        "FunctionName": "LisaChat-mcp_server-invoke_bedrock_agent",
+        "Handler": "mcp_server.lambda_functions.invoke_bedrock_agent",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "McpApiLisaMcpServerApiLambdaExecutionRoleDefaultPolicy53645ED0",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleOverflowPolicy180020FB1",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleOverflowPolicy2C9BEFCE1",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F"
+      ]
+    },
+    "McpApiLisaChatmcpserverinvokebedrockagentLogRetentionC23579AD": {
+      "Type": "Custom::LogRetention",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "McpApiLisaChatmcpserverinvokebedrockagent38EB16C9"
+              }
+            ]
+          ]
+        },
+        "RetentionInDays": 30
+      }
+    },
+    "McpApiLisaChatmcpserverlistbedrockagents030E1DB4": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+        },
+        "Description": "List approved Bedrock agents for the current user",
+        "Environment": {
+          "Variables": {
+            "ADMIN_GROUP": "",
+            "MCP_SERVERS_TABLE_NAME": {
+              "Ref": "McpApiMcpServersTable96D5EF7B"
+            },
+            "MCP_SERVERS_BY_OWNER_INDEX_NAME": "byOwner",
+            "BEDROCK_AGENT_APPROVALS_TABLE_NAME": {
+              "Ref": "McpApiBedrockAgentApprovalsTableA884BFE7"
+            },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
+          }
+        },
+        "FunctionName": "LisaChat-mcp_server-list_bedrock_agents",
+        "Handler": "mcp_server.lambda_functions.list_bedrock_agents",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "McpApiLisaMcpServerApiLambdaExecutionRoleDefaultPolicy53645ED0",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleOverflowPolicy180020FB1",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleOverflowPolicy2C9BEFCE1",
+        "McpApiLisaMcpServerApiLambdaExecutionRoleAB722D7F"
+      ]
+    },
+    "McpApiLisaChatmcpserverlistbedrockagentsLogRetentionC06FAACE": {
+      "Type": "Custom::LogRetention",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "McpApiLisaChatmcpserverlistbedrockagents030E1DB4"
               }
             ]
           ]
@@ -1673,7 +3346,7 @@
               {
                 "Ref": "ConfigurationApiConfigurationTable4B2B7EE1"
               },
-              "\",\"Item\":{\"versionId\":{\"N\":\"0\"},\"changedBy\":{\"S\":\"System\"},\"configScope\":{\"S\":\"global\"},\"changeReason\":{\"S\":\"Initial deployment default config\"},\"createdAt\":{\"S\":\"1775237663\"},\"configuration\":{\"M\":{\"enabledComponents\":{\"M\":{\"deleteSessionHistory\":{\"BOOL\":\"True\"},\"viewMetaData\":{\"BOOL\":\"True\"},\"editKwargs\":{\"BOOL\":\"True\"},\"editPromptTemplate\":{\"BOOL\":\"True\"},\"editChatHistoryBuffer\":{\"BOOL\":\"True\"},\"editNumOfRagDocument\":{\"BOOL\":\"True\"},\"uploadRagDocs\":{\"BOOL\":\"True\"},\"ragSelectionAvailable\":{\"BOOL\":\"True\"},\"uploadContextDocs\":{\"BOOL\":\"True\"},\"documentSummarization\":{\"BOOL\":\"True\"},\"showRagLibrary\":{\"BOOL\":\"True\"},\"showMcpWorkbench\":{\"BOOL\":\"True\"},\"showPromptTemplateLibrary\":{\"BOOL\":\"True\"},\"mcpConnections\":{\"BOOL\":\"True\"},\"bedrockAgents\":{\"BOOL\":\"True\"},\"awsSessions\":{\"BOOL\":\"False\"},\"modelLibrary\":{\"BOOL\":\"True\"},\"encryptSession\":{\"BOOL\":\"False\"},\"chatAssistantStacks\":{\"BOOL\":\"False\"},\"projectOrganization\":{\"BOOL\":\"False\"}}},\"maxProjectsPerUser\":{\"N\":\"50\"},\"systemBanner\":{\"M\":{\"isEnabled\":{\"BOOL\":\"False\"},\"text\":{\"S\":\"\"},\"textColor\":{\"S\":\"\"},\"backgroundColor\":{\"S\":\"\"}}}}}}}}"
+              "\",\"Item\":{\"versionId\":{\"N\":\"0\"},\"changedBy\":{\"S\":\"System\"},\"configScope\":{\"S\":\"global\"},\"changeReason\":{\"S\":\"Initial deployment default config\"},\"createdAt\":{\"S\":\"1776980413\"},\"configuration\":{\"M\":{\"enabledComponents\":{\"M\":{\"deleteSessionHistory\":{\"BOOL\":\"True\"},\"viewMetaData\":{\"BOOL\":\"True\"},\"editKwargs\":{\"BOOL\":\"True\"},\"editPromptTemplate\":{\"BOOL\":\"True\"},\"editChatHistoryBuffer\":{\"BOOL\":\"True\"},\"editNumOfRagDocument\":{\"BOOL\":\"True\"},\"uploadRagDocs\":{\"BOOL\":\"True\"},\"ragSelectionAvailable\":{\"BOOL\":\"True\"},\"uploadContextDocs\":{\"BOOL\":\"True\"},\"documentSummarization\":{\"BOOL\":\"True\"},\"showRagLibrary\":{\"BOOL\":\"True\"},\"showMcpWorkbench\":{\"BOOL\":\"True\"},\"showPromptTemplateLibrary\":{\"BOOL\":\"True\"},\"mcpConnections\":{\"BOOL\":\"True\"},\"bedrockAgents\":{\"BOOL\":\"True\"},\"awsSessions\":{\"BOOL\":\"False\"},\"modelLibrary\":{\"BOOL\":\"True\"},\"encryptSession\":{\"BOOL\":\"False\"},\"chatAssistantStacks\":{\"BOOL\":\"False\"},\"projectOrganization\":{\"BOOL\":\"False\"}}},\"maxProjectsPerUser\":{\"N\":\"50\"},\"systemBanner\":{\"M\":{\"isEnabled\":{\"BOOL\":\"False\"},\"text\":{\"S\":\"\"},\"textColor\":{\"S\":\"\"},\"backgroundColor\":{\"S\":\"\"}}}}}}}}"
             ]
           ]
         },
@@ -1985,7 +3658,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Get configuration",
         "Environment": {
@@ -2084,7 +3757,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Updates config data",
         "Environment": {
@@ -3603,7 +5276,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Lists available sessions for user",
         "Environment": {
@@ -3711,7 +5384,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Returns the selected session",
         "Environment": {
@@ -3819,7 +5492,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Deletes selected session",
         "Environment": {
@@ -3927,7 +5600,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Deletes all sessions for selected user",
         "Environment": {
@@ -4035,7 +5708,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Creates or updates selected session",
         "Environment": {
@@ -4143,7 +5816,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Updates session name",
         "Environment": {
@@ -4251,7 +5924,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Attaches image to session",
         "Environment": {
@@ -5262,7 +6935,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "List all projects for the calling user",
         "Environment": {
@@ -5355,7 +7028,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Create a new project",
         "Environment": {
@@ -5448,7 +7121,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Rename a project",
         "Environment": {
@@ -5541,7 +7214,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Delete a project",
         "Environment": {
@@ -5634,7 +7307,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Assign or unassign a session to/from a project",
         "Environment": {
@@ -6612,7 +8285,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Creates prompt template",
         "Environment": {
@@ -6700,7 +8373,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Retrieves specific prompt template by ID",
         "Environment": {
@@ -6788,7 +8461,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Lists all available prompt templates",
         "Environment": {
@@ -6876,7 +8549,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Updates an existing prompt template",
         "Environment": {
@@ -6964,7 +8637,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Deletes a specific prompt template by ID",
         "Environment": {
@@ -7472,7 +9145,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Returns the preferences for the calling user",
         "Environment": {
@@ -7558,7 +9231,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Creates or updates user preferences for user",
         "Environment": {
@@ -8576,7 +10249,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "List stacks (all for admin, active+accessible for non-admin)",
         "Environment": {
@@ -8663,7 +10336,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Create Chat Assistant Stack",
         "Environment": {
@@ -8750,7 +10423,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Get Chat Assistant Stack by id",
         "Environment": {
@@ -8837,7 +10510,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Update Chat Assistant Stack",
         "Environment": {
@@ -8924,7 +10597,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Delete Chat Assistant Stack",
         "Environment": {
@@ -9011,7 +10684,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "a258882c63b61415534cd9ca30ea6730ddf032b5c24418a689c43be59b62e98c.zip"
+          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
         },
         "Description": "Update stack active status",
         "Environment": {

@@ -239,8 +239,7 @@ MODEL_DEFINITIONS: dict[str, dict] = {
             "VLLM_FLASHINFER_MOE_BACKEND": "throughput",
             "VLLM_ENABLE_AUTO_TOOL_CHOICE": "true",
             "VLLM_TOOL_CALL_PARSER": "qwen3_coder",
-            "VLLM_REASONING_PARSER_PLUGIN": "nano_v3_reasoning_parser.py",
-            "VLLM_REASONING_PARSER": "nano_v3.py",
+            "VLLM_REASONING_PARSER": "nemotron_v3",
         },
     },
 }

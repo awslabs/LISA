@@ -17,10 +17,10 @@
 import ReactMarkdown from 'react-markdown';
 import Box from '@cloudscape-design/components/box';
 import ExpandableSection from '@cloudscape-design/components/expandable-section';
-import { ButtonDropdown, ButtonGroup, Grid, SpaceBetween, StatusIndicator } from '@cloudscape-design/components';
+import { Badge, ButtonDropdown, ButtonGroup, Grid, SpaceBetween, StatusIndicator } from '@cloudscape-design/components';
 import { JsonView, darkStyles, defaultStyles } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
-import { LisaChatMessage, LisaChatMessageMetadata, MessageTypes } from '../../types';
+import { LisaChatMessage, LisaChatMessageMetadata, MessageTypes, RagDocumentCitation } from '../../types';
 import { useAppSelector } from '@/config/store';
 import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
 import ChatBubble from '@cloudscape-design/chat-components/chat-bubble';
@@ -66,6 +66,7 @@ type MessageProps = {
 export const Message = React.memo(({ message, isRunning, showMetadata, isStreaming, markdownDisplay, setUserPrompt, setChatConfiguration, handleSendGenerateRequest, chatConfiguration, callingToolName, showUsage = false, onMermaidRenderComplete, onVideoLoadComplete, onImageLoadComplete, retryResponse, errorState, onOpenDocument }: MessageProps) => {
     const currentUser = useAppSelector(selectCurrentUsername);
     const ragCitations = !isStreaming && message?.metadata?.ragDocuments ? message?.metadata.ragDocuments : undefined;
+    const ragSearchMetadata = message?.metadata?.ragSearchMetadata;
     const [resend, setResend] = useState(false);
     const [showImageViewer, setShowImageViewer] = useState(false);
     const [selectedImage, setSelectedImage] = useState(undefined);
@@ -79,9 +80,8 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
     const { ragDocuments, ragCitationsString } = useMemo(() => {
         if (!ragCitations) return { ragDocuments: undefined, ragCitationsString: undefined };
 
-        // Array format - use for Citations section
         if (Array.isArray(ragCitations)) {
-            return { ragDocuments: ragCitations, ragCitationsString: undefined };
+            return { ragDocuments: ragCitations as RagDocumentCitation[], ragCitationsString: undefined };
         }
 
         // String format - only pass to getDisplayableMessage, don't show in Citations panel
@@ -370,7 +370,16 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                             <Box margin={{ top: 's' }}>
                                 <ExpandableSection
                                     variant='footer'
-                                    headerText={`Citations (${ragDocuments.length})`}
+                                    headerText={
+                                        <SpaceBetween direction='horizontal' size='xs'>
+                                            <span>Citations ({ragDocuments.length})</span>
+                                            {ragSearchMetadata?.searchMode === 'hybrid' && (
+                                                <Badge color={ragSearchMetadata.actualModeUsed === 'hybrid' ? 'blue' : 'grey'}>
+                                                    {ragSearchMetadata.actualModeUsed === 'hybrid' ? 'Hybrid' : 'Vector (fallback)'}
+                                                </Badge>
+                                            )}
+                                        </SpaceBetween>
+                                    }
                                 >
                                     <SpaceBetween direction='vertical' size='xs'>
                                         {ragDocuments.map((doc, index) => (

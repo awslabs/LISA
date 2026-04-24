@@ -17,7 +17,6 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { lisaBaseQuery } from '@/shared/reducers/reducer.utils';
 import { PaginatedDocumentResponse } from '@/components/types';
-import { Document } from '@langchain/core/documents';
 import {
     RagRepositoryConfig,
     ChunkingStrategy,
@@ -58,6 +57,21 @@ type RelevantDocRequest = {
     topK: number,
     modelName?: string,
     searchMode?: 'vector' | 'hybrid',
+};
+
+export type RelevantDocumentsResponse = {
+    docs: Array<{
+        Document: {
+            page_content: string;
+            metadata: Record<string, any>;
+        };
+    }>;
+    metadata?: {
+        search_mode: string;
+        actual_mode_used: string;
+        backend: string;
+        hybrid_supported: boolean;
+    };
 };
 
 type ListRagDocumentRequest = {
@@ -218,11 +232,12 @@ export const ragApi = createApi({
                 data: body
             }),
         }),
-        getRelevantDocuments: builder.query<Document[], RelevantDocRequest>({
+        getRelevantDocuments: builder.query<RelevantDocumentsResponse, RelevantDocRequest>({
             query: (request) => {
                 const params: any = {
                     query: request.query,
-                    topK: request.topK
+                    topK: request.topK,
+                    score: 'true',
                 };
 
                 if (request.collectionId) {

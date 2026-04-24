@@ -207,7 +207,7 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
     Returns:
         Dict[str, Any]: A dictionary containing:
             - docs: List of matching documents with their content and metadata
-            - metadata (optional): Present only for hybrid requests, includes search_mode,
+            - metadata: Search metadata including search_mode,
               actual_mode_used, backend, and hybrid_supported
 
     Raises:
@@ -260,40 +260,18 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
     logger.info(f"Searching in collection: {search_collection_id} with embedding model: {model_name}")
 
     # Route based on search mode
-    response_metadata: dict[str, Any] | None = None
     repo_type = repository.get("type", "")
+    use_hybrid = search_mode == "hybrid" and service.supports_hybrid_search()
 
-    if search_mode == "hybrid":
-        if service.supports_hybrid_search():
-            docs = service.hybrid_retrieve(
-                query=query,
-                collection_id=search_collection_id,  # type: ignore[arg-type]
-                top_k=top_k,
-                model_name=model_name,  # type: ignore[arg-type]
-                include_score=include_score,
-                bedrock_agent_client=bedrock_client,
-            )
-            response_metadata = {
-                "search_mode": "hybrid",
-                "actual_mode_used": "hybrid",
-                "backend": repo_type,
-                "hybrid_supported": True,
-            }
-        else:
-            docs = service.retrieve_documents(
-                query=query,
-                collection_id=search_collection_id,  # type: ignore[arg-type]
-                top_k=top_k,
-                model_name=model_name,  # type: ignore[arg-type]
-                include_score=include_score,
-                bedrock_agent_client=bedrock_client,
-            )
-            response_metadata = {
-                "search_mode": "hybrid",
-                "actual_mode_used": "vector",
-                "backend": repo_type,
-                "hybrid_supported": False,
-            }
+    if use_hybrid:
+        docs = service.hybrid_retrieve(
+            query=query,
+            collection_id=search_collection_id,  # type: ignore[arg-type]
+            top_k=top_k,
+            model_name=model_name,  # type: ignore[arg-type]
+            include_score=include_score,
+            bedrock_agent_client=bedrock_client,
+        )
     else:
         docs = service.retrieve_documents(
             query=query,
@@ -303,6 +281,13 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
             include_score=include_score,
             bedrock_agent_client=bedrock_client,
         )
+
+    response_metadata = {
+        "search_mode": search_mode,
+        "actual_mode_used": "hybrid" if use_hybrid else "vector",
+        "backend": repo_type,
+        "hybrid_supported": service.supports_hybrid_search(),
+    }
 
     # Enrich metadata with documentId for documents that don't have it
     # Pass the actual search_collection_id (not the metadata's collectionId which may be "default")
@@ -318,9 +303,7 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
         for doc in docs
     ]
 
-    doc_return: dict[str, Any] = {"docs": doc_content}
-    if response_metadata:
-        doc_return["metadata"] = response_metadata
+    doc_return: dict[str, Any] = {"docs": doc_content, "metadata": response_metadata}
     logger.info(f"Returning: {doc_return}")
     return doc_return
 

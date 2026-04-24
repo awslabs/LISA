@@ -61,6 +61,24 @@ describe('getRelevantDocuments query builder', () => {
         expect(config.url).toContain('searchMode=hybrid');
     });
 
+    it('includes score=true in the request URL', async () => {
+        const store = createTestStore();
+        store.dispatch(
+            ragApi.endpoints.getRelevantDocuments.initiate({
+                repositoryId: 'repo-1',
+                query: 'test query',
+                topK: 3,
+            })
+        );
+
+        await vi.waitFor(() => {
+            expect(mockAxios).toHaveBeenCalled();
+        });
+
+        const config = mockAxios.mock.calls[0][0];
+        expect(config.url).toContain('score=true');
+    });
+
     it('does not include searchMode in the request URL when searchMode is absent', async () => {
         const store = createTestStore();
         store.dispatch(

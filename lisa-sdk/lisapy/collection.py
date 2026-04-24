@@ -14,7 +14,6 @@
 
 """Collection management operations for LISA SDK."""
 
-
 from .common import BaseMixin
 from .errors import parse_error
 

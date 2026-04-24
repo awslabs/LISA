@@ -29,7 +29,7 @@ pip install -e .
 mkdir /tmp/my-tools
 ```
 
-2. **Create a simple tool (save as `/tmp/my-tools/hello.py`):**
+1. **Create a simple tool (save as `/tmp/my-tools/hello.py`):**
 
 ```python
 from mcpworkbench.core.annotations import mcp_tool
@@ -49,13 +49,13 @@ def say_hello(name: str):
     return f"Hello, {name}!"
 ```
 
-3. **Start the server:**
+1. **Start the server:**
 
 ```bash
 mcpworkbench --tools-dir /tmp/my-tools --port 8000
 ```
 
-4. **Connect with an MCP client:**
+1. **Connect with an MCP client:**
 
 The server exposes a pure MCP protocol endpoint that MCP clients can connect to for tool discovery and execution.
 
@@ -159,6 +159,7 @@ cors_settings:
 ## Architecture
 
 **Pure FastMCP 2.0 Server:**
+
 - **Native MCP Protocol**: 100% MCP protocol implementation via FastMCP 2.0
 - **Dynamic Tool Registration**: Tools discovered and registered as native FastMCP tools
 - **Management Routes**: Rescan and exit functionality as HTTP GET endpoints
@@ -170,6 +171,7 @@ cors_settings:
 ### Discovered Tools
 
 All Python tools from your tools directory are automatically registered as MCP tools with their:
+
 - Original names and descriptions
 - Parameter schemas
 - Execution capabilities
@@ -177,11 +179,13 @@ All Python tools from your tools directory are automatically registered as MCP t
 ### Built-in Management Routes
 
 **GET /rescan** (when enabled):
+
 - Rescans the tools directory for new/updated tools
 - Returns JSON status of changes made
 - Accessible via HTTP GET requests
 
 **GET /shutdown** (when enabled):
+
 - Gracefully shuts down the MCP Workbench server
 - Returns JSON confirmation before shutdown
 - Useful for remote management
@@ -258,7 +262,7 @@ This project is designed to work with the existing LISA MCP infrastructure:
 2. Tools are stored in S3 via the existing Lambda functions
 3. S3 bucket is mounted to the container filesystem
 4. MCP Workbench reads tools from the mounted location
-5. External processes can trigger rescans via HTTP GET requests
+5. S3 EventBridge notifications invoke an in-VPC Lambda that calls the workbench **GET …/v2/mcp/rescan** (with the management API bearer when auth is enabled), reloading tools without recycling ECS tasks. The rclone mount uses a configurable **poll interval** so new S3 objects appear in the container filesystem before rescan runs.
 
 ### AWS Session Management
 
@@ -274,7 +278,7 @@ The feature requires the **AWS Sessions** toggle to be enabled in Administration
 
 ### Project Structure
 
-```
+```text
 src/mcpworkbench/
 ├── __init__.py
 ├── cli.py                    # Command line interface
@@ -354,12 +358,14 @@ mcpworkbench --tools-dir src/examples/sample_tools --port 8001 --debug
 If migrating from the previous hybrid REST API + MCP architecture:
 
 ### What Changed
+
 - **Management as HTTP Routes**: Rescan/exit are now HTTP GET endpoints, not MCP tools
 - **Added Dependencies**: Added Starlette/Uvicorn dependencies for HTTP route support
 - **Hybrid Architecture**: MCP protocol for tools + HTTP GET endpoints for management
 - **FastMCP 2.0**: Better parameter support and native MCP integration
 
 ### What Stayed the Same
+
 - **Tool Discovery**: Same Python file scanning and tool detection
 - **Tool Types**: Both class-based and function-based tools still supported
 - **Configuration**: Same YAML and CLI configuration options

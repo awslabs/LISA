@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Utility decorators."""
+
 from collections.abc import Callable
 from typing import Any, cast, TypeVar
 

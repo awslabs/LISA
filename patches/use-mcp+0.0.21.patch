@@ -1,8 +1,63 @@
+diff --git a/node_modules/use-mcp/dist/index.js b/node_modules/use-mcp/dist/index.js
+index 1234567..abcdefg 100644
+--- a/node_modules/use-mcp/dist/index.js
++++ b/node_modules/use-mcp/dist/index.js
+@@ -5,6 +5,16 @@ import {
+ // src/auth/callback.ts
+ import { auth } from "@modelcontextprotocol/sdk/client/auth.js";
+ async function onMcpAuthorization() {
++  function escapeHtml(str) {
++    if (typeof str !== 'string') return '';
++    return str
++      .replace(/&/g, '&amp;')
++      .replace(/</g, '&lt;')
++      .replace(/>/g, '&gt;')
++      .replace(/"/g, '&quot;')
++      .replace(/'/g, '&#039;');
++  }
++
+   const queryParams = new URLSearchParams(window.location.search);
+   const code = queryParams.get("code");
+   const state = queryParams.get("state");
+@@ -72,12 +82,12 @@ async function onMcpAuthorization() {
+     try {
+       document.body.innerHTML = `
+             <div style="font-family: sans-serif; padding: 20px;">
+-            <h1>Authentication Error</h1>
+-            <p style="color: red; background-color: #ffebeb; border: 1px solid red; padding: 10px; border-radius: 4px;">
+-                ${errorMessage}
++            <h1>Authentication Error</h1>
++            <p style="color: red; background-color: #ffebeb; border: 1px solid red; padding: 10px; border-radius: 4px;">
++                ${escapeHtml(errorMessage)}
+             </p>
+             <p>You can close this window or <a href="#" onclick="window.close(); return false;">click here to close</a>.</p>
+-            <pre style="font-size: 0.8em; color: #555; margin-top: 20px; white-space: pre-wrap;">${err instanceof Error ? err.stack : ""}</pre>
++            <pre style="font-size: 0.8em; color: #555; margin-top: 20px; white-space: pre-wrap;">${escapeHtml(err instanceof Error ? err.stack : "")}</pre>
+             </div>
+         `;
+     } catch (displayError) {
+diff --git a/node_modules/use-mcp/dist/react/index.d.ts b/node_modules/use-mcp/dist/react/index.d.ts
+index 4647992..cd92dd7 100644
+--- a/node_modules/use-mcp/dist/react/index.d.ts
++++ b/node_modules/use-mcp/dist/react/index.d.ts
+@@ -79,6 +79,12 @@ type UseMcpResult = {
+      * @throws If the client is not in the 'ready' state or the call fails.
+      */
+     callTool: (name: string, args?: Record<string, unknown>) => Promise<any>;
++    /**
++     * Function to refresh the tool list from the MCP server (e.g. after tools are added or removed server-side).
++     * @returns A promise that resolves when tools are refreshed.
++     * @throws If the client is not in the 'ready' state.
++     */
++    listTools: () => Promise<void>;
+     /**
+      * Function to list resources from the MCP server.
+      * @returns A promise that resolves when resources are refreshed.
 diff --git a/node_modules/use-mcp/dist/react/index.js b/node_modules/use-mcp/dist/react/index.js
-index 3412d02..d966e1e 100644
+index 3412d02..ff6dcd9 100644
 --- a/node_modules/use-mcp/dist/react/index.js
 +++ b/node_modules/use-mcp/dist/react/index.js
-@@ -70,13 +70,31 @@ function useMcp(options) {
+@@ -70,13 +70,32 @@ function useMcp(options) {
    const addLog = useCallback(
      (level, message, ...args) => {
        const fullMessage = args.length > 0 ? `${message} ${args.map((arg) => JSON.stringify(arg)).join(" ")}` : message;
@@ -19,7 +74,8 @@ index 3412d02..d966e1e 100644
 +            /^Transport error event \((HTTP|SSE)\): \{\}\s*$/.test(fullMessage.trim()) ||
 +            (fullMessage.includes("Transport error event") &&
 +              (fullMessage.includes(": {}") || fullMessage.endsWith(": {}"))) ||
-+            /^Transport error \((HTTP|SSE)\): (undefined)?\s*$/.test(fullMessage.trim());
++            /^Transport error \((HTTP|SSE)\): (undefined)?\s*$/.test(fullMessage.trim()) ||
++            /Failed to connect via (HTTP|SSE): Not connected/.test(fullMessage);
 +          if (benign) {
 +            return;
 +          }
@@ -36,7 +92,7 @@ index 3412d02..d966e1e 100644
    );
    const disconnect = useCallback(
      async (quiet = false) => {
-@@ -341,7 +359,9 @@ function useMcp(options) {
+@@ -341,7 +360,9 @@ function useMcp(options) {
        }
      };
      let finalStatus = "failed";
@@ -47,3 +103,34 @@ index 3412d02..d966e1e 100644
      if (transportType === "sse") {
        addLog("debug", "Using SSE-only transport mode");
        finalStatus = await tryConnectWithTransport("sse");
+@@ -495,6 +516,22 @@ function useMcp(options) {
+       addLog("warn", "Auth provider not initialized, cannot clear storage.");
+     }
+   }, [url, addLog, disconnect]);
++  const listTools = useCallback(async () => {
++    if (stateRef.current !== "ready" || !clientRef.current) {
++      throw new Error(`MCP client is not ready (current state: ${state}). Cannot list tools.`);
++    }
++    addLog("info", "Listing tools...");
++    try {
++      const toolsResponse = await clientRef.current.request({ method: "tools/list" }, ListToolsResultSchema);
++      if (isMountedRef.current) {
++        setTools(toolsResponse.tools);
++        addLog("info", `Listed ${toolsResponse.tools.length} tools.`);
++      }
++    } catch (err) {
++      addLog("error", `Error listing tools: ${err instanceof Error ? err.message : String(err)}`, err);
++      throw err;
++    }
++  }, [state, addLog]);
+   const listResources = useCallback(async () => {
+     if (stateRef.current !== "ready" || !clientRef.current) {
+       throw new Error(`MCP client is not ready (current state: ${state}). Cannot list resources.`);
+@@ -646,6 +683,7 @@ function useMcp(options) {
+     log,
+     authUrl,
+     callTool,
++    listTools,
+     listResources,
+     readResource,
+     listPrompts,

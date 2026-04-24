@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Lambda functions for managing prompt templates in AWS DynamoDB."""
+
 from __future__ import annotations
 
 import json

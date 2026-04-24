@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Lambda functions for managing MCP Servers in AWS DynamoDB."""
+
 from __future__ import annotations
 
 import json
@@ -22,11 +23,14 @@ import re
 import uuid
 from decimal import Decimal
 from functools import reduce
-from typing import Any
+from typing import Any, cast
 
 import boto3
 from boto3.dynamodb.conditions import Attr, Key
+from botocore.exceptions import ClientError
+from models.domain_objects import InvokeBedrockAgentRequest
 from utilities.auth import admin_only, get_user_context
+from utilities.bedrock_agent_discovery import discover_bedrock_agents
 from utilities.common_functions import api_wrapper, get_bearer_token, get_item, retry_config
 from utilities.exceptions import (
     BadRequestException,
@@ -35,8 +39,11 @@ from utilities.exceptions import (
     InternalServerErrorException,
     NotFoundException,
 )
+from utilities.time import iso_string
+from utilities.validation import ValidationError
 
 from .models import (
+    BedrockAgentApprovalPut,
     HostedMcpServerModel,
     HostedMcpServerStatus,
     McpServerModel,
@@ -50,6 +57,58 @@ logger = logging.getLogger(__name__)
 dynamodb = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 table = dynamodb.Table(os.environ["MCP_SERVERS_TABLE_NAME"])
 stepfunctions = boto3.client("stepfunctions", region_name=os.environ["AWS_REGION"], config=retry_config)
+
+
+def _bedrock_approvals_table() -> Any:
+    name = os.environ.get("BEDROCK_AGENT_APPROVALS_TABLE_NAME")
+    if not name:
+        raise InternalServerErrorException("BEDROCK_AGENT_APPROVALS_TABLE_NAME is not configured")
+    return dynamodb.Table(name)
+
+
+def _normalize_catalog_groups(groups: list[str] | None) -> list[str]:
+    if not groups:
+        return []
+    out: list[str] = []
+    for g in groups:
+        s = str(g).strip()
+        if not s:
+            continue
+        out.append(s if s.startswith("group:") else f"group:{s}")
+    return out
+
+
+def _approval_visible_to_user(user_groups: list[str], approval_groups: list[str] | None) -> bool:
+    """True if catalog row is global (no groups) or user matches a listed group: token."""
+    if not approval_groups:
+        return True
+    formatted = [f"group:{g}" for g in user_groups]
+    return _is_member(formatted, list(approval_groups))
+
+
+def _scan_bedrock_agent_approvals() -> list[dict[str, Any]]:
+    t = _bedrock_approvals_table()
+    items: list[dict[str, Any]] = []
+    kwargs: dict[str, Any] = {}
+    while True:
+        resp = t.scan(**kwargs)
+        items.extend(resp.get("Items", []))
+        lek = resp.get("LastEvaluatedKey")
+        if not lek:
+            break
+        kwargs["ExclusiveStartKey"] = lek
+    return items
+
+
+def _serialize_dynamo_item(item: dict[str, Any]) -> dict[str, Any]:
+    return cast(dict[str, Any], json.loads(json.dumps(item, default=str)))
+
+
+def _path_bedrock_agent_id(event: dict) -> str:
+    aid = (event.get("pathParameters") or {}).get("agentId")
+    if not aid:
+        raise BadRequestException("agentId is required")
+    return str(aid)
 
 
 def _normalize_server_name(name: str) -> str:
@@ -240,11 +299,9 @@ def list_mcp_servers(event: dict, context: dict) -> dict[str, Any]:
 def create(event: dict, context: dict) -> Any:
     """Create a new mcp server in DynamoDB."""
     user_id, _, _ = get_user_context(event)
-    body = json.loads(event["body"], parse_float=Decimal)
-    body["owner"] = (
-        user_id if body.get("owner", None) != "lisa:public" else body["owner"]
-    )  # Set the owner of the mcp server
-    mcp_server_model = McpServerModel(**body)
+    mcp_server_model = McpServerModel.model_validate_json(event["body"])
+    if not mcp_server_model.owner or mcp_server_model.owner != "lisa:public":
+        mcp_server_model.owner = user_id
 
     # Insert the new mcp server item into the DynamoDB table
     table.put_item(Item=mcp_server_model.model_dump(exclude_none=True))
@@ -256,9 +313,9 @@ def update(event: dict, context: dict) -> Any:
     """Update an existing mcp server in DynamoDB."""
     user_id, is_admin_user, groups = get_user_context(event)
     mcp_server_id = get_mcp_server_id(event)
-    body = json.loads(event["body"], parse_float=Decimal)
-    body["owner"] = user_id if body.get("owner", None) != "lisa:public" else body["owner"]
-    mcp_server_model = McpServerModel(**body)
+    mcp_server_model = McpServerModel.model_validate_json(event["body"])
+    if not mcp_server_model.owner or mcp_server_model.owner != "lisa:public":
+        mcp_server_model.owner = user_id
 
     if mcp_server_id != mcp_server_model.id:
         raise BadRequestException(f"URL id {mcp_server_id} doesn't match body id {mcp_server_model.id}")
@@ -315,14 +372,14 @@ def get_mcp_server_id(event: dict) -> str:
 def create_hosted_mcp_server(event: dict, context: dict) -> Any:
     """Trigger the state machine to create a LISA Hosted MCP server."""
     user_id, is_admin_user, groups = get_user_context(event)
-    body = json.loads(event["body"], parse_float=Decimal)
-    body["owner"] = user_id if body.get("owner", None) != "lisa:public" else body["owner"]
-    body["id"] = str(uuid.uuid4())
+    hosted_server_model = HostedMcpServerModel.model_validate_json(event["body"])
+    if not hosted_server_model.owner or hosted_server_model.owner != "lisa:public":
+        hosted_server_model.owner = user_id
+    # Always generate a new id for creation
+    hosted_server_model.id = str(uuid.uuid4())
 
     # Check if the user is authorized to create Hosted MCP server
     if is_admin_user:
-        # Validate and parse the hosted server configuration
-        hosted_server_model = HostedMcpServerModel(**body)
 
         # Check if normalized name is unique
         normalized_name = _normalize_server_name(hosted_server_model.name)
@@ -345,7 +402,7 @@ def create_hosted_mcp_server(event: dict, context: dict) -> Any:
         for item in items:
             existing_name = item.get("name", "")
             existing_normalized = _normalize_server_name(existing_name)
-            if existing_normalized == normalized_name and item.get("id") != body["id"]:
+            if existing_normalized == normalized_name and item.get("id") != hosted_server_model.id:
                 raise ConflictException(
                     f"Server name '{hosted_server_model.name}' conflicts with existing server '{existing_name}'. "
                     f"Normalized names must be unique (alphanumeric characters only)."
@@ -466,6 +523,9 @@ def update_hosted_mcp_server(event: dict, context: dict) -> Any:
     user_id, is_admin_user, groups = get_user_context(event)
     mcp_server_id = get_mcp_server_id(event)
 
+    # Parse and validate update request body via Pydantic
+    update_request = UpdateHostedMcpServerRequest.model_validate_json(event["body"])
+
     # Check if server exists
     response = table.query(KeyConditionExpression=Key("id").eq(mcp_server_id), Limit=1, ScanIndexForward=False)
     item = get_item(response)
@@ -481,10 +541,6 @@ def update_hosted_mcp_server(event: dict, context: dict) -> Any:
             f"Server cannot be updated when it is not in the '{HostedMcpServerStatus.IN_SERVICE}' or "
             f"'{HostedMcpServerStatus.STOPPED}' states"
         )
-
-    # Parse and validate update request
-    body = json.loads(event["body"], parse_float=Decimal)
-    update_request = UpdateHostedMcpServerRequest(**body)
 
     # Validate enable/disable state transitions
     if update_request.enabled is not None:
@@ -557,3 +613,168 @@ def update_hosted_mcp_server(event: dict, context: dict) -> Any:
 
     # Return current server config (status will be updated by state machine)
     return item
+
+
+@api_wrapper
+def list_bedrock_agents(event: dict, context: dict) -> dict[str, Any]:
+    """
+    List admin-approved Bedrock agents visible to this user, merged with live AWS discovery.
+    """
+    _user_id, is_admin, groups = get_user_context(event)
+    logger.info("Listing approved Bedrock agents for catalog")
+
+    approvals = _scan_bedrock_agent_approvals()
+    visible = approvals if is_admin else [a for a in approvals if _approval_visible_to_user(groups, a.get("groups"))]
+
+    aws_region = os.environ["AWS_REGION"]
+    bedrock_agent_client = boto3.client("bedrock-agent", aws_region, config=retry_config)
+    discovered = discover_bedrock_agents(bedrock_agent_client)
+    by_id = {d.agentId: d for d in discovered}
+
+    merged: list[dict[str, Any]] = []
+    for appr in visible:
+        agent_id = str(appr["agentId"])
+        alias = appr.get("agentAliasId")
+        disc = by_id.get(agent_id)
+        raw_groups = appr.get("groups")
+        ag_groups = raw_groups if isinstance(raw_groups, list) else []
+        if disc:
+            row = disc.model_dump(mode="json")
+            if alias:
+                row["suggestedAliasId"] = str(alias)
+            row["catalogGroups"] = [str(g) for g in ag_groups]
+            row["inAccount"] = True
+        else:
+            row = {
+                "agentId": agent_id,
+                "agentName": str(appr.get("agentName", agent_id)),
+                "agentStatus": "NOT_IN_ACCOUNT",
+                "description": "",
+                "suggestedAliasId": str(alias) if alias else None,
+                "aliases": [],
+                "invokeReady": bool(alias),
+                "actionTools": [],
+                "inAccount": False,
+                "catalogGroups": [str(g) for g in ag_groups],
+            }
+        merged.append(row)
+
+    return {"agents": merged, "totalAgents": len(merged)}
+
+
+@api_wrapper
+@admin_only
+def list_bedrock_agents_discovery(event: dict, context: dict) -> dict[str, Any]:
+    """Full account scan (admin only) for the management UI."""
+    get_user_context(event)
+    aws_region = os.environ["AWS_REGION"]
+    bedrock_agent_client = boto3.client("bedrock-agent", aws_region, config=retry_config)
+    agents = discover_bedrock_agents(bedrock_agent_client)
+    return {"agents": [a.model_dump(mode="json") for a in agents], "totalAgents": len(agents)}
+
+
+@api_wrapper
+@admin_only
+def list_bedrock_agent_approvals(event: dict, context: dict) -> dict[str, Any]:
+    """All catalog rows (admin)."""
+    get_user_context(event)
+    raw = _scan_bedrock_agent_approvals()
+    return {"approvals": [_serialize_dynamo_item(x) for x in raw]}
+
+
+@api_wrapper
+@admin_only
+def put_bedrock_agent_approval(event: dict, context: dict) -> dict[str, Any]:
+    """Upsert a catalog row."""
+    user_id, _, _ = get_user_context(event)
+    agent_id = _path_bedrock_agent_id(event)
+    body = json.loads(event.get("body") or "{}", parse_float=Decimal)
+    model = BedrockAgentApprovalPut(**body)
+    groups = _normalize_catalog_groups(model.groups)
+    item = {
+        "agentId": agent_id,
+        "agentAliasId": model.agentAliasId,
+        "agentName": model.agentName,
+        "groups": groups,
+        "updatedAt": iso_string(),
+        "updatedBy": user_id,
+    }
+    _bedrock_approvals_table().put_item(Item=item)
+    return _serialize_dynamo_item(item)
+
+
+@api_wrapper
+@admin_only
+def delete_bedrock_agent_approval(event: dict, context: dict) -> dict[str, str]:
+    get_user_context(event)
+    agent_id = _path_bedrock_agent_id(event)
+    _bedrock_approvals_table().delete_item(Key={"agentId": agent_id})
+    return {"status": "ok"}
+
+
+@api_wrapper
+def invoke_bedrock_agent(event: dict, context: dict) -> dict[str, Any]:
+    """
+    Invoke a Bedrock Agent via bedrock-agent-runtime and return aggregated text output.
+    """
+    user_id, is_admin_user, groups = get_user_context(event)
+    body = json.loads(event.get("body") or "{}")
+    request = InvokeBedrockAgentRequest(**body)
+
+    appr = _bedrock_approvals_table().get_item(Key={"agentId": request.agentId}).get("Item")
+    if not appr:
+        raise ForbiddenException("This Bedrock agent is not approved for use in LISA.")
+    if not is_admin_user and not _approval_visible_to_user(groups, appr.get("groups")):
+        raise ForbiddenException("You are not allowed to invoke this Bedrock agent.")
+    approved_alias = appr.get("agentAliasId")
+    if not approved_alias or str(approved_alias) != str(request.agentAliasId):
+        raise ValidationError("Agent alias does not match the approved catalog entry for this agent.")
+
+    session_id = request.sessionId or str(uuid.uuid4())
+
+    if request.functionName:
+        params = dict(request.parameters or {})
+        params_json = json.dumps(params, ensure_ascii=False)
+        ag_label = (request.actionGroupName or "").strip()
+        ag_hint = f", action group name {ag_label!r}" if ag_label else ""
+        input_text = (
+            f"You must invoke the action group function {request.functionName!r} "
+            f"(action group id {request.actionGroupId}{ag_hint}) "
+            f"with these parameter values: {params_json}. "
+            "Execute the function and respond with the outcome."
+        )
+    else:
+        input_text = str(request.inputText or "")
+
+    aws_region = os.environ["AWS_REGION"]
+    runtime = boto3.client("bedrock-agent-runtime", aws_region, config=retry_config)
+    try:
+        response = runtime.invoke_agent(
+            agentId=request.agentId,
+            agentAliasId=request.agentAliasId,
+            sessionId=session_id,
+            inputText=input_text,
+        )
+    except ClientError as e:
+        error_code = e.response.get("Error", {}).get("Code", "")
+        if error_code == "AccessDeniedException":
+            raise ValidationError(
+                "Access denied invoking Bedrock Agent. Check IAM for bedrock:InvokeAgent on the agent alias."
+            ) from e
+        raise ValidationError(f"Failed to invoke Bedrock Agent: {e!s}") from e
+
+    completion_parts: list[str] = []
+    for stream_event in response.get("completion", []):
+        if "chunk" in stream_event:
+            chunk = stream_event["chunk"]
+            raw = chunk.get("bytes")
+            if raw is not None:
+                if isinstance(raw, bytes):
+                    completion_parts.append(raw.decode("utf-8", errors="replace"))
+                else:
+                    completion_parts.append(str(raw))
+
+    return {
+        "outputText": "".join(completion_parts),
+        "sessionId": session_id,
+    }

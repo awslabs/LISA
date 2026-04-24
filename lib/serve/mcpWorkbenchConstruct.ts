@@ -33,9 +33,9 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { ECSCluster, ECSTasks } from '../api-base/ecsCluster';
-import { Ec2Service } from 'aws-cdk-lib/aws-ecs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { BlockPublicAccess, BucketEncryption } from 'aws-cdk-lib/aws-s3';
+import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 
 export type McpWorkbenchConstructProps = {
     bucketAccessLogsBucket: s3.IBucket;
@@ -78,7 +78,7 @@ export class McpWorkbenchConstruct extends Construct {
         this.createWorkbenchApi(restApi, config, vpc, securityGroups, workbenchBucket, lambdaLayers, authorizer);
 
         if (config.deployMcpWorkbench) {
-            this.createWorkbenchService(config, vpc);
+            this.createWorkbenchService(config, vpc, commonLambdaLayer);
         }
     }
 
@@ -323,7 +323,7 @@ export class McpWorkbenchConstruct extends Construct {
         });
     }
 
-    private createWorkbenchService (config: Config, vpc: Vpc) {
+    private createWorkbenchService (config: Config, vpc: Vpc, commonLambdaLayer: lambda.ILayerVersion) {
         const ecsConfig = this.buildWorkbenchEcsConfig(config);
         const managementKeyName = config.authConfig
             ? ssm.StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/${APP_MANAGEMENT_KEY}`)
@@ -345,7 +345,7 @@ export class McpWorkbenchConstruct extends Construct {
         });
 
         const mcpWorkbenchTaskDefinition = this.getMcpWorkbenchTaskDefinition(config);
-        const { service } = workbenchCluster.addTask(ECSTasks.MCPWORKBENCH, mcpWorkbenchTaskDefinition);
+        workbenchCluster.addTask(ECSTasks.MCPWORKBENCH, mcpWorkbenchTaskDefinition);
 
         const tokenTableNameParameter = ssm.StringParameter.fromStringParameterName(
             this,
@@ -362,7 +362,7 @@ export class McpWorkbenchConstruct extends Construct {
             tokenTable.grantReadData(mcpWorkbenchTaskRole);
         }
 
-        this.createS3EventHandler(config, service, vpc);
+        this.createS3EventHandler(config, vpc, workbenchCluster.endpointUrl, commonLambdaLayer, managementKeyName);
 
         new ssm.StringParameter(this, 'McpWorkbenchHostedEndpoint', {
             parameterName: `${config.deploymentPrefix}/mcpWorkbench/endpoint`,
@@ -371,7 +371,34 @@ export class McpWorkbenchConstruct extends Construct {
         });
     }
 
-    private createS3EventHandler (config: any, workbenchService: Ec2Service, vpc: Vpc) {
+    private createS3EventHandler (
+        config: any,
+        vpc: Vpc,
+        workbenchEndpointUrl: string,
+        commonLambdaLayer: lambda.ILayerVersion,
+        managementKeyName?: string,
+    ) {
+        const policyStatements: iam.PolicyStatement[] = [
+            new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                actions: [
+                    'logs:CreateLogGroup',
+                    'logs:CreateLogStream',
+                    'logs:PutLogEvents'
+                ],
+                resources: [`arn:${config.partition}:logs:*:*:*`]
+            }),
+        ];
+        if (managementKeyName) {
+            policyStatements.push(new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                actions: ['secretsmanager:GetSecretValue'],
+                resources: [
+                    `${Secret.fromSecretNameV2(this, createCdkId(['McpWorkbench', 'S3EventHandlerMgmtKey']), managementKeyName).secretArn}-??????`,
+                ],
+            }));
+        }
+
         const s3EventHandlerRole = new iam.Role(this, 'S3EventHandlerRole', {
             assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
             managedPolicies: [
@@ -379,38 +406,7 @@ export class McpWorkbenchConstruct extends Construct {
             ],
             inlinePolicies: {
                 'S3EventHandlerPolicy': new iam.PolicyDocument({
-                    statements: [
-                        new iam.PolicyStatement({
-                            effect: iam.Effect.ALLOW,
-                            actions: [
-                                'logs:CreateLogGroup',
-                                'logs:CreateLogStream',
-                                'logs:PutLogEvents'
-                            ],
-                            resources: [`arn:${config.partition}:logs:*:*:*`]
-                        }),
-                        new iam.PolicyStatement({
-                            effect: iam.Effect.ALLOW,
-                            actions: [
-                                'ecs:UpdateService',
-                                'ecs:DescribeServices',
-                                'ecs:DescribeClusters'
-                            ],
-                            resources: [
-                                `arn:${config.partition}:ecs:${config.region}:*:cluster/${workbenchService.cluster.clusterName}*`,
-                                `arn:${config.partition}:ecs:${config.region}:*:service/${workbenchService.cluster.clusterName}*/${workbenchService.serviceName}*`
-                            ]
-                        }),
-                        new iam.PolicyStatement({
-                            effect: iam.Effect.ALLOW,
-                            actions: [
-                                'ssm:GetParameter'
-                            ],
-                            resources: [
-                                `arn:${config.partition}:ssm:${config.region}:*:parameter${config.deploymentPrefix}/deploymentName`
-                            ]
-                        })
-                    ]
+                    statements: policyStatements,
                 })
             }
         });
@@ -421,13 +417,15 @@ export class McpWorkbenchConstruct extends Construct {
             code: lambda.Code.fromAsset(config.lambdaPath ?? LAMBDA_PATH),
             timeout: Duration.minutes(2),
             role: s3EventHandlerRole,
+            layers: [commonLambdaLayer],
             vpc: vpc.vpc,
             vpcSubnets: vpc.subnetSelection,
+            securityGroups: [vpc.securityGroups.lambdaSg],
             environment: {
-                DEPLOYMENT_PREFIX: config.deploymentPrefix!,
-                API_NAME: 'MCPWorkbench',
-                ECS_CLUSTER_NAME: workbenchService.cluster.clusterName,
-                MCPWORKBENCH_SERVICE_NAME: workbenchService.serviceName
+                MCP_WORKBENCH_ENDPOINT: workbenchEndpointUrl,
+                WORKBENCH_RESCAN_DELAY_SECONDS: '5',
+                MCP_WORKBENCH_RESCAN_PATH: 'v2/mcp/rescan',
+                ...(managementKeyName ? { MANAGEMENT_KEY_NAME: managementKeyName } : {}),
             }
         });
 

@@ -261,7 +261,7 @@ export class EcsMcpServer extends Construct {
             serverResource = mcpResource.addResource(identifier);
             // Add CORS preflight support (creates OPTIONS method automatically)
             serverResource.addCorsPreflight({
-                allowOrigins: Cors.ALL_ORIGINS,
+                allowOrigins: config.corsAllowedOrigins ?? Cors.ALL_ORIGINS,
                 allowHeaders: allowedCorsHeaders,
             });
         }
@@ -269,11 +269,15 @@ export class EcsMcpServer extends Construct {
         // Define methods list for reuse (exclude OPTIONS since CORS preflight handles it)
         const methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'];
 
+        // API Gateway integration response headers only support a single static value.
+        // Use the first configured origin; preflight OPTIONS (above) handles multi-origin validation.
+        const corsOrigin = config.corsAllowedOrigins?.[0] ?? '*';
+
         const corsIntegrationResponses = [
             {
                 statusCode: '200',
                 responseParameters: {
-                    'method.response.header.Access-Control-Allow-Origin': '\'*\'',
+                    'method.response.header.Access-Control-Allow-Origin': `'${corsOrigin}'`,
                     'method.response.header.Access-Control-Allow-Credentials': '\'false\'',
                 },
             },
@@ -302,7 +306,7 @@ export class EcsMcpServer extends Construct {
             proxyResource = serverResource.addResource('{proxy+}');
             // Add CORS preflight support (creates OPTIONS method automatically)
             proxyResource.addCorsPreflight({
-                allowOrigins: Cors.ALL_ORIGINS,
+                allowOrigins: config.corsAllowedOrigins ?? Cors.ALL_ORIGINS,
                 allowHeaders: allowedCorsHeaders,
             });
         }
@@ -413,7 +417,7 @@ export class EcsMcpServer extends Construct {
             mcpChildResource = serverResource.addResource('mcp');
             // Add CORS preflight support (creates OPTIONS method automatically)
             mcpChildResource.addCorsPreflight({
-                allowOrigins: Cors.ALL_ORIGINS,
+                allowOrigins: config.corsAllowedOrigins ?? Cors.ALL_ORIGINS,
                 allowHeaders: allowedCorsHeaders,
             });
         }

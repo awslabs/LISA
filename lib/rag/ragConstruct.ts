@@ -94,7 +94,7 @@ export class LisaRagConstruct extends Construct {
                 {
                     allowedMethods: [HttpMethods.GET, HttpMethods.POST],
                     allowedHeaders: ['*'],
-                    allowedOrigins: ['*'],
+                    allowedOrigins: config.corsAllowedOrigins,
                     exposedHeaders: ['Access-Control-Allow-Origin'],
                 },
             ],
@@ -220,7 +220,6 @@ export class LisaRagConstruct extends Construct {
             MODEL_TABLE_NAME: modelTableNameStringParameter.stringValue,
             RAG_DOCUMENT_TABLE: docMetaTable.tableName,
             RAG_SUB_DOCUMENT_TABLE: subDocTable.tableName,
-            REGISTERED_MODELS_PS_NAME: modelsPs.parameterName,
             REGISTERED_REPOSITORIES_PS_PREFIX: `${config.deploymentPrefix}/LisaServeRagConnectionInfo/`,
             REGISTERED_REPOSITORIES_PS: `${config.deploymentPrefix}/registeredRepositories`,
             REST_API_VERSION: 'v2',

@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Lambda functions for managing usage metrics."""
+
 import json
 import logging
 import os

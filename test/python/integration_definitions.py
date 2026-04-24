@@ -176,6 +176,73 @@ MODEL_DEFINITIONS: dict[str, dict] = {
             {"name": "toolCalls", "overview": ""},
         ],
     },
+    "nemo-super-120b-fp8": {
+        "description": (
+            "NVIDIA Nemotron-3-Super-120B-A12B-FP8. FP8-quantized variant of the Super 120B — "
+            "same frontier-class MoE reasoning at half the weight memory (~120GB vs ~240GB BF16). "
+            "Benchmark quality within <1% of BF16 across all tasks. Fits across 8x L4 GPUs with "
+            "~15GB/GPU for weights, leaving ~7GB/GPU for KV cache. Prefer over nemo-super-120b-bf16 "
+            "on g6 instances where BF16 cannot fit; use nemo-super-120b-nvfp4 for even smaller "
+            "weight footprint."
+        ),
+        "model_name": "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-FP8",
+        # g6.48xlarge: 8x NVIDIA L4 (24 GB each = 192 GB GPU), 768 GiB system RAM
+        # FP8 weights ~120GB across 8 GPUs (~15GB/GPU) — leaves ~7GB/GPU for KV cache at 0.90 util
+        "instance_type": "g6.48xlarge",
+        "blockDeviceVolumeSize": 300,
+        "sharedMemorySize": 4096,
+        "memoryReservation": 680000,  # g6.48xlarge ~768GB; ~90% usable after OS/ECS overhead
+        "environment": {
+            "VLLM_TENSOR_PARALLEL_SIZE": "8",  # matches 8x L4
+            "VLLM_USE_TQDM_ON_LOAD": "true",
+            "VLLM_ASYNC_SCHEDULING": "true",
+            "VLLM_MAX_PARALLEL_LOADING_WORKERS": "8",
+            "VLLM_MAX_NUM_SEQS": "16",  # reduced — limited KV headroom per GPU
+            "VLLM_MAX_MODEL_LEN": "8192",
+            "VLLM_GPU_MEMORY_UTILIZATION": "0.90",
+            "VLLM_TRUST_REMOTE_CODE": "true",
+            "VLLM_CHAT_TEMPLATE": "/nvme/model/chat_template.jinja",
+            "VLLM_KV_CACHE_DTYPE": "fp8",
+            "VLLM_ENABLE_AUTO_TOOL_CHOICE": "true",
+            "VLLM_TOOL_CALL_PARSER": "qwen3_coder",
+            "VLLM_REASONING_PARSER": "nemotron_v3",
+        },
+    },
+    "nemo-nano-30b-nvfp4": {
+        "description": (
+            "NVIDIA Nemotron-3-Nano-30B-A3B-NVFP4. NVFP4-quantized variant of the Nano 30B — "
+            "~7.5GB weights (vs ~60GB BF16, ~15GB FP8). Benchmark quality ~1-3% below BF16. "
+            "EXPERIMENTAL on g6 — NVIDIA only lists A100/H100/Blackwell as supported. L4 GPUs "
+            "are Ada Lovelace but NVFP4 dequant kernels (FlashInfer) are unvalidated on L4. "
+            "Fall back to nemo-nano-30b-fp8 if kernel errors occur at load time."
+        ),
+        "model_name": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-NVFP4",
+        # EXPERIMENTAL: NVFP4 not officially supported on Ada Lovelace (L4)
+        # g6.12xlarge: 4x NVIDIA L4 (24 GB each = 96 GB GPU), 48 vCPUs, 192 GiB system RAM
+        # NVFP4 weights ~7.5GB sharded across 4 GPUs (~1.9GB/GPU) — very comfortable for
+        # weights; leaves ~20GB/GPU for KV cache at 0.90 util
+        "instance_type": "g6.12xlarge",
+        "blockDeviceVolumeSize": 100,
+        "sharedMemorySize": 4096,
+        "memoryReservation": 165000,  # g6.12xlarge ~192GB; ~90% usable after OS/ECS overhead
+        "environment": {
+            "VLLM_TENSOR_PARALLEL_SIZE": "4",  # matches 4x L4
+            "VLLM_USE_TQDM_ON_LOAD": "true",
+            "VLLM_ASYNC_SCHEDULING": "true",
+            "VLLM_MAX_PARALLEL_LOADING_WORKERS": "4",
+            "VLLM_MAX_NUM_SEQS": "64",
+            "VLLM_MAX_MODEL_LEN": "65536",
+            "VLLM_GPU_MEMORY_UTILIZATION": "0.90",
+            "VLLM_TRUST_REMOTE_CODE": "true",
+            "VLLM_CHAT_TEMPLATE": "/nvme/model/chat_template.jinja",
+            "VLLM_KV_CACHE_DTYPE": "fp8",
+            "VLLM_USE_FLASHINFER_MOE_FP4": "1",
+            "VLLM_FLASHINFER_MOE_BACKEND": "throughput",
+            "VLLM_ENABLE_AUTO_TOOL_CHOICE": "true",
+            "VLLM_TOOL_CALL_PARSER": "qwen3_coder",
+            "VLLM_REASONING_PARSER": "nemotron_v3",
+        },
+    },
 }
 
 # ---------------------------------------------------------------------------

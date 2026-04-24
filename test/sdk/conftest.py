@@ -206,3 +206,13 @@ def mock_instances_response() -> list:
         "ml.p4d.24xlarge",
         "ml.inf2.xlarge",
     ]
+
+
+@pytest.fixture
+def source_map() -> dict[str, str]:
+    """Shared source_map for evaluation tests."""
+    return {
+        "doc_a": "s3://bucket/doc_a.pdf",
+        "doc_b": "s3://bucket/doc_b.pdf",
+        "doc_c": "s3://bucket/doc_c.pdf",
+    }

@@ -1,48 +1,56 @@
-pyarrow>=20.0.0
-datasets>=3.0.0
-fastapi>=0.120.1
-fastapi_utils==0.8.0
-loguru==0.7.3
-mangum==0.21.0
-pre-commit==4.5.1
-pydantic>=2.5.0,<3.0.0
+# Dev/test environment dependencies
+# Runtime deps are managed by each module's own requirements.txt/pyproject.toml
+# This file only contains: test frameworks, dev tools, and deps needed
+# to import all modules into a single test venv.
+
+# LiteLLM - needed to run rest-api tests in the shared venv
+litellm[proxy]==1.83.12
+
+# Test frameworks
+pytest==9.0.3
+pytest-cov==7.1.0
 pytest-xdist==3.8.0
 pytest-asyncio==1.3.0
-# ASGI Server - Version constrained by litellm[proxy]==1.82.0 in rest-api
-uvicorn>=0.31.1,<0.42.0
-
-# AWS SDK - Version constrained by litellm[proxy]==1.82.0in rest-api
-boto3==1.42.59
-tiktoken==0.12.0
-python-docx==1.2.0
-pypdf==6.7.5
-langchain==1.2.10
-langchain-community==0.4.1
-langchain-core==1.2.17
-langchain-openai==1.1.10
-langchain-text-splitters==1.1.1
-cachetools==7.0.2
---only-binary=pyarrow,lxml,psycopg2-binary
-
-# Testing
-pytest==9.0.2
-pytest-cov==7.0.0
+coverage>=7.13.5
 responses>=0.26.0
-moto[proxy]==5.1.21
-coverage>=7.10.6
-lxml==6.0.2
+moto==5.1.22
+
+# Test data / evaluation
+pyarrow>=20.0.0
+datasets==3.6.0
+
+# Langchain - needed by tests that import langchain directly
+langchain==1.2.15
+langchain-openai==1.1.10
+
+# Lambda runtime deps - needed because tests import lambda code which
+# has top-level imports of these packages
+mangum==0.21.0
+python-docx==1.2.0
 opensearch-py==3.1.0
-requests_aws4auth==1.3.1
-PyJWT==2.11.0
-psycopg2-binary==2.9.11
-cachetools==7.0.2
+pypdf==6.10.2
+lxml==6.1.0
+psycopg2-binary==2.9.12
+requests-aws4auth==1.3.1
+langchain-community==0.4.1
+langchain-core==1.3.0
+langchain-text-splitters==1.1.2
+cachetools==7.0.6
+tiktoken==0.12.0
+fastapi==0.124.4
+pydantic==2.12.5
+cryptography==46.0.7
+starlette>=0.40.0
+loguru==0.7.3
+fastapi_utils==0.8.0
 
-# MCP Workbench testing
-fastmcp>=2.10.0,<3.0.0
-mcp>=1.26.0,<2.0.0
-
-# Development
-black==26.1.0
+# Linting / formatting / type checking
+black==26.3.1
 flake8==7.3.0
-mypy==1.19.1
-poetry==2.3.2
+mypy==1.20.2
+pre-commit==4.6.0
+
+# Build tools
+poetry==2.3.4
+
+--only-binary=pyarrow,lxml,psycopg2-binary

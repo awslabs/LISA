@@ -36,4 +36,9 @@ done
 echo "Using: PROFILE=${PROFILE}, DEPLOYMENT_NAME=${DEPLOYMENT_NAME}, APP_NAME=${APP_NAME}, DEPLOYMENT_STAGE=${DEPLOYMENT_STAGE}, REGION=${REGION}"
 echo "VERIFY=${VERIFY}, API_URL=${API_URL}, ALB_URL=${ALB_URL}"
 
-pytest lisa-sdk --url "$ALB_URL" --api "$API_URL" --verify "$VERIFY" --profile "$PROFILE" -n auto
+# Run from project root so the root conftest.py (which registers --url, --api, etc.) is found.
+# Pass config as pytest CLI options matching conftest.py's pytest_addoption definitions.
+PYTEST_ARGS="--url $ALB_URL --api $API_URL --verify $VERIFY --region $REGION --deployment $DEPLOYMENT_NAME --stage $DEPLOYMENT_STAGE"
+[[ -n "$PROFILE" ]] && PYTEST_ARGS="$PYTEST_ARGS --profile $PROFILE"
+
+pytest test/integration/sdk $PYTEST_ARGS -v -n auto

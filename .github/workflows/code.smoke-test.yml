@@ -38,7 +38,8 @@ jobs:
       # Execute Cypress tests
       # ────────────────────────────────────────────────────
       - name: Run Cypress Smoke Suite
-        run: npx cypress run --config-file cypress/cypress.smoke.config.ts
+        working-directory: cypress
+        run: npx cypress run --config-file cypress.smoke.config.ts
 
       - name: Archive Cypress videos & screenshots
         if: failure() || always()

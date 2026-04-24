@@ -54,7 +54,7 @@ class McpServerModel(BaseModel):
     created: str | None = Field(default_factory=iso_string)
 
     # Owner of the MCP user
-    owner: str
+    owner: str | None = Field(default=None)
 
     # URL of the MCP server
     url: str
@@ -139,7 +139,7 @@ class HostedMcpServerModel(BaseModel):
     created: str | None = Field(default_factory=iso_string)
 
     # Owner of the MCP server
-    owner: str
+    owner: str | None = Field(default=None)
 
     # Name of the MCP server
     name: str
@@ -279,3 +279,14 @@ class UpdateHostedMcpServerRequest(BaseModel):
             if memory > 30720:
                 raise ValueError("Memory limit must be at most 30720 MiB")
         return memory
+
+
+class BedrockAgentApprovalPut(BaseModel):
+    """Admin catalog entry for a Bedrock agent (DynamoDB)."""
+
+    agentAliasId: str = Field(min_length=1, description="Alias ID used for InvokeAgent")
+    agentName: str = Field(min_length=1, description="Display name snapshot")
+    groups: list[str] | None = Field(
+        default=None,
+        description="group:... tokens; omit or empty = all authenticated users",
+    )

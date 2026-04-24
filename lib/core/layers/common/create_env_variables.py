@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Set environment variables for cert locations in Lambda function."""
+
 import os
 
 region_name = os.environ["AWS_REGION"]

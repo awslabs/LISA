@@ -5,16 +5,16 @@
 
 ## What is LISA?
 
-Our large language model (LLM) inference solution for the Amazon Dedicated Cloud (ADC), LISA, is open source infrastructure-as-code. Customers deploy it directly into an Amazon Web Services (AWS) account in any region. LISA is scalable and ready to support production use cases.
+Our large language model (LLM) inference solution for the Amazon Dedicated Cloud (ADC), LISA, is open source infrastructure-as-code. Customers deploy it directly into an Amazon Web Services (AWS) account in any region. LISA is modular, scalable, and ready to support production use cases.
 
-LISA accelerates GenAI adoption by offering built-in configurability with Amazon Bedrock models, Knowledge Bases, and Guardrails. Also by offering advanced capabilities like an optional enterprise-ready chat user interface (UI) with configurable features, authentication, resource access control, centralized model orchestration via LiteLLM, model self-hosting via Amazon ECS, retrieval augmented generation (RAG), APIs, and broad model context protocol (MCP) support and features. LISA is also compatible with OpenAI’s API specification making it easily configurable with supporting solutions. For example, the Continue plugin for VSCode and JetBrains integrated development environments (IDE).
+LISA accelerates GenAI adoption by offering built-in configurability with Amazon Bedrock models, Knowledge Bases, and Guardrails. LISA also offers advanced capabilities like an optional enterprise-ready chat user interface (UI) with configurable features, authentication, resource access control, centralized model orchestration via LiteLLM, model self-hosting via Amazon ECS, retrieval augmented generation (RAG), APIs, and broad model context protocol (MCP) support. LISA is also compatible with OpenAI’s API specification, making it easily configurable with supporting solutions. For example, use LISA as the model provider via the Continue plugin for VSCode and JetBrains integrated development environments (IDEs).
 
-LISA's roadmap is customer-driven, with new capabilities launching monthly. Reach out to the product team to ask questions, provide feedback, and send feature requests via the "Contact Us" button above.
+Reach out to the team to ask questions and provide feedback via the "Contact Us" button above.
 
 ## Key Features
 
 * **Open Source**: No subscription or licensing fees. LISA costs are based on service usage.
-* **Ongoing Releases**: The product roadmap is customer-driven with releases typically every 2-4 weeks. LISA is backed by a software development team that builds production grade solutions to accelerate customers' GenAI adoption.
+* **Support**: LISA is backed by a software development team that builds and maintains production-ready solutions to accelerate customers' GenAI adoption.
 * **Model Flexibility**: Bring your own models for self-hosting, or quickly configure LISA with 100+ models supported by third-party model providers, including Amazon Bedrock and Jumpstart.
 * **Model Orchestration**: Centralize and standardize unique API calls to third-party model providers automatically with LISA via LiteLLM. LISA standardizes the unique API calls into the OpenAI format automatically. All that is required is an API key, model name, and API endpoint.
 * **Modular Components**: Accelerate GenAI adoption with secure, scalable software. LISA supports various use cases through configurable components: model serving and orchestration, chat user interface with advanced capabilities, authentication, retrieval augmented generation (RAG), Anthropic’s Model Context Protocol (MCP), and APIs.
@@ -23,7 +23,28 @@ LISA's roadmap is customer-driven, with new capabilities launching monthly. Reac
 
 ## Major Components
 
-LISA’s four major components include Serve, a Chat UI, RAG, and MCP. LISA Serve and LISA MCP are standalone, foundational core solutions with APIs for customers not leveraging LISA’s Chat UI. Both LISA’s Chat UI and RAG are optional components, but must be used with Serve.
+LISA’s four major components include Serve, a Chat UI, RAG, and MCP. LISA Serve and LISA MCP are standalone, foundational core solutions with APIs for customers not leveraging LISA’s Chat UI. Both LISA’s Chat UI and RAG are optional components, but both must be used with Serve.
+
+### Chat UI Screenshots
+
+<table>
+  <tr>
+    <td align="center"><strong>Chat UI</strong></td>
+    <td align="center"><strong>Feature Configuration</strong></td>
+  </tr>
+  <tr>
+    <td><img src="lib/docs/assets/UI_Screenshots/LISA_Chat.png" alt="LISA Chat UI screenshot" width="100%"></td>
+    <td><img src="lib/docs/assets/UI_Screenshots/LISA_Feature_Config_Page.png" alt="LISA Feature Configuration page screenshot" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Model Management Wizard</strong></td>
+    <td align="center"><strong>RAG Management Wizard</strong></td>
+  </tr>
+  <tr>
+    <td><img src="lib/docs/assets/UI_Screenshots/LISA_Model_Mgmt_Wizard.png" alt="LISA Model Management wizard screenshot" width="100%"></td>
+    <td><img src="lib/docs/assets/UI_Screenshots/LISA_RAG_Mgmt_Wizard.png" alt="LISA RAG Management wizard screenshot" width="100%"></td>
+  </tr>
+</table>
 
 Read more in the Architecture Overview section of LISA's documentation site linked above.
 
@@ -57,6 +78,5 @@ installation and usage.
 ## License
 
 Although this repository is released under the Apache 2.0 license, when configured to use PGVector as a RAG store it
-uses
-the third party `psycopg2-binary` library. The `psycopg2-binary` project's licensing includes
+uses the third-party `psycopg2-binary` library. The `psycopg2-binary` project's licensing includes
 the [LGPL with exceptions](https://github.com/psycopg/psycopg2/blob/master/LICENSE) license.

@@ -17,6 +17,7 @@ import { S3UploadRequest } from '../shared/reducers/rag.reducer';
 import { MessageContent } from '@langchain/core/messages';
 import { LisaChatSession, LisaChatMessage, MessageTypes } from './types';
 import { truncateText } from '@/shared/util/formats';
+import { LISA_MCP_WORKBENCH_SERVER_ID } from '@/shared/constants/mcpWorkbenchServerId';
 
 const stripTrailingSlash = (str) => {
     return str && str.endsWith('/') ? str.slice(0, -1) : str;
@@ -25,10 +26,35 @@ const stripTrailingSlash = (str) => {
 export const RESTAPI_URI = stripTrailingSlash(window.env.RESTAPI_URI);
 export const RESTAPI_VERSION = window.env.RESTAPI_VERSION;
 
-/** Base URL for MCP Workbench HTTP (MCP stream + /api/aws). From SSM …/mcpWorkbench/endpoint (workbench ALB; distinct from Serve API when custom domains are used). */
+/**
+ * Base URL for MCP Workbench HTTP (MCP stream + /api/aws).
+ * From SSM …/mcpWorkbench/endpoint (workbench ALB; distinct from Serve API when custom domains are used).
+ * */
 export const MCP_WORKBENCH_URI = window.env.MCP_WORKBENCH_URI
     ? stripTrailingSlash(window.env.MCP_WORKBENCH_URI)
     : RESTAPI_URI;
+
+export { LISA_MCP_WORKBENCH_SERVER_ID };
+
+/**
+ * True for the LISA-hosted MCP Workbench connection. That server's browser URL is often
+ * `{FASTAPI_ENDPOINT}/v2/mcp/` while `MCP_WORKBENCH_URI` points at the workbench ALB —
+ * different origins — so we key off the server id first.
+ */
+export function isWorkbenchMcpServer (server: { url: string; id?: string }): boolean {
+    if (server.id === LISA_MCP_WORKBENCH_SERVER_ID) {
+        return true;
+    }
+    try {
+        const base = MCP_WORKBENCH_URI;
+        if (!base?.trim() || !server.url?.trim()) {
+            return false;
+        }
+        return new URL(server.url.trim()).origin === new URL(base).origin;
+    } catch {
+        return false;
+    }
+}
 
 /**
  * Gets base URI for API Gateway. This can either be the APIGW execution URL directly or a

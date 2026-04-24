@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Unit tests for input validation middleware."""
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient

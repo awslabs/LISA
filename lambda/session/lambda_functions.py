@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Lambda functions for managing sessions."""
+
 import base64
 import json
 import logging
@@ -237,6 +238,8 @@ def _map_session(
         if (raw_project_id and valid_project_ids is not None and raw_project_id in valid_project_ids)
         else None
     )
+    raw_tokens = session.get("totalTokensUsed")
+    total_tokens_used = int(raw_tokens) if raw_tokens is not None else None
     return SessionSummary(
         sessionId=session.get("sessionId"),
         name=session.get("name"),
@@ -246,31 +249,18 @@ def _map_session(
         lastUpdated=session.get("lastUpdated", session.get("startTime")),
         isEncrypted=session.get("is_encrypted", False),
         projectId=resolved_project_id,
+        totalTokensUsed=total_tokens_used,
     )
 
 
 def _strip_context_from_display_text(text: str) -> str:
     cleaned = text.strip()
-    file_context_prefix = "File context:"
-    rag_context_prefix = "Context from document search:"
-    context_prefixes = (file_context_prefix, rag_context_prefix)
+    context_prefixes = ("File context:", "Context from document search:")
 
-    if not any(cleaned.startswith(prefix) for prefix in context_prefixes):
-        return cleaned
-
-    if cleaned.startswith(file_context_prefix):
+    if any(cleaned.startswith(prefix) for prefix in context_prefixes):
         return ""
 
-    # Older sessions may have merged context + prompt into one text blob.
-    # Keep only the final user prompt for session list display.
-    parts = [part.strip() for part in cleaned.split("\n\n") if part.strip()]
-    if parts:
-        tail = parts[-1]
-        if not any(tail.startswith(prefix) for prefix in context_prefixes):
-            return tail
-
-    lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
-    return lines[-1] if lines else ""
+    return cleaned
 
 
 def _find_first_human_message(session: dict, user_id: str | None = None) -> str:
@@ -566,6 +556,14 @@ def put_session(event: dict, context: dict) -> SuccessResponse | dict:
         # Prepare session data for storage
         session_data = request.to_session_data(configuration)
 
+        # Compute cumulative token usage from all messages in history.
+        # This is stored as a top-level attribute (not inside the encrypted blob) so that
+        # list_sessions can surface it without needing to decrypt anything.
+        total_tokens_used = 0
+        for msg in request.messages:
+            usage = msg.get("usage") or {}
+            total_tokens_used += int(usage.get("completionTokens") or 0) + int(usage.get("promptTokens") or 0)
+
         # Encrypt sensitive data if encryption is enabled
         if encryption_enabled:
             try:
@@ -578,7 +576,8 @@ def put_session(event: dict, context: dict) -> SuccessResponse | dict:
                     UpdateExpression="SET #encrypted_history = :encrypted_history, #name = :name, "
                     + "#encrypted_configuration = :encrypted_configuration, #startTime = :startTime, "
                     + "#createTime = if_not_exists(#createTime, :createTime), #lastUpdated = :lastUpdated, "
-                    + "#encryption_version = :encryption_version, #is_encrypted = :is_encrypted",
+                    + "#encryption_version = :encryption_version, #is_encrypted = :is_encrypted, "
+                    + "#totalTokensUsed = :totalTokensUsed",
                     ExpressionAttributeNames={
                         "#encrypted_history": "encrypted_history",
                         "#name": "name",
@@ -588,6 +587,7 @@ def put_session(event: dict, context: dict) -> SuccessResponse | dict:
                         "#lastUpdated": "lastUpdated",
                         "#encryption_version": "encryption_version",
                         "#is_encrypted": "is_encrypted",
+                        "#totalTokensUsed": "totalTokensUsed",
                     },
                     ExpressionAttributeValues={
                         ":encrypted_history": encrypted_session["encrypted_history"],
@@ -598,6 +598,7 @@ def put_session(event: dict, context: dict) -> SuccessResponse | dict:
                         ":lastUpdated": encrypted_session["lastUpdated"],
                         ":encryption_version": encrypted_session["encryption_version"],
                         ":is_encrypted": encrypted_session["is_encrypted"],
+                        ":totalTokensUsed": total_tokens_used,
                     },
                     ReturnValues="UPDATED_NEW",
                 )
@@ -610,7 +611,8 @@ def put_session(event: dict, context: dict) -> SuccessResponse | dict:
                 Key={"sessionId": session_id, "userId": user_id},
                 UpdateExpression="SET #history = :history, #name = :name, #configuration = :configuration, "
                 + "#startTime = :startTime, #createTime = if_not_exists(#createTime, :createTime), "
-                + "#lastUpdated = :lastUpdated, #is_encrypted = :is_encrypted",
+                + "#lastUpdated = :lastUpdated, #is_encrypted = :is_encrypted, "
+                + "#totalTokensUsed = :totalTokensUsed",
                 ExpressionAttributeNames={
                     "#history": "history",
                     "#name": "name",
@@ -619,6 +621,7 @@ def put_session(event: dict, context: dict) -> SuccessResponse | dict:
                     "#createTime": "createTime",
                     "#lastUpdated": "lastUpdated",
                     "#is_encrypted": "is_encrypted",
+                    "#totalTokensUsed": "totalTokensUsed",
                 },
                 ExpressionAttributeValues={
                     ":history": session_data.history,
@@ -628,6 +631,7 @@ def put_session(event: dict, context: dict) -> SuccessResponse | dict:
                     ":createTime": session_data.createTime,
                     ":lastUpdated": session_data.lastUpdated,
                     ":is_encrypted": False,
+                    ":totalTokensUsed": total_tokens_used,
                 },
                 ReturnValues="UPDATED_NEW",
             )

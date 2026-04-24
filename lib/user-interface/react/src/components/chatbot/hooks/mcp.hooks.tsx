@@ -18,47 +18,114 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMcp } from 'use-mcp/react';
 import { McpServer } from '@/shared/reducers/mcp-server.reducer';
 import { McpPreferences } from '@/shared/reducers/user-preferences.reducer';
+import { isWorkbenchMcpServer } from '@/components/utils';
+
+/** Stable fingerprint so RTK Query's new object references do not restart useMcp on every render. */
+function fingerprintHeaders (h: Record<string, string> | undefined): string {
+    if (!h || Object.keys(h).length === 0) {
+        return '';
+    }
+    const keys = Object.keys(h).sort();
+    return keys.map((k) => `${k}=${h[k]}`).join('&');
+}
+
+type McpConnectionProps = {
+    server: McpServer;
+    /** When `isReady` is false, the parent clears tools and connection state for this server (disconnected / not ready). */
+    onToolsChange: (tools: any[], server: McpServer, isReady: boolean) => void;
+    onConnectionChange: (connection: any, clientName: string) => void;
+    sessionId?: string;
+    /**
+     * When the workbench tool-file list refetches (RTK `dataUpdatedAt`), re-run tools/list on the
+     * live MCP session. use-mcp does not refresh tools after connect, so this keeps the chat tool
+     * count aligned with the server after S3 sync / rescan.
+     */
+    workbenchToolListDataUpdatedAt?: number;
+};
 
 // Individual MCP Connection Component
-export const McpConnection = ({ server, onToolsChange, onConnectionChange, sessionId }: {
-    server: McpServer,
-    onToolsChange: (tools: any[], clientName: string) => void,
-    onConnectionChange: (connection: any, clientName: string) => void,
-    sessionId?: string,
-}) => {
-    const customHeaders = server.customHeaders;
+export const McpConnection = ({ server, onToolsChange, onConnectionChange, sessionId, workbenchToolListDataUpdatedAt }: McpConnectionProps) => {
+    const headersFingerprint = fingerprintHeaders(server.customHeaders);
+    const clientConfigKey = JSON.stringify(server.clientConfig ?? null);
+    const serverUrl = server.url ?? ' ';
+    const serverName = server.name;
+
     const mergedHeaders = useMemo(() => {
-        const base: Record<string, string> = { ...(customHeaders ?? {}) };
+        const base: Record<string, string> = { ...(server.customHeaders ?? {}) };
         if (sessionId) {
             base['X-Session-Id'] = sessionId;
         }
         return Object.keys(base).length > 0 ? base : undefined;
-    }, [customHeaders, sessionId]);
+        // headersFingerprint reflects header values; RTK often replaces customHeaders with a new object on refetch.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [headersFingerprint, sessionId]);
 
-    const connection = useMcp({
-        url: server?.url ?? ' ',
-        clientName: server?.name,
-        autoReconnect: true,
-        autoRetry: true,
-        debug: false,
-        clientConfig: server?.clientConfig ?? undefined,
-        customHeaders: mergedHeaders,
-        callbackUrl: `${window.location.origin}${window.env.API_BASE_URL.includes('.') ? '/' : window.env.API_BASE_URL}oauth/callback`,
+    const clientConfigForMcp = useMemo(
+        () => server.clientConfig ?? undefined,
+        // clientConfigKey reflects clientConfig; avoid reconnecting when RTK replaces the server object.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [clientConfigKey],
+    );
+
+    const callbackUrl = useMemo(
+        () =>
+            `${window.location.origin}${
+                window.env.API_BASE_URL.includes('.') ? '/' : window.env.API_BASE_URL
+            }oauth/callback`,
+        [],
+    );
+
+    const mcpOptions = useMemo(
+        () => ({
+            url: serverUrl,
+            clientName: serverName,
+            autoReconnect: true,
+            // Overlapping retries + streamable HTTP abort the previous fetch → ClientDisconnect / NetworkError on server
+            autoRetry: false,
+            debug: false,
+            clientConfig: clientConfigForMcp,
+            customHeaders: mergedHeaders,
+            callbackUrl,
+        }),
+        [serverUrl, serverName, clientConfigForMcp, mergedHeaders, callbackUrl],
+    );
+
+    const connection = useMcp(mcpOptions);
+    const listToolsRef = useRef<(() => Promise<void>) | undefined>(undefined);
+    useEffect(() => {
+        listToolsRef.current = (connection as { listTools?: () => Promise<void> }).listTools;
     });
 
-    // Use refs to track previous values and avoid unnecessary updates
-    const prevToolsRef = useRef<string>('');
     const prevCallToolRef = useRef<any>(null);
 
-    // Memoize tools to avoid unnecessary re-renders
-    const toolsString = useMemo(() => JSON.stringify(connection.tools || []), [connection.tools]);
-
+    // Push tools when ready; clear aggregated state when the session is not ready (avoids stale banner/tools).
     useEffect(() => {
-        if (prevToolsRef.current !== toolsString) {
-            prevToolsRef.current = toolsString;
-            onToolsChange(connection.tools || [], server.name);
+        if (connection.state === 'ready') {
+            onToolsChange(connection.tools ?? [], server, true);
+        } else {
+            onToolsChange([], server, false);
         }
-    }, [toolsString, server.name, onToolsChange, connection.tools]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- server ref churns; id/name identify MCP server
+    }, [connection.state, connection.tools, onToolsChange, server.id, server.name]);
+
+    // Workbench: after tool-file metadata refetches, ask the server for the current tools list again.
+    useEffect(() => {
+        if (!isWorkbenchMcpServer(server) || workbenchToolListDataUpdatedAt == null) {
+            return;
+        }
+        if (connection.state !== 'ready') {
+            return;
+        }
+        const listTools = listToolsRef.current;
+        if (!listTools) {
+            return;
+        }
+        void listTools().catch((err: unknown) => {
+            console.warn('[McpConnection] listTools after workbench file list update failed:', err);
+        });
+    // isWorkbenchMcpServer(server) uses id/url; full `server` ref churns each RTK emit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [connection.state, server.id, workbenchToolListDataUpdatedAt, server.url]);
 
     useEffect(() => {
         if (connection.callTool && prevCallToolRef.current !== connection.callTool) {
@@ -70,30 +137,100 @@ export const McpConnection = ({ server, onToolsChange, onConnectionChange, sessi
     return null; // This component only manages the connection
 };
 
+export type UseMultipleMcpOptions = {
+    /**
+     * Fingerprint of workbench tool files (e.g. sorted ids). When this changes, workbench MCP
+     * connections remount so use-mcp runs tools/list again (the library does not refresh tools after connect).
+     */
+    workbenchToolListFingerprint?: string;
+    /** RTK Query `dataUpdatedAt` for the workbench tool-file list; triggers tools/list on the live session. */
+    workbenchToolListDataUpdatedAt?: number;
+};
+
 // Custom hook to manage multiple MCP connections dynamically
-export const useMultipleMcp = (servers: McpServer[], mcpPreferences: McpPreferences, sessionId?: string) => {
-    const [allTools, setAllTools] = useState([]);
+export const useMultipleMcp = (
+    servers: McpServer[],
+    mcpPreferences: McpPreferences,
+    sessionId?: string,
+    options?: UseMultipleMcpOptions,
+) => {
     const [serverToolsMap, setServerToolsMap] = useState<Map<string, any[]>>(new Map());
     const [connectionsMap, setConnectionsMap] = useState<Map<string, any>>(new Map());
     const [toolToServerMap, setToolToServerMap] = useState<Map<string, string>>(new Map());
 
-    const handleToolsChange = useCallback((tools: any[], clientName: string) => {
+    const serversRef = useRef(servers);
+    useEffect(() => {
+        serversRef.current = servers;
+    });
+
+    /** Stable when enabled id/name set is unchanged (avoids prune effect running every parent render). */
+    const enabledServersBindKey = useMemo(() => {
+        if (!servers?.length) {
+            return '';
+        }
+        return servers.map((s) => `${s.id}:${s.name}`).sort().join('|');
+    }, [servers]);
+
+    const handleToolsChange = useCallback((tools: any[], srv: McpServer, isReady: boolean) => {
+        const clientName = srv.name;
+
+        if (!isReady) {
+            setServerToolsMap((prev) => {
+                if (!prev.has(clientName)) {
+                    return prev;
+                }
+                const next = new Map(prev);
+                next.delete(clientName);
+                return next;
+            });
+            setToolToServerMap((prev) => {
+                const toDelete: string[] = [];
+                for (const [toolName, srvName] of prev.entries()) {
+                    if (srvName === clientName) {
+                        toDelete.push(toolName);
+                    }
+                }
+                if (toDelete.length === 0) {
+                    return prev;
+                }
+                const next = new Map(prev);
+                for (const toolName of toDelete) {
+                    next.delete(toolName);
+                }
+                return next;
+            });
+            setConnectionsMap((prev) => {
+                if (!prev.has(clientName)) {
+                    return prev;
+                }
+                const next = new Map(prev);
+                next.delete(clientName);
+                return next;
+            });
+            return;
+        }
+
+        const pref = mcpPreferences?.enabledServers?.find(
+            (s) => s.id === srv.id || s.name === clientName,
+        );
+        const disabledForServer = pref?.disabledTools;
+
         setServerToolsMap((prev) => {
             const newMap = new Map(prev);
-            newMap.set(clientName, tools.filter((tool) => !mcpPreferences?.enabledServers?.find((server) => server.name === clientName)?.disabledTools.includes(tool.name)));
+            newMap.set(
+                clientName,
+                tools.filter((tool) => !(disabledForServer?.includes(tool.name) ?? false)),
+            );
             return newMap;
         });
 
-        // Update tool-to-server mapping
         setToolToServerMap((prev) => {
             const newMap = new Map(prev);
-            // Remove old mappings for this server
             prev.forEach((serverName, toolName) => {
                 if (serverName === clientName) {
                     newMap.delete(toolName);
                 }
             });
-            // Add new mappings
             tools.forEach((tool) => {
                 if (tool.name) {
                     newMap.set(tool.name, clientName);
@@ -111,11 +248,64 @@ export const useMultipleMcp = (servers: McpServer[], mcpPreferences: McpPreferen
         });
     }, []);
 
+    // Drop tool/connection state for servers that are no longer enabled (map keys are server names).
+    // Otherwise stale rows accumulate and the chat banner sums too many tools (e.g. "1 servers — 3 tools").
     useEffect(() => {
-        // Combine all tools from all servers
-        const combinedTools = Array.from(serverToolsMap.values()).flat();
-        queueMicrotask(() => setAllTools(combinedTools));
-    }, [serverToolsMap]);
+        const current = serversRef.current;
+        if (!current?.length) {
+            setServerToolsMap((prev) => (prev.size > 0 ? new Map() : prev));
+            setToolToServerMap((prev) => (prev.size > 0 ? new Map() : prev));
+            setConnectionsMap((prev) => (prev.size > 0 ? new Map() : prev));
+            return;
+        }
+        const allowed = new Set(current.map((s) => s.name));
+        setServerToolsMap((prev) => {
+            let hasStaleServer = false;
+            for (const name of prev.keys()) {
+                if (!allowed.has(name)) {
+                    hasStaleServer = true;
+                    break;
+                }
+            }
+            if (!hasStaleServer) {
+                return prev;
+            }
+            const next = new Map<string, any[]>();
+            for (const [name, tools] of prev) {
+                if (allowed.has(name)) {
+                    next.set(name, tools);
+                }
+            }
+            return next;
+        });
+        setToolToServerMap((prev) => {
+            let changed = false;
+            const next = new Map(prev);
+            for (const [toolName, srvName] of [...next.entries()]) {
+                if (!allowed.has(srvName)) {
+                    next.delete(toolName);
+                    changed = true;
+                }
+            }
+            return changed ? next : prev;
+        });
+        setConnectionsMap((prev) => {
+            let changed = false;
+            const next = new Map(prev);
+            for (const name of [...next.keys()]) {
+                if (!allowed.has(name)) {
+                    next.delete(name);
+                    changed = true;
+                }
+            }
+            return changed ? next : prev;
+        });
+    }, [enabledServersBindKey]);
+
+    const allTools = useMemo(
+        () => Array.from(serverToolsMap.values()).flat(),
+        [serverToolsMap],
+    );
 
     const callTool = useCallback(async (toolName: string, args: any) => {
         const serverName = toolToServerMap.get(toolName);
@@ -136,16 +326,22 @@ export const useMultipleMcp = (servers: McpServer[], mcpPreferences: McpPreferen
         }
     }, [toolToServerMap, connectionsMap]);
 
+    const workbenchFp = options?.workbenchToolListFingerprint ?? '';
+    const workbenchDataUpdatedAt = options?.workbenchToolListDataUpdatedAt;
+
     return {
         tools: allTools,
+        /** MCP sessions currently in `ready` state (same keys as `serverToolsMap`). */
+        readyMcpServerCount: serverToolsMap.size,
         callTool,
         McpConnections: servers?.map((server) => (
             <McpConnection
-                key={`${server.name}::${sessionId ?? ''}`}
+                key={`${server.id}::${sessionId ?? ''}::${isWorkbenchMcpServer(server) ? workbenchFp : ''}`}
                 server={server}
                 onToolsChange={handleToolsChange}
                 onConnectionChange={handleConnectionChange}
                 sessionId={sessionId}
+                workbenchToolListDataUpdatedAt={isWorkbenchMcpServer(server) ? workbenchDataUpdatedAt : undefined}
             />
         )),
         toolToServerMap

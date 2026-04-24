@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { ReactElement, useContext, useEffect } from 'react';
+import { ReactElement, useCallback, useContext, useEffect } from 'react';
 import { useAuth } from '../auth/useAuth';
 import { useHref, useNavigate } from 'react-router-dom';
 import { applyDensity, Density, Mode } from '@cloudscape-design/global-styles';
@@ -93,16 +93,53 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
             external: false,
             href: '/prompt-templates',
         } as ButtonDropdownProps.Item] : []),
-        ...(configs?.configuration.enabledComponents?.mcpConnections ? [{
-            id: 'mcp-connection',
-            type: 'button',
-            variant: 'link',
-            text: 'MCP Connections',
-            disableUtilityCollapse: false,
-            external: false,
-            href: '/mcp-connections',
-        } as ButtonDropdownProps.Item] : [])
+        ...((Boolean(configs?.configuration.enabledComponents?.mcpConnections)
+            || Boolean(configs?.configuration.enabledComponents?.bedrockAgents)) ? [{
+                id: 'mcp-connection',
+                type: 'button',
+                variant: 'link',
+                text: 'Agentic Connections',
+                disableUtilityCollapse: false,
+                external: false,
+                href: '/mcp-connections',
+            } as ButtonDropdownProps.Item] : [])
     ].sort((a,b) => a.text.localeCompare(b.text));
+
+    const handleUserMenuClick = useCallback(async (itemId: string) => {
+        switch (itemId) {
+            case 'api-token':
+                navigate('/user-api-token');
+                break;
+            case 'delete-chat-history':
+                dispatch(
+                    setConfirmationModal({
+                        action: 'Delete',
+                        resourceName: 'All Sessions',
+                        onConfirm: () => deleteUserSessions(),
+                        description: 'This will delete all of your user sessions.'
+                    })
+                );
+                break;
+            case 'signin':
+                auth.signinRedirect({ redirect_uri: getRedirectUri() });
+                break;
+            case 'signout':
+                await auth.removeUser();
+                await auth.signoutRedirect({
+                    extraQueryParams: {
+                        client_id: OidcConfig.client_id,
+                        redirect_uri: getRedirectUri(),
+                        response_type: OidcConfig.response_type
+                    }
+                });
+                break;
+            case 'color-mode':
+                setColorScheme(colorScheme === Mode.Light ? Mode.Dark : Mode.Light);
+                break;
+            default:
+                break;
+        }
+    }, [auth, colorScheme, deleteUserSessions, dispatch, navigate, setColorScheme]);
 
     const showAdminDropdown = isUserAdmin || (isUserRagAdmin && window.env.RAG_ENABLED);
 
@@ -193,6 +230,15 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                                     href: '/mcp-management',
                                 } as ButtonDropdownProps.Item,
                             ] : []),
+                            ...(isUserAdmin && Boolean(configs?.configuration.enabledComponents?.bedrockAgents) ? [{
+                                id: 'bedrock-agent-management',
+                                type: 'button',
+                                variant: 'link',
+                                text: 'Bedrock Agent Catalog',
+                                disableUtilityCollapse: false,
+                                external: false,
+                                href: '/bedrock-agent-management',
+                            } as ButtonDropdownProps.Item] : []),
                             ...(isUserAdmin && configs?.configuration?.enabledComponents?.chatAssistantStacks ? [{
                                 id: 'chat-assistant-stacks',
                                 type: 'button',
@@ -216,41 +262,7 @@ function Topbar ({ configs }: TopbarProps): ReactElement {
                 {
                     type: 'menu-dropdown',
                     description: auth.isAuthenticated ? userName : undefined,
-                    onItemClick: async (item) => {
-                        switch (item.detail.id) {
-                            case 'api-token':
-                                navigate('/user-api-token');
-                                break;
-                            case 'delete-chat-history':
-                                dispatch(
-                                    setConfirmationModal({
-                                        action: 'Delete',
-                                        resourceName: 'All Sessions',
-                                        onConfirm: () => deleteUserSessions(),
-                                        description: 'This will delete all of your user sessions.'
-                                    })
-                                );
-                                break;
-                            case 'signin':
-                                auth.signinRedirect({ redirect_uri: getRedirectUri() });
-                                break;
-                            case 'signout':
-                                await auth.removeUser();
-                                await auth.signoutRedirect({
-                                    extraQueryParams: {
-                                        client_id: OidcConfig.client_id,
-                                        redirect_uri: getRedirectUri(),
-                                        response_type: OidcConfig.response_type
-                                    }
-                                });
-                                break;
-                            case 'color-mode':
-                                setColorScheme(colorScheme === Mode.Light ? Mode.Dark : Mode.Light);
-                                break;
-                            default:
-                                break;
-                        }
-                    },
+                    onItemClick: async (item) => handleUserMenuClick(item.detail.id),
                     iconName: 'user-profile',
                     items: [
                         { id: 'version-info', text: `${getDisplayName()} v${window.gitInfo?.revisionTag}`, disabled: true },

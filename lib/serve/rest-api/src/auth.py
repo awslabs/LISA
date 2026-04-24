@@ -13,6 +13,7 @@
 #   limitations under the License.
 
 """Authentication for FastAPI app."""
+
 import asyncio
 import hashlib
 import os

@@ -16,6 +16,7 @@
 
 import json
 import logging
+import os
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
@@ -111,7 +112,7 @@ def generate_html_response(status_code: int, response_body: Any) -> dict[str, st
         "statusCode": status_code,
         "body": json.dumps(serialized_body, cls=DecimalEncoder),
         "headers": {
-            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Origin": os.environ.get("CORS_ALLOWED_ORIGIN", "*"),
             "Content-Type": "application/json",
             "Cache-Control": "no-store, no-cache",
             "Pragma": "no-cache",
@@ -162,6 +163,15 @@ def generate_exception_response(e: Exception) -> dict[str, str | int | dict[str,
     if type(e).__name__ == "ValidationError":
         # User input validation error - return 400 with error message
         error_message = str(e)
+        logger.exception(e)
+    elif isinstance(e, json.JSONDecodeError):
+        # Invalid JSON in request body - return 400
+        error_message = "Invalid JSON in request body."
+        logger.exception(e)
+    elif isinstance(e, TypeError) and "NoneType" in str(e):
+        # Typically json.loads(None) when request body is missing - return 400
+        status_code = 400
+        error_message = "Request body is required."
         logger.exception(e)
     elif hasattr(e, "response"):
         # AWS SDK exception - extract status code and message

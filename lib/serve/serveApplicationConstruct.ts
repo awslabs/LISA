@@ -313,8 +313,6 @@ export class LisaServeApplicationConstruct extends Construct {
         const container = restApi.apiCluster.containers[ECSTasks.REST];
         if (container) {
             container.addEnvironment('LITELLM_DB_INFO_PS_NAME', litellmDbConnectionInfoPs.parameterName);
-            container.addEnvironment('REGISTERED_MODELS_PS_NAME', this.modelsPs.parameterName);
-            container.addEnvironment('LITELLM_DB_INFO_PS_NAME', litellmDbConnectionInfoPs.parameterName);
             container.addEnvironment('GUARDRAILS_TABLE_NAME', guardrailsTableName);
             container.addEnvironment('GENERATED_IMAGES_S3_BUCKET_NAME', imagesBucketName);
             container.addEnvironment('MODEL_INFO_CACHE_TTL', '300');

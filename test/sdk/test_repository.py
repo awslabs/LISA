@@ -14,7 +14,6 @@
 
 """Unit tests for RepositoryMixin."""
 
-
 import pytest
 import responses
 from lisapy import LisaApi

@@ -21,7 +21,7 @@ datasets==3.6.0
 
 # Langchain - needed by tests that import langchain directly
 langchain==1.2.15
-langchain-openai==1.1.10
+langchain-openai==1.1.14
 
 # Lambda runtime deps - needed because tests import lambda code which
 # has top-level imports of these packages

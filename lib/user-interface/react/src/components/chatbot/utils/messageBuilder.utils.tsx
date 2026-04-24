@@ -15,6 +15,7 @@
 */
 
 import { formatDocumentsAsString } from '@/components/utils';
+import { RagDocumentCitation } from '@/components/types';
 
 export type MessageContentParams = {
     isImageGenerationMode: boolean;
@@ -74,22 +75,21 @@ export const buildMessageContent = async ({
  * Multiple chunks may come from the same document.
  * Includes all documents, even if they don't have document_id (for backward compatibility).
  */
-export const structureRagDocuments = (docs: any) => {
-    // Group by unique document (multiple chunks may come from same doc)
-    const uniqueDocs = new Map();
+export const structureRagDocuments = (docs: any): RagDocumentCitation[] => {
+    const uniqueDocs = new Map<string, RagDocumentCitation>();
 
     docs.forEach((doc) => {
         const metadata = doc.Document.metadata;
         const source = metadata.source;
 
-        // Use source as the unique key since it's always present
         if (source && !uniqueDocs.has(source)) {
             uniqueDocs.set(source, {
-                documentId: metadata.document_id || null, // null if not enriched yet
+                documentId: metadata.document_id || null,
                 name: metadata.name || source.split('/').pop() || 'Unknown',
                 source: source,
                 repositoryId: metadata.repositoryId,
                 collectionId: metadata.collectionId,
+                similarityScore: metadata.similarity_score,
             });
         }
     });
@@ -117,8 +117,17 @@ export const buildMessageMetadata = async ({
 
     if (useRag && !isImageGenerationMode && ragDocs) {
         metadata.ragContext = formatDocumentsAsString(ragDocs.data?.docs, true);
-        // Structure RAG documents as array with document metadata
         metadata.ragDocuments = structureRagDocuments(ragDocs.data?.docs);
+
+        if (ragDocs.data?.metadata) {
+            const m = ragDocs.data.metadata;
+            metadata.ragSearchMetadata = {
+                searchMode: m.search_mode,
+                actualModeUsed: m.actual_mode_used,
+                backend: m.backend,
+                hybridSupported: m.hybrid_supported,
+            };
+        }
     }
 
     return metadata;

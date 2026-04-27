@@ -14,14 +14,13 @@
 
 """Tests for RAG Admin authorization boundaries in repository lambda functions.
 
-Uses _auth_context() to patch auth references directly on repository.lambda_functions.
-This is necessary because the module uses `from utilities.auth import ...` which creates
-local bindings that conftest's patches on utilities.auth do not reach.
+Uses _auth_context() to patch auth references directly on repository.lambda_functions. This is necessary because the
+module uses `from utilities.auth import ...` which creates local bindings that conftest's patches on utilities.auth do
+not reach.
 
-Note: The conftest patches decorators (admin_only, rag_admin_or_admin) as passthroughs
-when test_repository_lambda.py runs first (module-level import). So these tests focus on
-the inner function logic: group access filtering, effective_admin, field restrictions,
-and document ownership bypass.
+Note: The conftest patches decorators (admin_only, rag_admin_or_admin) as passthroughs when test_repository_lambda.py
+runs first (module-level import). So these tests focus on the inner function logic: group access filtering,
+effective_admin, field restrictions, and document ownership bypass.
 """
 
 import json
@@ -88,8 +87,8 @@ def _make_event(username="test-user", groups=None):
 def _auth_context(username, groups, is_admin_val=False, is_rag_admin_val=False):
     """Patch all auth references on repository.lambda_functions for a test.
 
-    Because repository.lambda_functions uses `from utilities.auth import ...`,
-    the module has local bindings that must be patched directly.
+    Because repository.lambda_functions uses `from utilities.auth import ...`, the module has local bindings that must
+    be patched directly.
     """
     stack = ExitStack()
     for p in [
@@ -111,9 +110,11 @@ def test_rag_admin_can_create_collection_on_accessible_repo(ctx):
     event["pathParameters"] = {"repositoryId": "repo-1"}
     event["body"] = json.dumps({"name": "New Collection", "embeddingModel": "model-1"})
 
-    with _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True), patch(
-        "repository.lambda_functions.vs_repo"
-    ) as mvs, patch("repository.lambda_functions.collection_service") as mcs:
+    with (
+        _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True),
+        patch("repository.lambda_functions.vs_repo") as mvs,
+        patch("repository.lambda_functions.collection_service") as mcs,
+    ):
         mvs.find_repository_by_id.return_value = ACCESSIBLE_REPO
         mock_coll = MagicMock()
         mock_coll.model_dump.return_value = {"collectionId": "new-coll", "name": "New Collection"}
@@ -134,9 +135,10 @@ def test_rag_admin_cannot_create_collection_on_inaccessible_repo(ctx):
     event["pathParameters"] = {"repositoryId": "repo-2"}
     event["body"] = json.dumps({"name": "New Collection", "embeddingModel": "model-2"})
 
-    with _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True), patch(
-        "repository.lambda_functions.vs_repo"
-    ) as mvs:
+    with (
+        _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True),
+        patch("repository.lambda_functions.vs_repo") as mvs,
+    ):
         mvs.find_repository_by_id.return_value = INACCESSIBLE_REPO
 
         from repository.lambda_functions import create_collection
@@ -151,9 +153,11 @@ def test_rag_admin_can_update_collection_on_accessible_repo(ctx):
     event["pathParameters"] = {"repositoryId": "repo-1", "collectionId": "coll-1"}
     event["body"] = json.dumps({"name": "Updated Collection"})
 
-    with _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True), patch(
-        "repository.lambda_functions.vs_repo"
-    ) as mvs, patch("repository.lambda_functions.collection_service") as mcs:
+    with (
+        _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True),
+        patch("repository.lambda_functions.vs_repo") as mvs,
+        patch("repository.lambda_functions.collection_service") as mcs,
+    ):
         mvs.find_repository_by_id.return_value = ACCESSIBLE_REPO
         mock_coll = MagicMock()
         mock_coll.model_dump.return_value = {"collectionId": "coll-1", "name": "Updated Collection"}
@@ -173,9 +177,11 @@ def test_rag_admin_can_delete_collection_on_accessible_repo(ctx):
     event["pathParameters"] = {"repositoryId": "repo-1", "collectionId": "coll-1"}
     event["queryStringParameters"] = {}
 
-    with _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True), patch(
-        "repository.lambda_functions.vs_repo"
-    ) as mvs, patch("repository.lambda_functions.collection_service") as mcs:
+    with (
+        _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True),
+        patch("repository.lambda_functions.vs_repo") as mvs,
+        patch("repository.lambda_functions.collection_service") as mcs,
+    ):
         mvs.find_repository_by_id.return_value = ACCESSIBLE_REPO
         mcs.delete_collection.return_value = {"deleted": True}
 
@@ -197,8 +203,8 @@ def test_rag_admin_can_delete_collection_on_accessible_repo(ctx):
 def test_effective_admin_passed_to_collection_service(ctx, is_rag_admin_val, expected):
     """Verify effective_admin (is_admin OR is_rag_admin) is passed to collection_service.
 
-    Call-arg inspection is necessary here because collection_service is always mocked
-    at this layer — it's an external dependency boundary.
+    Call-arg inspection is necessary here because collection_service is always mocked at this layer — it's an external
+    dependency boundary.
     """
     username = "rag-admin-user" if is_rag_admin_val else "regular-user"
     groups = ["rag-team", "rag-admins"] if is_rag_admin_val else ["rag-team"]
@@ -206,9 +212,11 @@ def test_effective_admin_passed_to_collection_service(ctx, is_rag_admin_val, exp
     event["pathParameters"] = {"repositoryId": "repo-1", "collectionId": "coll-1"}
     event["body"] = json.dumps({"name": "Updated"})
 
-    with _auth_context(username, groups, is_rag_admin_val=is_rag_admin_val), patch(
-        "repository.lambda_functions.vs_repo"
-    ) as mvs, patch("repository.lambda_functions.collection_service") as mcs:
+    with (
+        _auth_context(username, groups, is_rag_admin_val=is_rag_admin_val),
+        patch("repository.lambda_functions.vs_repo") as mvs,
+        patch("repository.lambda_functions.collection_service") as mcs,
+    ):
         mvs.find_repository_by_id.return_value = ACCESSIBLE_REPO
         mock_coll = MagicMock()
         mock_coll.model_dump.return_value = {"collectionId": "coll-1"}
@@ -240,9 +248,10 @@ def test_rag_admin_can_update_pipelines_on_accessible_repo(ctx):
     event["pathParameters"] = {"repositoryId": "repo-1"}
     event["body"] = json.dumps({"pipelines": new_pipelines})
 
-    with _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True), patch(
-        "repository.lambda_functions.vs_repo"
-    ) as mvs:
+    with (
+        _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True),
+        patch("repository.lambda_functions.vs_repo") as mvs,
+    ):
         mvs.find_repository_by_id.return_value = {**ACCESSIBLE_REPO, "config": ACCESSIBLE_REPO}
         mvs.update.return_value = {**ACCESSIBLE_REPO, "pipelines": new_pipelines}
 
@@ -277,11 +286,12 @@ def test_rag_admin_can_add_new_pipeline_to_accessible_repo(ctx):
         "executionArn": "arn:execution:123",
     }
 
-    with _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True), patch(
-        "repository.lambda_functions.vs_repo"
-    ) as mvs, patch("repository.lambda_functions.ssm_client") as mock_ssm, patch(
-        "repository.lambda_functions.step_functions_client"
-    ) as mock_sf:
+    with (
+        _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True),
+        patch("repository.lambda_functions.vs_repo") as mvs,
+        patch("repository.lambda_functions.ssm_client") as mock_ssm,
+        patch("repository.lambda_functions.step_functions_client") as mock_sf,
+    ):
         mvs.find_repository_by_id.return_value = {**ACCESSIBLE_REPO, "config": ACCESSIBLE_REPO}
         mvs.update.return_value = updated_config
         mock_ssm.get_parameter.return_value = {"Parameter": {"Value": "arn:test-state-machine"}}
@@ -303,9 +313,10 @@ def test_rag_admin_cannot_update_allowed_groups(ctx):
     event["pathParameters"] = {"repositoryId": "repo-1"}
     event["body"] = json.dumps({"allowedGroups": ["new-group"]})
 
-    with _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True), patch(
-        "repository.lambda_functions.vs_repo"
-    ) as mvs:
+    with (
+        _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True),
+        patch("repository.lambda_functions.vs_repo") as mvs,
+    ):
         mvs.find_repository_by_id.return_value = {**ACCESSIBLE_REPO, "config": ACCESSIBLE_REPO}
 
         from repository.lambda_functions import update_repository
@@ -321,9 +332,10 @@ def test_rag_admin_cannot_update_mixed_fields(ctx):
     event["pathParameters"] = {"repositoryId": "repo-1"}
     event["body"] = json.dumps({"pipelines": [], "name": "sneaky-rename"})
 
-    with _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True), patch(
-        "repository.lambda_functions.vs_repo"
-    ) as mvs:
+    with (
+        _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True),
+        patch("repository.lambda_functions.vs_repo") as mvs,
+    ):
         mvs.find_repository_by_id.return_value = {**ACCESSIBLE_REPO, "config": ACCESSIBLE_REPO}
 
         from repository.lambda_functions import update_repository
@@ -339,9 +351,10 @@ def test_rag_admin_cannot_update_mixed_fields(ctx):
 def test_rag_admin_sees_only_group_accessible_repos_in_list(ctx):
     event = _make_event("rag-admin-user", ["rag-team", "rag-admins"])
 
-    with _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True), patch(
-        "repository.lambda_functions.vs_repo"
-    ) as mvs:
+    with (
+        _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True),
+        patch("repository.lambda_functions.vs_repo") as mvs,
+    ):
         mvs.get_registered_repositories.return_value = [ACCESSIBLE_REPO, INACCESSIBLE_REPO]
 
         from repository.lambda_functions import list_all
@@ -408,9 +421,10 @@ def test_rag_admin_update_bad_body_does_not_500(ctx, body_value, expected_status
     else:
         event["body"] = body_value
 
-    with _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True), patch(
-        "repository.lambda_functions.vs_repo"
-    ) as mvs:
+    with (
+        _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True),
+        patch("repository.lambda_functions.vs_repo") as mvs,
+    ):
         mvs.find_repository_by_id.return_value = {**ACCESSIBLE_REPO, "config": ACCESSIBLE_REPO}
         mvs.update.return_value = ACCESSIBLE_REPO
 
@@ -427,9 +441,10 @@ def test_rag_admin_cannot_update_repository_on_inaccessible_repo(ctx):
     event["pathParameters"] = {"repositoryId": "repo-2"}
     event["body"] = json.dumps({"pipelines": []})
 
-    with _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True), patch(
-        "repository.lambda_functions.vs_repo"
-    ) as mvs:
+    with (
+        _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True),
+        patch("repository.lambda_functions.vs_repo") as mvs,
+    ):
         mvs.find_repository_by_id.return_value = INACCESSIBLE_REPO
 
         from repository.lambda_functions import update_repository
@@ -445,17 +460,17 @@ def test_rag_admin_cannot_update_repository_on_inaccessible_repo(ctx):
 def test_rag_admin_list_user_collections_passes_is_rag_admin(ctx):
     """list_user_collections passes is_rag_admin=True for RAG admin callers.
 
-    RAG admins get scoped-admin collection access (bypass collection-level
-    allowedGroups) within repos they have group access to. Repo-level filtering
-    uses is_admin (real flag), so RAG admins do NOT see all repos — only their
-    group-accessible ones. is_rag_admin is threaded through to collection filtering.
+    RAG admins get scoped-admin collection access (bypass collection-level allowedGroups) within repos they have group
+    access to. Repo-level filtering uses is_admin (real flag), so RAG admins do NOT see all repos — only their group-
+    accessible ones. is_rag_admin is threaded through to collection filtering.
     """
     event = _make_event("rag-admin-user", ["rag-team", "rag-admins"])
     event["queryStringParameters"] = {}
 
-    with _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True), patch(
-        "repository.lambda_functions.collection_service"
-    ) as mcs:
+    with (
+        _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True),
+        patch("repository.lambda_functions.collection_service") as mcs,
+    ):
         mcs.list_all_user_collections.return_value = ([], None)
 
         from repository.lambda_functions import list_user_collections
@@ -489,9 +504,10 @@ def test_rag_admin_can_update_bedrock_knowledge_base_config(ctx):
         "config": {**ACCESSIBLE_REPO, "type": "bedrock_kb"},
     }
 
-    with _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True), patch(
-        "repository.lambda_functions.vs_repo"
-    ) as mvs:
+    with (
+        _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True),
+        patch("repository.lambda_functions.vs_repo") as mvs,
+    ):
         mvs.find_repository_by_id.return_value = bedrock_repo
         mvs.update.return_value = bedrock_repo
 
@@ -508,8 +524,8 @@ def test_rag_admin_can_update_bedrock_knowledge_base_config(ctx):
 def test_rag_admin_update_filters_serialized_output(ctx):
     """Defense-in-depth filter strips non-allowed fields from model_dump output.
 
-    Even if Pydantic populates default values during serialization, the second
-    filter (lines 1613-1615) ensures only allowed fields reach the update call.
+    Even if Pydantic populates default values during serialization, the second filter (lines 1613-1615) ensures only
+    allowed fields reach the update call.
     """
     event = _make_event("rag-admin-user", ["rag-team", "rag-admins"])
     event["pathParameters"] = {"repositoryId": "repo-1"}
@@ -525,9 +541,10 @@ def test_rag_admin_update_filters_serialized_output(ctx):
     ]
     event["body"] = json.dumps({"pipelines": new_pipelines})
 
-    with _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True), patch(
-        "repository.lambda_functions.vs_repo"
-    ) as mvs:
+    with (
+        _auth_context("rag-admin-user", ["rag-team", "rag-admins"], is_rag_admin_val=True),
+        patch("repository.lambda_functions.vs_repo") as mvs,
+    ):
         mvs.find_repository_by_id.return_value = {**ACCESSIBLE_REPO, "config": ACCESSIBLE_REPO}
         mvs.update.return_value = {**ACCESSIBLE_REPO, "pipelines": new_pipelines}
 
@@ -554,9 +571,11 @@ def test_admin_can_create_collection(ctx):
     event["pathParameters"] = {"repositoryId": "repo-1"}
     event["body"] = json.dumps({"name": "New Collection", "embeddingModel": "model-1"})
 
-    with _auth_context("admin-user", ["admin"], is_admin_val=True), patch(
-        "repository.lambda_functions.vs_repo"
-    ) as mvs, patch("repository.lambda_functions.collection_service") as mcs:
+    with (
+        _auth_context("admin-user", ["admin"], is_admin_val=True),
+        patch("repository.lambda_functions.vs_repo") as mvs,
+        patch("repository.lambda_functions.collection_service") as mcs,
+    ):
         mvs.find_repository_by_id.return_value = ACCESSIBLE_REPO
         mock_coll = MagicMock()
         mock_coll.model_dump.return_value = {"collectionId": "new-coll", "name": "New Collection"}

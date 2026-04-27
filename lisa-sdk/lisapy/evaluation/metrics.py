@@ -23,9 +23,8 @@ import math
 def deduplicate_sources(sources: list[str]) -> list[str]:
     """Deduplicate source paths preserving first-occurrence rank order.
 
-    RAG retrieval returns multiple chunks per document. For document-level
-    evaluation, we only care about the rank of the first chunk from each
-    unique source document.
+    RAG retrieval returns multiple chunks per document. For document-level evaluation, we only care about the rank of
+    the first chunk from each unique source document.
     """
     seen: set[str] = set()
     deduped: list[str] = []

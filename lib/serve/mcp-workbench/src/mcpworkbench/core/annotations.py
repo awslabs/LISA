@@ -22,8 +22,7 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 
 def mcp_tool(name: str, description: str) -> Callable[[F], F]:
-    """
-    Decorator to mark a function as an MCP tool.
+    """Decorator to mark a function as an MCP tool.
 
     Args:
         name: The name of the tool

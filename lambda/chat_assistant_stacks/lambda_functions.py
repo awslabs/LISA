@@ -81,7 +81,10 @@ def list_stacks(event: dict, context: dict) -> dict:
 @api_wrapper
 @admin_only
 def get_stack(event: dict, context: dict) -> dict:
-    """Get a single Chat Assistant Stack by stackId. Admin only."""
+    """Get a single Chat Assistant Stack by stackId.
+
+    Admin only.
+    """
     stack_id = _get_stack_id(event)
     try:
         response = table.get_item(Key={"stackId": stack_id})
@@ -97,7 +100,10 @@ def get_stack(event: dict, context: dict) -> dict:
 @api_wrapper
 @admin_only
 def create(event: dict, context: dict) -> dict:
-    """Create a new Chat Assistant Stack. Admin only."""
+    """Create a new Chat Assistant Stack.
+
+    Admin only.
+    """
     body = json.loads(event["body"], parse_float=Decimal)
     model = ChatAssistantStackModel(**body)
     item = model.model_dump(exclude_none=True)
@@ -112,7 +118,10 @@ def create(event: dict, context: dict) -> dict:
 @api_wrapper
 @admin_only
 def update(event: dict, context: dict) -> dict:
-    """Update an existing Chat Assistant Stack. Admin only."""
+    """Update an existing Chat Assistant Stack.
+
+    Admin only.
+    """
     stack_id = _get_stack_id(event)
     body = json.loads(event["body"], parse_float=Decimal)
     body["stackId"] = stack_id
@@ -134,7 +143,10 @@ def update(event: dict, context: dict) -> dict:
 @api_wrapper
 @admin_only
 def delete(event: dict, context: dict) -> dict:
-    """Delete a Chat Assistant Stack. Admin only."""
+    """Delete a Chat Assistant Stack.
+
+    Admin only.
+    """
     stack_id = _get_stack_id(event)
     try:
         response = table.delete_item(Key={"stackId": stack_id}, ReturnValues="ALL_OLD")
@@ -149,7 +161,10 @@ def delete(event: dict, context: dict) -> dict:
 @api_wrapper
 @admin_only
 def update_status(event: dict, context: dict) -> dict:
-    """Update isActive (activate/deactivate) for a stack. Admin only."""
+    """Update isActive (activate/deactivate) for a stack.
+
+    Admin only.
+    """
     stack_id = _get_stack_id(event)
     body = json.loads(event.get("body") or "{}", parse_float=Decimal)
     is_active = body.get("isActive")

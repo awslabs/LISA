@@ -30,8 +30,7 @@ from utilities.fastapi_middleware.security_headers_middleware import SecurityHea
 
 
 def create_fastapi_app() -> FastAPI:
-    """
-    Create a FastAPI application with standard LISA configuration.
+    """Create a FastAPI application with standard LISA configuration.
 
     This factory function creates a FastAPI app with:
     - Standard FastAPI settings (redirect_slashes, lifespan, docs)

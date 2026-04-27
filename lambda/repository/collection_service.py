@@ -12,7 +12,6 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-
 """Collection service for business logic."""
 
 import heapq
@@ -107,7 +106,6 @@ class CollectionService:
         Raises:
             ValidationError: If collection name already exists in repository
         """
-
         # Check if collection name already exists in this repository
         existing = self.collection_repo.find_by_name(collection.repositoryId, collection.name)  # type: ignore[arg-type]
         if existing:
@@ -155,8 +153,8 @@ class CollectionService:
     ) -> tuple[list[RagCollectionConfig], dict[str, str] | None]:
         """List collections with access control.
 
-        For Bedrock KB repositories, default collections are persisted to the database
-        and will be included in the query results automatically.
+        For Bedrock KB repositories, default collections are persisted to the database and will be included in the query
+        results automatically.
 
         For other repository types, a virtual default collection is generated if needed.
         """
@@ -195,7 +193,7 @@ class CollectionService:
         Args:
             collection_id: Collection ID to update
             repository_id: Repository ID
-            request: RagCollectionConfig with fields to update
+            collection_data: RagCollectionConfig with fields to update
             username: Username for access control
             user_groups: User groups for access control
             is_admin: Whether user is admin
@@ -349,7 +347,7 @@ class CollectionService:
             ingestion_job_repo.save(deletion_job)
             ingestion_service.create_delete_job(deletion_job)
 
-            logger.info(f"Submitted {deletion_type} deletion job {deletion_job.id} " f"for repository {repository_id}")
+            logger.info(f"Submitted {deletion_type} deletion job {deletion_job.id} for repository {repository_id}")
 
             response = {
                 "jobId": deletion_job.id,
@@ -456,8 +454,7 @@ class CollectionService:
         filter_text: str | None = None,
         sort_params: SortParams | None = None,
     ) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
-        """
-        List all collections user has access to across all repositories.
+        """List all collections user has access to across all repositories.
 
         This method orchestrates the complete workflow:
         1. Get accessible repositories
@@ -469,6 +466,7 @@ class CollectionService:
             username: Username for access control
             user_groups: User groups for access control
             is_admin: Whether user is admin
+            is_rag_admin: Whether user is RAG admin
             page_size: Number of items per page
             pagination_token: Pagination token from previous request
             filter_text: Optional text filter for name/description
@@ -532,8 +530,7 @@ class CollectionService:
     def _get_accessible_repositories(
         self, username: str, user_groups: list[str], is_admin: bool
     ) -> list[dict[str, Any]]:
-        """
-        Get all repositories user has access to.
+        """Get all repositories user has access to.
 
         Args:
             username: Username for access control
@@ -554,8 +551,7 @@ class CollectionService:
         return accessible
 
     def _has_repository_access(self, user_groups: list[str], repository: dict[str, Any]) -> bool:
-        """
-        Check if user has access to repository based on groups.
+        """Check if user has access to repository based on groups.
 
         Args:
             user_groups: User groups for access control
@@ -581,8 +577,7 @@ class CollectionService:
     def _enrich_with_repository_metadata(
         self, collections: list[RagCollectionConfig], repositories: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
-        """
-        Enrich collections with repository metadata.
+        """Enrich collections with repository metadata.
 
         Args:
             collections: List of collection configurations
@@ -613,8 +608,7 @@ class CollectionService:
         return enriched
 
     def _estimate_total_collections(self, repositories: list[dict[str, Any]]) -> int:
-        """
-        Estimate total number of collections across repositories.
+        """Estimate total number of collections across repositories.
 
         Args:
             repositories: List of repository configurations
@@ -644,8 +638,7 @@ class CollectionService:
         filter_text: str | None,
         sort_params: SortParams,
     ) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
-        """
-        Simple pagination strategy for small-to-medium deployments.
+        """Simple pagination strategy for small-to-medium deployments.
 
         Aggregates all collections in memory, applies filtering and sorting,
         then returns requested page.
@@ -741,8 +734,7 @@ class CollectionService:
         return enriched, next_token
 
     def _matches_filter(self, collection: RagCollectionConfig, filter_text: str) -> bool:
-        """
-        Check if collection matches text filter.
+        """Check if collection matches text filter.
 
         Args:
             collection: Collection to check
@@ -766,8 +758,7 @@ class CollectionService:
     def _sort_collections(
         self, collections: list[RagCollectionConfig], sort_params: SortParams
     ) -> list[RagCollectionConfig]:
-        """
-        Sort collections by specified field and order.
+        """Sort collections by specified field and order.
 
         Args:
             collections: List of collections to sort
@@ -796,8 +787,7 @@ class CollectionService:
         filter_text: str | None,
         sort_params: SortParams,
     ) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
-        """
-        Scalable pagination strategy for large deployments.
+        """Scalable pagination strategy for large deployments.
 
         Uses incremental merge with per-repository cursors to handle
         1000+ collections efficiently without loading all into memory.
@@ -944,8 +934,7 @@ class CollectionService:
     def _merge_sorted_batches(
         self, batches: list[dict[str, Any]], sort_by: str, sort_order: str
     ) -> list[RagCollectionConfig]:
-        """
-        Merge pre-sorted batches from multiple repositories using min-heap.
+        """Merge pre-sorted batches from multiple repositories using min-heap.
 
         Time Complexity: O(N log K) where N = total collections, K = number of repositories
         Space Complexity: O(N) for merged result
@@ -1008,8 +997,7 @@ class CollectionService:
         return merged
 
     def _get_sort_key(self, collection: RagCollectionConfig, sort_by: str) -> Any:
-        """
-        Extract sort key from collection.
+        """Extract sort key from collection.
 
         Args:
             collection: Collection to extract key from

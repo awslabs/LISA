@@ -66,9 +66,7 @@ def _get_http_session() -> requests.Session:
 
 
 class RagEmbeddings(BaseModel):
-    """
-    Handles document embeddings through LiteLLM using management credentials.
-    """
+    """Handles document embeddings through LiteLLM using management credentials."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -106,9 +104,10 @@ class RagEmbeddings(BaseModel):
             raise
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        """
-        Generate embeddings for a list of documents, automatically batching
-        to stay within the embedding server's max batch size.
+        """Generate embeddings for a list of documents.
+
+        Automatically batching to stay within the embedding server's max
+        batch size.
 
         Uses input_type="passage" so litellm applies the correct model-specific
         prefix for document indexing (e.g. "passage: " for E5 models).
@@ -158,7 +157,7 @@ class RagEmbeddings(BaseModel):
                 if attempt < MAX_RETRIES:
                     backoff = INITIAL_BACKOFF_SECONDS * (2 ** (attempt - 1))
                     logger.warning(
-                        f"Embedding attempt {attempt}/{MAX_RETRIES} failed: {e}. " f"Retrying in {backoff:.1f}s..."
+                        f"Embedding attempt {attempt}/{MAX_RETRIES} failed: {e}. Retrying in {backoff:.1f}s..."
                     )
                     time.sleep(backoff)
                 else:

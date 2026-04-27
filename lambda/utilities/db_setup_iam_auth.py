@@ -199,9 +199,8 @@ def create_db_user(db_host: str, db_port: str, db_name: str, db_user: str, secre
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Lambda handler for IAM database user setup.
 
-    Creates an IAM-authenticated PostgreSQL user. The bootstrap secret is kept
-    for CloudFormation compatibility (not deleted) even though it won't be used
-    for authentication after IAM auth is enabled.
+    Creates an IAM-authenticated PostgreSQL user. The bootstrap secret is kept for CloudFormation compatibility (not
+    deleted) even though it won't be used for authentication after IAM auth is enabled.
     """
     logger.info(f"IAM auth setup Lambda invoked with event: {json.dumps(event)}")
 

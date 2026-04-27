@@ -14,9 +14,8 @@
 
 """Generic AWS API access via boto3 using the MCP workbench AWS session.
 
-This sample exposes one tool that can call any boto3 client method (service +
-operation + parameters). That matches IAM permissions of the connected
-credentials. For production, consider restricting allowed services or operations.
+This sample exposes one tool that can call any boto3 client method (service + operation + parameters). That matches IAM
+permissions of the connected credentials. For production, consider restricting allowed services or operations.
 """
 
 from __future__ import annotations

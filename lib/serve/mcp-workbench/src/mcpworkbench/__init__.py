@@ -12,8 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""
-MCP Workbench - A dynamic host for Python files used as MCP tools.
+"""MCP Workbench - A dynamic host for Python files used as MCP tools.
 
 Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Licensed under the Apache License, Version 2.0.

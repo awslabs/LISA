@@ -73,16 +73,20 @@ The test creates the following resources with predictable names for easy identif
 
 ### Resource Lifecycle
 
-#### Without --cleanup flag:
+#### Without --cleanup flag
+
 Resources remain deployed for manual testing and must be cleaned up through:
+
 - LISA UI (Model Management and Configuration pages)
 - Running the script again with `--cleanup`
 - Manual AWS resource deletion
 
-#### With --cleanup flag:
+#### With --cleanup flag
+
 Integration-test-scoped resources (models and repositories created by this script) are automatically deleted at the end of the test run. User-created resources are not affected.
 
-#### With --wait flag:
+#### With --wait flag
+
 Script monitors resource deployment status and waits up to 30 minutes for each resource to become ready. Useful for validating full deployment pipeline.
 
 ### Exit Codes
@@ -111,12 +115,14 @@ Script monitors resource deployment status and waits up to 30 minutes for each r
 The integration setup test includes new SDK functions in the lisa-sdk package:
 
 ### Model Management
+
 - `create_bedrock_model()` - Create Bedrock model configurations
 - `create_self_hosted_model()` - Deploy self-hosted models with full configuration
 - `delete_model()` - Remove models from LISA
 - `get_model()` - Retrieve model details and status
 
 ### Repository Management
+
 - `create_repository()` - Generic repository creation
 - `create_pgvector_repository()` - Create PGVector repositories with RDS
 - `create_opensearch_repository()` - Create OpenSearch repositories with clusters

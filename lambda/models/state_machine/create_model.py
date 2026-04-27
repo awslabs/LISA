@@ -76,8 +76,7 @@ litellm_client = LiteLLMClient(
 
 
 def get_container_path(inference_container_type: InferenceContainer) -> str:
-    """
-    Get the LISA repository path for referencing container build scripts.
+    """Get the LISA repository path for referencing container build scripts.
 
     Paths are relative to <LISA Repository root>/lib/serve/ecs-model/
     """
@@ -91,7 +90,7 @@ def get_container_path(inference_container_type: InferenceContainer) -> str:
 
 
 def adjust_initial_capacity_for_schedule(prepared_event: dict[str, Any]) -> None:
-    """Adjust Auto Scaling Group initial capacity based on schedule configuration"""
+    """Adjust Auto Scaling Group initial capacity based on schedule configuration."""
     try:
         # Check if scheduling is configured
         auto_scaling_config = prepared_event.get("autoScalingConfig", {}) or {}
@@ -497,12 +496,10 @@ autoscaling_client = boto3.client("autoscaling", region_name=os.environ["AWS_REG
 
 
 def handle_poll_model_ready(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """
-    Poll ASG to confirm model instances are healthy before marking as InService.
+    """Poll ASG to confirm model instances are healthy before marking as InService.
 
-    This handler checks that the Auto Scaling Group has healthy instances running
-    before proceeding to add the model to LiteLLM. This ensures the model is actually
-    ready to serve requests, not just that the infrastructure was created.
+    This handler checks that the Auto Scaling Group has healthy instances running before proceeding to add the model to
+    LiteLLM. This ensures the model is actually ready to serve requests, not just that the infrastructure was created.
     """
     output_dict = deepcopy(event)
     model_id = event.get("modelId", "unknown")
@@ -713,7 +710,7 @@ def handle_add_guardrails_to_litellm(event: dict[str, Any], context: Any) -> dic
             # Transform guardrail config to LiteLLM format
             litellm_guardrail_config = {
                 "guardrail": {
-                    "guardrail_name": f'{guardrail_config["guardrailName"]}-{model_id}',
+                    "guardrail_name": f"{guardrail_config['guardrailName']}-{model_id}",
                     "litellm_params": {
                         "guardrail": "bedrock",
                         "mode": str(guardrail_config.get("mode", "pre_call")),
@@ -869,8 +866,8 @@ def _fetch_context_window_from_s3(model_name: Any, model_type: str) -> int | Non
 def handle_enrich_context_window(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Enrich model DDB record with context window size.
 
-    Non-blocking — failure is logged as a warning but does not raise an exception
-    or affect the state machine's success path.
+    Non-blocking — failure is logged as a warning but does not raise an exception or affect the state machine's success
+    path.
     """
     output_dict = deepcopy(event)
     model_id = event.get("modelId")
@@ -919,8 +916,7 @@ def handle_enrich_context_window(event: dict[str, Any], context: Any) -> dict[st
 
 
 def handle_failure(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """
-    Handle failures from state machine.
+    """Handle failures from state machine.
 
     Possible causes of failures would be:
     1. Docker Image failed to replicate into ECR in expected amount of time

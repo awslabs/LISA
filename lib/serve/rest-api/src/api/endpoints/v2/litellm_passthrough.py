@@ -83,8 +83,7 @@ def _generate_presigned_video_url(key: str, content_type: str = "video/mp4") -> 
 
 
 async def apply_guardrails_to_request(params: dict, model_id: str, jwt_data: dict) -> None:
-    """
-    Apply guardrails to a chat completion request.
+    """Apply guardrails to a chat completion request.
 
     This function modifies the params dict in-place, adding applicable guardrails
     based on the user's group membership and the model's guardrail configuration.
@@ -123,8 +122,7 @@ async def apply_guardrails_to_request(params: dict, model_id: str, jwt_data: dic
 def handle_guardrail_violation_response(
     response: Response, model_id: str, params: dict, is_streaming: bool
 ) -> Response | None:
-    """
-    Handle guardrail violation errors in LiteLLM responses.
+    """Handle guardrail violation errors in LiteLLM responses.
 
     Checks if a 400 error response contains a guardrail violation and converts it
     into an appropriate format (streaming or non-streaming).
@@ -171,8 +169,7 @@ def handle_guardrail_violation_response(
 
 
 def invalidate_model_cache(model_id: str | None = None) -> None:
-    """
-    Manually invalidate model info cache.
+    """Manually invalidate model info cache.
 
     Note: This function is available for manual/programmatic cache clearing but is not
     automatically triggered. The cache relies on TTL expiration for normal operation.
@@ -189,8 +186,7 @@ def invalidate_model_cache(model_id: str | None = None) -> None:
 
 
 def get_model_info(model_id: str, use_cache: bool = True) -> dict | None:
-    """
-    Get model information from LiteLLM for a given model ID.
+    """Get model information from LiteLLM for a given model ID.
 
     Uses a TTL-based cache to reduce API calls while ensuring deleted/recreated
     models are eventually refreshed.
@@ -264,8 +260,7 @@ def generate_response_with_guardrail_handling(
     request: Request,
     params: dict,
 ) -> Iterator[str]:
-    """
-    Generate streaming responses with guardrail violation error handling and token usage capture.
+    """Generate streaming responses with guardrail violation error handling and token usage capture.
 
     In addition to guardrail handling, this generator watches for the SSE usage chunk
     (the chunk containing ``"usage": {...}``) emitted at the end of a streaming response.
@@ -352,14 +347,12 @@ def generate_response_with_guardrail_handling(
 
 @router.api_route("/{api_path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
 async def litellm_passthrough(request: Request, api_path: str) -> Response:
-    """
-    Pass requests directly to LiteLLM. LiteLLM and deployed models will respond here directly.
+    """Pass requests directly to LiteLLM.
 
-    Authentication is handled by auth_middleware. This function checks authorization
-    based on whether the route requires admin access.
+    LiteLLM and deployed models will respond here directly.     Authentication is handled by auth_middleware. This
+    function checks authorization     based on whether the route requires admin access.
 
-    Results are only streamed if the OpenAI-compatible request specifies streaming as part of the
-    input payload.
+    Results are only streamed if the OpenAI-compatible request specifies streaming as part of the input payload.
     """
     litellm_path = f"{LITELLM_URL}/{api_path}"
     headers = dict(request.headers.items())
@@ -558,7 +551,6 @@ async def litellm_passthrough(request: Request, api_path: str) -> Response:
         # Check for anthropic specific headers and reset the max token parameter to None
         # so LiteLLM handles the max_token value. Only if it's not an Anthropic model
         if model_id and "anthropic-beta" in headers and "anthropic-version" in headers:
-
             # Only nullify max_tokens if the model is NOT an Anthropic model
             if model_name and ".anthropic" not in model_name:
                 if "max_tokens" in params:

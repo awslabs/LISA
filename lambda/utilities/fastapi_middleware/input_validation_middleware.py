@@ -29,8 +29,7 @@ DEFAULT_MAX_REQUEST_SIZE = 1024 * 1024
 
 
 def sanitize_input(data: str) -> str:
-    """
-    Sanitize string input by removing or escaping dangerous characters.
+    """Sanitize string input by removing or escaping dangerous characters.
 
     This function:
     - Escapes HTML/XML special characters to prevent XSS
@@ -57,8 +56,7 @@ def sanitize_input(data: str) -> str:
 
 
 class InputValidationMiddleware(BaseHTTPMiddleware):
-    """
-    Middleware that validates and sanitizes all incoming requests.
+    """Middleware that validates and sanitizes all incoming requests.
 
     This middleware provides security protections against:
     - Null byte injection attacks
@@ -70,8 +68,7 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
     """
 
     def __init__(self, app: ASGIApp, max_request_size: int = DEFAULT_MAX_REQUEST_SIZE) -> None:
-        """
-        Initialize the input validation middleware.
+        """Initialize the input validation middleware.
 
         Args:
             app: The ASGI application
@@ -82,8 +79,7 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
         self.max_request_size = max_request_size
 
     def contains_null_bytes(self, data: str) -> bool:
-        """
-        Check if a string contains null bytes.
+        r"""Check if a string contains null bytes.
 
         Null bytes (\\x00) can be used to bypass input validation or cause
         unexpected behavior in string processing.
@@ -97,8 +93,7 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
         return "\x00" in data
 
     async def check_request_size(self, request: Request) -> JSONResponse | None:
-        """
-        Validate that the request body size does not exceed the configured limit.
+        """Validate that the request body size does not exceed the configured limit.
 
         Args:
             request: The incoming HTTP request
@@ -125,7 +120,7 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
                         content={
                             "error": "Payload Too Large",
                             "message": (
-                                f"Request body size exceeds maximum allowed size " f"of {self.max_request_size} bytes"
+                                f"Request body size exceeds maximum allowed size of {self.max_request_size} bytes"
                             ),
                         },
                     )
@@ -136,8 +131,7 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
         return None
 
     async def validate_query_params(self, request: Request) -> JSONResponse | None:
-        """
-        Validate query parameters for null bytes.
+        """Validate query parameters for null bytes.
 
         Args:
             request: The incoming HTTP request
@@ -165,8 +159,7 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
         return None
 
     async def validate_path_params(self, request: Request) -> JSONResponse | None:
-        """
-        Validate path parameters for null bytes.
+        """Validate path parameters for null bytes.
 
         Args:
             request: The incoming HTTP request
@@ -193,8 +186,7 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
         return None
 
     async def validate_request_body(self, request: Request) -> JSONResponse | None:
-        """
-        Validate request body for null bytes.
+        """Validate request body for null bytes.
 
         This reads the request body and checks for null bytes. If found,
         returns an error response. Otherwise, the body is consumed and needs
@@ -235,8 +227,7 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
         return None
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        """
-        Process the request through validation checks before passing to handlers.
+        """Process the request through validation checks before passing to handlers.
 
         Validation order:
         1. HTTP method validation (returns 405 if invalid)

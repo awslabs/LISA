@@ -43,8 +43,8 @@ logger = logging.getLogger(__name__)
 class BedrockKBRepositoryService(RepositoryService):
     """Service for Bedrock Knowledge Base repository operations.
 
-    Bedrock KB manages its own ingestion, chunking, and embedding pipeline.
-    LISA only tracks documents and delegates actual operations to Bedrock.
+    Bedrock KB manages its own ingestion, chunking, and embedding pipeline. LISA only tracks documents and delegates
+    actual operations to Bedrock.
     """
 
     def supports_custom_collections(self) -> bool:
@@ -58,8 +58,8 @@ class BedrockKBRepositoryService(RepositoryService):
     def get_collection_id_from_config(self, pipeline_config: dict[str, Any]) -> str:
         """For Bedrock KB, collection ID is the data source ID.
 
-        Extracts the data source ID from the pipeline config's collectionId field,
-        which should match one of the data sources in bedrockKnowledgeBaseConfig.
+        Extracts the data source ID from the pipeline config's collectionId field, which should match one of the data
+        sources in bedrockKnowledgeBaseConfig.
         """
         # The pipeline config should have a collectionId that matches a data source ID
         collection_id: str | None = pipeline_config.get("collectionId")
@@ -143,7 +143,7 @@ class BedrockKBRepositoryService(RepositoryService):
         )
         rag_document_repository.save(rag_document)
 
-        logger.info(f"Tracked document {kb_s3_path} for Bedrock KB. " f"KB will handle ingestion automatically.")
+        logger.info(f"Tracked document {kb_s3_path} for Bedrock KB. KB will handle ingestion automatically.")
         return rag_document
 
     def delete_document(
@@ -180,8 +180,8 @@ class BedrockKBRepositoryService(RepositoryService):
     ) -> None:
         """Delete all LISA-managed documents from Bedrock KB collection.
 
-        Only deletes documents with ingestion_type MANUAL or AUTO.
-        Preserves user-managed documents (ingestion_type EXISTING).
+        Only deletes documents with ingestion_type MANUAL or AUTO. Preserves user-managed documents (ingestion_type
+        EXISTING).
         """
         if not bedrock_agent_client:
             raise ValueError("Bedrock agent client required for KB operations")
@@ -210,9 +210,7 @@ class BedrockKBRepositoryService(RepositoryService):
         ]
         user_managed = [doc for doc in documents if doc.get("ingestion_type") == IngestionType.EXISTING]
 
-        logger.info(
-            f"Collection {collection_id}: " f"lisa_managed={len(lisa_managed)}, user_managed={len(user_managed)}"
-        )
+        logger.info(f"Collection {collection_id}: lisa_managed={len(lisa_managed)}, user_managed={len(user_managed)}")
 
         # Extract S3 paths for LISA-managed documents
         s3_paths = [doc.get("source", "") for doc in lisa_managed if doc.get("source")]
@@ -305,8 +303,7 @@ class BedrockKBRepositoryService(RepositoryService):
             if error_code == "ValidationException" and "auto-paused" in error_message.lower():
                 logger.warning(f"Aurora DB is resuming from auto-pause for KB {kb_id}")
                 raise ServiceUnavailableException(
-                    "The knowledge base database is currently starting up. "
-                    "Please retry your request in a few moments."
+                    "The knowledge base database is currently starting up. Please retry your request in a few moments."
                 )
 
             logger.error(f"Bedrock retrieve failed for KB {kb_id}: {error_message}")
@@ -481,9 +478,7 @@ class BedrockKBRepositoryService(RepositoryService):
         source_bucket = s3_path.split("/")[2] if s3_path.startswith("s3://") else None
 
         if source_bucket != expected_bucket:
-            logger.warning(
-                f"Document {s3_path} not from KB bucket {expected_bucket}. " f"Normalizing to KB bucket path."
-            )
+            logger.warning(f"Document {s3_path} not from KB bucket {expected_bucket}. Normalizing to KB bucket path.")
             # Normalize to KB bucket path
             return f"s3://{expected_bucket}/{os.path.basename(s3_path)}"
 

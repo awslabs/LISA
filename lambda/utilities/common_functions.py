@@ -12,8 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""
-Common helper functions for RAG Lambdas.
+"""Common helper functions for RAG Lambdas.
 
 DEPRECATED: This module is maintained for backward compatibility.
 New code should import from the specific utility modules:
@@ -61,7 +60,7 @@ class LambdaContextFilter(logging.Filter):
         record : logging.LogRecord
             The log record.
 
-        Returns
+        Returns:
         -------
         bool
             A boolean.

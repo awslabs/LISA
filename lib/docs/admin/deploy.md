@@ -23,7 +23,6 @@
 
 ## Deployment Steps
 
-
 LISA uses npm scripts for build and deployment. Key commands:
 
 | Task | Command |
@@ -36,7 +35,6 @@ LISA uses npm scripts for build and deployment. Key commands:
 | List CDK stacks | `npm run cdk:list` |
 
 The `npm run deploy` script runs the full pipeline: install dependencies, Docker checks, ECR login, model verification, build, and CDK deploy. Use `STACK=<stack-name> npm run deploy` to deploy specific stacks.
-
 
 ### Step 1: Clone the Repository
 
@@ -70,8 +68,7 @@ export CDK_DOCKER=finch # Optional, only required if not using docker as contain
 
 ### Step 3: Set Up Python and TypeScript Environments
 
-
-- ***NOTE** The code block below has two tabs for Debian & EL/AL2*
+* ***NOTE** The code block below has two tabs for Debian & EL/AL2*
 Install system dependencies and set up both Python and TypeScript environments using the project's npm scripts:
 
 * ***NOTE** The code block below has two tabs for Debian & EL/AL2*
@@ -117,7 +114,6 @@ npm run install:python
 npm install
 ```
 
-
 == MacOS
 
 ```bash
@@ -155,7 +151,6 @@ python -m pip install huggingface_hub yq
 npm run install:python
 npm install
 ```
-
 
 :::
 
@@ -198,6 +193,7 @@ litellmConfig:
 > To include prompt/response content in LiteLLM logs (published by the `LISA Serve` ECS task to CloudWatch via `litellm.log`), enable LiteLLM logging callbacks and message logging in `config-custom.yaml`.
 >
 > 1. Add the following to `litellmConfig`:
+>
 > ```yaml
 > litellmConfig:
 >   litellm_settings:
@@ -212,13 +208,14 @@ litellmConfig:
 >
 > 2. Ensure you are aware of the privacy/compliance implications: this causes request/response content to be logged.
 >
-> LiteLLM Proxy logging reference: https://docs.litellm.ai/docs/proxy/logging
+> LiteLLM Proxy logging reference: <https://docs.litellm.ai/docs/proxy/logging>
 
 > [!IMPORTANT]
 > API Gateway audit logging (strict opt-in):
 > LISA can emit audit logs for API Gateway requests (who initiated the request, what action was taken, and a sanitized JSON body) only when enabled via `auditLoggingConfig` in `config-custom.yaml`.
 >
 > Example (opt-in to specific API prefixes):
+>
 > ```yaml
 > auditLoggingConfig:
 >   enabled: true
@@ -227,6 +224,7 @@ litellmConfig:
 > ```
 >
 > Example (`auditAll`):
+>
 > ```yaml
 > auditLoggingConfig:
 >   enabled: true
@@ -300,7 +298,6 @@ This command verifies if the model's weights are already present in your S3 buck
 > dictated which models were deployed.
 > **NOTE**
 
-
 > For air-gapped systems, before running `npm run model:check` you should manually download model artifacts and place them in a `models` directory at the project root, using the structure: `models/<model-id>`.
 
 > **NOTE**
@@ -341,9 +338,8 @@ This approach builds all necessary components in a commercial region with full i
 
    This generates:
 
-
 * Lambda function zip files in `./dist/layers/*.zip` (from `build:archive`)
-   * Docker images exported as `./dist/images/*.tar` files (from `build-assets --include-images`)
+  * Docker images exported as `./dist/images/*.tar` files (from `build-assets --include-images`)
 
 #### Step 2: Transfer to ADC Region
 

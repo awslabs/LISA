@@ -25,8 +25,7 @@ doc_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["R
 
 
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any] | Any:
-    """
-    Remove LISA-managed documents from repository.
+    """Remove LISA-managed documents from repository.
 
     Only deletes documents with ingestion_type of MANUAL or AUTO.
     Preserves EXISTING documents (user-managed).

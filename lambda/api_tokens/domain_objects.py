@@ -19,12 +19,12 @@ from utilities.time import now_seconds
 
 
 def default_expiration() -> int:
-    """Calculate default token expiration (90 days from now)"""
+    """Calculate default token expiration (90 days from now)."""
     return now_seconds() + int(timedelta(days=90).total_seconds())
 
 
 class CreateTokenAdminRequest(BaseModel):
-    """Admin request to create token for a user or system"""
+    """Admin request to create token for a user or system."""
 
     tokenExpiration: int = Field(
         default_factory=default_expiration, description="Unix timestamp when token expires. Defaults to 90 days"
@@ -43,7 +43,7 @@ class CreateTokenAdminRequest(BaseModel):
 
 
 class CreateTokenUserRequest(BaseModel):
-    """User request to create their own token"""
+    """User request to create their own token."""
 
     name: str = Field(description="Human-readable name for the token")
     tokenExpiration: int = Field(
@@ -71,7 +71,7 @@ class CreateTokenResponse(BaseModel):
 
 
 class TokenInfo(BaseModel):
-    """Token information (without the actual token value)"""
+    """Token information (without the actual token value)."""
 
     tokenUUID: str
     tokenExpiration: int

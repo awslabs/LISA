@@ -12,8 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""
-Shared helpers for API Gateway audit logging.
+"""Shared helpers for API Gateway audit logging.
 
 Strict opt-in behavior:
 - When disabled, callers must not emit audit logs.
@@ -72,20 +71,18 @@ def audit_all() -> bool:
 
 
 def audit_include_json_body() -> bool:
-    """
-    When false (default), callers must not emit AUDIT_API_GATEWAY_REQUEST_BODY.
+    """When false (default), callers must not emit AUDIT_API_GATEWAY_REQUEST_BODY.
+
     CDK sets this only when audit logging is enabled and includeJsonBody is true.
     """
     return _env_bool("LISA_AUDIT_INCLUDE_JSON_BODY")
 
 
 def log_audit_event(logger: logging.Logger, event_type: str, payload: dict[str, Any]) -> None:
-    """
-    Emit audit data so it appears in CloudWatch log streams.
+    """Emit audit data so it appears in CloudWatch log streams.
 
-    Lambda's configured formatter (see ``setup_root_logging``) only prints the log
-    ``message`` string, not ``logging`` ``extra`` fields. This helper appends a
-    compact JSON object after the event type for search and Logs Insights (e.g.
+    Lambda's configured formatter (see ``setup_root_logging``) only prints the log ``message`` string, not ``logging``
+    ``extra`` fields. This helper appends a compact JSON object after the event type for search and Logs Insights (e.g.
     parse the substring after the first space as JSON).
     """
     record: dict[str, Any] = {"event_type": event_type, **payload}
@@ -154,8 +151,7 @@ def _path_starts_with_prefix(path: str, prefix: str) -> bool:
 
 
 def get_matched_audit_prefix(path: str) -> str | None:
-    """
-    Return the matched prefix (e.g. "/session") when auditing should apply.
+    """Return the matched prefix (e.g. "/session") when auditing should apply.
 
     Returns:
         - "ALL" when auditAll is enabled
@@ -184,8 +180,7 @@ def should_audit_path(path: str) -> bool:
 
 
 def get_method_and_path_from_method_arn(method_arn: str) -> tuple[str, str]:
-    """
-    Parse execute-api methodArn into (http_method, request_path).
+    """Parse execute-api methodArn into (http_method, request_path).
 
     Example:
       arn:aws:execute-api:us-east-1:123:abc123/prod/GET/repository/foo
@@ -206,8 +201,7 @@ def get_method_and_path_from_method_arn(method_arn: str) -> tuple[str, str]:
 
 
 def sanitize_json_for_audit(value: Any) -> Any:
-    """
-    Recursively redact sensitive keys from JSON values.
+    """Recursively redact sensitive keys from JSON values.
 
     This is intentionally permissive: it redacts by key name anywhere in the structure.
     """
@@ -226,8 +220,7 @@ def sanitize_json_for_audit(value: Any) -> Any:
 
 
 def sanitize_json_body_for_audit(body: Any) -> str:
-    """
-    Convert body into a sanitized JSON string suitable for audit logging.
+    """Convert body into a sanitized JSON string suitable for audit logging.
 
     Returns placeholder strings for non-JSON or oversized bodies.
     """

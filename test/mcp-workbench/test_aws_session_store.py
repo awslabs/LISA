@@ -83,11 +83,10 @@ def test_get_session_respects_expiration() -> None:
 
 @pytest.mark.parametrize("safety_margin_seconds", [0, 30])
 def test_get_session_treats_near_expiration_as_expired(safety_margin_seconds: int) -> None:
-    """
-    Ensure that sessions very close to expiration are treated as expired.
+    """Ensure that sessions very close to expiration are treated as expired.
 
-    This gives us a small safety buffer so MCP tools don't start long-running
-    operations with credentials that are about to expire.
+    This gives us a small safety buffer so MCP tools don't start long-running operations with credentials that are about
+    to expire.
     """
     store = InMemoryAwsSessionStore(safety_margin_seconds=safety_margin_seconds)
     # Expires in 10 seconds; with a 30 second safety margin this should be expired.

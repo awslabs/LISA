@@ -44,8 +44,7 @@ class ToolDiscovery:
     """Discovers and loads tools from Python files."""
 
     def __init__(self, tools_directory: str):
-        """
-        Initialize the tool discovery.
+        """Initialize the tool discovery.
 
         Args:
             tools_directory: Path to directory containing tool files
@@ -61,8 +60,7 @@ class ToolDiscovery:
             raise ValueError(f"Tools directory is not a directory: {tools_directory}")
 
     def discover_tools(self) -> list[ToolInfo]:
-        """
-        Discover all tools in the tools directory.
+        """Discover all tools in the tools directory.
 
         Returns:
             List of discovered tool information
@@ -86,8 +84,7 @@ class ToolDiscovery:
         return tools
 
     def rescan_tools(self) -> RescanResult:
-        """
-        Rescan the tools directory and return changes.
+        """Rescan the tools directory and return changes.
 
         Returns:
             RescanResult with information about changes
@@ -150,8 +147,7 @@ class ToolDiscovery:
                     pass
 
     def _discover_tools_in_file(self, file_path: Path) -> list[ToolInfo]:
-        """
-        Discover tools in a single Python file.
+        """Discover tools in a single Python file.
 
         Args:
             file_path: Path to the Python file
@@ -203,7 +199,6 @@ class ToolDiscovery:
 
             # Check if it's a subclass of BaseTool (but not BaseTool itself)
             if issubclass(obj, BaseTool) and obj != BaseTool and not inspect.isabstract(obj):
-
                 try:
                     # Try to instantiate the tool to get its metadata
                     # We need to handle different constructor signatures

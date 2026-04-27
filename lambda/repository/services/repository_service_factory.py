@@ -27,8 +27,7 @@ from .repository_service import RepositoryService
 class RepositoryServiceFactory:
     """Factory for creating repository-specific service instances.
 
-    Encapsulates repository-specific behavior, eliminating the need for
-    conditional logic throughout the codebase.
+    Encapsulates repository-specific behavior, eliminating the need for conditional logic throughout the codebase.
     """
 
     # Registry mapping repository types to service classes
@@ -55,9 +54,7 @@ class RepositoryServiceFactory:
 
         service_class = cls._services.get(repo_type)
         if not service_class:
-            raise ValueError(
-                f"Unsupported repository type: {repo_type}. " f"Supported types: {list(cls._services.keys())}"
-            )
+            raise ValueError(f"Unsupported repository type: {repo_type}. Supported types: {list(cls._services.keys())}")
 
         return service_class(repository)
 

@@ -12,11 +12,9 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""
-Integration tests for cross-repository collection API.
+"""Integration tests for cross-repository collection API.
 
-These tests verify end-to-end functionality with real repository implementations
-(using mocked DynamoDB tables).
+These tests verify end-to-end functionality with real repository implementations (using mocked DynamoDB tables).
 """
 
 import os
@@ -168,8 +166,7 @@ def integration_collection_service(mock_dynamodb_tables):
 
 
 def test_cross_repository_query_integration(integration_collection_service, mock_dynamodb_tables):
-    """
-    Full flow: multiple repos in DB → query → aggregated results.
+    """Full flow: multiple repos in DB → query → aggregated results.
 
     Integration test verifying:
     1. Service queries multiple repositories
@@ -203,8 +200,7 @@ def test_cross_repository_query_integration(integration_collection_service, mock
 
 
 def test_permission_enforcement_integration(integration_collection_service, mock_dynamodb_tables):
-    """
-    Full flow: repos with different permissions → filtered results.
+    """Full flow: repos with different permissions → filtered results.
 
     Integration test verifying:
     1. Repository-level permissions are enforced
@@ -237,8 +233,7 @@ def test_permission_enforcement_integration(integration_collection_service, mock
 
 
 def test_pagination_with_large_dataset_integration(integration_collection_service, mock_dynamodb_tables):
-    """
-    Full flow: 1000+ collections → paginated results.
+    """Full flow: 1000+ collections → paginated results.
 
     Integration test verifying:
     1. Large datasets trigger appropriate pagination strategy
@@ -315,8 +310,7 @@ def test_pagination_with_large_dataset_integration(integration_collection_servic
 
 
 def test_scalable_pagination_activation_integration(integration_collection_service, mock_dynamodb_tables):
-    """
-    Full flow: large dataset triggers scalable strategy.
+    """Full flow: large dataset triggers scalable strategy.
 
     Integration test verifying:
     1. Service estimates collection count
@@ -345,8 +339,7 @@ def test_scalable_pagination_activation_integration(integration_collection_servi
 
 
 def test_repository_metadata_enrichment_integration(integration_collection_service, mock_dynamodb_tables):
-    """
-    Full flow: collections enriched with repo names.
+    """Full flow: collections enriched with repo names.
 
     Integration test verifying:
     1. Collections are queried from repositories

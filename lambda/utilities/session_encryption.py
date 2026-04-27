@@ -65,8 +65,7 @@ def _get_kms_key_arn() -> str:
 
 
 def _generate_data_key(key_arn: str, encryption_context: dict[str, str] | None = None) -> tuple[bytes, bytes]:
-    """
-    Generate a data key from KMS.
+    """Generate a data key from KMS.
 
     Args:
         key_arn: KMS key ARN
@@ -86,8 +85,7 @@ def _generate_data_key(key_arn: str, encryption_context: dict[str, str] | None =
 
 
 def _decrypt_data_key(encrypted_data_key: bytes, encryption_context: dict[str, str] | None = None) -> bytes:
-    """
-    Decrypt a data key using KMS.
+    """Decrypt a data key using KMS.
 
     Args:
         encrypted_data_key: Encrypted data key
@@ -105,8 +103,7 @@ def _decrypt_data_key(encrypted_data_key: bytes, encryption_context: dict[str, s
 
 
 def _create_encryption_context(user_id: str, session_id: str) -> dict[str, str]:
-    """
-    Create encryption context for KMS operations.
+    """Create encryption context for KMS operations.
 
     Args:
         user_id: User ID
@@ -119,8 +116,7 @@ def _create_encryption_context(user_id: str, session_id: str) -> dict[str, str]:
 
 
 def encrypt_session_data(data: Any, user_id: str, session_id: str) -> str:
-    """
-    Encrypt session data using KMS envelope encryption.
+    """Encrypt session data using KMS envelope encryption.
 
     Args:
         data: Data to encrypt (will be JSON serialized)
@@ -162,8 +158,7 @@ def encrypt_session_data(data: Any, user_id: str, session_id: str) -> str:
 
 
 def decrypt_session_data(encrypted_data: str, user_id: str, session_id: str) -> Any:
-    """
-    Decrypt session data using KMS envelope encryption.
+    """Decrypt session data using KMS envelope encryption.
 
     Args:
         encrypted_data: Base64 encoded encrypted data
@@ -201,8 +196,7 @@ def decrypt_session_data(encrypted_data: str, user_id: str, session_id: str) -> 
 
 
 def is_encrypted_data(data: str) -> bool:
-    """
-    Check if a string appears to be encrypted session data.
+    """Check if a string appears to be encrypted session data.
 
     Args:
         data: String to check
@@ -227,8 +221,7 @@ def is_encrypted_data(data: str) -> bool:
 
 
 def migrate_session_to_encrypted(session_data: dict[str, Any], user_id: str, session_id: str) -> dict[str, Any]:
-    """
-    Migrate a session from unencrypted to encrypted format.
+    """Migrate a session from unencrypted to encrypted format.
 
     Args:
         session_data: Session data dictionary
@@ -265,8 +258,7 @@ def migrate_session_to_encrypted(session_data: dict[str, Any], user_id: str, ses
 
 
 def decrypt_session_fields(session_data: dict[str, Any], user_id: str, session_id: str) -> dict[str, Any]:
-    """
-    Decrypt encrypted fields in session data.
+    """Decrypt encrypted fields in session data.
 
     Args:
         session_data: Session data dictionary

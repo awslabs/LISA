@@ -32,15 +32,14 @@ from .main import FoundationModel, LisaLlm
 class LisaTextgen(LLM):
     """Lisa text generation adapter.
 
-    To use, you should have the `lisapy` python package installed and
-    a Lisa API available.
+    To use, you should have the `lisapy` python package installed and a Lisa API available.
     """
 
     provider: str
     """Provider of the LISA serve model  e.g., ecs.textgen.tgi."""
 
     model_name: str
-    """Name of LISA serve model e.g. Mixtral-8x7B-Instruct-v0.1"""
+    """Name of LISA serve model e.g. Mixtral-8x7B-Instruct-v0.1."""
 
     client: LisaLlm
     """An instance of the Lisa Llm client."""
@@ -112,10 +111,13 @@ class LisaOpenAIEmbeddings(BaseModel, Embeddings):
     """Model name for Embeddings API."""
 
     api_token: str
-    """API Token for communicating with LISA Serve. This can be a custom API token or the IdP Bearer token."""
+    """API Token for communicating with LISA Serve.
+
+    This can be a custom API token or the IdP Bearer token.
+    """
 
     verify: bool | str
-    """Cert path or option for verifying SSL"""
+    """Cert path or option for verifying SSL."""
 
     _embedding_model: OpenAIEmbeddings = PrivateAttr(default_factory=None)
     """OpenAI-compliant client for making requests against embedding model."""
@@ -153,8 +155,7 @@ class LisaOpenAIEmbeddings(BaseModel, Embeddings):
 class LisaEmbeddings(BaseModel, Embeddings):
     """Lisa text embedding adapter.
 
-    To use, you should have the `lisapy` python package installed and
-    a Lisa API available.
+    To use, you should have the `lisapy` python package installed and a Lisa API available.
     """
 
     model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
@@ -163,7 +164,7 @@ class LisaEmbeddings(BaseModel, Embeddings):
     """Provider of the LISA serve model  e.g., ecs.textgen.tgi."""
 
     model_name: str
-    """Name of LISA serve model e.g. Mistral-8x7B-Instruct-v0.1"""
+    """Name of LISA serve model e.g. Mistral-8x7B-Instruct-v0.1."""
 
     client: LisaLlm
     """An instance of the Lisa client."""
@@ -182,7 +183,7 @@ class LisaEmbeddings(BaseModel, Embeddings):
         texts : List[str]
             The list of texts to embed.
 
-        Returns
+        Returns:
         -------
         List[List[float]]
             List of embeddings, one for each text.
@@ -197,7 +198,7 @@ class LisaEmbeddings(BaseModel, Embeddings):
         text : str
             The text to embed.
 
-        Returns
+        Returns:
         -------
         List[float]
             Embedding for the text.
@@ -212,7 +213,7 @@ class LisaEmbeddings(BaseModel, Embeddings):
         text : str
             The text to embed.
 
-        Returns
+        Returns:
         -------
         List[float]
             Embedding for the text.
@@ -227,7 +228,7 @@ class LisaEmbeddings(BaseModel, Embeddings):
         texts : List[str]
             The list of texts to embed.
 
-        Returns
+        Returns:
         -------
         List[List[float]]
             List of embeddings, one for each text.

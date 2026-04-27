@@ -76,10 +76,10 @@ def test_generate_chunks_success_with_valid_path(sample_ingestion_job):
     """Test generate_chunks with valid S3 path."""
     # Use a supported file extension for the test
     sample_ingestion_job.s3_path = "s3://test-bucket/test-key.txt"
-    with patch("utilities.file_processing.boto3.client") as mock_client, patch(
-        "utilities.file_processing.s3"
-    ) as mock_s3_global:
-
+    with (
+        patch("utilities.file_processing.boto3.client") as mock_client,
+        patch("utilities.file_processing.s3") as mock_s3_global,
+    ):
         # Setup mocks
         mock_s3 = MagicMock()
         mock_client.return_value = mock_s3

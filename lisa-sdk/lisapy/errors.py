@@ -72,7 +72,7 @@ def parse_error(status_code: int, response: ErrorResponse = None) -> Exception:
     response : ErrorResponse, optional
         API response object (requests.Response) or pre-extracted error message.
 
-    Returns
+    Returns:
     -------
     Exception
         Parsed exception.

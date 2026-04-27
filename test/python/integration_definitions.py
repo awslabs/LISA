@@ -13,13 +13,11 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""
-Resource definitions and deploy lists for the LISA integration setup test.
+"""Resource definitions and deploy lists for the LISA integration setup test.
 
-To control what gets deployed, edit the deploy_* lists at the bottom of this file.
-To add a new resource, add an entry to the appropriate *_DEFINITIONS dict and
-optionally add its key to the corresponding deploy_* list. Feel free to use this as
-an example for deploying models.
+To control what gets deployed, edit the deploy_* lists at the bottom of this file. To add a new resource, add an entry
+to the appropriate *_DEFINITIONS dict and optionally add its key to the corresponding deploy_* list. Feel free to use
+this as an example for deploying models.
 """
 
 # ---------------------------------------------------------------------------

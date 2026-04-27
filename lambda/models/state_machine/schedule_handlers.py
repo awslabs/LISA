@@ -33,7 +33,7 @@ model_table = dynamodb.Table(os.environ.get("MODEL_TABLE_NAME"))
 
 
 def handle_schedule_creation(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """Create Auto Scaling scheduled actions for the model if scheduling is configured"""
+    """Create Auto Scaling scheduled actions for the model if scheduling is configured."""
     logger.info(f"Processing schedule creation for model: {event.get('modelId')}")
     output_dict = event.copy()
 
@@ -85,7 +85,7 @@ def handle_schedule_creation(event: dict[str, Any], context: Any) -> dict[str, A
 
 
 def handle_schedule_update(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """Update Auto Scaling scheduled actions when schedule configuration changes"""
+    """Update Auto Scaling scheduled actions when schedule configuration changes."""
     logger.info(f"Processing schedule update for model: {event.get('modelId')}")
     output_dict = event.copy()
 
@@ -127,7 +127,7 @@ def handle_schedule_update(event: dict[str, Any], context: Any) -> dict[str, Any
 
 
 def handle_cleanup_schedule(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """Clean up scheduled actions before deleting the model"""
+    """Clean up scheduled actions before deleting the model."""
     logger.info(f"Cleaning up schedule for model: {event.get('modelId')}")
     output_dict = event.copy()
 
@@ -146,7 +146,7 @@ def handle_cleanup_schedule(event: dict[str, Any], context: Any) -> dict[str, An
 
 
 def update_schedule_failure_status(model_id: str, error_message: str) -> None:
-    """Update model with schedule failure status using boolean flags"""
+    """Update model with schedule failure status using boolean flags."""
     try:
         failure_info = {"timestamp": iso_string(), "error": error_message, "retryCount": 0}
 

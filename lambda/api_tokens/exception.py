@@ -26,12 +26,12 @@ class TokenNotFoundError(Exception):
 
 
 class UnauthorizedError(Exception):
-    """Raised when user is not authorized to perform an action"""
+    """Raised when user is not authorized to perform an action."""
 
     pass
 
 
 class ForbiddenError(Exception):
-    """Raised when user lacks required permissions"""
+    """Raised when user lacks required permissions."""
 
     pass

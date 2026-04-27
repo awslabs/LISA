@@ -21,11 +21,10 @@ from .session_models import AwsSessionRecord
 
 @dataclass
 class InMemoryAwsSessionStore:
-    """
-    Simple in-process implementation of an AWS session store.
+    """Simple in-process implementation of an AWS session store.
 
-    This is suitable for a single MCP Workbench process. For multi-instance
-    deployments, a distributed store such as Redis should be used instead.
+    This is suitable for a single MCP Workbench process. For multi-instance deployments, a distributed store such as
+    Redis should be used instead.
     """
 
     safety_margin_seconds: int = 0
@@ -38,9 +37,7 @@ class InMemoryAwsSessionStore:
         self._sessions[key] = record
 
     def get_session(self, user_id: str, session_id: str) -> AwsSessionRecord | None:
-        """
-        Retrieve the session for a given user/session, or None if missing/expired.
-        """
+        """Retrieve the session for a given user/session, or None if missing/expired."""
         key = (user_id, session_id)
         record = self._sessions.get(key)
         if record is None:

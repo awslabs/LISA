@@ -814,8 +814,9 @@ def test_handle_add_guardrails_to_litellm_with_guardrails(model_table, guardrail
         },
     }
 
-    with patch("models.state_machine.create_model.model_table", model_table), patch(
-        "models.state_machine.create_model.guardrails_table", guardrails_table
+    with (
+        patch("models.state_machine.create_model.model_table", model_table),
+        patch("models.state_machine.create_model.guardrails_table", guardrails_table),
     ):
         result = handle_add_guardrails_to_litellm(event, lambda_context)
 
@@ -860,8 +861,9 @@ def test_fetch_context_window_from_litellm_no_max_input_tokens():
         "model_info": {"id": "test-litellm-id"},
     }
 
-    with patch("models.state_machine.create_model.litellm_client", mock_litellm_client), patch(
-        "models.state_machine.create_model.time.sleep"
+    with (
+        patch("models.state_machine.create_model.litellm_client", mock_litellm_client),
+        patch("models.state_machine.create_model.time.sleep"),
     ):
         result = _fetch_context_window_from_litellm("test-litellm-id")
         assert result is None
@@ -871,8 +873,9 @@ def test_fetch_context_window_from_litellm_exception():
     """Test fetching context window from LiteLLM when get_model raises an exception."""
     mock_litellm_client.get_model.side_effect = Exception("Connection error")
 
-    with patch("models.state_machine.create_model.litellm_client", mock_litellm_client), patch(
-        "models.state_machine.create_model.time.sleep"
+    with (
+        patch("models.state_machine.create_model.litellm_client", mock_litellm_client),
+        patch("models.state_machine.create_model.time.sleep"),
     ):
         result = _fetch_context_window_from_litellm("test-litellm-id")
         assert result is None
@@ -895,8 +898,9 @@ def test_fetch_context_window_from_s3_success():
 
     mock_s3.exceptions = MockS3Exceptions()
 
-    with patch("models.state_machine.create_model.s3_client", mock_s3), patch.dict(
-        os.environ, {"MODELS_BUCKET_NAME": "test-bucket"}
+    with (
+        patch("models.state_machine.create_model.s3_client", mock_s3),
+        patch.dict(os.environ, {"MODELS_BUCKET_NAME": "test-bucket"}),
     ):
         result = _fetch_context_window_from_s3("mistralai/Mistral-7B-Instruct-v0.3", "textgen")
         assert result == 32768
@@ -928,8 +932,9 @@ def test_fetch_context_window_from_s3_imagegen_fallback():
         {"Body": MagicMock(read=lambda: json.dumps({"max_position_embeddings": 77}).encode())},
     ]
 
-    with patch("models.state_machine.create_model.s3_client", mock_s3), patch.dict(
-        os.environ, {"MODELS_BUCKET_NAME": "test-bucket"}
+    with (
+        patch("models.state_machine.create_model.s3_client", mock_s3),
+        patch.dict(os.environ, {"MODELS_BUCKET_NAME": "test-bucket"}),
     ):
         result = _fetch_context_window_from_s3("sd-model/stable-diffusion-v1", "imagegen")
         assert result == 77
@@ -952,8 +957,9 @@ def test_fetch_context_window_from_s3_no_key_found():
     mock_s3.exceptions = MockS3Exceptions()
     mock_s3.get_object.side_effect = MockS3Exceptions.NoSuchKey("not found")
 
-    with patch("models.state_machine.create_model.s3_client", mock_s3), patch.dict(
-        os.environ, {"MODELS_BUCKET_NAME": "test-bucket"}
+    with (
+        patch("models.state_machine.create_model.s3_client", mock_s3),
+        patch.dict(os.environ, {"MODELS_BUCKET_NAME": "test-bucket"}),
     ):
         result = _fetch_context_window_from_s3("nonexistent-model", "textgen")
         assert result is None
@@ -973,8 +979,9 @@ def test_handle_enrich_context_window_non_lisa_managed(model_table, lambda_conte
         "model_info": {"id": "test-litellm-id", "max_input_tokens": 100000},
     }
 
-    with patch("models.state_machine.create_model.model_table", model_table), patch(
-        "models.state_machine.create_model.litellm_client", mock_litellm_client
+    with (
+        patch("models.state_machine.create_model.model_table", model_table),
+        patch("models.state_machine.create_model.litellm_client", mock_litellm_client),
     ):
         result = handle_enrich_context_window(event, lambda_context)
 
@@ -1007,9 +1014,11 @@ def test_handle_enrich_context_window_lisa_managed(model_table, lambda_context):
         "Body": MagicMock(read=lambda: json.dumps({"max_position_embeddings": 32768}).encode())
     }
 
-    with patch("models.state_machine.create_model.model_table", model_table), patch(
-        "models.state_machine.create_model.s3_client", mock_s3
-    ), patch.dict(os.environ, {"MODELS_BUCKET_NAME": "test-bucket"}):
+    with (
+        patch("models.state_machine.create_model.model_table", model_table),
+        patch("models.state_machine.create_model.s3_client", mock_s3),
+        patch.dict(os.environ, {"MODELS_BUCKET_NAME": "test-bucket"}),
+    ):
         result = handle_enrich_context_window(event, lambda_context)
 
         assert result["modelId"] == "lisa-model"
@@ -1052,9 +1061,11 @@ def test_handle_enrich_context_window_non_blocking_on_failure(model_table, lambd
 
     mock_litellm_client.get_model.side_effect = Exception("LiteLLM is down")
 
-    with patch("models.state_machine.create_model.model_table", model_table), patch(
-        "models.state_machine.create_model.litellm_client", mock_litellm_client
-    ), patch("models.state_machine.create_model.time.sleep"):
+    with (
+        patch("models.state_machine.create_model.model_table", model_table),
+        patch("models.state_machine.create_model.litellm_client", mock_litellm_client),
+        patch("models.state_machine.create_model.time.sleep"),
+    ):
         # Should NOT raise
         result = handle_enrich_context_window(event, lambda_context)
         assert result["modelId"] == "fail-model"

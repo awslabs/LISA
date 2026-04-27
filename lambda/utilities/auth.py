@@ -77,8 +77,8 @@ def get_user_context(event: dict[str, Any]) -> tuple[str, bool, list[str]]:
 def get_authorizer(event: Any) -> dict[str, Any]:
     """Return the API Gateway Lambda authorizer context dict.
 
-    This is a small shared helper so other parts of the codebase don't need to
-    re-implement the same defensive extraction logic.
+    This is a small shared helper so other parts of the codebase don't need to re-implement the same defensive
+    extraction logic.
     """
     if not isinstance(event, dict):
         return {}
@@ -86,8 +86,7 @@ def get_authorizer(event: Any) -> dict[str, Any]:
 
 
 def user_has_group_access(user_groups: list[str], allowed_groups: list[str]) -> bool:
-    """
-    Check if user has access based on group membership.
+    """Check if user has access based on group membership.
 
     Args:
         user_groups: List of groups the user belongs to
@@ -137,12 +136,12 @@ def get_management_key() -> str:
 
 # API token utility functions
 def generate_token() -> str:
-    """Generate cryptographically secure random token (64 bytes = 128 hex chars)"""
+    """Generate cryptographically secure random token (64 bytes = 128 hex chars)."""
     return secrets.token_hex(64)
 
 
 def hash_token(token: str) -> str:
-    """Create SHA-256 hash of token"""
+    """Create SHA-256 hash of token."""
     return hashlib.sha256(token.encode()).hexdigest()
 
 

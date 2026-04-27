@@ -12,11 +12,10 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""
-AWS session management package for MCP Workbench.
+"""AWS session management package for MCP Workbench.
 
-This package contains helper types and utilities for managing short-lived
-AWS session credentials on a per-(user, session) basis.
+This package contains helper types and utilities for managing short-lived AWS session credentials on a per-(user,
+session) basis.
 """
 
 from .identity import CallerIdentity as CallerIdentity

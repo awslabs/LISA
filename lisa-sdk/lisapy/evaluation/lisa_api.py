@@ -14,8 +14,7 @@
 
 """Evaluator for LISA API backends (OpenSearch, PGVector).
 
-A single parameterized class covering any vector store backend
-accessible via the LISA API's similarity_search endpoint.
+A single parameterized class covering any vector store backend accessible via the LISA API's similarity_search endpoint.
 """
 
 from lisapy.api import LisaApi

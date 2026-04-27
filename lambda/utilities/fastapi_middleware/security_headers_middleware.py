@@ -18,8 +18,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, Request, RequestRespon
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    """
-    Middleware that adds security headers to all HTTP responses.
+    """Middleware that adds security headers to all HTTP responses.
 
     Security headers included:
     - Strict-Transport-Security: Forces HTTPS connections
@@ -34,8 +33,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        """
-        Process the request and add security headers to the response.
+        """Process the request and add security headers to the response.
 
         Args:
             request: The incoming HTTP request

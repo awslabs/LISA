@@ -14,10 +14,9 @@
 
 """Helpers for extracting caller identity inside MCP tool functions.
 
-Tool functions call :func:`get_caller_identity` to obtain the current
-:class:`CallerIdentity`.  On first access within a request, the function
-reads HTTP headers from the underlying MCP request context and caches the
-result in a ``ContextVar``.
+Tool functions call :func:`get_caller_identity` to obtain the current :class:`CallerIdentity`.  On first access within a
+request, the function reads HTTP headers from the underlying MCP request context and caches the result in a
+``ContextVar``.
 
 No FastMCP middleware is required — identity is resolved lazily on demand.
 """
@@ -51,8 +50,7 @@ class CallerIdentityError(Exception):
 def decode_jwt_payload(token: str) -> dict:
     """Extract claims from a JWT payload via base64 decode (no signature check).
 
-    The OIDCHTTPBearer middleware already verified the signature, so this
-    is purely for reading claims.
+    The OIDCHTTPBearer middleware already verified the signature, so this is purely for reading claims.
     """
     parts = token.split(".")
     if len(parts) < 2:
@@ -68,8 +66,7 @@ def decode_jwt_payload(token: str) -> dict:
 def _extract_identity_from_headers(headers: dict[str, str]) -> CallerIdentity | None:
     """Try to build a :class:`CallerIdentity` from raw HTTP headers.
 
-    Returns ``None`` when either ``user_id`` or ``session_id`` cannot be
-    determined.
+    Returns ``None`` when either ``user_id`` or ``session_id`` cannot be determined.
     """
     user_id: str | None = headers.get("x-user-id")
     if not user_id:
@@ -90,8 +87,8 @@ def _extract_identity_from_headers(headers: dict[str, str]) -> CallerIdentity | 
 def _get_headers_from_request_ctx() -> dict[str, str]:
     """Read HTTP headers directly from the MCP low-level request context.
 
-    Falls back to FastMCP's ``get_http_headers()`` if the direct approach
-    fails.  Returns an empty dict if neither method succeeds.
+    Falls back to FastMCP's ``get_http_headers()`` if the direct approach fails.  Returns an empty dict if neither
+    method succeeds.
     """
     # Approach 1: read directly from the MCP request_ctx ContextVar
     try:
@@ -157,7 +154,7 @@ def _populate_identity_from_http() -> CallerIdentity | None:
         has_auth = "authorization" in headers
         has_session = "x-session-id" in headers
         logger.warning(
-            "identity: extraction failed — authorization present=%s, " "x-session-id present=%s, header keys=%s",
+            "identity: extraction failed — authorization present=%s, x-session-id present=%s, header keys=%s",
             has_auth,
             has_session,
             sorted(headers.keys()),
@@ -168,12 +165,11 @@ def _populate_identity_from_http() -> CallerIdentity | None:
 def get_caller_identity() -> CallerIdentity:
     """Return the caller identity for the current MCP tool invocation.
 
-    On first call within a request, lazily reads HTTP headers from the
-    MCP request context and caches the result.  Subsequent calls in the
-    same context return the cached value.
+    On first call within a request, lazily reads HTTP headers from the MCP request context and caches the result.
+    Subsequent calls in the same context return the cached value.
 
-    Raises :class:`CallerIdentityError` when identity cannot be determined
-    (required headers absent or not in an MCP request context).
+    Raises :class:`CallerIdentityError` when identity cannot be determined (required headers absent or not in an MCP
+    request context).
     """
     identity = _current_identity.get()
     if identity is not None:
@@ -186,7 +182,6 @@ def get_caller_identity() -> CallerIdentity:
 
     if identity is None:
         raise CallerIdentityError(
-            "Cannot determine caller identity. "
-            "Ensure the MCP connection sends Authorization and X-Session-Id headers."
+            "Cannot determine caller identity. Ensure the MCP connection sends Authorization and X-Session-Id headers."
         )
     return identity

@@ -37,7 +37,7 @@ def setup_env(monkeypatch):
 
 
 def test_vector_store_repo_find_by_id():
-    """Test vector store repository find by id"""
+    """Test vector store repository find by id."""
     with patch("boto3.resource") as mock_resource:
         mock_table = Mock()
         mock_resource.return_value.Table.return_value = mock_table
@@ -66,7 +66,7 @@ def test_vector_store_repo_find_by_id():
 
 
 def test_vector_store_repo_get_registered():
-    """Test vector store repository get registered repositories"""
+    """Test vector store repository get registered repositories."""
     with patch("boto3.resource") as mock_resource:
         mock_table = Mock()
         mock_resource.return_value.Table.return_value = mock_table
@@ -96,7 +96,7 @@ def test_vector_store_repo_get_registered():
 
 
 def test_vector_store_repo_save():
-    """Test vector store repository save"""
+    """Test vector store repository save."""
     with patch("boto3.resource") as mock_resource:
         mock_table = Mock()
         mock_resource.return_value.Table.return_value = mock_table
@@ -127,7 +127,7 @@ def test_vector_store_repo_save():
 
 
 def test_vector_store_repo_delete():
-    """Test vector store repository delete"""
+    """Test vector store repository delete."""
     with patch("boto3.resource") as mock_resource:
         mock_table = Mock()
         mock_resource.return_value.Table.return_value = mock_table
@@ -144,7 +144,7 @@ def test_vector_store_repo_delete():
 
 
 def test_vector_store_repo_get_status():
-    """Test vector store repository get status"""
+    """Test vector store repository get status."""
     with patch("boto3.resource") as mock_resource:
         mock_table = Mock()
         mock_resource.return_value.Table.return_value = mock_table

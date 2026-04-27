@@ -28,15 +28,14 @@ class DecimalEncoder(json.JSONEncoder):
     """JSON encoder that handles Decimal, datetime, and Pydantic objects."""
 
     def default(self, obj: Any) -> Any:
-        """
-        Encode special types to JSON-serializable formats.
+        """Encode special types to JSON-serializable formats.
 
         Parameters
         ----------
         obj : Any
             Object to encode.
 
-        Returns
+        Returns:
         -------
         Any
             JSON-serializable representation.
@@ -52,15 +51,14 @@ class DecimalEncoder(json.JSONEncoder):
 
 
 def _serialize_pydantic(obj: Any) -> Any:
-    """
-    Recursively serialize Pydantic models to dictionaries.
+    """Recursively serialize Pydantic models to dictionaries.
 
     Parameters
     ----------
     obj : Any
         Object to serialize.
 
-    Returns
+    Returns:
     -------
     Any
         Serialized object.
@@ -75,8 +73,7 @@ def _serialize_pydantic(obj: Any) -> Any:
 
 
 def generate_html_response(status_code: int, response_body: Any) -> dict[str, str | int | dict[str, str]]:
-    """
-    Generate API Gateway response with security headers.
+    """Generate API Gateway response with security headers.
 
     This function creates a properly formatted API Gateway response with:
     - JSON-encoded body
@@ -91,12 +88,12 @@ def generate_html_response(status_code: int, response_body: Any) -> dict[str, st
     response_body : Any
         Response body to be JSON-encoded. Can be dict, list, Pydantic model, or list of Pydantic models.
 
-    Returns
+    Returns:
     -------
     Dict[str, Union[str, int, Dict[str, str]]]
         API Gateway response object.
 
-    Example
+    Example:
     -------
     >>> generate_html_response(200, {"userId": "123", "name": "John"})
     {
@@ -124,8 +121,7 @@ def generate_html_response(status_code: int, response_body: Any) -> dict[str, st
 
 
 def generate_exception_response(e: Exception) -> dict[str, str | int | dict[str, str]]:
-    """
-    Generate API Gateway error response from exception.
+    """Generate API Gateway error response from exception.
 
     This function maps exceptions to appropriate HTTP status codes and
     generates user-friendly error messages while logging detailed errors
@@ -143,12 +139,12 @@ def generate_exception_response(e: Exception) -> dict[str, str | int | dict[str,
     e : Exception
         Exception that was caught.
 
-    Returns
+    Returns:
     -------
     Dict[str, Union[str, int, Dict[str, str]]]
         API Gateway error response.
 
-    Example
+    Example:
     -------
     >>> try:
     ...     raise ValueError("Invalid user ID")

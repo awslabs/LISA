@@ -116,8 +116,7 @@ class DocumentIngestionService:
         collection: dict | None,
         document_metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
-        """
-        Merge metadata from repository, collection, and document sources for ingestion jobs.
+        """Merge metadata from repository, collection, and document sources for ingestion jobs.
 
         This ensures the ingestion job contains the complete merged metadata that will be
         applied to documents during ingestion, following the hierarchy:

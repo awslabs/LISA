@@ -160,7 +160,10 @@ def _get_user_limits(user_key: str) -> tuple[float, float, float]:
 
 
 def _prune_stale_buckets() -> None:
-    """Remove buckets that haven't been touched recently. Must hold ``_lock``."""
+    """Remove buckets that haven't been touched recently.
+
+    Must hold ``_lock``.
+    """
     now = time.monotonic()
     stale_keys = [k for k, b in _buckets.items() if (now - b.last_refill) > _STALE_SECONDS]
     for k in stale_keys:
@@ -170,8 +173,7 @@ def _prune_stale_buckets() -> None:
 async def _check_rate_limit(user_key: str) -> tuple[bool, float]:
     """Check whether *user_key* is within its rate limit.
 
-    Returns ``(allowed, retry_after_seconds)``.
-    Uses per-user overrides from ``RATE_LIMIT_OVERRIDES`` when available.
+    Returns ``(allowed, retry_after_seconds)``. Uses per-user overrides from ``RATE_LIMIT_OVERRIDES`` when available.
     """
     max_tokens, refill_rate, _ = _get_user_limits(user_key)
 
@@ -195,8 +197,7 @@ async def _check_rate_limit(user_key: str) -> tuple[bool, float]:
 def _get_user_key(request: Request) -> str | None:
     """Derive a rate-limit key from the authenticated request.
 
-    Returns ``None`` for requests that should bypass rate limiting
-    (management tokens, unauthenticated/public paths).
+    Returns ``None`` for requests that should bypass rate limiting (management tokens, unauthenticated/public paths).
     """
     if not getattr(request.state, "authenticated", False):
         return None
@@ -240,8 +241,7 @@ def _get_user_key(request: Request) -> str | None:
 async def rate_limit_middleware(request: Request, call_next: Callable[[Request], Response]) -> Response:
     """Per-user rate limiting middleware.
 
-    Must run **after** authentication middleware so that ``request.state``
-    contains the caller identity.
+    Must run **after** authentication middleware so that ``request.state`` contains the caller identity.
     """
     if not RATE_LIMIT_ENABLED:
         return await call_next(request)

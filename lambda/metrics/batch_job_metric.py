@@ -14,10 +14,9 @@
 
 """Lambda handler for publishing CloudWatch metrics on Batch job state changes.
 
-Captures SUBMITTED, RUNNING, SUCCEEDED, and FAILED state transitions from
-EventBridge and publishes corresponding metrics to the LISA/BatchIngestion
-namespace. This provides queue-level visibility regardless of how the
-ingestion job was triggered (S3 event, scheduled, or manual upload).
+Captures SUBMITTED, RUNNING, SUCCEEDED, and FAILED state transitions from EventBridge and publishes corresponding
+metrics to the LISA/BatchIngestion namespace. This provides queue-level visibility regardless of how the ingestion job
+was triggered (S3 event, scheduled, or manual upload).
 """
 
 import json

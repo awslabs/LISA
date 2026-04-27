@@ -61,13 +61,13 @@ def handle_stream_exceptions(
         The streaming function to wrap. This function is expected to be an asynchronous generator
         yielding strings.
 
-    Returns
+    Returns:
     -------
     wrapper : Callable[..., AsyncGenerator[str, None]]
         The wrapped function, which handles exceptions by yielding them as formatted error messages
         in the stream.
 
-    Yields
+    Yields:
     ------
     str
         The items yielded by the original function, or a JSON-formatted error message in case of an exception.
@@ -98,8 +98,7 @@ def get_lisa_end_user_id(
     jwt_data: dict[str, Any] | None,
     state_username: str | None,
 ) -> str | None:
-    """
-    Derive a human-readable end-user id for logs/spend attribution.
+    """Derive a human-readable end-user id for logs/spend attribution.
 
     LiteLLM uses the provided end-user identifier for spend/budget/logging.
     We prefer the same claims used by the authorizer/session to make the

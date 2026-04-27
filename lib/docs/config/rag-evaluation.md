@@ -21,6 +21,7 @@ The RAG evaluation suite measures how well your RAG system retrieves relevant do
    - DynamoDB (for token registration)
    - Bedrock (if evaluating Bedrock KB)
 3. **Python Environment** with LISA SDK installed:
+
    ```bash
    source .venv/bin/activate  # Activate LISA venv
    ```
@@ -28,6 +29,7 @@ The RAG evaluation suite measures how well your RAG system retrieves relevant do
 ### Setup
 
 1. **Create your config file:**
+
    ```bash
    cd test/integration/rag/eval_datasets
    cp eval_config.example.yaml eval_config.yaml
@@ -41,6 +43,7 @@ The RAG evaluation suite measures how well your RAG system retrieves relevant do
    - Repository and collection IDs
 
 3. **Create your golden dataset:**
+
    ```bash
    cp golden-dataset.example.jsonl golden-dataset.jsonl
    ```
@@ -57,6 +60,7 @@ python -m lisapy.evaluation \
 ```
 
 **With verbose logging:**
+
 ```bash
 python -m lisapy.evaluation \
   --config test/integration/rag/eval_datasets/eval_config.yaml \
@@ -118,6 +122,7 @@ backends:
 You can evaluate just one backend by configuring only that section:
 
 **OpenSearch Only:**
+
 ```yaml
 backends:
   lisa_api:
@@ -126,6 +131,7 @@ backends:
 ```
 
 **Bedrock KB Only:**
+
 ```yaml
 backends:
   bedrock_kb:
@@ -217,6 +223,7 @@ Authentication uses **AWS Secrets Manager** for management keys:
 3. Authenticated requests use both `Api-Key` and `Authorization` headers
 
 **Required IAM Permissions:**
+
 ```json
 {
   "Version": "2012-10-17",
@@ -244,6 +251,7 @@ Authentication uses **AWS Secrets Manager** for management keys:
 Uses standard AWS SDK authentication (boto3 default credential chain).
 
 **Required IAM Permissions:**
+
 ```json
 {
   "Effect": "Allow",
@@ -259,18 +267,21 @@ Uses standard AWS SDK authentication (boto3 default credential chain).
 ### Metrics Explained
 
 **Precision@k:**
+
 - Measures: What fraction of retrieved documents are relevant?
 - Formula: (Relevant Retrieved) / k
 - Range: 0.0 to 1.0 (higher is better)
 - Example: If k=5 and 3 retrieved docs are relevant → Precision@5 = 0.6
 
 **Recall@k:**
+
 - Measures: What fraction of relevant documents were retrieved?
 - Formula: (Relevant Retrieved) / (Total Relevant)
 - Range: 0.0 to 1.0 (higher is better)
 - Example: If 3 relevant docs exist and 2 were retrieved → Recall = 0.67
 
 **NDCG@k (Normalized Discounted Cumulative Gain):**
+
 - Measures: Ranking quality (relevant docs should rank higher)
 - Penalizes relevant documents that appear lower in results
 - Range: 0.0 to 1.0 (higher is better)
@@ -328,31 +339,40 @@ When evaluating multiple backends:
 ### Config Errors
 
 **Error:** `FileNotFoundError`
+
 - **Fix:** Use absolute paths or run from repo root
 
 **Error:** `ValidationError: region field required`
+
 - **Fix:** Ensure `region:` is set in your config file
 
 **Error:** `ValidationError: documents field required`
+
 - **Fix:** Must define at least one document in `documents:` section
 
 ### Runtime Errors
 
 **Error:** `Repository not found`
+
 - **Fix:** Verify `repo_id` matches an existing repository. List repos:
+
   ```bash
   curl -H "Authorization: YOUR_TOKEN" \
     https://YOUR-API-URL/repository
   ```
 
 **Error:** `Bedrock knowledge base not found`
+
 - **Fix:** Verify `knowledge_base_id` is correct. List KBs:
+
   ```bash
   aws bedrock-agent list-knowledge-bases
   ```
 
 **Error:** `S3 object not found`
+
 - **Fix:** Documents must exist at `{s3_bucket}/{filename}`. Verify with:
+
   ```bash
   aws s3 ls s3://your-bucket/ --recursive
   ```

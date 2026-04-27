@@ -760,8 +760,8 @@ def test_lambda_handler_rag_admin_only_user_gets_allow(
 ):
     """Test lambda_handler allows a user who is only in the rag_admin group.
 
-    A user only in the rag_admin group (not admin, not user group) should get
-    an Allow policy from the authorizer, not a Deny.
+    A user only in the rag_admin group (not admin, not user group) should get an Allow policy from the authorizer, not a
+    Deny.
     """
     mock_get_management_tokens.return_value = []
     mock_is_valid_api_token.return_value = False

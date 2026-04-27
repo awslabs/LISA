@@ -89,7 +89,6 @@ def main(
     debug: bool,
 ) -> None:
     """MCP Workbench - A dynamic host for Python files used as MCP tools."""
-
     # Set logging level
     if debug:
         logging.getLogger().setLevel(logging.DEBUG)

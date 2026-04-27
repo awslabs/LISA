@@ -852,9 +852,10 @@ def test_delete_project_cascade_deletes_sessions(projects_table, sessions_table,
         {"sessionId": "sess-1", "userId": "test-user", "projectId": "proj-1"},
         {"sessionId": "sess-2", "userId": "test-user", "projectId": "proj-1"},
     ]
-    with patch("projects.lambda_functions.get_all_user_sessions", return_value=project_sessions), patch(
-        "projects.lambda_functions.delete_user_session"
-    ) as mock_delete_session:
+    with (
+        patch("projects.lambda_functions.get_all_user_sessions", return_value=project_sessions),
+        patch("projects.lambda_functions.delete_user_session") as mock_delete_session,
+    ):
         delete_project(_delete_event(body={"deleteSessions": True}), lambda_context)
     assert mock_delete_session.call_count == 2
 

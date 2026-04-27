@@ -32,12 +32,10 @@ router = APIRouter()
 
 
 def _get_identity_from_request(request: Request) -> tuple[str, str]:
-    """
-    Extract (user_id, session_id) from the authenticated request.
+    """Extract (user_id, session_id) from the authenticated request.
 
-    user_id is derived from the JWT ``sub`` claim in the Authorization
-    header (already verified by OIDCHTTPBearer middleware).
-    session_id comes from the ``X-Session-Id`` header sent by the frontend.
+    user_id is derived from the JWT ``sub`` claim in the Authorization header (already verified by OIDCHTTPBearer
+    middleware). session_id comes from the ``X-Session-Id`` header sent by the frontend.
     """
     # request.headers is case-insensitive; avoid converting to a plain dict
     hdrs = request.headers
@@ -70,8 +68,7 @@ def _get_identity_from_request(request: Request) -> tuple[str, str]:
 
 @router.post("/connect", status_code=status.HTTP_200_OK)
 async def connect_aws(request: Request) -> dict[str, Any]:
-    """
-    Accept AWS static credentials, validate them, and create a short-lived STS session.
+    """Accept AWS static credentials, validate them, and create a short-lived STS session.
 
     Request body:
       - accessKeyId: str

@@ -158,7 +158,10 @@ class OIDCHTTPBearer(BaseHTTPMiddleware):
         self._jwks_client = get_jwks_client()
 
     async def dispatch(self, request: Request, call_next: Any) -> Response:
-        """Verify the provided bearer token or API Key. API Key will take precedence over the bearer token."""
+        """Verify the provided bearer token or API Key.
+
+        API Key will take precedence over the bearer token.
+        """
         if request.method == "OPTIONS":
             return await call_next(request)
 
@@ -202,9 +205,8 @@ class OIDCHTTPBearer(BaseHTTPMiddleware):
 class ApiTokenAuthorizer:
     """Class for checking API tokens against a DynamoDB table of API Tokens.
 
-    For the Token database, only a string value in the "token" field is required. Optionally,
-    customers may put a UNIX timestamp (in seconds) in a "tokenExpiration" field so that the
-    API key becomes invalid after a specified time.
+    For the Token database, only a string value in the "token" field is required. Optionally, customers may put a UNIX
+    timestamp (in seconds) in a "tokenExpiration" field so that the API key becomes invalid after a specified time.
     """
 
     def __init__(self) -> None:

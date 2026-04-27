@@ -18,8 +18,7 @@ from typing import Any
 
 
 def merge_fields(source: dict, target: dict, fields: list[str]) -> dict:
-    """
-    Merge specified fields from source dictionary to target dictionary.
+    """Merge specified fields from source dictionary to target dictionary.
 
     Supports both top-level and nested fields using dot notation.
 
@@ -32,12 +31,12 @@ def merge_fields(source: dict, target: dict, fields: list[str]) -> dict:
     fields : list[str]
         List of field names, can use dot notation for nested fields.
 
-    Returns
+    Returns:
     -------
     dict
         Updated target dictionary.
 
-    Example
+    Example:
     -------
     >>> source = {"user": {"name": "John", "age": 30}, "status": "active"}
     >>> target = {"id": "123"}
@@ -82,8 +81,7 @@ def merge_fields(source: dict, target: dict, fields: list[str]) -> dict:
 
 
 def get_property_path(data: dict[str, Any], property_path: str) -> Any | None:
-    """
-    Get value from nested dictionary using dot-notation path.
+    """Get value from nested dictionary using dot-notation path.
 
     Parameters
     ----------
@@ -92,12 +90,12 @@ def get_property_path(data: dict[str, Any], property_path: str) -> Any | None:
     property_path : str
         Dot-notation path to the property (e.g., "user.address.city").
 
-    Returns
+    Returns:
     -------
     Optional[Any]
         The value at the specified path, or None if path doesn't exist.
 
-    Example
+    Example:
     -------
     >>> data = {"user": {"address": {"city": "Seattle"}}}
     >>> get_property_path(data, "user.address.city")
@@ -117,20 +115,19 @@ def get_property_path(data: dict[str, Any], property_path: str) -> Any | None:
 
 
 def get_item(response: Any) -> Any:
-    """
-    Extract first item from DynamoDB query/scan response.
+    """Extract first item from DynamoDB query/scan response.
 
     Parameters
     ----------
     response : Any
         DynamoDB query or scan response.
 
-    Returns
+    Returns:
     -------
     Any
         First item from the response, or None if no items.
 
-    Example
+    Example:
     -------
     >>> response = {"Items": [{"id": "123", "name": "John"}]}
     >>> get_item(response)

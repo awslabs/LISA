@@ -23,8 +23,8 @@ from models.domain_objects import IngestionJob, RagCollectionConfig, RagDocument
 class RepositoryService(ABC):
     """Abstract base class defining repository-specific operations.
 
-    Each repository type (OpenSearch, PGVector, Bedrock KB) implements this
-    interface to provide type-specific behavior for document management.
+    Each repository type (OpenSearch, PGVector, Bedrock KB) implements this interface to provide type-specific behavior
+    for document management.
     """
 
     def __init__(self, repository: dict[str, Any]):

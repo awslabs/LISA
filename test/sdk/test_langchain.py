@@ -14,8 +14,8 @@
 
 """Unit tests for LISA SDK langchain adapters.
 
-Note: These are simplified tests. Full integration tests with real LisaLlm
-instances are better suited for integration testing due to Pydantic validation complexity.
+Note: These are simplified tests. Full integration tests with real LisaLlm instances are better suited for integration
+testing due to Pydantic validation complexity.
 """
 
 import sys

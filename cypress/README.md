@@ -3,22 +3,27 @@
 We maintain two suites of tests for our application:
 
 ### **Smoke Tests**
+
 - *Isolation:* All network calls (including authentication) are fully **mocked out**.
 - *Purpose:* Quickly verify that core UI components and routes render without hitting any backend.
 - *Use Case:* Fast, lightweight sanity checks on every code change.
 
 ### **End‑to‑End (E2E) Tests**
+
 - *Integration:* Execute complete user flows against a **live API** (or your local dev stack).
 - *Coverage:* Real authentication, data fetches, and error‑handling paths.
 - *Goal:* Ensure the entire system (frontend ↔ backend) works seamlessly together.
 
 ---
+
 ## Test Setup
 
 In `cypress.e2e.config.ts` or `cypress.smoke.config.ts` the following environment variables need to be configured:
+
 - `baseUrl` - set to either `http://localhost:3000/` or the URL of your dev stack (e.g. `https://<api gateway id>.execute-api.us-east-1.amazonaws.com/Prod/`).
 
-#### Example setup for localhost:
+#### Example setup for localhost
+
 ```
 e2e: {
     ...
@@ -27,7 +32,9 @@ e2e: {
 ```
 
 # Running the tests
+
 If you are running the e2e tests, you will need to add the test account password to your env prior to executing the tests:
+
 ```
 export TEST_ACCOUNT_PASSWORD=<password>
 
@@ -35,6 +42,7 @@ npm run cypress:e2e:run
 ```
 
 You should get output like:
+
 ```
 npm run cypress:e2e:run
 
@@ -106,6 +114,7 @@ DevTools listening on ws://127.0.0.1:51352/devtools/browser/2f804c68-414e-4004-9
 ```
 
 ## Run tests interactively
+
 ```
 npm run cypress:e2e:open
 ```
@@ -113,6 +122,7 @@ npm run cypress:e2e:open
 # Linting
 
 To ensure that code is meeting the enforced code standards you can run the following command within the `cypress` directory:
+
 ```
 npm run lint:fix
 ```

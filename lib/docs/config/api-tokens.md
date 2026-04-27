@@ -21,6 +21,7 @@ LISA's API Token Management system provides secure, programmatic access to LISA 
 API tokens are stored in the DynamoDB `APITokenTable` with enhanced security and metadata:
 
 **Table Schema:**
+
 - **Partition Key**: `token` (SHA-256 hash of the actual token)
 - **Attributes**:
   - `tokenUUID`: Unique identifier for the token
@@ -71,6 +72,7 @@ authConfig:
 If using LISA's UI, the `Allow user managed API tokens` UI configuration must be enabled for users to manage tokens via the UI:
 
 Navigate to **Configuration** → **User Components** and enable:
+
 - `Allow user managed API tokens`
 
 ### Role Configuration
@@ -110,13 +112,14 @@ Administrators have full visibility and control over all tokens in the system.
 > [!WARNING]
 > Token is displayed **ONLY ONCE**. Copy the token immediately or download it.
 
-   - Copy the token immediately or download it
-   - Check "I have securely saved this token"
-   - Click **Close**
+- Copy the token immediately or download it
+- Check "I have securely saved this token"
+- Click **Close**
 
 #### Viewing All Tokens
 
 The token table displays:
+
 - `Token Name`: Descriptive name
 - `Username`: User token belongs to
 - `Created By`: Who created the token
@@ -128,6 +131,7 @@ The token table displays:
 - `Token UUID`: Unique identifier
 
 **Features:**
+
 - **Search**: Filter tokens by name, username, creator, or groups
 - **Pagination**: Navigate through pages of tokens
 - **Sort**: Click column headers to sort
@@ -160,10 +164,12 @@ This opens a view which shows the user their API token.
 
 > [!NOTE]
 > Token will automatically inherit your current groups.
+
 3. Click **Create Token**
 4. **Token Display Modal** (see Admin section above)
 
 **Limitations:**
+
 - Users can create only ONE token
 - Users cannot create system tokens
 - User tokens inherit the user's group memberships at point of creation (admins can create tokens with custom groups on behalf of users)
@@ -172,6 +178,7 @@ This opens a view which shows the user their API token.
 #### Viewing Your Token
 
 The interface shows:
+
 - Your token details
 - Current status (Active/Expired)
 - Expiration date
@@ -397,12 +404,14 @@ curl https://<your-lisa-domain>/v2/serve/chat/completions \
 ### User Tokens
 
 **Characteristics:**
+
 - One token per user
 - Automatically inherits user's groups (unless created by admin with custom groups)
 - Created by user (self-service) or admin
 - Cannot be created if user already has a token
 
 **Use Cases:**
+
 - Personal development
 - Individual tool integration
 - User-specific automation
@@ -410,11 +419,13 @@ curl https://<your-lisa-domain>/v2/serve/chat/completions \
 ### System Tokens
 
 **Characteristics:**
+
 - Admin-only creation
 - Customizable group assignments
 - Ideal for service accounts
 
 **Use Cases:**
+
 - Multiple services needing separate tokens
 - Shared service accounts
 - Production automations
@@ -459,6 +470,7 @@ Legacy tokens are no longer supported and will need to be recreated.
 ### Identifying Legacy Tokens
 
 Legacy tokens have:
+
 - Token values stored as-is (not hashed)
 - No metadata (name, groups, etc.)
 - "Legacy" badge in UI

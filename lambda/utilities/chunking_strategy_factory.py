@@ -36,8 +36,7 @@ class ChunkingStrategyHandler(ABC):
 
     @abstractmethod
     def chunk_documents(self, docs: list[Document], strategy: ChunkingStrategy) -> list[Document]:
-        """
-        Chunk documents according to the strategy.
+        """Chunk documents according to the strategy.
 
         Parameters
         ----------
@@ -46,7 +45,7 @@ class ChunkingStrategyHandler(ABC):
         strategy : ChunkingStrategy
             The chunking strategy configuration
 
-        Returns
+        Returns:
         -------
         list[Document]
             List of chunked documents
@@ -58,8 +57,7 @@ class FixedSizeChunkingHandler(ChunkingStrategyHandler):
     """Handler for fixed-size chunking strategy."""
 
     def chunk_documents(self, docs: list[Document], strategy: ChunkingStrategy = DEFAULT_STRATEGY) -> list[Document]:
-        """
-        Chunk documents using fixed-size strategy with RecursiveCharacterTextSplitter.
+        """Chunk documents using fixed-size strategy with RecursiveCharacterTextSplitter.
 
         Parameters
         ----------
@@ -68,7 +66,7 @@ class FixedSizeChunkingHandler(ChunkingStrategyHandler):
         strategy : ChunkingStrategy
             The chunking strategy configuration (FixedChunkingStrategy)
 
-        Returns
+        Returns:
         -------
         list[Document]
             List of chunked documents
@@ -109,8 +107,7 @@ class NoneChunkingHandler(ChunkingStrategyHandler):
     """Handler for no-chunking strategy - returns documents as-is."""
 
     def chunk_documents(self, docs: list[Document], strategy: ChunkingStrategy) -> list[Document]:
-        """
-        Return documents without chunking.
+        """Return documents without chunking.
 
         Parameters
         ----------
@@ -119,7 +116,7 @@ class NoneChunkingHandler(ChunkingStrategyHandler):
         strategy : ChunkingStrategy
             The chunking strategy configuration (NoneChunkingStrategy)
 
-        Returns
+        Returns:
         -------
         list[Document]
             Original list of documents unmodified
@@ -138,8 +135,7 @@ class ChunkingStrategyFactory:
 
     @classmethod
     def chunk_documents(cls, docs: list[Document], strategy: ChunkingStrategy = DEFAULT_STRATEGY) -> list[Document]:
-        """
-        Chunk documents using the appropriate strategy handler.
+        """Chunk documents using the appropriate strategy handler.
 
         Parameters
         ----------
@@ -148,12 +144,12 @@ class ChunkingStrategyFactory:
         strategy : ChunkingStrategy
             The chunking strategy configuration
 
-        Returns
+        Returns:
         -------
         list[Document]
             List of chunked documents
 
-        Raises
+        Raises:
         ------
         ValueError
             If the chunking strategy type is not supported
@@ -172,8 +168,7 @@ class ChunkingStrategyFactory:
 
     @classmethod
     def register_handler(cls, strategy_type: ChunkingStrategyType, handler: ChunkingStrategyHandler) -> None:
-        """
-        Register a new chunking strategy handler.
+        """Register a new chunking strategy handler.
 
         This allows for extending the factory with additional chunking strategies.
 
@@ -189,10 +184,9 @@ class ChunkingStrategyFactory:
 
     @classmethod
     def get_supported_strategies(cls) -> list[ChunkingStrategyType]:
-        """
-        Get list of supported chunking strategy types.
+        """Get list of supported chunking strategy types.
 
-        Returns
+        Returns:
         -------
         list[ChunkingStrategyType]
             List of supported strategy types

@@ -3,10 +3,12 @@
 This guide explains how to configure Claude Code with LISA Serve
 
 ### References
+
 - [Claude Code Documentation](https://code.claude.com/docs)
 - [Claude Cote LLM Gateway Configuration](https://code.claude.com/docs/en/llm-gateway)
 
 ### Prerequisites
+
 - LISA instance deployed and accessible
 - LISA serve endpoint URL
 - LISA API key (See API Key Management)
@@ -15,6 +17,7 @@ This guide explains how to configure Claude Code with LISA Serve
 ### Setup Steps
 
 1. **Configure Claude Code Environment Variables**:
+
    ```bash
    # Set the base URL to your LISA endpoint
    # Find it on cloudformation in the LISA-lisa-serve-<STAGE> stack in the outputs tab
@@ -38,7 +41,6 @@ This guide explains how to configure Claude Code with LISA Serve
    export MAX_THINKING_TOKENS = 8192 # set to 0 to disable thinking
    ```
 
-
 ## Verification
 
 After configuration, verify your setup:
@@ -49,13 +51,16 @@ claude "hello world"
 ```
 
 ### Testing in the VSCode extension
+
 You have two options to test if the configuration is working
+
 1. Open new claude code tab (This should reload the environment variables depending on your configuration)
 2. Reload the vscode window
 
 ## Troubleshooting
 
 ### LISA Endpoint Issues
+
 - Verify endpoint is accessible: `curl https://your-lisa-endpoint.com/health`
 - Check API key is valid
 - Confirm model names match LISA configuration

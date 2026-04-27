@@ -19,9 +19,11 @@ test/rest-api/
 ## Current Test Coverage
 
 ### Utils Module (3 tests) ✅
+
 - **Singleton Decorator**: Single instance creation, state preservation
 
 ### Auth Module (22 tests) ✅
+
 - **AuthHeaders**: Enum values and methods
 - **Token Extraction**: Authorization and Api-Key headers
 - **Group Membership**: Simple and nested JWT properties
@@ -29,9 +31,11 @@ test/rest-api/
 - **User Context**: API users, JWT users, group membership
 
 ### Request Utils Module (3 tests) ✅
+
 - **Stream Exception Handling**: Normal operation, exception handling, error formatting
 
 ### Guardrails Module (18 tests) ✅
+
 - **Model Guardrails**: Retrieval, empty results, error handling
 - **Applicable Guardrails**: Public/group-specific, deletion markers
 - **Violation Detection**: Error message parsing
@@ -40,10 +44,12 @@ test/rest-api/
 - **JSON Responses**: Structure, status codes, metadata
 
 ### Metrics Module (12 tests) ✅
+
 - **Message Extraction**: Simple/array content, RAG context, tool calls
 - **Metrics Publishing**: Success, error handling, queue configuration, session IDs
 
 ### Routes Module (7 tests) ✅
+
 - **Health Check**: Logic validation for success, missing vars, exceptions
 - **Router/Middleware/Lifespan/Passthrough**: Placeholder tests (full testing requires complete app with aiobotocore, text_generation, etc.)
 
@@ -108,30 +114,35 @@ The REST API uses relative imports (e.g., `from .utils import ...`) which makes 
 ## Test Categories
 
 ### Authentication Tests (`test_auth.py`)
+
 - Token validation (API tokens, management tokens, JWT)
 - Group membership and access control
 - User context extraction
 - Authorization for different user types
 
 ### Request Utilities Tests (`test_request_utils.py`)
+
 - Model validation against registered models
 - Model and validator retrieval from cache/registry
 - Request preparation and validation
 - Stream exception handling
 
 ### Guardrails Tests (`test_guardrails.py`)
+
 - Guardrail retrieval from DynamoDB
 - Determining applicable guardrails based on user groups
 - Violation detection and response extraction
 - Streaming and JSON response formatting
 
 ### Metrics Tests (`test_metrics.py`)
+
 - Message extraction for metrics calculation
 - Metrics event publishing to SQS
 - RAG context and tool call detection
 - Error handling and queue configuration
 
 ### Routes Tests (`test_routes.py`)
+
 - Health check endpoint
 - Router configuration with/without auth
 - Middleware functionality (request IDs, CORS, errors)

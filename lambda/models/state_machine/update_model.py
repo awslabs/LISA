@@ -156,8 +156,7 @@ def _get_metadata_update_handlers(model_config: dict[str, Any], model_id: str) -
 def _process_metadata_updates(
     model_config: dict[str, Any], update_payload: dict[str, Any], model_id: str
 ) -> tuple[bool, dict[str, Any]]:
-    """
-    Process metadata updates.
+    """Process metadata updates.
 
     Args:
         model_config: The model configuration dictionary to update
@@ -186,8 +185,7 @@ def _process_metadata_updates(
 
 
 def handle_job_intake(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """
-    Handle initial UpdateModel job submission.
+    """Handle initial UpdateModel job submission.
 
     This handler will perform the following actions:
     1. Determine if any metadata (streaming, or modelType) changes are required
@@ -376,8 +374,7 @@ def handle_job_intake(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
 
 def handle_poll_capacity(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """
-    Poll autoscaling and target group to confirm if the capacity is done updating.
+    """Poll autoscaling and target group to confirm if the capacity is done updating.
 
     This handler will:
     1. Get the ASG's current status. If it is still updating, then exit with a boolean to indicate for more polling
@@ -407,8 +404,7 @@ def handle_poll_capacity(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
 
 def handle_finish_update(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """
-    Finalize update in DDB.
+    """Finalize update in DDB.
 
     1. If the model was enabled from the Stopped state, add the model back to LiteLLM, set status to InService in DDB
     2. If the model was disabled from the InService state, set status to Stopped
@@ -505,8 +501,7 @@ def handle_finish_update(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
 
 def handle_update_guardrails(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """
-    Update guardrails for a model in LiteLLM and DynamoDB.
+    """Update guardrails for a model in LiteLLM and DynamoDB.
 
     This handler will:
     1. Process guardrails configuration updates from the event
@@ -605,7 +600,7 @@ def handle_update_guardrails(event: dict[str, Any], context: Any) -> dict[str, A
                 # Transform guardrail config to LiteLLM format for update
                 litellm_guardrail_config = {
                     "guardrail": {
-                        "guardrail_name": f'{guardrail_config["guardrailName"]}-{model_id}',
+                        "guardrail_name": f"{guardrail_config['guardrailName']}-{model_id}",
                         "litellm_params": {
                             "guardrail": "bedrock",
                             "mode": str(guardrail_config.get("mode", "pre_call")),
@@ -651,11 +646,10 @@ def handle_update_guardrails(event: dict[str, Any], context: Any) -> dict[str, A
                 logger.info(f"Successfully updated guardrail: {guardrail_name}")
 
             else:
-
                 # Transform guardrail config to LiteLLM format
                 litellm_guardrail_config = {
                     "guardrail": {
-                        "guardrail_name": f'{guardrail_config["guardrailName"]}-{model_id}',
+                        "guardrail_name": f"{guardrail_config['guardrailName']}-{model_id}",
                         "litellm_params": {
                             "guardrail": "bedrock",
                             "mode": str(guardrail_config.get("mode", "pre_call")),
@@ -925,8 +919,7 @@ def update_ecs_service(cluster_arn: str, service_arn: str, task_definition_arn: 
 
 
 def handle_ecs_update(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """
-    Update ECS task definition with new environment variables and update service.
+    """Update ECS task definition with new environment variables and update service.
 
     This handler will:
     1. Retrieve current task definition from ECS
@@ -988,8 +981,7 @@ def handle_ecs_update(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
 
 def handle_poll_ecs_deployment(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """
-    Monitor ECS service deployment progress.
+    """Monitor ECS service deployment progress.
 
     This handler will:
     1. Check if ECS service deployment is complete

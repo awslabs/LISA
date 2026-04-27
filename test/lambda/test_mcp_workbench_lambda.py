@@ -114,7 +114,10 @@ SAMPLE_TOOL_ID = "test_tool.py"
 
 @pytest.fixture
 def s3_setup():
-    """Set up S3 with moto and create bucket. Uses complete isolation to avoid test interference."""
+    """Set up S3 with moto and create bucket.
+
+    Uses complete isolation to avoid test interference.
+    """
     # More aggressive approach: Temporarily replace boto3.client entirely
     import importlib
 
@@ -212,8 +215,9 @@ def test_get_tool_from_s3(s3_setup):
     from mcp_workbench.lambda_functions import _get_tool_from_s3
 
     # Use the actual function with moto S3
-    with patch("mcp_workbench.lambda_functions.s3_client", s3_setup), patch(
-        "mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET
+    with (
+        patch("mcp_workbench.lambda_functions.s3_client", s3_setup),
+        patch("mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET),
     ):
         tool = _get_tool_from_s3(SAMPLE_TOOL_ID)
 
@@ -228,8 +232,9 @@ def test_get_tool_from_s3_not_found(s3_setup):
     from mcp_workbench.lambda_functions import _get_tool_from_s3
 
     # Test retrieving non-existent tool with moto S3
-    with patch("mcp_workbench.lambda_functions.s3_client", s3_setup), patch(
-        "mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET
+    with (
+        patch("mcp_workbench.lambda_functions.s3_client", s3_setup),
+        patch("mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET),
     ):
         with pytest.raises(Exception) as excinfo:
             _get_tool_from_s3("non_existent_tool.py")
@@ -250,8 +255,9 @@ def test_get_tool_from_s3_adds_py_extension(s3_setup):
     from mcp_workbench.lambda_functions import _get_tool_from_s3
 
     # Use the actual function with moto S3, but request without .py extension
-    with patch("mcp_workbench.lambda_functions.s3_client", s3_setup), patch(
-        "mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET
+    with (
+        patch("mcp_workbench.lambda_functions.s3_client", s3_setup),
+        patch("mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET),
     ):
         tool = _get_tool_from_s3("test_tool")
 
@@ -280,9 +286,11 @@ def test_read_success(s3_setup, lambda_context):
     from mcp_workbench.lambda_functions import read
 
     # Use the actual function with moto S3
-    with patch("mcp_workbench.lambda_functions.s3_client", s3_setup), patch(
-        "mcp_workbench.lambda_functions.is_admin", return_value=True
-    ), patch("mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET):
+    with (
+        patch("mcp_workbench.lambda_functions.s3_client", s3_setup),
+        patch("mcp_workbench.lambda_functions.is_admin", return_value=True),
+        patch("mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET),
+    ):
         response = read(event, lambda_context)
 
     assert response["statusCode"] == 200
@@ -304,9 +312,11 @@ def test_read_not_admin(s3_setup, lambda_context):
     from mcp_workbench.lambda_functions import read
 
     # Use the actual function with moto S3 and patched is_admin
-    with patch("mcp_workbench.lambda_functions.s3_client", s3_setup), patch(
-        "utilities.auth.get_username", return_value="regular-user"
-    ), patch("mcp_workbench.lambda_functions.api_wrapper", mock_api_wrapper):
+    with (
+        patch("mcp_workbench.lambda_functions.s3_client", s3_setup),
+        patch("utilities.auth.get_username", return_value="regular-user"),
+        patch("mcp_workbench.lambda_functions.api_wrapper", mock_api_wrapper),
+    ):
         response = read(event, lambda_context)
 
     assert response["statusCode"] == 403
@@ -329,9 +339,11 @@ def test_read_not_found(s3_setup, lambda_context):
     from mcp_workbench.lambda_functions import read
 
     # Use the actual function with moto S3
-    with patch("mcp_workbench.lambda_functions.s3_client", s3_setup), patch(
-        "mcp_workbench.lambda_functions.is_admin", return_value=True
-    ), patch("mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET):
+    with (
+        patch("mcp_workbench.lambda_functions.s3_client", s3_setup),
+        patch("mcp_workbench.lambda_functions.is_admin", return_value=True),
+        patch("mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET),
+    ):
         response = read(event, lambda_context)
 
     assert response["statusCode"] == 404
@@ -354,8 +366,9 @@ def test_read_missing_tool_id(s3_setup, lambda_context):
     from mcp_workbench.lambda_functions import read
 
     # Use the actual function with moto S3
-    with patch("mcp_workbench.lambda_functions.s3_client", s3_setup), patch(
-        "mcp_workbench.lambda_functions.is_admin", return_value=True
+    with (
+        patch("mcp_workbench.lambda_functions.s3_client", s3_setup),
+        patch("mcp_workbench.lambda_functions.is_admin", return_value=True),
     ):
         response = read(event, lambda_context)
 
@@ -386,9 +399,11 @@ def test_list_success(s3_setup, lambda_context):
     from mcp_workbench.lambda_functions import list as list_tools
 
     # Use the actual function with moto S3
-    with patch("mcp_workbench.lambda_functions.s3_client", s3_setup), patch(
-        "mcp_workbench.lambda_functions.is_admin", return_value=True
-    ), patch("mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET):
+    with (
+        patch("mcp_workbench.lambda_functions.s3_client", s3_setup),
+        patch("mcp_workbench.lambda_functions.is_admin", return_value=True),
+        patch("mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET),
+    ):
         response = list_tools(event, lambda_context)
 
     assert response["statusCode"] == 200
@@ -412,9 +427,11 @@ def test_list_not_admin(s3_setup, lambda_context):
     from mcp_workbench.lambda_functions import list as list_tools
 
     # Use the actual function with moto S3 and patched is_admin
-    with patch("mcp_workbench.lambda_functions.s3_client", s3_setup), patch(
-        "utilities.auth.get_username", return_value="regular-user"
-    ), patch("mcp_workbench.lambda_functions.api_wrapper", mock_api_wrapper):
+    with (
+        patch("mcp_workbench.lambda_functions.s3_client", s3_setup),
+        patch("utilities.auth.get_username", return_value="regular-user"),
+        patch("mcp_workbench.lambda_functions.api_wrapper", mock_api_wrapper),
+    ):
         response = list_tools(event, lambda_context)
 
     assert response["statusCode"] == 403
@@ -433,9 +450,11 @@ def test_list_empty_bucket(s3_setup, lambda_context):
     from mcp_workbench.lambda_functions import list as list_tools
 
     # Use the actual function with moto S3
-    with patch("mcp_workbench.lambda_functions.s3_client", s3_setup), patch(
-        "mcp_workbench.lambda_functions.is_admin", return_value=True
-    ), patch("mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET):
+    with (
+        patch("mcp_workbench.lambda_functions.s3_client", s3_setup),
+        patch("mcp_workbench.lambda_functions.is_admin", return_value=True),
+        patch("mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET),
+    ):
         response = list_tools(event, lambda_context)
 
     assert response["statusCode"] == 200
@@ -457,9 +476,11 @@ def test_create_success(s3_setup, lambda_context):
     from mcp_workbench.lambda_functions import create
 
     # Use the actual function with moto S3
-    with patch("mcp_workbench.lambda_functions.s3_client", s3_setup), patch(
-        "mcp_workbench.lambda_functions.is_admin", return_value=True
-    ), patch("mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET):
+    with (
+        patch("mcp_workbench.lambda_functions.s3_client", s3_setup),
+        patch("mcp_workbench.lambda_functions.is_admin", return_value=True),
+        patch("mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET),
+    ):
         response = create(event, lambda_context)
 
     assert response["statusCode"] == 200
@@ -486,9 +507,11 @@ def test_create_without_py_extension(s3_setup, lambda_context):
     from mcp_workbench.lambda_functions import create
 
     # Use the actual function with moto S3
-    with patch("mcp_workbench.lambda_functions.s3_client", s3_setup), patch(
-        "mcp_workbench.lambda_functions.is_admin", return_value=True
-    ), patch("mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET):
+    with (
+        patch("mcp_workbench.lambda_functions.s3_client", s3_setup),
+        patch("mcp_workbench.lambda_functions.is_admin", return_value=True),
+        patch("mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET),
+    ):
         response = create(event, lambda_context)
 
     assert response["statusCode"] == 200
@@ -513,9 +536,11 @@ def test_create_not_admin(s3_setup, lambda_context):
     from mcp_workbench.lambda_functions import create
 
     # Use the actual function with moto S3 and patched is_admin
-    with patch("mcp_workbench.lambda_functions.s3_client", s3_setup), patch(
-        "utilities.auth.get_username", return_value="regular-user"
-    ), patch("mcp_workbench.lambda_functions.api_wrapper", mock_api_wrapper):
+    with (
+        patch("mcp_workbench.lambda_functions.s3_client", s3_setup),
+        patch("utilities.auth.get_username", return_value="regular-user"),
+        patch("mcp_workbench.lambda_functions.api_wrapper", mock_api_wrapper),
+    ):
         response = create(event, lambda_context)
 
     assert response["statusCode"] == 403
@@ -538,8 +563,9 @@ def test_create_missing_fields(s3_setup, lambda_context):
     from mcp_workbench.lambda_functions import create
 
     # Use the actual function with moto S3
-    with patch("mcp_workbench.lambda_functions.s3_client", s3_setup), patch(
-        "mcp_workbench.lambda_functions.is_admin", return_value=True
+    with (
+        patch("mcp_workbench.lambda_functions.s3_client", s3_setup),
+        patch("mcp_workbench.lambda_functions.is_admin", return_value=True),
     ):
         response = create(event, lambda_context)
 
@@ -578,9 +604,11 @@ def updated_function():
     from mcp_workbench.lambda_functions import update
 
     # Use the actual function with moto S3
-    with patch("mcp_workbench.lambda_functions.s3_client", s3_setup), patch(
-        "mcp_workbench.lambda_functions.is_admin", return_value=True
-    ), patch("mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET):
+    with (
+        patch("mcp_workbench.lambda_functions.s3_client", s3_setup),
+        patch("mcp_workbench.lambda_functions.is_admin", return_value=True),
+        patch("mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET),
+    ):
         response = update(event, lambda_context)
 
     assert response["statusCode"] == 200
@@ -607,9 +635,11 @@ def test_update_not_admin(s3_setup, lambda_context):
     from mcp_workbench.lambda_functions import update
 
     # Use the actual function with moto S3 and patched is_admin
-    with patch("mcp_workbench.lambda_functions.s3_client", s3_setup), patch(
-        "utilities.auth.get_username", return_value="regular-user"
-    ), patch("mcp_workbench.lambda_functions.api_wrapper", mock_api_wrapper):
+    with (
+        patch("mcp_workbench.lambda_functions.s3_client", s3_setup),
+        patch("utilities.auth.get_username", return_value="regular-user"),
+        patch("mcp_workbench.lambda_functions.api_wrapper", mock_api_wrapper),
+    ):
         response = update(event, lambda_context)
 
     assert response["statusCode"] == 403
@@ -633,9 +663,11 @@ def test_update_not_found(s3_setup, lambda_context):
     from mcp_workbench.lambda_functions import update
 
     # Use the actual function with moto S3
-    with patch("mcp_workbench.lambda_functions.s3_client", s3_setup), patch(
-        "mcp_workbench.lambda_functions.is_admin", return_value=True
-    ), patch("mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET):
+    with (
+        patch("mcp_workbench.lambda_functions.s3_client", s3_setup),
+        patch("mcp_workbench.lambda_functions.is_admin", return_value=True),
+        patch("mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET),
+    ):
         response = update(event, lambda_context)
 
     assert response["statusCode"] == 404
@@ -659,8 +691,9 @@ def test_update_missing_tool_id(s3_setup, lambda_context):
     from mcp_workbench.lambda_functions import update
 
     # Use the actual function with moto S3
-    with patch("mcp_workbench.lambda_functions.s3_client", s3_setup), patch(
-        "mcp_workbench.lambda_functions.is_admin", return_value=True
+    with (
+        patch("mcp_workbench.lambda_functions.s3_client", s3_setup),
+        patch("mcp_workbench.lambda_functions.is_admin", return_value=True),
     ):
         response = update(event, lambda_context)
 
@@ -693,8 +726,9 @@ def test_update_missing_contents(s3_setup, lambda_context):
     from mcp_workbench.lambda_functions import update
 
     # Use the actual function with moto S3
-    with patch("mcp_workbench.lambda_functions.s3_client", s3_setup), patch(
-        "mcp_workbench.lambda_functions.is_admin", return_value=True
+    with (
+        patch("mcp_workbench.lambda_functions.s3_client", s3_setup),
+        patch("mcp_workbench.lambda_functions.is_admin", return_value=True),
     ):
         response = update(event, lambda_context)
 
@@ -727,9 +761,11 @@ def test_delete_success(s3_setup, lambda_context):
     from mcp_workbench.lambda_functions import delete
 
     # Use the actual function with moto S3
-    with patch("mcp_workbench.lambda_functions.s3_client", s3_setup), patch(
-        "mcp_workbench.lambda_functions.is_admin", return_value=True
-    ), patch("mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET):
+    with (
+        patch("mcp_workbench.lambda_functions.s3_client", s3_setup),
+        patch("mcp_workbench.lambda_functions.is_admin", return_value=True),
+        patch("mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET),
+    ):
         response = delete(event, lambda_context)
 
     assert response["statusCode"] == 200
@@ -758,9 +794,11 @@ def test_delete_not_admin(s3_setup, lambda_context):
     from mcp_workbench.lambda_functions import delete
 
     # Use the actual function with moto S3 and patched is_admin
-    with patch("mcp_workbench.lambda_functions.s3_client", s3_setup), patch(
-        "utilities.auth.get_username", return_value="regular-user"
-    ), patch("mcp_workbench.lambda_functions.api_wrapper", mock_api_wrapper):
+    with (
+        patch("mcp_workbench.lambda_functions.s3_client", s3_setup),
+        patch("utilities.auth.get_username", return_value="regular-user"),
+        patch("mcp_workbench.lambda_functions.api_wrapper", mock_api_wrapper),
+    ):
         response = delete(event, lambda_context)
 
     assert response["statusCode"] == 403
@@ -783,9 +821,11 @@ def test_delete_not_found(s3_setup, lambda_context):
     from mcp_workbench.lambda_functions import delete
 
     # Use the actual function with moto S3
-    with patch("mcp_workbench.lambda_functions.s3_client", s3_setup), patch(
-        "mcp_workbench.lambda_functions.is_admin", return_value=True
-    ), patch("mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET):
+    with (
+        patch("mcp_workbench.lambda_functions.s3_client", s3_setup),
+        patch("mcp_workbench.lambda_functions.is_admin", return_value=True),
+        patch("mcp_workbench.lambda_functions.WORKBENCH_BUCKET", WORKBENCH_BUCKET),
+    ):
         response = delete(event, lambda_context)
 
     assert response["statusCode"] == 404
@@ -808,8 +848,9 @@ def test_delete_missing_tool_id(s3_setup, lambda_context):
     from mcp_workbench.lambda_functions import delete
 
     # Use the actual function with moto S3
-    with patch("mcp_workbench.lambda_functions.s3_client", s3_setup), patch(
-        "mcp_workbench.lambda_functions.is_admin", return_value=True
+    with (
+        patch("mcp_workbench.lambda_functions.s3_client", s3_setup),
+        patch("mcp_workbench.lambda_functions.is_admin", return_value=True),
     ):
         response = delete(event, lambda_context)
 

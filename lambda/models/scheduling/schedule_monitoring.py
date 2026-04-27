@@ -36,7 +36,7 @@ model_table = dynamodb.Table(os.environ.get("MODEL_TABLE_NAME"))
 
 
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """Main Lambda handler for CloudWatch Events from Auto Scaling Groups"""
+    """Main Lambda handler for CloudWatch Events from Auto Scaling Groups."""
     logger.info(f"Processing event - RequestId: {context.aws_request_id}")
 
     try:
@@ -59,7 +59,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
 
 def handle_autoscaling_event(event: dict[str, Any]) -> dict[str, Any]:
-    """Handle Auto Scaling Group CloudWatch events"""
+    """Handle Auto Scaling Group CloudWatch events."""
     try:
         detail = event.get("detail", {})
         event_type = event.get("detail-type", "")
@@ -86,7 +86,7 @@ def handle_autoscaling_event(event: dict[str, Any]) -> dict[str, Any]:
 
 
 def handle_successful_scaling(model_id: str, auto_scaling_group: str, detail: dict[str, Any]) -> dict[str, Any]:
-    """Handle successful Auto Scaling actions using ASG state"""
+    """Handle successful Auto Scaling actions using ASG state."""
     try:
         # Check ASG state to determine model status
         try:
@@ -138,7 +138,7 @@ def handle_successful_scaling(model_id: str, auto_scaling_group: str, detail: di
 
 
 def sync_model_status(event: dict[str, Any]) -> dict[str, Any]:
-    """Manually sync model status using ASG state"""
+    """Manually sync model status using ASG state."""
     model_id = event.get("modelId")
     if not model_id:
         raise ValueError("modelId is required for sync_status operation")
@@ -208,7 +208,7 @@ def sync_model_status(event: dict[str, Any]) -> dict[str, Any]:
 
 
 def find_model_by_asg_name(asg_name: str) -> str | None:
-    """Find model ID by looking up which model uses the given Auto Scaling Group"""
+    """Find model ID by looking up which model uses the given Auto Scaling Group."""
     try:
         response = model_table.scan(
             FilterExpression="auto_scaling_group = :asg_name",
@@ -227,7 +227,7 @@ def find_model_by_asg_name(asg_name: str) -> str | None:
 
 
 def update_model_status(model_id: str, new_status: ModelStatus, reason: str) -> None:
-    """Update model status in DynamoDB"""
+    """Update model status in DynamoDB."""
     try:
         # Convert enum to string value for DynamoDB
         status_str = new_status.value if hasattr(new_status, "value") else str(new_status)
@@ -250,7 +250,7 @@ def update_model_status(model_id: str, new_status: ModelStatus, reason: str) -> 
 
 
 def get_model_info(model_id: str) -> dict[str, Any] | None:
-    """Get model information from DynamoDB"""
+    """Get model information from DynamoDB."""
     try:
         response = model_table.get_item(Key={"model_id": model_id})
 

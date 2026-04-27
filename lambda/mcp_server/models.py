@@ -42,8 +42,8 @@ class McpServerStatus(StrEnum):
 
 
 class McpServerModel(BaseModel):
-    """
-    A Pydantic model representing a template for prompts.
+    """A Pydantic model representing a template for prompts.
+
     Contains metadata and functionality to create new revisions.
     """
 
@@ -127,8 +127,8 @@ class AutoScalingConfigUpdate(BaseModel):
 
 
 class HostedMcpServerModel(BaseModel):
-    """
-    A Pydantic model representing a hosted MCP server configuration.
+    """A Pydantic model representing a hosted MCP server configuration.
+
     This model is used for creating MCP servers that are deployed on ECS Fargate.
     """
 

@@ -83,14 +83,13 @@ class TestCreateModelAuditLogging:
         )
 
         # Mock the handler and auth functions
-        with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
-            "utilities.fastapi_middleware.auth_decorators.is_admin"
-        ) as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-            "utilities.auth.get_username"
-        ) as mock_get_username, caplog.at_level(
-            logging.INFO
+        with (
+            patch("models.lambda_functions.CreateModelHandler") as mock_handler_class,
+            patch("utilities.fastapi_middleware.auth_decorators.is_admin") as mock_is_admin,
+            patch("utilities.auth.get_groups") as mock_get_groups,
+            patch("utilities.auth.get_username") as mock_get_username,
+            caplog.at_level(logging.INFO),
         ):
-
             # Setup mocks
             mock_is_admin.return_value = True
             mock_get_groups.return_value = ["admin-group"]
@@ -200,14 +199,13 @@ class TestCreateModelAuditLogging:
         )
 
         # Mock the handler and auth functions
-        with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
-            "utilities.fastapi_middleware.auth_decorators.is_admin"
-        ) as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-            "utilities.auth.get_username"
-        ) as mock_get_username, caplog.at_level(
-            logging.INFO
+        with (
+            patch("models.lambda_functions.CreateModelHandler") as mock_handler_class,
+            patch("utilities.fastapi_middleware.auth_decorators.is_admin") as mock_is_admin,
+            patch("utilities.auth.get_groups") as mock_get_groups,
+            patch("utilities.auth.get_username") as mock_get_username,
+            caplog.at_level(logging.INFO),
         ):
-
             # Setup mocks
             mock_is_admin.return_value = True
             mock_get_groups.return_value = ["admin-group"]
@@ -270,14 +268,13 @@ class TestCreateModelAuditLogging:
         )
 
         # Mock the handler and auth functions
-        with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
-            "utilities.fastapi_middleware.auth_decorators.is_admin"
-        ) as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-            "utilities.auth.get_username"
-        ) as mock_get_username, caplog.at_level(
-            logging.INFO
+        with (
+            patch("models.lambda_functions.CreateModelHandler") as mock_handler_class,
+            patch("utilities.fastapi_middleware.auth_decorators.is_admin") as mock_is_admin,
+            patch("utilities.auth.get_groups") as mock_get_groups,
+            patch("utilities.auth.get_username") as mock_get_username,
+            caplog.at_level(logging.INFO),
         ):
-
             # Setup mocks
             mock_is_admin.return_value = True
             mock_get_groups.return_value = ["admin-group"]
@@ -337,14 +334,13 @@ class TestCreateModelAuditLogging:
         )
 
         # Mock the handler and auth functions
-        with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
-            "utilities.fastapi_middleware.auth_decorators.is_admin"
-        ) as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-            "utilities.auth.get_username"
-        ) as mock_get_username, caplog.at_level(
-            logging.INFO
+        with (
+            patch("models.lambda_functions.CreateModelHandler") as mock_handler_class,
+            patch("utilities.fastapi_middleware.auth_decorators.is_admin") as mock_is_admin,
+            patch("utilities.auth.get_groups") as mock_get_groups,
+            patch("utilities.auth.get_username") as mock_get_username,
+            caplog.at_level(logging.INFO),
         ):
-
             # Setup mocks
             mock_is_admin.return_value = True
             mock_get_groups.return_value = ["admin-group"]
@@ -407,14 +403,13 @@ class TestCreateModelAuditLogging:
         )
 
         # Mock the handler and auth functions
-        with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
-            "utilities.fastapi_middleware.auth_decorators.is_admin"
-        ) as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-            "utilities.auth.get_username"
-        ) as mock_get_username, caplog.at_level(
-            logging.INFO
+        with (
+            patch("models.lambda_functions.CreateModelHandler") as mock_handler_class,
+            patch("utilities.fastapi_middleware.auth_decorators.is_admin") as mock_is_admin,
+            patch("utilities.auth.get_groups") as mock_get_groups,
+            patch("utilities.auth.get_username") as mock_get_username,
+            caplog.at_level(logging.INFO),
         ):
-
             # Setup mocks for successful creation
             mock_is_admin.return_value = True
             mock_get_groups.return_value = ["admin-group"]
@@ -462,14 +457,13 @@ class TestCreateModelAuditLogging:
         )
 
         # Mock the handler to raise ModelAlreadyExistsError
-        with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
-            "utilities.fastapi_middleware.auth_decorators.is_admin"
-        ) as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-            "utilities.auth.get_username"
-        ) as mock_get_username, caplog.at_level(
-            logging.INFO
+        with (
+            patch("models.lambda_functions.CreateModelHandler") as mock_handler_class,
+            patch("utilities.fastapi_middleware.auth_decorators.is_admin") as mock_is_admin,
+            patch("utilities.auth.get_groups") as mock_get_groups,
+            patch("utilities.auth.get_username") as mock_get_username,
+            caplog.at_level(logging.INFO),
         ):
-
             # Setup mocks
             mock_is_admin.return_value = True
             mock_get_groups.return_value = ["admin-group"]
@@ -535,14 +529,13 @@ class TestCreateModelAuditLogging:
         )
 
         # Mock the handler and auth functions
-        with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
-            "utilities.fastapi_middleware.auth_decorators.is_admin"
-        ) as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-            "utilities.auth.get_username"
-        ) as mock_get_username, caplog.at_level(
-            logging.INFO
+        with (
+            patch("models.lambda_functions.CreateModelHandler") as mock_handler_class,
+            patch("utilities.fastapi_middleware.auth_decorators.is_admin") as mock_is_admin,
+            patch("utilities.auth.get_groups") as mock_get_groups,
+            patch("utilities.auth.get_username") as mock_get_username,
+            caplog.at_level(logging.INFO),
         ):
-
             # Setup mocks
             mock_is_admin.return_value = True
             mock_get_groups.return_value = ["admin-group"]
@@ -587,14 +580,12 @@ class TestCreateModelAuditLogging:
         )
 
         # Mock the handler and auth functions
-        with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
-            "utilities.auth.is_admin"
-        ) as mock_is_admin, patch(
-            "utilities.fastapi_middleware.auth_decorators.is_admin"
-        ) as mock_decorator_is_admin, caplog.at_level(
-            logging.INFO
+        with (
+            patch("models.lambda_functions.CreateModelHandler") as mock_handler_class,
+            patch("utilities.auth.is_admin") as mock_is_admin,
+            patch("utilities.fastapi_middleware.auth_decorators.is_admin") as mock_decorator_is_admin,
+            caplog.at_level(logging.INFO),
         ):
-
             # Setup mocks - simulate admin with no event context
             mock_is_admin.return_value = True
             mock_decorator_is_admin.return_value = True
@@ -707,14 +698,13 @@ class TestCreateModelAuditLogging:
             )
 
             # Mock the handler and auth functions
-            with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
-                "utilities.fastapi_middleware.auth_decorators.is_admin"
-            ) as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-                "utilities.auth.get_username"
-            ) as mock_get_username, caplog.at_level(
-                logging.INFO
+            with (
+                patch("models.lambda_functions.CreateModelHandler") as mock_handler_class,
+                patch("utilities.fastapi_middleware.auth_decorators.is_admin") as mock_is_admin,
+                patch("utilities.auth.get_groups") as mock_get_groups,
+                patch("utilities.auth.get_username") as mock_get_username,
+                caplog.at_level(logging.INFO),
             ):
-
                 # Setup mocks
                 mock_is_admin.return_value = True
                 mock_get_groups.return_value = ["admin-group"]
@@ -736,6 +726,6 @@ class TestCreateModelAuditLogging:
 
                 assert log_record is not None, f"Log not found for image: {image_url}"
                 actual_domain = log_record.container["registry_domain"]
-                assert actual_domain == expected_domain, (
-                    f"Expected domain '{expected_domain}' for image '{image_url}', " f"got '{actual_domain}'"
-                )
+                assert (
+                    actual_domain == expected_domain
+                ), f"Expected domain '{expected_domain}' for image '{image_url}', got '{actual_domain}'"

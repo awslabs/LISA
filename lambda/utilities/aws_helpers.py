@@ -42,8 +42,7 @@ _cert_file = None
 
 @cache
 def get_cert_path(iam_client: Any) -> str | bool:
-    """
-    Get certificate path for SSL validation against LISA Serve endpoint.
+    """Get certificate path for SSL validation against LISA Serve endpoint.
 
     This function retrieves IAM server certificates for SSL verification.
     For ACM certificates or when no certificate is specified, it returns
@@ -54,12 +53,12 @@ def get_cert_path(iam_client: Any) -> str | bool:
     iam_client : Any
         Boto3 IAM client instance.
 
-    Returns
+    Returns:
     -------
     Union[str, bool]
         Path to certificate file, or True to use default verification.
 
-    Example
+    Example:
     -------
     >>> iam = boto3.client("iam")
     >>> cert_path = get_cert_path(iam)
@@ -114,15 +113,14 @@ def get_cert_path(iam_client: Any) -> str | bool:
 
 @cache
 def get_rest_api_container_endpoint() -> str:
-    """
-    Get REST API container base URI from SSM Parameter Store.
+    """Get REST API container base URI from SSM Parameter Store.
 
-    Returns
+    Returns:
     -------
     str
         The REST API container endpoint URL.
 
-    Example
+    Example:
     -------
     >>> endpoint = get_rest_api_container_endpoint()
     >>> endpoint
@@ -134,15 +132,14 @@ def get_rest_api_container_endpoint() -> str:
 
 
 def _get_lambda_role_arn() -> str:
-    """
-    Get the ARN of the Lambda execution role.
+    """Get the ARN of the Lambda execution role.
 
-    Returns
+    Returns:
     -------
     str
         The full ARN of the Lambda execution role.
 
-    Example
+    Example:
     -------
     >>> _get_lambda_role_arn()
     'arn:aws:sts::123456789012:assumed-role/MyLambdaRole/MyFunction'
@@ -153,15 +150,14 @@ def _get_lambda_role_arn() -> str:
 
 
 def get_lambda_role_name() -> str:
-    """
-    Extract the role name from the Lambda execution role ARN.
+    """Extract the role name from the Lambda execution role ARN.
 
-    Returns
+    Returns:
     -------
     str
         The name of the Lambda execution role without the full ARN.
 
-    Example
+    Example:
     -------
     >>> get_lambda_role_name()
     'MyLambdaRole'
@@ -172,15 +168,14 @@ def get_lambda_role_name() -> str:
 
 
 def get_account_and_partition() -> tuple[str, str]:
-    """
-    Get AWS account ID and partition from environment or ECR repository ARN.
+    """Get AWS account ID and partition from environment or ECR repository ARN.
 
-    Returns
+    Returns:
     -------
     tuple[str, str]
         Tuple of (account_id, partition).
 
-    Example
+    Example:
     -------
     >>> account_id, partition = get_account_and_partition()
     >>> account_id

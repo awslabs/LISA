@@ -38,8 +38,7 @@ s3 = session.client("s3", region_name=os.environ["AWS_REGION"])
 
 
 def _get_metadata(s3_uri: str, name: str, metadata: dict | None = None) -> dict:
-    """
-    Create metadata dictionary for a document.
+    """Create metadata dictionary for a document.
 
     Args:
         s3_uri: S3 URI of the document
@@ -83,7 +82,7 @@ def _extract_pdf_content(s3_object: dict) -> str:
     ----------
     s3_object (dict): an S3 object containing a PDF file body
 
-    Returns
+    Returns:
     -------
     str: The extracted text from the PDF file.
     """
@@ -110,7 +109,7 @@ def _extract_docx_content(s3_object: dict) -> str:
     ----------
     s3_object (dict): an S3 object containing a docx file body
 
-    Returns
+    Returns:
     -------
     str: The extracted text from the docx file.
     """
@@ -125,9 +124,9 @@ def _extract_docx_content(s3_object: dict) -> str:
 
 
 def _extract_text_content(s3_object: dict) -> str:
-    """
-    Extracts text content from an S3 object. Decode as
-    utf-8 to properly read special characters
+    """Extracts text content from an S3 object.
+
+    Decode as utf-8 to properly read special characters
 
     Parameters
     ----------
@@ -144,12 +143,12 @@ def generate_chunks(ingestion_job: IngestionJob) -> list[Document]:
     ingestion_job : IngestionJob
         Ingestion job containing file information and chunking strategy
 
-    Returns
+    Returns:
     -------
     list[Document]
         List of document chunks for the processed file
 
-    Raises
+    Raises:
     ------
     RagUploadException
         If S3 path is invalid or file processing fails

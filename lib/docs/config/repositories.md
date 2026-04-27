@@ -254,6 +254,7 @@ curl -s -H 'Authorization: Bearer <your_token>' \
 Administrators and RAG Admins access repository management through the Administration menu. The capabilities available depend on the user's role:
 
 **Administrators** have full access, including:
+
 - Create, update, and delete repositories
 - Configure vector store implementation (OpenSearch, PGVector, Bedrock Knowledge Base)
 - Set default embedding models and chunking strategies
@@ -262,6 +263,7 @@ Administrators and RAG Admins access repository management through the Administr
 - Enable or disable user-created collections
 
 **RAG Admins** have scoped access on repositories they belong to via group membership:
+
 - Create, update, and delete collections
 - Update ingestion pipelines
 - Cannot create or delete repositories, or modify `allowedGroups`

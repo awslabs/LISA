@@ -31,8 +31,7 @@ class ToolRegistry:
         self._lock = threading.RLock()
 
     def register_tool(self, tool_info: ToolInfo) -> None:
-        """
-        Register a tool in the registry.
+        """Register a tool in the registry.
 
         Args:
             tool_info: Information about the tool to register
@@ -42,8 +41,7 @@ class ToolRegistry:
             logger.info(f"Registered tool: {tool_info.name}")
 
     def register_tools(self, tools: list[ToolInfo]) -> None:
-        """
-        Register multiple tools in the registry.
+        """Register multiple tools in the registry.
 
         Args:
             tools: List of tools to register
@@ -54,8 +52,7 @@ class ToolRegistry:
             logger.info(f"Registered {len(tools)} tools")
 
     def unregister_tool(self, tool_name: str) -> bool:
-        """
-        Unregister a tool from the registry.
+        """Unregister a tool from the registry.
 
         Args:
             tool_name: Name of the tool to unregister
@@ -71,8 +68,7 @@ class ToolRegistry:
             return False
 
     def get_tool(self, tool_name: str) -> ToolInfo | None:
-        """
-        Get a tool by name.
+        """Get a tool by name.
 
         Args:
             tool_name: Name of the tool to retrieve
@@ -84,8 +80,7 @@ class ToolRegistry:
             return self._tools.get(tool_name)
 
     def list_tools(self) -> list[ToolInfo]:
-        """
-        Get a list of all registered tools.
+        """Get a list of all registered tools.
 
         Returns:
             List of all registered tools
@@ -94,8 +89,7 @@ class ToolRegistry:
             return list(self._tools.values())
 
     def list_tool_names(self) -> list[str]:
-        """
-        Get a list of all registered tool names.
+        """Get a list of all registered tool names.
 
         Returns:
             List of all registered tool names
@@ -110,12 +104,12 @@ class ToolRegistry:
             logger.info("Cleared all tools from registry")
 
     def update_registry(self, new_tools: list[ToolInfo]) -> None:
-        """
-        Update the registry with a new set of tools.
+        """Update the registry with a new set of tools.
+
         This replaces all existing tools.
 
         Args:
-            new_tools: New list of tools to register
+                    new_tools: New list of tools to register
         """
         with self._lock:
             self._tools.clear()
@@ -124,8 +118,7 @@ class ToolRegistry:
             logger.info(f"Updated registry with {len(new_tools)} tools")
 
     def get_tool_count(self) -> int:
-        """
-        Get the number of registered tools.
+        """Get the number of registered tools.
 
         Returns:
             Number of registered tools
@@ -134,8 +127,7 @@ class ToolRegistry:
             return len(self._tools)
 
     def has_tool(self, tool_name: str) -> bool:
-        """
-        Check if a tool is registered.
+        """Check if a tool is registered.
 
         Args:
             tool_name: Name of the tool to check

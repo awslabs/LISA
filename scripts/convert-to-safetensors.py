@@ -12,8 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""
-Script that will convert standard pytorch weights to safe tensor weights.
+"""Script that will convert standard pytorch weights to safe tensor weights.
 
 Parameters
 ----------

@@ -100,8 +100,7 @@ collection_service = CollectionService(vector_store_repo=vs_repo, document_repo=
 
 @api_wrapper
 def list_all(event: dict, context: dict) -> list[dict[str, Any]]:
-    """
-    List all available repositories that the user has access to.
+    """List all available repositories that the user has access to.
 
     Args:
         event: Lambda event containing user authentication
@@ -122,8 +121,7 @@ def list_all(event: dict, context: dict) -> list[dict[str, Any]]:
 @api_wrapper
 @admin_only
 def list_status(event: dict, context: dict) -> dict[str, Any]:
-    """
-    Get all repository status.
+    """Get all repository status.
 
     Returns:
         List of repository status
@@ -299,8 +297,8 @@ def get_repository(event: dict[str, Any], repository_id: str) -> dict[str, Any]:
 
 
 def create_bedrock_collection(event: dict, context: dict) -> dict[str, Any]:
-    """
-    Create collections for a Bedrock Knowledge Base repository based on pipeline configurations.
+    """Create collections for a Bedrock Knowledge Base repository based on pipeline configurations.
+
     This is called by the state machine during repository creation.
 
     Each pipeline configuration represents a data source and should have a corresponding collection.
@@ -435,6 +433,7 @@ def create_bedrock_collection(event: dict, context: dict) -> dict[str, Any]:
 
 def create_default_collection(event: dict, context: dict) -> dict[str, Any]:
     """Persist the default collection for a non-Bedrock repository after stack creation.
+
     Called by the state machine for OpenSearch/PGVector repositories.
     """
     try:
@@ -481,8 +480,7 @@ def create_default_collection(event: dict, context: dict) -> dict[str, Any]:
 @api_wrapper
 @rag_admin_or_admin
 def create_collection(event: dict, context: dict) -> dict[str, Any]:
-    """
-    Create a new collection within a vector store.
+    """Create a new collection within a vector store.
 
     Args:
         event (dict): The Lambda event object containing:
@@ -549,8 +547,7 @@ def create_collection(event: dict, context: dict) -> dict[str, Any]:
 
 @api_wrapper
 def get_collection(event: dict, context: dict) -> dict[str, Any]:
-    """
-    Get a collection by ID within a vector store.
+    """Get a collection by ID within a vector store.
 
     Args:
         event (dict): The Lambda event object containing:
@@ -614,8 +611,7 @@ def get_collection(event: dict, context: dict) -> dict[str, Any]:
 @api_wrapper
 @rag_admin_or_admin
 def update_collection(event: dict, context: dict) -> dict[str, Any]:
-    """
-    Update a collection within a vector store.
+    """Update a collection within a vector store.
 
     Args:
         event (dict): The Lambda event object containing:
@@ -677,8 +673,7 @@ def update_collection(event: dict, context: dict) -> dict[str, Any]:
 @api_wrapper
 @rag_admin_or_admin
 def delete_collection(event: dict, context: dict) -> dict[str, Any]:
-    """
-    Delete a collection (regular or default) within a vector store.
+    """Delete a collection (regular or default) within a vector store.
 
     Path: /repository/{repositoryId}/collection/{collectionId}
 
@@ -734,8 +729,7 @@ def delete_collection(event: dict, context: dict) -> dict[str, Any]:
 
 @api_wrapper
 def list_collections(event: dict, context: dict) -> dict[str, Any]:
-    """
-    List collections in a repository with pagination, filtering, and sorting.
+    """List collections in a repository with pagination, filtering, and sorting.
 
     Args:
         event (dict): The Lambda event object containing:
@@ -848,8 +842,7 @@ def list_collections(event: dict, context: dict) -> dict[str, Any]:
 
 @api_wrapper
 def list_user_collections(event: dict, context: dict) -> dict[str, Any]:
-    """
-    List all collections user has access to across all repositories.
+    """List all collections user has access to across all repositories.
 
     Args:
         event (dict): The Lambda event object containing:
@@ -944,7 +937,10 @@ def list_user_collections(event: dict, context: dict) -> dict[str, Any]:
 
 
 def _ensure_document_ownership(event: dict[str, Any], docs: list[RagDocument]) -> None:
-    """Verify ownership of documents. Admins and RAG admins can delete any document."""
+    """Verify ownership of documents.
+
+    Admins and RAG admins can delete any document.
+    """
     username = get_username(event)
     if not is_admin(event) and not is_rag_admin(event):
         for doc in docs:
@@ -954,8 +950,10 @@ def _ensure_document_ownership(event: dict[str, Any], docs: list[RagDocument]) -
 
 @api_wrapper
 def delete_documents(event: dict, context: dict) -> dict[str, Any]:
-    """Purge all records related to the specified document from the RAG repository. If a documentId is supplied, a
-    single document will be removed. If a documentName is supplied, all documents with that name will be removed
+    """Purge all records related to the specified document from the RAG repository.
+
+    If a documentId is supplied, a single document will be removed. If a documentName is supplied, all
+    documents with that name will be removed
 
     Args:
         event (dict): The Lambda event object containing:
@@ -1078,9 +1076,7 @@ def handle_deprecated_chunking_strategy(request: IngestDocumentRequest, query_pa
 
             # Create chunkingStrategy from legacy parameters
             request.chunkingStrategy = {"type": "fixed", "size": chunk_size, "overlap": chunk_overlap}
-            logger.info(
-                f"Migrated legacy parameters to chunkingStrategy: " f"size={chunk_size}, overlap={chunk_overlap}"
-            )
+            logger.info(f"Migrated legacy parameters to chunkingStrategy: size={chunk_size}, overlap={chunk_overlap}")
         if "collectionId" in query_params:
             request.collectionId = query_params.get("collectionId")
 
@@ -1161,6 +1157,7 @@ def get_document(event: dict, context: dict) -> dict[str, Any]:
 
     Args:
         event (dict): The Lambda event object containing:
+        context: Lambda context
             path_params:
                 repositoryId - the repository
                 documentId - the document
@@ -1185,8 +1182,10 @@ def get_document(event: dict, context: dict) -> dict[str, Any]:
 @api_wrapper
 def download_document(event: dict, context: dict) -> str:
     """Generate a pre-signed S3 URL for downloading a file from the RAG ingested files.
+
     Args:
         event (dict): The Lambda event object containing:
+        context: Lambda context
             path_params:
                 repositoryId - the repository
                 documentId - the document
@@ -1276,7 +1275,6 @@ def list_docs(event: dict, context: dict) -> dict[str, Any]:
     Raises:
         KeyError: If collectionId is not provided in queryStringParameters
     """
-
     path_params = event.get("pathParameters", {}) or {}
     repository_id = path_params.get("repositoryId")
 
@@ -1379,25 +1377,25 @@ def list_jobs(event: dict[str, Any], context: dict) -> dict[str, Any]:
 @api_wrapper
 @admin_only
 def create(event: dict, context: dict) -> Any:
-    """
-    Create a new process execution using AWS Step Functions. This function is only accessible by administrators.
+    """Create a new process execution using AWS Step Functions.
 
-    For Bedrock Knowledge Base repositories, automatically adds a default pipeline configuration
-    if none is provided, using the datasource S3 bucket for event-driven ingestion.
+    This function is only accessible by administrators.
+        For Bedrock Knowledge Base repositories, automatically adds a default pipeline configuration
+        if none is provided, using the datasource S3 bucket for event-driven ingestion.
 
     Args:
-        event (dict): The Lambda event object containing:
-            - body: A JSON string with the process creation details containing VectorStoreConfig.
-        context (dict): The Lambda context object.
+            event (dict): The Lambda event object containing:
+                - body: A JSON string with the process creation details containing VectorStoreConfig.
+            context (dict): The Lambda context object.
 
     Returns:
-        Dict[str, str]: A dictionary containing:
-            - status: Success status message.
-            - executionArn: The ARN of the step function execution.
+            Dict[str, str]: A dictionary containing:
+                - status: Success status message.
+                - executionArn: The ARN of the step function execution.
 
     Raises:
-        ValueError: If the user is not an administrator.
-        ValidationError: If the request body is invalid.
+            ValueError: If the user is not an administrator.
+            ValidationError: If the request body is invalid.
     """
     # Fetch the Step Function ARN from SSM Parameter Store
     parameter_name = os.environ["LISA_RAG_CREATE_STATE_MACHINE_ARN_PARAMETER"]
@@ -1458,8 +1456,7 @@ def create(event: dict, context: dict) -> Any:
 
 @api_wrapper
 def get_repository_by_id(event: dict, context: dict) -> dict[str, Any]:
-    """
-    Get a vector store configuration by ID.
+    """Get a vector store configuration by ID.
 
     Args:
         event (dict): The Lambda event object containing:
@@ -1495,8 +1492,7 @@ def _get_pipeline_key(pipeline: dict) -> str:
 
 
 def _validate_immutable_pipeline_fields(current_pipelines: list, new_pipelines: list) -> None:
-    """
-    Validate that immutable pipeline fields haven't changed for existing pipelines.
+    """Validate that immutable pipeline fields haven't changed for existing pipelines.
 
     Immutable fields: autoRemove, collectionId, s3Bucket, s3Prefix, trigger
 
@@ -1552,27 +1548,27 @@ def _validate_immutable_pipeline_fields(current_pipelines: list, new_pipelines: 
 @api_wrapper
 @rag_admin_or_admin
 def update_repository(event: dict, context: dict) -> dict[str, Any]:
-    """
-    Update a vector store configuration. Accessible by administrators and RAG admins (with scoped access).
+    """Update a vector store configuration.
 
-    Admins can update all fields. RAG admins with group access can only update pipeline-related fields.
-    RAG admins cannot change allowedGroups or other repository-level settings.
+    Accessible by administrators and RAG admins (with scoped access).
+        Admins can update all fields. RAG admins with group access can only update pipeline-related fields.
+        RAG admins cannot change allowedGroups or other repository-level settings.
 
-    If the pipeline configuration has changed, this will trigger an infrastructure deployment
-    using the state machine, similar to repository creation.
+        If the pipeline configuration has changed, this will trigger an infrastructure deployment
+        using the state machine, similar to repository creation.
 
     Args:
-        event (dict): The Lambda event object containing:
-            - pathParameters.repositoryId: The repository ID to update
-            - body: JSON with fields to update (UpdateVectorStoreRequest)
-        context (dict): The Lambda context object
+            event (dict): The Lambda event object containing:
+                - pathParameters.repositoryId: The repository ID to update
+                - body: JSON with fields to update (UpdateVectorStoreRequest)
+            context (dict): The Lambda context object
 
     Returns:
-        Dict[str, Any]: The updated repository configuration with executionArn if deployment triggered
+            Dict[str, Any]: The updated repository configuration with executionArn if deployment triggered
 
     Raises:
-        ValidationError: If validation fails
-        HTTPException: If repository not found
+            ValidationError: If validation fails
+            HTTPException: If repository not found
     """
     # Extract path parameters
     path_params = event.get("pathParameters", {})
@@ -1678,7 +1674,7 @@ def update_repository(event: dict, context: dict) -> dict[str, Any]:
                 # If metadata provided but missing tags, preserve existing tags
                 elif "tags" not in current_meta and "tags" in existing_meta:
                     pipeline["metadata"]["tags"] = existing_meta["tags"]
-                    logger.info(f"Preserved tags for collection {collection_id}: " f"{existing_meta['tags']}")
+                    logger.info(f"Preserved tags for collection {collection_id}: {existing_meta['tags']}")
 
     # Check if pipeline configuration has changed
     # Use the converted pipelines from updates if available, otherwise use request.pipelines
@@ -1764,9 +1760,9 @@ def update_repository(event: dict, context: dict) -> dict[str, Any]:
 @api_wrapper
 @admin_only
 def delete(event: dict, context: dict) -> Any:
-    """
-    Delete a vector store process using AWS Step Functions. This function ensures
-    that the user is an administrator or owns the vector store being deleted.
+    """Delete a vector store process using AWS Step Functions.
+
+    This function ensures that the user is an administrator or owns the vector store being deleted.
     Also deletes all associated collections and their documents.
 
     Args:
@@ -1855,8 +1851,7 @@ def _remove_legacy(repository_id: str) -> None:
 
 @api_wrapper
 def list_bedrock_knowledge_bases(event: dict, context: dict) -> dict[str, Any]:
-    """
-    List all ACTIVE Bedrock Knowledge Bases in the AWS account.
+    """List all ACTIVE Bedrock Knowledge Bases in the AWS account.
 
     Marks KBs as unavailable if they're already associated with a repository.
 
@@ -1903,8 +1898,7 @@ def list_bedrock_knowledge_bases(event: dict, context: dict) -> dict[str, Any]:
         kb_list.append(kb_dict)
 
     logger.info(
-        f"Found {len(active_kbs)} ACTIVE Knowledge Bases out of {len(all_kbs)} total, "
-        f"{len(used_kb_ids)} already in use"
+        f"Found {len(active_kbs)} ACTIVE Knowledge Bases out of {len(all_kbs)} total, {len(used_kb_ids)} already in use"
     )
 
     return {"knowledgeBases": kb_list, "totalKnowledgeBases": len(kb_list)}
@@ -1912,8 +1906,7 @@ def list_bedrock_knowledge_bases(event: dict, context: dict) -> dict[str, Any]:
 
 @api_wrapper
 def list_bedrock_data_sources(event: dict, context: dict) -> dict[str, Any]:
-    """
-    List data sources for a specific Bedrock Knowledge Base.
+    """List data sources for a specific Bedrock Knowledge Base.
 
     Args:
         event: Lambda event containing:

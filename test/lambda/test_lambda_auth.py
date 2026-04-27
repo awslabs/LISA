@@ -530,7 +530,7 @@ def test_get_username_default(setup_env):
 
 
 def test_user_has_group():
-    """Test user_has_group_access helper function"""
+    """Test user_has_group_access helper function."""
     from utilities.auth import user_has_group_access
 
     # Test user has group

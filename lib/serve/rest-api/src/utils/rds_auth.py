@@ -23,7 +23,7 @@ import boto3
 def _get_lambda_role_arn() -> str:
     """Get the ARN of the Lambda execution role.
 
-    Returns
+    Returns:
     -------
     str
         The full ARN of the Lambda execution role
@@ -36,7 +36,7 @@ def _get_lambda_role_arn() -> str:
 def get_lambda_role_name() -> str:
     """Extract the role name from the Lambda execution role ARN.
 
-    Returns
+    Returns:
     -------
     str
         The name of the Lambda execution role without the full ARN

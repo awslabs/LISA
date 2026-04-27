@@ -14,11 +14,11 @@
 
 """Lambda handler for syncing all models from DynamoDB to LiteLLM.
 
-This Lambda is triggered when the LiteLLM PostgreSQL database is created or updated,
-ensuring all models in the Models DynamoDB table are registered in LiteLLM.
+This Lambda is triggered when the LiteLLM PostgreSQL database is created or updated, ensuring all models in the Models
+DynamoDB table are registered in LiteLLM.
 
-Note: This module intentionally does NOT import from models.state_machine.create_model
-to avoid requiring GUARDRAILS_TABLE_NAME at module load time.
+Note: This module intentionally does NOT import from models.state_machine.create_model to avoid requiring
+GUARDRAILS_TABLE_NAME at module load time.
 """
 
 import json

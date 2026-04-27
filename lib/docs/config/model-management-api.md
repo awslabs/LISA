@@ -6,13 +6,13 @@ This API is only accessible by administrators via the API Gateway and is used to
 
 The `/models` route allows admins to list all models managed by the system. This includes models that are either creating, deleting, already active, or in a failed state. Models can be deployed via ECS or managed externally through a LiteLLM configuration.
 
-### Request Example:
+### Request Example
 
 ```bash
 curl -s -H "Authorization: Bearer <admin_token>" -X GET https://<apigw_endpoint>/models
 ```
 
-### Response Example:
+### Response Example
 
 ```json
 {
@@ -85,7 +85,7 @@ curl -s -H "Authorization: Bearer <admin_token>" -X GET https://<apigw_endpoint>
 }
 ```
 
-### Explanation of Response Fields:
+### Explanation of Response Fields
 
 - `modelId`: A unique identifier for the model.
 - `modelName`: The name of the model, typically referencing the underlying service (Bedrock, SageMaker, etc.).
@@ -100,13 +100,13 @@ LISA provides the `/models` endpoint for creating LISA-hosted ECS models and ext
 This API accepts the same model definition parameters that were accepted in the V2 model definitions within the config.yaml file with one notable difference: the `containerConfig.image.path` field is
 now omitted because it corresponded with the `inferenceContainer` selection. As a convenience, this path is no longer required.
 
-### Request Example:
+### Request Example
 
 ```
 POST https://<apigw_endpoint>/models
 ```
 
-### Example Payload for ECS Model:
+### Example Payload for ECS Model
 
 ```json
 {
@@ -159,7 +159,7 @@ POST https://<apigw_endpoint>/models
 }
 ```
 
-### Creating a LiteLLM-Only Model:
+### Creating a LiteLLM-Only Model
 
 ```json
 {
@@ -170,7 +170,7 @@ POST https://<apigw_endpoint>/models
 }
 ```
 
-### Creating a Customer Internal Hosted Model:
+### Creating a Customer Internal Hosted Model
 
 ```json
 {
@@ -183,16 +183,16 @@ POST https://<apigw_endpoint>/models
 }
 ```
 
-### Explanation of Key Fields for Creation Payload:
+### Explanation of Key Fields for Creation Payload
 
 - `modelId`: The unique identifier for the model. This is any name you would like it to be.
 - `modelName`: The name of the model as it appears in the system. For LISA self-hosted models, this must be the S3 Key to your model artifacts, otherwise
   this is the LiteLLM-compatible reference to a SageMaker Endpoint or Bedrock Foundation Model. Note: Bedrock and SageMaker resources must exist in the
   same region as your LISA deployment. If your LISA installation is in us-east-1, then all SageMaker and Bedrock calls will also happen in us-east-1.
   Configuration examples:
-    - LISA hosting: If your model artifacts are in `s3://${lisa_models_bucket}/path/to/model/weights`, then the `modelName` value here should be `path/to/model/weights`
-    - LiteLLM-only, Bedrock: If you want to use `amazon.titan-text-lite-v1`, your `modelName` value should be `bedrock/amazon.titan-text-lite-v1`
-    - LiteLLM-only, SageMaker: If you want to use a SageMaker Endpoint named `my-sm-endpoint`, then the `modelName` value should be `sagemaker/my-sm-endpoint`.
+  - LISA hosting: If your model artifacts are in `s3://${lisa_models_bucket}/path/to/model/weights`, then the `modelName` value here should be `path/to/model/weights`
+  - LiteLLM-only, Bedrock: If you want to use `amazon.titan-text-lite-v1`, your `modelName` value should be `bedrock/amazon.titan-text-lite-v1`
+  - LiteLLM-only, SageMaker: If you want to use a SageMaker Endpoint named `my-sm-endpoint`, then the `modelName` value should be `sagemaker/my-sm-endpoint`.
 - `modelType`: The type of model, such as text generation (textgen).
 - `streaming`: Whether the model supports streaming inference.
 - `hostingType`: Optional hosting selector. Use `INTERNAL_HOSTED` for customer internal load balancer endpoints.
@@ -206,13 +206,13 @@ POST https://<apigw_endpoint>/models
 
 Admins can delete a model using the following endpoint. Deleting a model removes the infrastructure (ECS) or disconnects from LiteLLM.
 
-### Request Example:
+### Request Example
 
 ```
 DELETE https://<apigw_endpoint>/models/{modelId}
 ```
 
-### Response Example:
+### Response Example
 
 ```json
 {
@@ -328,13 +328,13 @@ LISA supports two scheduling types. One type may be applied to each self-hosted 
 
 Create or update a schedule for a specific model. This endpoint accepts the same payload for both creating new schedules and updating existing ones.
 
-##### Request Example:
+##### Request Example
 
 ```
 PUT https://<apigw_endpoint>/models/{modelId}/schedule
 ```
 
-##### Example Payload for Daily Schedule:
+##### Example Payload for Daily Schedule
 
 ```json
 {
@@ -361,7 +361,7 @@ PUT https://<apigw_endpoint>/models/{modelId}/schedule
 }
 ```
 
-##### Example Payload for Recurring Schedule:
+##### Example Payload for Recurring Schedule
 
 ```json
 {
@@ -374,7 +374,7 @@ PUT https://<apigw_endpoint>/models/{modelId}/schedule
 }
 ```
 
-##### Response Example:
+##### Response Example
 
 ```json
 {
@@ -384,7 +384,7 @@ PUT https://<apigw_endpoint>/models/{modelId}/schedule
 }
 ```
 
-##### Key Fields for Schedule Configuration:
+##### Key Fields for Schedule Configuration
 
 - `scheduleType`: Either "DAILY" or "RECURRING"
 - `timezone`: IANA timezone identifier (e.g., "UTC", "America/New_York", "Europe/London")
@@ -400,13 +400,13 @@ PUT https://<apigw_endpoint>/models/{modelId}/schedule
 
 Retrieve the current schedule configuration for a model.
 
-##### Request Example:
+##### Request Example
 
 ```
 GET https://<apigw_endpoint>/models/{modelId}/schedule
 ```
 
-##### Response Example:
+##### Response Example
 
 ```json
 {
@@ -439,13 +439,13 @@ GET https://<apigw_endpoint>/models/{modelId}/schedule
 
 Get detailed status information about a model's scheduling configuration and current state.
 
-##### Request Example:
+##### Request Example
 
 ```
 GET https://<apigw_endpoint>/models/{modelId}/schedule/status
 ```
 
-##### Response Example:
+##### Response Example
 
 ```json
 {
@@ -465,7 +465,7 @@ GET https://<apigw_endpoint>/models/{modelId}/schedule/status
 }
 ```
 
-##### Schedule Status Fields:
+##### Schedule Status Fields
 
 - `scheduleEnabled`: Whether scheduling is currently active for the model
 - `scheduleConfigured`: Whether a schedule has been configured for the model
@@ -481,13 +481,13 @@ GET https://<apigw_endpoint>/models/{modelId}/schedule/status
 
 Remove the schedule configuration for a model, disabling automatic start/stop functionality.
 
-##### Request Example:
+##### Request Example
 
 ```
 DELETE https://<apigw_endpoint>/models/{modelId}/schedule
 ```
 
-##### Response Example:
+##### Response Example
 
 ```json
 {

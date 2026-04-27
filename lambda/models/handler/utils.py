@@ -41,8 +41,7 @@ def to_lisa_model(model_dict: dict[str, Any]) -> LISAModel:
 def get_model_and_validate_access(
     model_table: Any, model_id: str, user_groups: list[str] | None = None, is_admin: bool = False
 ) -> dict[str, Any]:
-    """
-    Get model from DynamoDB and validate user access
+    """Get model from DynamoDB and validate user access.
 
     Args:
         model_table: DynamoDB table resource
@@ -82,8 +81,7 @@ def get_model_and_validate_status(
     user_groups: list[str] | None = None,
     is_admin: bool = False,
 ) -> dict[str, Any]:
-    """
-    Get model from DynamoDB, validate user access, and check model status
+    """Get model from DynamoDB, validate user access, and check model status.
 
     Args:
         model_table: DynamoDB table resource

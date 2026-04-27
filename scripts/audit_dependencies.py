@@ -13,8 +13,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""
-Audit dependency versions across all LISA components.
+"""Audit dependency versions across all LISA components.
 
 This script finds version inconsistencies across:
 - requirements.txt files
@@ -48,8 +47,7 @@ class DependencyAuditor:
         return sorted(files)
 
     def parse_requirement_line(self, line: str) -> tuple[str, str] | None:
-        """
-        Parse a requirement line into (package, version_spec).
+        """Parse a requirement line into (package, version_spec).
 
         Returns None if line is a comment, empty, or not a simple requirement.
         """
@@ -196,8 +194,7 @@ class DependencyAuditor:
         return spec
 
     def are_versions_compatible(self, specs: set[str]) -> bool:
-        """
-        Check if version specs are compatible.
+        """Check if version specs are compatible.
 
         This is a simplified check - it considers specs compatible if:
         - They're identical
@@ -232,8 +229,7 @@ class DependencyAuditor:
         return len(exact_versions) <= 1
 
     def generate_report(self) -> tuple[dict[str, dict[str, set[str]]], int]:
-        """
-        Generate inconsistency report.
+        """Generate inconsistency report.
 
         Returns (inconsistencies, total_packages_checked)
         """
@@ -252,8 +248,7 @@ class DependencyAuditor:
         return inconsistencies, len(self.package_versions)
 
     def run_audit(self) -> int:
-        """
-        Run full audit and print report.
+        """Run full audit and print report.
 
         Returns exit code (0 if no issues, 1 if inconsistencies found).
         """

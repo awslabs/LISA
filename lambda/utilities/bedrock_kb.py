@@ -96,8 +96,7 @@ class S3DocumentDiscoveryService:
         s3_prefix: str = "",
         ingestion_type: IngestionType = IngestionType.EXISTING,
     ) -> S3DocumentDiscoveryResult:
-        """
-        Discover and ingest existing documents from S3 bucket.
+        """Discover and ingest existing documents from S3 bucket.
 
         Scans S3 bucket, creates metadata.json files, creates RagDocument entries,
         and triggers Bedrock KB sync.
@@ -195,8 +194,7 @@ class S3DocumentDiscoveryService:
             raise
 
     def _scan_s3_bucket(self, s3_bucket: str, s3_prefix: str) -> tuple[list[str], int]:
-        """
-        Scan S3 bucket and return list of document keys.
+        """Scan S3 bucket and return list of document keys.
 
         Args:
             s3_bucket: S3 bucket name
@@ -325,8 +323,7 @@ def get_datasource_bucket_for_collection(
     repository: dict[str, Any],
     collection_id: str,
 ) -> str:
-    """
-    Get the S3 bucket for a specific collection/data source.
+    """Get the S3 bucket for a specific collection/data source.
 
     Supports multiple configuration formats:
     - Legacy: bedrockKnowledgeDatasourceS3Bucket (single bucket)
@@ -403,9 +400,9 @@ def ingest_document_to_kb(
     job: IngestionJob,
     repository: dict[str, Any],
 ) -> None:
-    """
-    Copy the source object into the KB datasource bucket and trigger ingestion. S3 will
-    kick off another IngestionJob to store the document in the collection DB
+    """Copy the source object into the KB datasource bucket and trigger ingestion.
+
+    S3 will kick off another IngestionJob to store the document in the collection DB
     """
     bedrock_config = repository.get("bedrockKnowledgeBaseConfig", {})
 
@@ -558,8 +555,7 @@ def ingest_bedrock_s3_documents(
     batch_size: int = 100,
     metadata: dict[str, Any] | None = None,
 ) -> tuple[int, int]:
-    """
-    Discover and create ingestion jobs for existing documents in S3 bucket.
+    """Discover and create ingestion jobs for existing documents in S3 bucket.
 
     Scans S3 bucket for documents and creates batch ingestion jobs.
     Skips metadata files and directories.
@@ -574,6 +570,7 @@ def ingest_bedrock_s3_documents(
         embedding_model: Embedding model identifier
         s3_prefix: Optional S3 prefix to scan within bucket
         batch_size: Number of documents per batch job (default: 100)
+        metadata: Optional pre-merged metadata to include in the job
 
     Returns:
         Tuple of (discovered_count, skipped_count)
@@ -651,8 +648,7 @@ def create_s3_scan_job(
     s3_prefix: str = "",
     metadata: dict[str, Any] | None = None,
 ) -> str:
-    """
-    Create a batch ingestion job to scan and ingest existing S3 documents.
+    """Create a batch ingestion job to scan and ingest existing S3 documents.
 
     This creates a batch job with empty s3_paths that will be processed by
     pipeline_ingest_documents. The empty s3_paths signals that the S3 bucket

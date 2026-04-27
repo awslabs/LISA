@@ -23,8 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """
-    Check if all collection deletion jobs for a repository are complete.
+    """Check if all collection deletion jobs for a repository are complete.
 
     Args:
         event: Event data containing repositoryId and stackName
@@ -47,7 +46,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     all_complete = pending_count == 0
 
     logger.info(
-        f"Repository {repository_id}: " f"pending_collection_deletions={pending_count}, " f"all_complete={all_complete}"
+        f"Repository {repository_id}: pending_collection_deletions={pending_count}, all_complete={all_complete}"
     )
 
     return {

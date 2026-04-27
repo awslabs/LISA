@@ -128,9 +128,11 @@ def test_store_chunks_in_vectorstore(setup_env):
     mock_service = Mock()
     mock_service.get_vector_store_client.return_value = mock_vs
 
-    with patch("repository.pipeline_ingest_documents.RagEmbeddings"), patch(
-        "repository.pipeline_ingest_documents.VectorStoreRepository"
-    ) as mock_vs_repo, patch("repository.pipeline_ingest_documents.RepositoryServiceFactory") as mock_factory:
+    with (
+        patch("repository.pipeline_ingest_documents.RagEmbeddings"),
+        patch("repository.pipeline_ingest_documents.VectorStoreRepository") as mock_vs_repo,
+        patch("repository.pipeline_ingest_documents.RepositoryServiceFactory") as mock_factory,
+    ):
         mock_vs_repo.return_value.find_repository_by_id.return_value = {"repositoryId": "repo1", "type": "opensearch"}
         mock_factory.create_service.return_value = mock_service
 
@@ -153,9 +155,11 @@ def test_store_chunks_in_vectorstore_failure(setup_env):
     mock_service = Mock()
     mock_service.get_vector_store_client.return_value = mock_vs
 
-    with patch("repository.pipeline_ingest_documents.RagEmbeddings"), patch(
-        "repository.pipeline_ingest_documents.VectorStoreRepository"
-    ) as mock_vs_repo, patch("repository.pipeline_ingest_documents.RepositoryServiceFactory") as mock_factory:
+    with (
+        patch("repository.pipeline_ingest_documents.RagEmbeddings"),
+        patch("repository.pipeline_ingest_documents.VectorStoreRepository") as mock_vs_repo,
+        patch("repository.pipeline_ingest_documents.RepositoryServiceFactory") as mock_factory,
+    ):
         mock_vs_repo.return_value.find_repository_by_id.return_value = {"repositoryId": "repo1", "type": "opensearch"}
         mock_factory.create_service.return_value = mock_service
 
@@ -185,10 +189,11 @@ def test_pipeline_ingest_bedrock_kb(setup_env):
         },
     }
 
-    with patch("repository.pipeline_ingest_documents.vs_repo") as mock_vs_repo, patch(
-        "repository.pipeline_ingest_documents.rag_document_repository"
-    ) as mock_doc_repo, patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo:
-
+    with (
+        patch("repository.pipeline_ingest_documents.vs_repo") as mock_vs_repo,
+        patch("repository.pipeline_ingest_documents.rag_document_repository") as mock_doc_repo,
+        patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo,
+    ):
         mock_vs_repo.find_repository_by_id.return_value = bedrock_kb_repo
         mock_doc_repo.find_by_source.return_value = []
 
@@ -225,14 +230,13 @@ def test_pipeline_ingest_bedrock_kb_copy_from_lisa_bucket(setup_env):
         },
     }
 
-    with patch("repository.pipeline_ingest_documents.vs_repo") as mock_vs_repo, patch(
-        "repository.pipeline_ingest_documents.rag_document_repository"
-    ) as mock_doc_repo, patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo, patch(
-        "repository.pipeline_ingest_documents.s3"
-    ) as mock_s3, patch(
-        "repository.pipeline_ingest_documents.bedrock_agent"
-    ) as mock_bedrock_agent:
-
+    with (
+        patch("repository.pipeline_ingest_documents.vs_repo") as mock_vs_repo,
+        patch("repository.pipeline_ingest_documents.rag_document_repository") as mock_doc_repo,
+        patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo,
+        patch("repository.pipeline_ingest_documents.s3") as mock_s3,
+        patch("repository.pipeline_ingest_documents.bedrock_agent") as mock_bedrock_agent,
+    ):
         mock_vs_repo.find_repository_by_id.return_value = bedrock_kb_repo
         mock_doc_repo.find_by_source.return_value = []
 
@@ -296,18 +300,15 @@ def test_pipeline_ingest_with_previous_document(setup_env):
         document_id="prev-doc",
     )
 
-    with patch("repository.pipeline_ingest_documents.vs_repo") as mock_vs_repo, patch(
-        "repository.pipeline_ingest_documents.generate_chunks"
-    ) as mock_chunks, patch("repository.pipeline_ingest_documents.prepare_chunks") as mock_prepare, patch(
-        "repository.pipeline_ingest_documents.store_chunks_in_vectorstore"
-    ) as mock_store, patch(
-        "repository.pipeline_ingest_documents.rag_document_repository"
-    ) as mock_doc_repo, patch(
-        "repository.pipeline_ingest_documents.ingestion_job_repository"
-    ) as mock_job_repo, patch(
-        "repository.pipeline_ingest_documents.remove_document_from_vectorstore"
+    with (
+        patch("repository.pipeline_ingest_documents.vs_repo") as mock_vs_repo,
+        patch("repository.pipeline_ingest_documents.generate_chunks") as mock_chunks,
+        patch("repository.pipeline_ingest_documents.prepare_chunks") as mock_prepare,
+        patch("repository.pipeline_ingest_documents.store_chunks_in_vectorstore") as mock_store,
+        patch("repository.pipeline_ingest_documents.rag_document_repository") as mock_doc_repo,
+        patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo,
+        patch("repository.pipeline_ingest_documents.remove_document_from_vectorstore"),
     ):
-
         mock_vs_repo.find_repository_by_id.return_value = {"type": RepositoryType.OPENSEARCH}
         mock_chunks.return_value = [Mock(page_content="text", metadata={})]
         mock_prepare.return_value = (["text"], [{"key": "value"}])
@@ -335,14 +336,12 @@ def test_handle_pipeline_ingest_event(setup_env):
         "requestContext": {"authorizer": {"username": "user1"}},
     }
 
-    with patch("repository.pipeline_ingest_handlers.vs_repo") as mock_vs_repo, patch(
-        "repository.pipeline_ingest_handlers.collection_service"
-    ) as mock_coll_service, patch(
-        "repository.pipeline_ingest_handlers.ingestion_job_repository"
-    ) as mock_job_repo, patch(
-        "repository.pipeline_ingest_handlers.ingestion_service"
-    ) as mock_service:
-
+    with (
+        patch("repository.pipeline_ingest_handlers.vs_repo") as mock_vs_repo,
+        patch("repository.pipeline_ingest_handlers.collection_service") as mock_coll_service,
+        patch("repository.pipeline_ingest_handlers.ingestion_job_repository") as mock_job_repo,
+        patch("repository.pipeline_ingest_handlers.ingestion_service") as mock_service,
+    ):
         mock_vs_repo.find_repository_by_id.return_value = {"repositoryId": "repo1"}
         mock_coll_service.get_collection_metadata.return_value = {}
 
@@ -369,14 +368,13 @@ def test_handle_pipline_ingest_schedule(setup_env):
     now = datetime.now(timezone.utc)
     recent = now - timedelta(hours=12)
 
-    with patch("repository.pipeline_ingest_handlers.s3") as mock_s3, patch(
-        "repository.pipeline_ingest_handlers.vs_repo"
-    ) as mock_vs_repo, patch("repository.pipeline_ingest_handlers.collection_service") as mock_coll_service, patch(
-        "repository.pipeline_ingest_handlers.ingestion_job_repository"
-    ) as mock_job_repo, patch(
-        "repository.pipeline_ingest_handlers.ingestion_service"
-    ) as mock_service:
-
+    with (
+        patch("repository.pipeline_ingest_handlers.s3") as mock_s3,
+        patch("repository.pipeline_ingest_handlers.vs_repo") as mock_vs_repo,
+        patch("repository.pipeline_ingest_handlers.collection_service") as mock_coll_service,
+        patch("repository.pipeline_ingest_handlers.ingestion_job_repository") as mock_job_repo,
+        patch("repository.pipeline_ingest_handlers.ingestion_service") as mock_service,
+    ):
         mock_paginator = Mock()
         mock_paginator.paginate.return_value = [
             {
@@ -411,10 +409,11 @@ def test_handle_pipline_ingest_schedule_no_contents(setup_env):
         "requestContext": {"authorizer": {"username": "user1"}},
     }
 
-    with patch("repository.pipeline_ingest_handlers.s3") as mock_s3, patch(
-        "repository.pipeline_ingest_handlers.vs_repo"
-    ) as mock_vs_repo, patch("repository.pipeline_ingest_handlers.collection_service") as mock_coll_service:
-
+    with (
+        patch("repository.pipeline_ingest_handlers.s3") as mock_s3,
+        patch("repository.pipeline_ingest_handlers.vs_repo") as mock_vs_repo,
+        patch("repository.pipeline_ingest_handlers.collection_service") as mock_coll_service,
+    ):
         mock_paginator = Mock()
         mock_paginator.paginate.return_value = [{}]  # No Contents key
         mock_s3.get_paginator.return_value = mock_paginator
@@ -446,9 +445,11 @@ def test_remove_document_from_vectorstore(setup_env):
     mock_service = Mock()
     mock_service.get_vector_store_client.return_value = mock_vs
 
-    with patch("repository.pipeline_ingest_documents.RagEmbeddings"), patch(
-        "repository.pipeline_ingest_documents.VectorStoreRepository"
-    ) as mock_vs_repo, patch("repository.pipeline_ingest_documents.RepositoryServiceFactory") as mock_factory:
+    with (
+        patch("repository.pipeline_ingest_documents.RagEmbeddings"),
+        patch("repository.pipeline_ingest_documents.VectorStoreRepository") as mock_vs_repo,
+        patch("repository.pipeline_ingest_documents.RepositoryServiceFactory") as mock_factory,
+    ):
         mock_vs_repo.return_value.find_repository_by_id.return_value = {"repositoryId": "repo1", "type": "opensearch"}
         mock_factory.create_service.return_value = mock_service
 
@@ -474,10 +475,10 @@ def test_pipeline_ingest_documents_batch(setup_env):
         s3_paths=["s3://bucket/key1", "s3://bucket/key2", "s3://bucket/key3"],
     )
 
-    with patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo, patch(
-        "repository.pipeline_ingest_documents.pipeline_ingest_document"
-    ) as mock_ingest_doc:
-
+    with (
+        patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo,
+        patch("repository.pipeline_ingest_documents.pipeline_ingest_document") as mock_ingest_doc,
+    ):
         from repository.pipeline_ingest_documents import pipeline_ingest_documents
 
         pipeline_ingest_documents(job)
@@ -501,10 +502,10 @@ def test_pipeline_ingest_documents_batch_with_failures(setup_env):
         s3_paths=["s3://bucket/key1", "s3://bucket/key2", "s3://bucket/key3"],
     )
 
-    with patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo, patch(
-        "repository.pipeline_ingest_documents.pipeline_ingest_document"
-    ) as mock_ingest_doc:
-
+    with (
+        patch("repository.pipeline_ingest_documents.ingestion_job_repository") as mock_job_repo,
+        patch("repository.pipeline_ingest_documents.pipeline_ingest_document") as mock_ingest_doc,
+    ):
         # First succeeds, second fails, third succeeds
         mock_ingest_doc.side_effect = [None, Exception("Ingest failed"), None]
 
@@ -610,7 +611,9 @@ def test_pipeline_ingest_routes_to_single_ingestion(setup_env):
 
 def test_handle_pipeline_ingest_event_resolves_collection_by_name(setup_env):
     """Pipeline collectionId name string must be resolved to UUID before job creation.
-    The job must be created with the UUID, not the name string."""
+
+    The job must be created with the UUID, not the name string.
+    """
     event = {
         "detail": {
             "bucket": "test-bucket",
@@ -632,14 +635,12 @@ def test_handle_pipeline_ingest_event_resolves_collection_by_name(setup_env):
         "metadata": None,
     }
 
-    with patch("repository.pipeline_ingest_handlers.vs_repo") as mock_vs_repo, patch(
-        "repository.pipeline_ingest_handlers.collection_service"
-    ) as mock_coll_service, patch(
-        "repository.pipeline_ingest_handlers.ingestion_job_repository"
-    ) as mock_job_repo, patch(
-        "repository.pipeline_ingest_handlers.ingestion_service"
-    ) as mock_service:
-
+    with (
+        patch("repository.pipeline_ingest_handlers.vs_repo") as mock_vs_repo,
+        patch("repository.pipeline_ingest_handlers.collection_service") as mock_coll_service,
+        patch("repository.pipeline_ingest_handlers.ingestion_job_repository") as mock_job_repo,
+        patch("repository.pipeline_ingest_handlers.ingestion_service") as mock_service,
+    ):
         mock_vs_repo.find_repository_by_id.return_value = {"repositoryId": "repo1", "type": "opensearch"}
         mock_coll_service.collection_repo.find_by_id_or_name.return_value = mock_collection
 

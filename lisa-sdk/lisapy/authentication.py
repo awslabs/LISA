@@ -45,7 +45,7 @@ def get_cognito_token(client_id: str, username: str, region: str = "us-east-1") 
     region : str, default="us-east-1"
         AWS region.
 
-    Returns
+    Returns:
     -------
     Dict[str, Any]
         Token response from cognito.
@@ -80,17 +80,16 @@ def get_management_key(
     deployment_stage : str | None
         Deployment stage. When provided an additional pattern is tried first.
 
-    Returns
+    Returns:
     -------
     str
         The management API key.
 
-    Raises
+    Raises:
     ------
     RuntimeError
         If none of the secret-name patterns resolve.
     """
-
     secrets_client = boto3.client("secretsmanager", region_name=region) if region else boto3.client("secretsmanager")
 
     patterns: list[str] = []
@@ -142,12 +141,12 @@ def create_api_token(
     ttl_seconds : int
         Time-to-live in seconds (default 1 hour).
 
-    Returns
+    Returns:
     -------
     str
         The registered API token (same as *api_key*).
 
-    Raises
+    Raises:
     ------
     Exception
         If the DynamoDB put_item call fails.
@@ -181,12 +180,12 @@ def setup_authentication(
     deployment_stage : str | None
         Deployment stage (optional).
 
-    Returns
+    Returns:
     -------
     dict[str, str]
         Authentication headers (``Api-Key`` and ``Authorization``).
 
-    Raises
+    Raises:
     ------
     RuntimeError
         If the management key cannot be retrieved.

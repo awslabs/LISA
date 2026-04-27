@@ -35,13 +35,13 @@ logger = logging.getLogger(__name__)
 
 
 class CreateTokenAdminHandler:
-    """Admin creates token for any user or system"""
+    """Admin creates token for any user or system."""
 
     def __init__(self, token_table: Any) -> None:
         self.token_table = token_table
 
     def _get_user_token(self, username: str) -> dict | None:
-        """Query for existing token by username using GSI"""
+        """Query for existing token by username using GSI."""
         response = self.token_table.query(
             IndexName="username-index", KeyConditionExpression=Key("username").eq(username), Limit=1
         )
@@ -97,13 +97,13 @@ class CreateTokenAdminHandler:
 
 
 class CreateTokenUserHandler:
-    """User creates their own token"""
+    """User creates their own token."""
 
     def __init__(self, token_table: Any) -> None:
         self.token_table = token_table
 
     def _get_user_token(self, username: str) -> dict | None:
-        """Query for existing token by username using GSI"""
+        """Query for existing token by username using GSI."""
         response = self.token_table.query(
             IndexName="username-index", KeyConditionExpression=Key("username").eq(username), Limit=1
         )
@@ -156,7 +156,7 @@ class CreateTokenUserHandler:
 
 
 class ListTokensHandler:
-    """List tokens - admins see all, users see only their own"""
+    """List tokens - admins see all, users see only their own."""
 
     def __init__(self, token_table: Any) -> None:
         self.token_table = token_table
@@ -203,7 +203,7 @@ class ListTokensHandler:
 
 
 class GetTokenHandler:
-    """Get specific token details"""
+    """Get specific token details."""
 
     def __init__(self, token_table: Any) -> None:
         self.token_table = token_table
@@ -263,7 +263,7 @@ class GetTokenHandler:
 
 
 class DeleteTokenHandler:
-    """Delete token - handles both modern and legacy tokens"""
+    """Delete token - handles both modern and legacy tokens."""
 
     def __init__(self, token_table: Any) -> None:
         self.token_table = token_table

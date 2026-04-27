@@ -61,7 +61,6 @@ class TestGetModelGuardrails:
         mock_dynamodb.Table.return_value = mock_table
 
         with patch.dict("os.environ", mock_env_vars), patch("boto3.resource", return_value=mock_dynamodb):
-
             result = await get_model_guardrails("test-model")
 
             assert result == mock_guardrails
@@ -77,7 +76,6 @@ class TestGetModelGuardrails:
         mock_dynamodb.Table.return_value = mock_table
 
         with patch.dict("os.environ", mock_env_vars), patch("boto3.resource", return_value=mock_dynamodb):
-
             result = await get_model_guardrails("test-model")
 
             assert result == []
@@ -92,7 +90,6 @@ class TestGetModelGuardrails:
         mock_dynamodb.Table.return_value = mock_table
 
         with patch.dict("os.environ", mock_env_vars), patch("boto3.resource", return_value=mock_dynamodb):
-
             result = await get_model_guardrails("test-model")
 
             assert result == []

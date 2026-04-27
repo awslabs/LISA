@@ -91,9 +91,8 @@ def _merge_vary_origin(headers: MutableHeaders) -> None:
 def wrap_asgi_with_cors_headers(app: ASGIApp, cors_config: CORSConfig) -> ASGIApp:
     """Outer ASGI wrapper: ensure CORS headers on every HTTP response when missing.
 
-    Starlette's outer ``ServerErrorMiddleware`` can emit error responses that bypass inner
-    ``CORSMiddleware``'s ``send`` wrapper, so browsers see 500 without
-    ``Access-Control-Allow-Origin`` and block the response body.
+    Starlette's outer ``ServerErrorMiddleware`` can emit error responses that bypass inner ``CORSMiddleware``'s ``send``
+    wrapper, so browsers see 500 without ``Access-Control-Allow-Origin`` and block the response body.
     """
 
     async def asgi(scope: Scope, receive: Receive, send: Send) -> None:

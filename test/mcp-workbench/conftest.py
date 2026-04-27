@@ -60,23 +60,22 @@ def temp_tools_dir() -> Generator[Path]:
 @pytest.fixture(scope="function")
 def sample_function_tool_content() -> str:
     """Sample function-based tool content."""
-    return """
-from mcpworkbench.core.annotations import mcp_tool
+    return """From mcpworkbench.core.annotations import mcp_tool.
 
-@mcp_tool(
-    name="echo_test",
-    description="Echo back the input text for testing",
-)
-def echo_message(message: str):
-    return {"echoed": message, "length": len(message)}
+           @mcp_tool(
+               name="echo_test",
+               description="Echo back the input text for testing",
+           )
+           def echo_message(message: str):
+               return {"echoed": message, "length": len(message)}
 
-@mcp_tool(
-    name="add_test",
-    description="Add two numbers together for testing",
-)
-async def add_numbers(a: float, b: float):
-    return {"a": a, "b": b, "sum": a + b}
-"""
+           @mcp_tool(
+               name="add_test",
+               description="Add two numbers together for testing",
+           )
+           async def add_numbers(a: float, b: float):
+               return {"a": a, "b": b, "sum": a + b}
+           """
 
 
 @pytest.fixture(scope="function")

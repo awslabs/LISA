@@ -14,8 +14,8 @@
 
 """Integration tests for RAG SDK document operations.
 
-Tests document ingestion, listing, and deletion via the LISA SDK against a deployed environment.
-Requires: deployed LISA with at least one repository and one embedding model.
+Tests document ingestion, listing, and deletion via the LISA SDK against a deployed environment. Requires: deployed LISA
+with at least one repository and one embedding model.
 """
 
 import logging
@@ -37,7 +37,6 @@ DEFAULT_TEST_REPO_ID = os.environ.get("TEST_REPOSITORY_ID", "test-pgvector-rag")
 
 
 class TestLisaRag:
-
     @pytest.fixture(autouse=True, scope="class")
     def setup_class(self, lisa_api: LisaApi, request: pytest.FixtureRequest) -> None:
         # Find the specific test repository
@@ -84,7 +83,10 @@ class TestLisaRag:
             logger.exception(f"CLEANUP: Failed to delete document {doc_id} — ignoring")
 
     def _upload_and_ingest(self, lisa_api: LisaApi, content: str, prefix: str) -> str:
-        """Upload and ingest a single temp file. Returns the s3Path from the ingestion job."""
+        """Upload and ingest a single temp file.
+
+        Returns the s3Path from the ingestion job.
+        """
         with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", prefix=prefix, delete=False) as f:
             f.write(content)
             temp_path = f.name
@@ -117,8 +119,9 @@ class TestLisaRag:
         return doc.get("document_id") or doc.get("documentId") or doc.get("id")
 
     def _wait_for_document(self, lisa_api: LisaApi, s3_path: str) -> str:
-        """Poll until a document with matching source appears in list_documents. Returns its document_id.
+        """Poll until a document with matching source appears in list_documents.
 
+        Returns its document_id.
         The ingest API returns s3Path (e.g. s3://bucket/key) which matches RagDocument.source exactly.
         """
         start = time.time()

@@ -52,10 +52,10 @@ def sample_ingestion_job():
 
 def test_ingest_success(sample_ingestion_job):
     """Test successful ingest function."""
-    with patch("repository.pipeline_ingestion.ingestion_job_repository") as mock_job_repo, patch(
-        "repository.pipeline_ingestion.pipeline_ingest"
-    ) as mock_pipeline_ingest:
-
+    with (
+        patch("repository.pipeline_ingestion.ingestion_job_repository") as mock_job_repo,
+        patch("repository.pipeline_ingestion.pipeline_ingest") as mock_pipeline_ingest,
+    ):
         # Setup mocks
         mock_job_repo.update_status.return_value = sample_ingestion_job
         mock_pipeline_ingest.return_value = None
@@ -73,10 +73,10 @@ def test_ingest_success(sample_ingestion_job):
 
 def test_ingest_error(sample_ingestion_job):
     """Test ingest function with error."""
-    with patch("repository.pipeline_ingestion.ingestion_job_repository") as mock_job_repo, patch(
-        "repository.pipeline_ingestion.pipeline_ingest"
-    ) as mock_pipeline_ingest:
-
+    with (
+        patch("repository.pipeline_ingestion.ingestion_job_repository") as mock_job_repo,
+        patch("repository.pipeline_ingestion.pipeline_ingest") as mock_pipeline_ingest,
+    ):
         # Setup mocks
         mock_job_repo.update_status.return_value = sample_ingestion_job
         mock_pipeline_ingest.side_effect = Exception("Test error")
@@ -94,10 +94,10 @@ def test_ingest_error(sample_ingestion_job):
 
 def test_delete_success(sample_ingestion_job):
     """Test successful delete function."""
-    with patch("repository.pipeline_ingestion.ingestion_job_repository") as mock_job_repo, patch(
-        "repository.pipeline_ingestion.pipeline_delete"
-    ) as mock_pipeline_delete:
-
+    with (
+        patch("repository.pipeline_ingestion.ingestion_job_repository") as mock_job_repo,
+        patch("repository.pipeline_ingestion.pipeline_delete") as mock_pipeline_delete,
+    ):
         # Setup mocks
         mock_job_repo.update_status.return_value = sample_ingestion_job
         mock_pipeline_delete.return_value = None
@@ -115,10 +115,10 @@ def test_delete_success(sample_ingestion_job):
 
 def test_delete_error(sample_ingestion_job):
     """Test delete function with error."""
-    with patch("repository.pipeline_ingestion.ingestion_job_repository") as mock_job_repo, patch(
-        "repository.pipeline_ingestion.pipeline_delete"
-    ) as mock_pipeline_delete:
-
+    with (
+        patch("repository.pipeline_ingestion.ingestion_job_repository") as mock_job_repo,
+        patch("repository.pipeline_ingestion.pipeline_delete") as mock_pipeline_delete,
+    ):
         # Setup mocks
         mock_job_repo.update_status.return_value = sample_ingestion_job
         mock_pipeline_delete.side_effect = Exception("Test error")
@@ -136,10 +136,11 @@ def test_delete_error(sample_ingestion_job):
 
 def test_main_ingest_action(sample_ingestion_job):
     """Test main function with ingest action."""
-    with patch("repository.pipeline_ingestion.ingestion_job_repository") as mock_job_repo, patch(
-        "repository.pipeline_ingestion.ingest"
-    ) as mock_ingest, patch("sys.argv", ["pipeline_ingestion.py", "ingest", "test-job-id"]):
-
+    with (
+        patch("repository.pipeline_ingestion.ingestion_job_repository") as mock_job_repo,
+        patch("repository.pipeline_ingestion.ingest") as mock_ingest,
+        patch("sys.argv", ["pipeline_ingestion.py", "ingest", "test-job-id"]),
+    ):
         # Setup mocks
         mock_job_repo.find_by_id.return_value = sample_ingestion_job
         mock_ingest.return_value = None
@@ -162,10 +163,11 @@ def test_main_ingest_action(sample_ingestion_job):
 
 def test_main_delete_action(sample_ingestion_job):
     """Test main function with delete action."""
-    with patch("repository.pipeline_ingestion.ingestion_job_repository") as mock_job_repo, patch(
-        "repository.pipeline_ingestion.delete"
-    ) as mock_delete, patch("sys.argv", ["pipeline_ingestion.py", "delete", "test-job-id"]):
-
+    with (
+        patch("repository.pipeline_ingestion.ingestion_job_repository") as mock_job_repo,
+        patch("repository.pipeline_ingestion.delete") as mock_delete,
+        patch("sys.argv", ["pipeline_ingestion.py", "delete", "test-job-id"]),
+    ):
         # Setup mocks
         mock_job_repo.find_by_id.return_value = sample_ingestion_job
         mock_delete.return_value = None
@@ -188,14 +190,13 @@ def test_main_delete_action(sample_ingestion_job):
 
 def test_main_invalid_action(sample_ingestion_job):
     """Test main function with invalid action."""
-    with patch("repository.pipeline_ingestion.ingestion_job_repository"), patch(
-        "repository.pipeline_ingestion.ingest"
-    ), patch("repository.pipeline_ingestion.delete"), patch(
-        "sys.argv", ["pipeline_ingestion.py", "invalid", "test-job-id"]
-    ), patch(
-        "sys.exit"
-    ) as mock_exit:
-
+    with (
+        patch("repository.pipeline_ingestion.ingestion_job_repository"),
+        patch("repository.pipeline_ingestion.ingest"),
+        patch("repository.pipeline_ingestion.delete"),
+        patch("sys.argv", ["pipeline_ingestion.py", "invalid", "test-job-id"]),
+        patch("sys.exit") as mock_exit,
+    ):
         # Import the module
         # Simulate the main function logic - should not call any functions for invalid action
         import sys
@@ -219,7 +220,6 @@ def test_main_invalid_action(sample_ingestion_job):
 def test_main_missing_arguments(sample_ingestion_job):
     """Test main function with missing arguments."""
     with patch("sys.argv", ["pipeline_ingestion.py"]), patch("sys.exit") as mock_exit:
-
         # Import the module
         # Simulate the main function logic - should exit when not enough arguments
         import sys

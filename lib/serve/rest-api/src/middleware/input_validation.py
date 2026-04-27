@@ -33,8 +33,7 @@ DEFAULT_MAX_REQUEST_SIZE = 10 * 1024 * 1024
 
 
 def contains_null_bytes(data: str) -> bool:
-    """
-    Check if a string contains null bytes.
+    r"""Check if a string contains null bytes.
 
     Null bytes (\\x00) can be used to bypass input validation or cause
     unexpected behavior in string processing.
@@ -51,8 +50,7 @@ def contains_null_bytes(data: str) -> bool:
 async def validate_input_middleware(
     request: Request, call_next: Callable[[Request], Any], max_request_size: int = DEFAULT_MAX_REQUEST_SIZE
 ) -> Response:
-    """
-    Middleware to validate request input before processing.
+    """Middleware to validate request input before processing.
 
     This middleware provides security protections against:
     - Null byte injection attacks

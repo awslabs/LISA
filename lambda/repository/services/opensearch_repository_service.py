@@ -39,8 +39,8 @@ ssm_client = boto3.client("ssm", region_name=os.environ["AWS_REGION"], config=re
 class OpenSearchRepositoryService(VectorStoreRepositoryService):
     """Service for OpenSearch repository operations.
 
-    Inherits common vector store behavior from VectorStoreRepositoryService.
-    Only implements OpenSearch-specific index management.
+    Inherits common vector store behavior from VectorStoreRepositoryService. Only implements OpenSearch-specific index
+    management.
     """
 
     def retrieve_documents(
@@ -105,9 +105,7 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
         if include_score and results:
             max_score = max(self._normalize_similarity_score(score) for _, score in results)
             if max_score < 0.3:
-                logger.warning(
-                    f"All similarity scores < 0.3 for query '{query}' - " "possible embedding model mismatch"
-                )
+                logger.warning(f"All similarity scores < 0.3 for query '{query}' - possible embedding model mismatch")
 
         return documents
 

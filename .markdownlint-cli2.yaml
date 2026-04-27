@@ -1,0 +1,21 @@
+config:
+  # Disable line-length rule — markdown prose doesn't benefit from hard wrapping
+  line-length: false
+  # Allow duplicate headings — API docs reuse "Request Example", "Response Example", etc.
+  no-duplicate-heading: false
+  # Allow emphasis as headings — docs use **bold** as sub-section labels
+  no-emphasis-as-heading: false
+  # Allow ordered list prefixes to continue across interruptions (1. 2. 3. not 1. 1. 1.)
+  ol-prefix: false
+  # Allow blank lines inside blockquotes — used for readability in docs
+  no-blanks-blockquote: false
+  # Allow fenced code blocks without language — not all snippets need syntax highlighting
+  fenced-code-language: false
+  # Allow files to start without an h1 — some files start with h2 or frontmatter
+  first-line-heading: false
+  # Allow heading level increments to skip (e.g. h2 -> h4) — docs structure varies
+  heading-increment: false
+  # Allow multiple top-level headings
+  single-title: false
+  # Allow indented code blocks alongside fenced — legacy docs use both styles
+  code-block-style: false

@@ -14,8 +14,8 @@
 
 """Load integration test config from config-custom.yaml (and config-base.yaml).
 
-Values are used as defaults when CLI options are not provided. Mirrors the
-behavior of scripts/config.mjs and scripts/integration-env.mjs.
+Values are used as defaults when CLI options are not provided. Mirrors the behavior of scripts/config.mjs and
+scripts/integration-env.mjs.
 """
 
 from __future__ import annotations
@@ -66,8 +66,8 @@ def _deep_merge(base: dict, override: dict) -> None:
 
 
 def get_config_values() -> dict[str, str]:
-    """
-    Extract deployment-related values from config.
+    """Extract deployment-related values from config.
+
     Supports both flat config and env-based config (env: X, X: { deploymentName, ... }).
     """
     config = load_config()
@@ -95,8 +95,8 @@ def get_config_values() -> dict[str, str]:
 
 
 def fetch_url_from_aws(kind: str) -> str:
-    """
-    Fetch API or ALB URL from AWS via integration-env.mjs.
+    """Fetch API or ALB URL from AWS via integration-env.mjs.
+
     kind: "api" -> API Gateway URL, "alb" -> REST/ALB URL.
     Returns empty string on failure.
     """

@@ -42,9 +42,10 @@ def test_drop_opensearch_index(setup_env):
 
     mock_service = Mock()
 
-    with patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo, patch(
-        "repository.pipeline_delete_documents.RepositoryServiceFactory"
-    ) as mock_factory:
+    with (
+        patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo,
+        patch("repository.pipeline_delete_documents.RepositoryServiceFactory") as mock_factory,
+    ):
         mock_vs_repo.find_repository_by_id.return_value = {"repositoryId": "repo1", "type": "opensearch"}
         mock_factory.create_service.return_value = mock_service
 
@@ -59,9 +60,10 @@ def test_drop_opensearch_index_not_exists(setup_env):
 
     mock_service = Mock()
 
-    with patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo, patch(
-        "repository.pipeline_delete_documents.RepositoryServiceFactory"
-    ) as mock_factory:
+    with (
+        patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo,
+        patch("repository.pipeline_delete_documents.RepositoryServiceFactory") as mock_factory,
+    ):
         mock_vs_repo.find_repository_by_id.return_value = {"repositoryId": "repo1", "type": "opensearch"}
         mock_factory.create_service.return_value = mock_service
 
@@ -76,9 +78,10 @@ def test_drop_pgvector_collection(setup_env):
 
     mock_service = Mock()
 
-    with patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo, patch(
-        "repository.pipeline_delete_documents.RepositoryServiceFactory"
-    ) as mock_factory:
+    with (
+        patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo,
+        patch("repository.pipeline_delete_documents.RepositoryServiceFactory") as mock_factory,
+    ):
         mock_vs_repo.find_repository_by_id.return_value = {"repositoryId": "repo1", "type": "pgvector"}
         mock_factory.create_service.return_value = mock_service
 
@@ -101,14 +104,13 @@ def test_pipeline_delete_collection_opensearch(setup_env):
         job_type=JobActionType.COLLECTION_DELETION,
     )
 
-    with patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo, patch(
-        "repository.pipeline_delete_documents.drop_opensearch_index"
-    ) as mock_drop, patch("repository.pipeline_delete_documents.rag_document_repository") as mock_doc_repo, patch(
-        "repository.pipeline_delete_documents.collection_repo"
-    ), patch(
-        "repository.pipeline_delete_documents.ingestion_job_repository"
-    ) as mock_job_repo:
-
+    with (
+        patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo,
+        patch("repository.pipeline_delete_documents.drop_opensearch_index") as mock_drop,
+        patch("repository.pipeline_delete_documents.rag_document_repository") as mock_doc_repo,
+        patch("repository.pipeline_delete_documents.collection_repo"),
+        patch("repository.pipeline_delete_documents.ingestion_job_repository") as mock_job_repo,
+    ):
         mock_vs_repo.find_repository_by_id.return_value = {"type": RepositoryType.OPENSEARCH}
 
         from repository.pipeline_delete_documents import pipeline_delete_collection
@@ -134,16 +136,14 @@ def test_pipeline_delete_collection_bedrock_kb(setup_env):
         job_type=JobActionType.COLLECTION_DELETION,
     )
 
-    with patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo, patch(
-        "repository.pipeline_delete_documents.boto3"
-    ) as mock_boto3, patch("repository.pipeline_delete_documents.rag_document_repository") as mock_doc_repo, patch(
-        "repository.pipeline_delete_documents.collection_repo"
-    ), patch(
-        "repository.pipeline_delete_documents.ingestion_job_repository"
-    ), patch(
-        "repository.pipeline_delete_documents.bulk_delete_documents_from_kb"
-    ) as mock_bulk_delete:
-
+    with (
+        patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo,
+        patch("repository.pipeline_delete_documents.boto3") as mock_boto3,
+        patch("repository.pipeline_delete_documents.rag_document_repository") as mock_doc_repo,
+        patch("repository.pipeline_delete_documents.collection_repo"),
+        patch("repository.pipeline_delete_documents.ingestion_job_repository"),
+        patch("repository.pipeline_delete_documents.bulk_delete_documents_from_kb") as mock_bulk_delete,
+    ):
         mock_vs_repo.find_repository_by_id.return_value = {"type": RepositoryType.BEDROCK_KB}
 
         mock_dynamodb = Mock()
@@ -179,12 +179,12 @@ def test_pipeline_delete_collection_failure(setup_env):
         job_type=JobActionType.COLLECTION_DELETION,
     )
 
-    with patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo, patch(
-        "repository.pipeline_delete_documents.rag_document_repository"
-    ) as mock_doc_repo, patch("repository.pipeline_delete_documents.collection_repo") as mock_coll_repo, patch(
-        "repository.pipeline_delete_documents.ingestion_job_repository"
-    ) as mock_job_repo:
-
+    with (
+        patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo,
+        patch("repository.pipeline_delete_documents.rag_document_repository") as mock_doc_repo,
+        patch("repository.pipeline_delete_documents.collection_repo") as mock_coll_repo,
+        patch("repository.pipeline_delete_documents.ingestion_job_repository") as mock_job_repo,
+    ):
         mock_vs_repo.find_repository_by_id.return_value = {"type": RepositoryType.OPENSEARCH}
         mock_doc_repo.delete_all.side_effect = Exception("Delete failed")
 
@@ -224,12 +224,12 @@ def test_pipeline_delete_document(setup_env):
         chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
     )
 
-    with patch("repository.pipeline_delete_documents.rag_document_repository") as mock_doc_repo, patch(
-        "repository.pipeline_delete_documents.vs_repo"
-    ) as mock_vs_repo, patch("repository.pipeline_delete_documents.remove_document_from_vectorstore"), patch(
-        "repository.pipeline_delete_documents.ingestion_job_repository"
-    ) as mock_job_repo:
-
+    with (
+        patch("repository.pipeline_delete_documents.rag_document_repository") as mock_doc_repo,
+        patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo,
+        patch("repository.pipeline_delete_documents.remove_document_from_vectorstore"),
+        patch("repository.pipeline_delete_documents.ingestion_job_repository") as mock_job_repo,
+    ):
         mock_doc_repo.find_by_id.return_value = rag_doc
         mock_vs_repo.find_repository_by_id.return_value = {"type": RepositoryType.OPENSEARCH}
 
@@ -254,10 +254,10 @@ def test_pipeline_delete_document_not_found(setup_env):
         document_id="doc1",
     )
 
-    with patch("repository.pipeline_delete_documents.rag_document_repository") as mock_doc_repo, patch(
-        "repository.pipeline_delete_documents.ingestion_job_repository"
-    ) as mock_job_repo:
-
+    with (
+        patch("repository.pipeline_delete_documents.rag_document_repository") as mock_doc_repo,
+        patch("repository.pipeline_delete_documents.ingestion_job_repository") as mock_job_repo,
+    ):
         mock_doc_repo.find_by_id.return_value = None
 
         from repository.pipeline_delete_documents import pipeline_delete_document
@@ -278,12 +278,12 @@ def test_handle_pipeline_delete_event(setup_env):
         }
     }
 
-    with patch("repository.pipeline_ingest_handlers.rag_document_repository") as mock_doc_repo, patch(
-        "repository.pipeline_ingest_handlers.ingestion_job_repository"
-    ) as mock_job_repo, patch("repository.pipeline_ingest_handlers.ingestion_service") as mock_service, patch(
-        "repository.pipeline_ingest_handlers.vs_repo"
-    ) as mock_vs_repo:
-
+    with (
+        patch("repository.pipeline_ingest_handlers.rag_document_repository") as mock_doc_repo,
+        patch("repository.pipeline_ingest_handlers.ingestion_job_repository") as mock_job_repo,
+        patch("repository.pipeline_ingest_handlers.ingestion_service") as mock_service,
+        patch("repository.pipeline_ingest_handlers.vs_repo") as mock_vs_repo,
+    ):
         from models.domain_objects import FixedChunkingStrategy, RagDocument
 
         rag_doc = RagDocument(
@@ -391,12 +391,12 @@ def test_pipeline_delete_documents_batch(setup_env):
         for i in range(1, 4)
     ]
 
-    with patch("repository.pipeline_delete_documents.rag_document_repository") as mock_doc_repo, patch(
-        "repository.pipeline_delete_documents.vs_repo"
-    ) as mock_vs_repo, patch("repository.pipeline_delete_documents.remove_document_from_vectorstore"), patch(
-        "repository.pipeline_delete_documents.ingestion_job_repository"
-    ) as mock_job_repo:
-
+    with (
+        patch("repository.pipeline_delete_documents.rag_document_repository") as mock_doc_repo,
+        patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo,
+        patch("repository.pipeline_delete_documents.remove_document_from_vectorstore"),
+        patch("repository.pipeline_delete_documents.ingestion_job_repository") as mock_job_repo,
+    ):
         mock_doc_repo.find_by_id.side_effect = rag_docs
         mock_vs_repo.find_repository_by_id.return_value = {"type": RepositoryType.OPENSEARCH}
 
@@ -434,12 +434,12 @@ def test_pipeline_delete_documents_batch_with_failures(setup_env):
         chunk_strategy=FixedChunkingStrategy(size=1000, overlap=100),
     )
 
-    with patch("repository.pipeline_delete_documents.rag_document_repository") as mock_doc_repo, patch(
-        "repository.pipeline_delete_documents.vs_repo"
-    ) as mock_vs_repo, patch("repository.pipeline_delete_documents.remove_document_from_vectorstore"), patch(
-        "repository.pipeline_delete_documents.ingestion_job_repository"
-    ) as mock_job_repo:
-
+    with (
+        patch("repository.pipeline_delete_documents.rag_document_repository") as mock_doc_repo,
+        patch("repository.pipeline_delete_documents.vs_repo") as mock_vs_repo,
+        patch("repository.pipeline_delete_documents.remove_document_from_vectorstore"),
+        patch("repository.pipeline_delete_documents.ingestion_job_repository") as mock_job_repo,
+    ):
         # First succeeds, second fails, third succeeds
         mock_doc_repo.find_by_id.side_effect = [rag_doc1, Exception("Delete failed"), rag_doc1]
         mock_vs_repo.find_repository_by_id.return_value = {"type": RepositoryType.OPENSEARCH}

@@ -24,8 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    """
-    Handle all unhandled exceptions.
+    """Handle all unhandled exceptions.
 
     This handler catches any exceptions not handled by more specific handlers.
     It logs detailed error information internally but returns a generic message

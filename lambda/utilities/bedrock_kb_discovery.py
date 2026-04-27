@@ -14,9 +14,8 @@
 
 """Discovery service for Bedrock Knowledge Base data sources.
 
-This module provides functionality to discover and list Knowledge Bases and their
-data sources from AWS Bedrock Agent APIs. It supports caching and pagination for
-efficient resource discovery.
+This module provides functionality to discover and list Knowledge Bases and their data sources from AWS Bedrock Agent
+APIs. It supports caching and pagination for efficient resource discovery.
 """
 
 import logging
@@ -38,8 +37,7 @@ logger = logging.getLogger(__name__)
 def list_knowledge_bases(
     bedrock_agent_client: Any | None = None,
 ) -> list[KnowledgeBaseMetadata]:
-    """
-    List all Knowledge Bases accessible in the AWS account.
+    """List all Knowledge Bases accessible in the AWS account.
 
     Args:
         bedrock_agent_client: Optional boto3 bedrock-agent client
@@ -80,10 +78,10 @@ def list_knowledge_bases(
         error_code = e.response.get("Error", {}).get("Code", "")
         if error_code == "AccessDeniedException":
             raise ValidationError(
-                "Access denied to list Knowledge Bases. " "Please check IAM permissions for bedrock:ListKnowledgeBases."
+                "Access denied to list Knowledge Bases. Please check IAM permissions for bedrock:ListKnowledgeBases."
             )
         elif error_code == "ThrottlingException":
-            raise ValidationError("Rate limit exceeded while listing Knowledge Bases. " "Please try again later.")
+            raise ValidationError("Rate limit exceeded while listing Knowledge Bases. Please try again later.")
         else:
             raise ValidationError(f"Failed to list Knowledge Bases: {str(e)}")
     except Exception as e:
@@ -95,8 +93,7 @@ def discover_kb_data_sources(
     kb_id: str,
     bedrock_agent_client: Any | None = None,
 ) -> list[DataSourceMetadata]:
-    """
-    Discover all data sources in a Bedrock Knowledge Base.
+    """Discover all data sources in a Bedrock Knowledge Base.
 
     Args:
         kb_id: Knowledge Base ID
@@ -156,7 +153,7 @@ def discover_kb_data_sources(
         error_code = e.response.get("Error", {}).get("Code", "")
         if error_code == "ResourceNotFoundException":
             raise ValidationError(
-                f"Knowledge Base '{kb_id}' not found. " f"Please verify the KB ID in the AWS Bedrock console."
+                f"Knowledge Base '{kb_id}' not found. Please verify the KB ID in the AWS Bedrock console."
             )
         elif error_code == "AccessDeniedException":
             raise ValidationError(
@@ -165,7 +162,7 @@ def discover_kb_data_sources(
             )
         elif error_code == "ThrottlingException":
             raise ValidationError(
-                f"Rate limit exceeded while discovering data sources for KB '{kb_id}'. " f"Please try again later."
+                f"Rate limit exceeded while discovering data sources for KB '{kb_id}'. Please try again later."
             )
         else:
             raise ValidationError(f"Failed to discover data sources: {str(e)}")
@@ -211,7 +208,6 @@ def build_pipeline_configs_from_kb_config(
     Raises:
         ValidationError: If duplicate data source IDs or S3 URIs found
     """
-
     pipeline_configs = []
     data_source_ids = set()
     s3_uris = set()
@@ -279,8 +275,7 @@ def get_available_data_sources(
     repository_id: str | None = None,
     bedrock_agent_client: Any | None = None,
 ) -> list[DataSourceMetadata]:
-    """
-    Get all data sources for a Knowledge Base.
+    """Get all data sources for a Knowledge Base.
 
     Args:
         kb_id: Knowledge Base ID

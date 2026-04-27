@@ -28,8 +28,8 @@ class PromptTemplateType(StrEnum):
 
 
 class PromptTemplateModel(BaseModel):
-    """
-    A Pydantic model representing a template for prompts.
+    """A Pydantic model representing a template for prompts.
+
     Contains metadata and functionality to create new revisions.
     """
 
@@ -60,8 +60,7 @@ class PromptTemplateModel(BaseModel):
     body: str
 
     def new_revision(self, update: dict[str, Any]) -> "PromptTemplateModel":
-        """
-        Create a new revision of the current prompt template.
+        """Create a new revision of the current prompt template.
 
         Args:
             update (Dict[str, Any]): A dictionary containing fields to update in the new revision.

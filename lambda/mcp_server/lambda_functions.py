@@ -617,9 +617,7 @@ def update_hosted_mcp_server(event: dict, context: dict) -> Any:
 
 @api_wrapper
 def list_bedrock_agents(event: dict, context: dict) -> dict[str, Any]:
-    """
-    List admin-approved Bedrock agents visible to this user, merged with live AWS discovery.
-    """
+    """List admin-approved Bedrock agents visible to this user, merged with live AWS discovery."""
     _user_id, is_admin, groups = get_user_context(event)
     logger.info("Listing approved Bedrock agents for catalog")
 
@@ -714,9 +712,7 @@ def delete_bedrock_agent_approval(event: dict, context: dict) -> dict[str, str]:
 
 @api_wrapper
 def invoke_bedrock_agent(event: dict, context: dict) -> dict[str, Any]:
-    """
-    Invoke a Bedrock Agent via bedrock-agent-runtime and return aggregated text output.
-    """
+    """Invoke a Bedrock Agent via bedrock-agent-runtime and return aggregated text output."""
     user_id, is_admin_user, groups = get_user_context(event)
     body = json.loads(event.get("body") or "{}")
     request = InvokeBedrockAgentRequest(**body)

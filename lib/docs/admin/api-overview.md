@@ -36,13 +36,13 @@ Serve ALB.
 The `/v2/serve/models` endpoint on the LISA Serve ALB allows users to list all models available for inference in the
 LISA system.
 
-#### Request Example:
+#### Request Example
 
 ```bash
 curl -s -H 'Authorization: Bearer <your_token>' -X GET https://<apigw_endpoint>/v2/serve/models
 ```
 
-#### Response Example:
+#### Response Example
 
 ```json
 {
@@ -70,7 +70,7 @@ curl -s -H 'Authorization: Bearer <your_token>' -X GET https://<apigw_endpoint>/
 }
 ```
 
-#### Explanation of Response Fields:
+#### Explanation of Response Fields
 
 These fields are all defined by the OpenAI API specification, which is
 documented [here](https://platform.openai.com/docs/api-reference/models/list).
@@ -87,6 +87,7 @@ LISA provides RESTful API endpoints for programmatic access to user metrics data
 ### Base URL Structure
 
 All metrics endpoints are accessed through LISA's main API Gateway with the following structure:
+
 ```
 https://{API-GATEWAY-DOMAIN}/{STAGE}/metrics/users/
 ```
@@ -104,9 +105,11 @@ All API endpoints require proper authentication through LISA's configured author
 **Description**: Retrieves comprehensive metrics data for a specific user, including session-level details and usage history.
 
 **Path Parameters**:
+
 - `userId` (string, required): The unique identifier for the user whose metrics you want to retrieve
 
 **Example Request**:
+
 ```bash
 curl -X GET \
   'https://your-api-gateway-domain/metrics/users/john.doe@company.com' \
@@ -114,6 +117,7 @@ curl -X GET \
 ```
 
 **Response Format**:
+
 ```json
 {
     "statusCode": 200,
@@ -148,6 +152,7 @@ curl -X GET \
 ```
 
 **Response Fields**:
+
 - `totalPrompts`: Total number of prompts submitted by the user
 - `ragUsageCount`: Number of times the user utilized RAG features
 - `mcpToolCallsCount`: Total MCP tool calls made by the user
@@ -158,6 +163,7 @@ curl -X GET \
 - `lastSeen`: Timestamp of user's most recent interaction
 
 **Error Responses**:
+
 - `400 Bad Request`: Missing or invalid userId parameter
 - `404 Not Found`: User not found in metrics database
 - `500 Internal Server Error`: Database or system error
@@ -169,6 +175,7 @@ curl -X GET \
 **Description**: Retrieves aggregated metrics across all users in the system, providing system-wide analytics and usage statistics.
 
 **Example Request**:
+
 ```bash
 curl -X GET \
   'https://your-api-gateway-domain/metrics/users/all' \
@@ -176,6 +183,7 @@ curl -X GET \
 ```
 
 **Response Format**:
+
 ```json
 {
     "statusCode": 200,
@@ -200,6 +208,7 @@ curl -X GET \
 ```
 
 **Response Fields**:
+
 - `totalUniqueUsers`: Count of unique users who have interacted with LISA
 - `totalPrompts`: Aggregate count of all prompts across users
 - `totalRagUsage`: Total number of RAG feature uses
@@ -210,8 +219,8 @@ curl -X GET \
 - `userGroups`: Distribution of users across organizational groups
 
 **Error Responses**:
-- `500 Internal Server Error`: Database scan error or system failure
 
+- `500 Internal Server Error`: Database scan error or system failure
 
 # Error Handling for API Requests
 
@@ -223,9 +232,9 @@ Below is a list of common errors that can occur in the system, along with the HT
 
 ### ModelNotFoundError
 
-* **Description**: Raised when a model that is requested for retrieval or deletion is not found in the system.
-* **HTTP Status Code**: `404 Not Found`
-* **Response Body**:
+- **Description**: Raised when a model that is requested for retrieval or deletion is not found in the system.
+- **HTTP Status Code**: `404 Not Found`
+- **Response Body**:
 
 ```json
 {
@@ -234,13 +243,13 @@ Below is a list of common errors that can occur in the system, along with the HT
 }
 ```
 
-* **Example Scenario**: When a client attempts to fetch details of a model that does not exist in the database, the `ModelNotFoundError` is raised.
+- **Example Scenario**: When a client attempts to fetch details of a model that does not exist in the database, the `ModelNotFoundError` is raised.
 
 ### ModelAlreadyExistsError
 
-* **Description:** Raised when a request to create a model is made, but the model already exists in the system.
-* **HTTP Status Code**: `400`
-* **Response Body**:
+- **Description:** Raised when a request to create a model is made, but the model already exists in the system.
+- **HTTP Status Code**: `400`
+- **Response Body**:
 
 ```json
 {
@@ -249,13 +258,13 @@ Below is a list of common errors that can occur in the system, along with the HT
 }
 ```
 
-* **Example Scenario:** A client attempts to create a model with an ID or name that already exists in the database. The system detects the conflict and raises the `ModelAlreadyExistsError`.
+- **Example Scenario:** A client attempts to create a model with an ID or name that already exists in the database. The system detects the conflict and raises the `ModelAlreadyExistsError`.
 
 ### InvalidInputError (Hypothetical Example)
 
-* **Description**: Raised when the input provided by the client for creating or updating a model is invalid or does not conform to expected formats.
-* **HTTP Status Code**: `400 Bad Request`
-* **Response Body**:
+- **Description**: Raised when the input provided by the client for creating or updating a model is invalid or does not conform to expected formats.
+- **HTTP Status Code**: `400 Bad Request`
+- **Response Body**:
 
 ```json
 {
@@ -264,16 +273,16 @@ Below is a list of common errors that can occur in the system, along with the HT
 }
 ```
 
-* **Example Scenario**: The client submits a malformed JSON body or omits required fields in a model creation request, triggering an `InvalidInputError`.
+- **Example Scenario**: The client submits a malformed JSON body or omits required fields in a model creation request, triggering an `InvalidInputError`.
 
 ## Handling Validation Errors
 
 Validation errors are handled across the API via utility functions and model transformation logic. These errors typically occur when user inputs fail validation checks or when required data is missing from a request.
 
-### Example Response for Validation Error:
+### Example Response for Validation Error
 
-* **HTTP Status Code**: `422 Unprocessable Entity`
-* **Response Body**:
+- **HTTP Status Code**: `422 Unprocessable Entity`
+- **Response Body**:
 
 ```json
 {

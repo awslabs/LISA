@@ -22,8 +22,7 @@ from utilities.header_sanitizer import sanitize_headers
 
 
 def sanitize_event_for_logging(event: dict[str, Any]) -> str:
-    """
-    Sanitize Lambda event before logging.
+    """Sanitize Lambda event before logging.
 
     This function sanitizes the event by:
     1. Redacting authorization headers
@@ -35,17 +34,14 @@ def sanitize_event_for_logging(event: dict[str, Any]) -> str:
     event : Dict[str, Any]
         The Lambda event from API Gateway.
 
-    Returns
+    Returns:
     -------
     str
         The sanitized event as a JSON-formatted string.
 
-    Example
+    Example:
     -------
-    >>> event = {
-    ...     "headers": {"Authorization": "Bearer token123"},
-    ...     "path": "/users/123"
-    ... }
+    >>> event = {"headers": {"Authorization": "Bearer token123"}, "path": "/users/123"}
     >>> sanitized = sanitize_event_for_logging(event)
     >>> "token123" in sanitized
     False
@@ -103,20 +99,19 @@ def sanitize_event_for_logging(event: dict[str, Any]) -> str:
 
 
 def get_session_id(event: dict) -> str:
-    """
-    Extract session ID from Lambda event path parameters.
+    """Extract session ID from Lambda event path parameters.
 
     Parameters
     ----------
     event : dict
         Lambda event from API Gateway.
 
-    Returns
+    Returns:
     -------
     str
         The session ID from path parameters.
 
-    Example
+    Example:
     -------
     >>> event = {"pathParameters": {"sessionId": "sess-123"}}
     >>> get_session_id(event)
@@ -127,26 +122,21 @@ def get_session_id(event: dict) -> str:
 
 
 def get_principal_id(event: dict) -> str:
-    """
-    Extract principal ID from Lambda event authorizer context.
+    """Extract principal ID from Lambda event authorizer context.
 
     Parameters
     ----------
     event : dict
         Lambda event from API Gateway.
 
-    Returns
+    Returns:
     -------
     str
         The principal ID from authorizer context.
 
-    Example
+    Example:
     -------
-    >>> event = {
-    ...     "requestContext": {
-    ...         "authorizer": {"principal": "user-123"}
-    ...     }
-    ... }
+    >>> event = {"requestContext": {"authorizer": {"principal": "user-123"}}}
     >>> get_principal_id(event)
     'user-123'
     """
@@ -155,20 +145,19 @@ def get_principal_id(event: dict) -> str:
 
 
 def get_bearer_token(event: dict) -> str | None:
-    """
-    Extract Bearer token from Authorization header in Lambda event.
+    """Extract Bearer token from Authorization header in Lambda event.
 
     Parameters
     ----------
     event : dict
         Lambda event from API Gateway.
 
-    Returns
+    Returns:
     -------
     Optional[str]
         The token string if present and properly formatted, else None.
 
-    Example
+    Example:
     -------
     >>> event = {"headers": {"Authorization": "Bearer abc123"}}
     >>> get_bearer_token(event)
@@ -189,8 +178,7 @@ def get_bearer_token(event: dict) -> str | None:
 
 
 def get_id_token(event: dict) -> str:
-    """
-    Extract ID token from Authorization header in Lambda event.
+    """Extract ID token from Authorization header in Lambda event.
 
     This function extracts the bearer token from the authorization header,
     removing the "Bearer" prefix if present.
@@ -200,17 +188,17 @@ def get_id_token(event: dict) -> str:
     event : dict
         Lambda event from API Gateway.
 
-    Returns
+    Returns:
     -------
     str
         The ID token without the "Bearer" prefix.
 
-    Raises
+    Raises:
     ------
     ValueError
         If authorization header is missing.
 
-    Example
+    Example:
     -------
     >>> event = {"headers": {"Authorization": "Bearer token123"}}
     >>> get_id_token(event)

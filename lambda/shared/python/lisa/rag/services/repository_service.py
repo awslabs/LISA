@@ -193,8 +193,6 @@ class RepositoryService(ABC):
         collection_id: str,
         top_k: int,
         model_name: str,
-        vector_weight: float = 0.7,
-        lexical_weight: float = 0.3,
         include_score: bool = False,
         bedrock_agent_client: Any | None = None,
     ) -> list[dict[str, Any]]:
@@ -205,8 +203,6 @@ class RepositoryService(ABC):
             collection_id: Collection to search
             top_k: Number of results to return
             model_name: Embedding model name to use for query embedding
-            vector_weight: Weight for semantic/vector search results (0.0-1.0)
-            lexical_weight: Weight for lexical/keyword search results (0.0-1.0)
             include_score: Whether to include similarity scores in results
             bedrock_agent_client: Bedrock agent client (for Bedrock KB only)
 

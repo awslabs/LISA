@@ -81,6 +81,18 @@ describe('structureRagDocuments', () => {
         const result = structureRagDocuments(docs);
         expect(result[0].documentId).toBeNull();
     });
+
+    it('returns empty array for null input', () => {
+        expect(structureRagDocuments(null)).toEqual([]);
+    });
+
+    it('returns empty array for undefined input', () => {
+        expect(structureRagDocuments(undefined)).toEqual([]);
+    });
+
+    it('returns empty array for non-array input', () => {
+        expect(structureRagDocuments('not an array')).toEqual([]);
+    });
 });
 
 describe('buildMessageMetadata', () => {

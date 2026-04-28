@@ -3892,7 +3892,10 @@ def test_similarity_search_bedrock_kb():
 
         assert result["statusCode"] == 200
         body = json.loads(result["body"])
-        assert len(body) == 1
+        assert "docs" in body
+        assert "metadata" in body
+        assert body["metadata"]["search_mode"] == "vector"
+        assert body["metadata"]["backend"] == "bedrock_knowledge_base"
 
 
 class TestRepositoryTagPreservation:
@@ -4339,7 +4342,7 @@ def _hybrid_search_patches(is_admin_val=False, is_rag_admin_val=False, groups=No
 
 
 def test_search_mode_vector_default(mock_auth):
-    """No searchMode param → calls retrieve_documents(), no metadata in response."""
+    """No searchMode param → calls retrieve_documents(), metadata shows vector mode."""
     from repository.lambda_functions import similarity_search
 
     mock_auth.set_user("test-user", ["test-group"], is_admin=True)
@@ -4357,7 +4360,10 @@ def test_search_mode_vector_default(mock_auth):
         assert result["statusCode"] == 200
         body = json.loads(result["body"])
         assert "docs" in body
-        assert "metadata" not in body
+        assert "metadata" in body
+        assert body["metadata"]["search_mode"] == "vector"
+        assert body["metadata"]["actual_mode_used"] == "vector"
+        assert body["metadata"]["backend"] == "bedrock_knowledge_base"
         service.retrieve_documents.assert_called_once()
         service.hybrid_retrieve.assert_not_called()
 
@@ -4438,7 +4444,7 @@ def test_search_mode_invalid(mock_auth):
 
         assert result["statusCode"] == 400
         body = json.loads(result["body"])
-        assert "searchMode" in body.get("error", "").lower() or "searchmode" in body.get("error", "").lower()
+        assert "searchmode" in body.get("error", "").lower()
 
 
 def test_response_metadata_present(mock_auth):
@@ -4465,7 +4471,7 @@ def test_response_metadata_present(mock_auth):
 
 
 def test_backward_compatible_response(mock_auth):
-    """Vector-only request response format identical to current — no metadata key."""
+    """Vector-only request response always includes metadata with search context."""
     from repository.lambda_functions import similarity_search
 
     mock_auth.set_user("test-user", ["test-group"], is_admin=True)
@@ -4484,5 +4490,7 @@ def test_backward_compatible_response(mock_auth):
         assert result["statusCode"] == 200
         body = json.loads(result["body"])
         assert "docs" in body
-        assert "metadata" not in body
-        assert body.keys() == {"docs"}
+        assert "metadata" in body
+        assert body["metadata"]["search_mode"] == "vector"
+        assert body["metadata"]["actual_mode_used"] == "vector"
+        assert body.keys() == {"docs", "metadata"}

@@ -169,8 +169,6 @@ class TestRepositoryService:
                 collection_id="col",
                 top_k=10,
                 model_name="model",
-                vector_weight=0.6,
-                lexical_weight=0.4,
                 include_score=True,
                 bedrock_agent_client=None,
             )

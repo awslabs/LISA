@@ -28,6 +28,10 @@ export type S3UploadRequest = {
     body: any;
 };
 
+export type ListRagRepositoryResponse = RagRepositoryConfig & {
+    supportsHybridSearch?: boolean;
+};
+
 type IngestDocumentRequest = {
     documents: string[],
     repositoryId: string,
@@ -196,7 +200,7 @@ export const ragApi = createApi({
     refetchOnMountOrArgChange: true,
     keepUnusedDataFor: 60, // Keep cache for 60s to prevent cancellation during rapid navigation
     endpoints: (builder) => ({
-        listRagRepositories: builder.query<RagRepositoryConfig[], void>({
+        listRagRepositories: builder.query<ListRagRepositoryResponse[], void>({
             query: () => ({
                 url: '/repository'
             }),

@@ -16,7 +16,7 @@
 
 import logging
 import os
-from typing import Any, ClassVar  # noqa: UP035
+from typing import Any
 
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -46,8 +46,6 @@ class BedrockKBRepositoryService(RepositoryService):
     Bedrock KB manages its own ingestion, chunking, and embedding pipeline.
     LISA only tracks documents and delegates actual operations to Bedrock.
     """
-
-    _hybrid_unsupported_kbs: ClassVar[set[str]] = set()
 
     def supports_custom_collections(self) -> bool:
         """Bedrock KB only supports default collections (data sources)."""
@@ -399,21 +397,14 @@ class BedrockKBRepositoryService(RepositoryService):
         collection_id: str,
         top_k: int,
         model_name: str,
-        vector_weight: float = 0.7,
-        lexical_weight: float = 0.3,
         include_score: bool = False,
         bedrock_agent_client: Any | None = None,
     ) -> list[dict[str, Any]]:
         """Retrieve documents using hybrid (semantic + lexical) search.
 
         Falls back to semantic search if the KB does not support hybrid.
-        Caches unsupported KB IDs to avoid repeated failed attempts.
         """
         retrieve_params, kb_id = self._build_retrieve_params(query, collection_id, top_k, bedrock_agent_client)
-
-        if kb_id in self._hybrid_unsupported_kbs:
-            logger.info(f"KB {kb_id} cached as hybrid-unsupported, using semantic search")
-            return self._semantic_fallback(query, collection_id, top_k, include_score, bedrock_agent_client)
 
         vector_config = retrieve_params["retrievalConfiguration"]["vectorSearchConfiguration"]
         vector_config["overrideSearchType"] = "HYBRID"
@@ -442,7 +433,6 @@ class BedrockKBRepositoryService(RepositoryService):
                 raise
 
             logger.warning(f"KB {kb_id} does not support hybrid search, falling back to semantic")
-            self._hybrid_unsupported_kbs.add(kb_id)
             return self._semantic_fallback(query, collection_id, top_k, include_score, bedrock_agent_client)
 
     def validate_document_source(self, s3_path: str) -> str:

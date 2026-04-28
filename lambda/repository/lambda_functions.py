@@ -115,11 +115,7 @@ def list_all(event: dict, context: dict) -> list[dict[str, Any]]:
     result = []
     for repo in registered_repositories:
         if is_admin or user_has_group_access(groups, repo.get("allowedGroups", [])):
-            try:
-                service = RepositoryServiceFactory.create_service(repo)
-                repo["supportsHybridSearch"] = service.supports_hybrid_search()
-            except Exception:
-                repo["supportsHybridSearch"] = False
+            repo["supportsHybridSearch"] = repo.get("type", "") in {"bedrock_knowledge_base"}
             result.append(repo)
     return result
 
@@ -223,7 +219,7 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
     search_mode = query_string_params.get("searchMode", "vector")  # type: ignore[union-attr]
 
     if search_mode not in ("vector", "hybrid"):
-        raise ValidationError(f"Invalid searchMode: '{search_mode}'. Must be 'vector' or 'hybrid'")
+        raise ValidationError("Invalid searchMode. Must be 'vector' or 'hybrid'")
 
     repository = get_repository(event, repository_id=repository_id)
 
@@ -282,11 +278,18 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
             bedrock_agent_client=bedrock_client,
         )
 
+    if use_hybrid and docs:
+        actual_mode = docs[0].get("metadata", {}).get("actual_mode_used", "hybrid")
+        hybrid_supported = docs[0].get("metadata", {}).get("hybrid_supported", True)
+    else:
+        actual_mode = "hybrid" if use_hybrid else "vector"
+        hybrid_supported = service.supports_hybrid_search()
+
     response_metadata = {
         "search_mode": search_mode,
-        "actual_mode_used": "hybrid" if use_hybrid else "vector",
+        "actual_mode_used": actual_mode,
         "backend": repo_type,
-        "hybrid_supported": service.supports_hybrid_search(),
+        "hybrid_supported": hybrid_supported,
     }
 
     # Enrich metadata with documentId for documents that don't have it

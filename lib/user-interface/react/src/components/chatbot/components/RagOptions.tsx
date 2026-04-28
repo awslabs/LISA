@@ -18,7 +18,7 @@ import { Autosuggest, Grid, SpaceBetween } from '@cloudscape-design/components';
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useGetAllModelsQuery } from '@/shared/reducers/model-management.reducer';
 import { IModel, ModelStatus, ModelType } from '@/shared/model/model-management.model';
-import { useListRagRepositoriesQuery, useListCollectionsQuery, RagCollectionConfig } from '@/shared/reducers/rag.reducer';
+import { useListRagRepositoriesQuery, useListCollectionsQuery, RagCollectionConfig, ListRagRepositoryResponse } from '@/shared/reducers/rag.reducer';
 import { RagRepositoryType, VectorStoreStatus } from '#root/lib/schema';
 import { CollectionStatus } from '#root/lib/schema/collectionSchema';
 
@@ -178,7 +178,7 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
                 ...config,
                 repositoryId: newRepositoryId,
                 repositoryType: repository?.type || 'unknown',
-                supportsHybridSearch: (repository as any)?.supportsHybridSearch ?? false,
+                supportsHybridSearch: (repository as ListRagRepositoryResponse)?.supportsHybridSearch ?? false,
                 collection: undefined,
                 embeddingModel: undefined,
             }));

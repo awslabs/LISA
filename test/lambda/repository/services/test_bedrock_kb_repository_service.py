@@ -31,14 +31,6 @@ from repository.services.bedrock_kb_repository_service import BedrockKBRepositor
 from utilities.exceptions import ServiceUnavailableException
 
 
-@pytest.fixture(autouse=True)
-def clear_hybrid_cache():
-    """Reset hybrid-unsupported KB cache between tests."""
-    BedrockKBRepositoryService._hybrid_unsupported_kbs.clear()
-    yield
-    BedrockKBRepositoryService._hybrid_unsupported_kbs.clear()
-
-
 @pytest.fixture
 def bedrock_kb_repository():
     """Fixture for Bedrock KB repository configuration."""
@@ -425,25 +417,6 @@ class TestBedrockKBRepositoryService:
         assert results[0]["metadata"]["similarity_score"] == 0.8
         assert mock_client.retrieve.call_count == 2
 
-    def test_hybrid_retrieve_uses_cache_on_second_call(self, bedrock_kb_service):
-        """Second call to same KB skips hybrid attempt entirely."""
-        mock_client = MagicMock()
-        error_response = {"Error": {"Code": "ValidationException", "Message": "Hybrid not supported"}}
-        mock_client.retrieve.side_effect = [
-            ClientError(error_response, "Retrieve"),
-            {"retrievalResults": []},
-            {"retrievalResults": []},
-        ]
-
-        bedrock_kb_service.hybrid_retrieve(
-            query="q1", collection_id="ds-456", top_k=5, model_name="m", bedrock_agent_client=mock_client
-        )
-        bedrock_kb_service.hybrid_retrieve(
-            query="q2", collection_id="ds-456", top_k=5, model_name="m", bedrock_agent_client=mock_client
-        )
-
-        assert mock_client.retrieve.call_count == 3
-
     def test_hybrid_retrieve_fallback_metadata_on_all_docs(self, bedrock_kb_service):
         """All documents in fallback response include correct metadata."""
         mock_client = MagicMock()
@@ -531,59 +504,6 @@ class TestBedrockKBRepositoryService:
             )
 
         assert "Invalid filter expression" in str(exc_info.value)
-        assert "kb-123" not in BedrockKBRepositoryService._hybrid_unsupported_kbs
-
-    def test_hybrid_retrieve_cache_isolation_between_kb_ids(self):
-        """Caching KB-A as hybrid-unsupported does not affect KB-B."""
-        repo_a = {
-            "repositoryId": "repo-a",
-            "type": "bedrock_knowledge_base",
-            "bedrockKnowledgeBaseConfig": {
-                "knowledgeBaseId": "kb-aaa",
-                "bedrockKnowledgeDatasourceId": "ds-a",
-            },
-        }
-        repo_b = {
-            "repositoryId": "repo-b",
-            "type": "bedrock_knowledge_base",
-            "bedrockKnowledgeBaseConfig": {
-                "knowledgeBaseId": "kb-bbb",
-                "bedrockKnowledgeDatasourceId": "ds-b",
-            },
-        }
-        service_a = BedrockKBRepositoryService(repo_a)
-        service_b = BedrockKBRepositoryService(repo_b)
-
-        mock_client = MagicMock()
-        error_response = {
-            "Error": {
-                "Code": "ValidationException",
-                "Message": "Hybrid search is not supported for this knowledge base",
-            }
-        }
-        mock_client.retrieve.side_effect = [
-            ClientError(error_response, "Retrieve"),
-            {"retrievalResults": []},
-        ]
-
-        service_a.hybrid_retrieve(
-            query="q", collection_id="ds-a", top_k=3, model_name="m", bedrock_agent_client=mock_client
-        )
-
-        assert "kb-aaa" in BedrockKBRepositoryService._hybrid_unsupported_kbs
-        assert "kb-bbb" not in BedrockKBRepositoryService._hybrid_unsupported_kbs
-
-        mock_client.retrieve.reset_mock()
-        mock_client.retrieve.side_effect = None
-        mock_client.retrieve.return_value = {"retrievalResults": []}
-
-        service_b.hybrid_retrieve(
-            query="q", collection_id="ds-b", top_k=3, model_name="m", bedrock_agent_client=mock_client
-        )
-
-        call_args = mock_client.retrieve.call_args[1]
-        vector_config = call_args["retrievalConfiguration"]["vectorSearchConfiguration"]
-        assert vector_config.get("overrideSearchType") == "HYBRID"
 
     def test_hybrid_retrieve_propagates_fallback_failure(self, bedrock_kb_service):
         """If semantic fallback also fails, the error propagates."""

@@ -76,6 +76,8 @@ export const buildMessageContent = async ({
  * Includes all documents, even if they don't have document_id (for backward compatibility).
  */
 export const structureRagDocuments = (docs: any): RagDocumentCitation[] => {
+    if (!docs || !Array.isArray(docs)) return [];
+
     const uniqueDocs = new Map<string, RagDocumentCitation>();
 
     docs.forEach((doc) => {

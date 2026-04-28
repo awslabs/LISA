@@ -1103,6 +1103,15 @@ export default function Chat ({ sessionId, initialStack }) {
             ragDocs,
         });
 
+        if (messageMetadata.ragSearchMetadata?.searchMode === 'hybrid' &&
+            messageMetadata.ragSearchMetadata.actualModeUsed !== 'hybrid') {
+            notificationService.generateNotification(
+                'This repository does not support hybrid search. Results were returned using vector search. ' +
+                'You can change the search mode in session settings.',
+                'warning',
+            );
+        }
+
         messages.push(new LisaChatMessage({
             type: 'human',
             content: messageContent,

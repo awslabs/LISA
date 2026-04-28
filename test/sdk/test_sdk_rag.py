@@ -317,12 +317,20 @@ class TestRagMixin:
         assert responses.calls[0].request.params["searchMode"] == "hybrid"
 
     @responses.activate
-    def test_similarity_search_default_no_metadata(self, lisa_api: LisaApi, api_url: str):
-        """Test similarity search without search_mode omits searchMode param and metadata."""
+    def test_similarity_search_default_has_metadata(self, lisa_api: LisaApi, api_url: str):
+        """Test similarity search without search_mode omits searchMode param but returns metadata."""
         repo_id = "pgvector-rag"
         query = "test"
 
-        expected_response = {"docs": []}
+        expected_response = {
+            "docs": [],
+            "metadata": {
+                "search_mode": "vector",
+                "actual_mode_used": "vector",
+                "backend": "pgvector",
+                "hybrid_supported": False,
+            },
+        }
 
         responses.add(
             responses.GET, f"{api_url}/repository/{repo_id}/similaritySearch", json=expected_response, status=200
@@ -330,8 +338,8 @@ class TestRagMixin:
 
         result = lisa_api.similarity_search(repo_id=repo_id, query=query, model_name="test-model")
 
-        assert result == {"docs": []}
-        assert "metadata" not in result
+        assert "metadata" in result
+        assert result["metadata"]["search_mode"] == "vector"
         assert "searchMode" not in responses.calls[0].request.params
 
     @responses.activate

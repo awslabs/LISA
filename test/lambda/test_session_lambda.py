@@ -647,6 +647,55 @@ def test_update_session_with_current_model_config_success():
         assert result.selectedModel.allowedGroups == ["group1", "group2"]
 
 
+def test_rag_config_preserves_supports_hybrid_search():
+    """supportsHybridSearch must survive save/load round-trip."""
+    from session.models import RagConfig
+
+    payload = {
+        "repositoryId": "test-repo",
+        "repositoryType": "bedrock_knowledge_base",
+        "supportsHybridSearch": True,
+        "embeddingModel": {"modelId": "titan-embed"},
+    }
+    config = RagConfig.model_validate(payload)
+    assert config.supportsHybridSearch is True
+
+    dumped = config.model_dump(mode="json")
+    restored = RagConfig.model_validate(dumped)
+    assert restored.supportsHybridSearch is True
+
+
+def test_session_configuration_preserves_rag_search_mode():
+    """ragSearchMode must survive save/load round-trip."""
+    from session.models import SessionConfiguration
+
+    payload = {"ragTopK": 5, "ragSearchMode": "hybrid", "streaming": True}
+    config = SessionConfiguration.model_validate(payload)
+    assert config.ragSearchMode == "hybrid"
+
+    dumped = config.model_dump(mode="json")
+    restored = SessionConfiguration.model_validate(dumped)
+    assert restored.ragSearchMode == "hybrid"
+
+
+def test_full_session_config_round_trip_with_hybrid_fields():
+    """Full session config round-trip preserves both hybrid-related fields."""
+    payload = {
+        "sessionConfiguration": {"ragSearchMode": "hybrid", "ragTopK": 3},
+        "ragConfig": {
+            "repositoryId": "test-repo",
+            "repositoryType": "bedrock_knowledge_base",
+            "supportsHybridSearch": True,
+        },
+    }
+    config = SessionConfigurationModel.model_validate(payload)
+    stored = config.model_dump_for_storage()
+    restored = SessionConfigurationModel.from_dict(stored)
+
+    assert restored.sessionConfiguration.ragSearchMode == "hybrid"
+    assert restored.ragConfig.supportsHybridSearch is True
+
+
 # Session Processing Tests
 @patch("session.lambda_functions.table")
 def test_get_all_user_sessions_resource_not_found(mock_table):

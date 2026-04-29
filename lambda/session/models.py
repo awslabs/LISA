@@ -71,6 +71,7 @@ class SessionConfiguration(BaseModel):
     max_tokens: int | None = None
     chatHistoryBufferSize: int = 7
     ragTopK: int = 3
+    ragSearchMode: str | None = None
     modelArgs: ModelArgs = Field(default_factory=ModelArgs)
     imageGenerationArgs: ImageGenerationArgs = Field(default_factory=ImageGenerationArgs)
     videoGenerationArgs: VideoGenerationArgs = Field(default_factory=VideoGenerationArgs)
@@ -116,6 +117,7 @@ class RagConfig(BaseModel):
     embeddingModel: dict[str, Any] | None = None
     repositoryId: str | None = None
     repositoryType: str | None = None
+    supportsHybridSearch: bool | None = None
 
 
 # --- Selected model (session snapshot of IModel) ---

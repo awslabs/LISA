@@ -81,26 +81,20 @@ const renderTopbar = (props = {}) => {
 };
 
 /**
- * In jsdom, Cloudscape TopNavigation collapses all utilities into an overflow menu
- * (zero-width viewport). This helper opens the overflow menu, navigates into the
- * user-profile sub-menu, and clicks the specified menu item by ID.
+ * Open the user-profile menu dropdown and click the item matching the given text.
+ * Cloudscape renders the user menu as a ButtonDropdown; we find its trigger button
+ * inside the last utility wrapper.
  */
-const clickUserMenuItem = (itemId: string) => {
+const clickUserMenuItemByText = async (itemText: string) => {
+    const user = userEvent.setup();
     const wrapper = createWrapper();
     const topNav = wrapper.findTopNavigation()!;
-    act(() => {
-        topNav.findOverflowMenuButton()!.click();
-    });
-    const overflowMenu = topNav.findOverflowMenu()!;
-    // The user-profile dropdown is the last utility in the overflow menu.
-    // Navigate into its sub-menu by clicking its button.
-    const userProfileBtn = overflowMenu.getElement().querySelector('[data-testid="__1"]') as HTMLButtonElement;
-    act(() => {
-        userProfileBtn.click();
-    });
-    act(() => {
-        overflowMenu.findMenuDropdownItemById(itemId)!.click();
-    });
+    const utilities = topNav.findUtilities();
+    const userMenuUtility = utilities[utilities.length - 1];
+    const triggerBtn = userMenuUtility.getElement().querySelector('button')!;
+    await user.click(triggerBtn);
+    const item = screen.getByText(itemText);
+    await user.click(item);
 };
 
 describe('Topbar', () => {
@@ -127,9 +121,7 @@ describe('Topbar', () => {
 
     it('calls signoutRedirect when sign out is clicked', async () => {
         renderTopbar();
-        clickUserMenuItem('signout');
-        // The signout handler is async (removeUser then signoutRedirect).
-        // Wait for the promises to resolve.
+        await clickUserMenuItemByText('Sign out');
         await vi.waitFor(() => {
             expect(mockAuth.signoutRedirect).toHaveBeenCalledOnce();
         });
@@ -221,16 +213,14 @@ describe('Topbar', () => {
     });
 
     it('calls signinRedirect when sign in is clicked for unauthenticated user', async () => {
-        // Mock unauthenticated state
         (useAuth as any).mockReturnValue({
             ...mockAuth,
             isAuthenticated: false,
         });
 
         renderTopbar();
-        clickUserMenuItem('signin');
+        await clickUserMenuItemByText('Sign in');
 
-        // Verify that signinRedirect was called with correct redirect_uri (no hash, per OAuth spec)
         const { getRedirectUri } = await import('@/config/oidc.config');
         expect(mockAuth.signinRedirect).toHaveBeenCalledWith({
             redirect_uri: getRedirectUri(),

@@ -42,6 +42,8 @@ import ColorSchemeContext from '@/shared/color-scheme.provider';
 import { Mode } from '@cloudscape-design/global-styles';
 import { formatDate } from '@/shared/util/formats';
 
+const AceEditorComponent: any = (AceEditor as any)?.default ?? AceEditor;
+
 // Set up a sample tool demonstration that builds the same MCP tool using both
 // the function-based and class-based approaches.
 const DEFAULT_CONTENT = `from mcpworkbench.core.annotations import mcp_tool
@@ -633,7 +635,7 @@ export function McpWorkbenchManagementComponent (): ReactElement {
                             // disableHeaderPaddings={true}
                             >
                                 <div style={{overflow: 'hidden', borderRadius: '16px'}}>
-                                    <AceEditor
+                                    <AceEditorComponent
                                         theme={colorScheme === Mode.Light ? 'cloud_editor' : 'cloud_editor_dark'}
                                         showGutter={true}
                                         value={state.form.contents}

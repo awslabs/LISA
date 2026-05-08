@@ -184,7 +184,7 @@ export class McpWorkbenchConstruct extends Construct {
 
         return {
             environment: {
-                RCLONE_CONFIG_S3_REGION: config.region,
+                RCLONE_S3_REGION: config.region,
                 MCPWORKBENCH_BUCKET: [config.deploymentName, config.deploymentStage, 'MCPWorkbench', config.accountNumber].join('-').toLowerCase(),
                 CORS_ORIGINS: config.mcpWorkbenchCorsOrigins,
             },

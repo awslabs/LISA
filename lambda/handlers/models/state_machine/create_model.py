@@ -48,6 +48,8 @@ from lisa.utilities.common_functions import (
 )
 from lisa.utilities.time import now
 
+from .litellm_settings_utils import derive_per_model_litellm_params
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
@@ -580,14 +582,11 @@ def handle_add_model_to_litellm(event: dict[str, Any], context: Any) -> dict[str
     model_type = event.get("modelType", "").upper()
     is_video_model = model_type == ModelType.VIDEOGEN.upper()
 
-    # Parse the JSON string from environment variable
-    litellm_config_str = os.environ.get("LITELLM_CONFIG_OBJ", json.dumps({}))
-    try:
-        litellm_params = json.loads(litellm_config_str)
-        litellm_params = litellm_params.get("litellm_settings", {})
-    except json.JSONDecodeError:
-        # Fallback to default if JSON parsing fails
-        litellm_params = {}
+    # Seed per-model ``litellm_params`` from the proxy-level ``litellm_settings``
+    # block, but strip proxy-scope keys (callbacks, cache, fallbacks, ...) that
+    # break some providers when forwarded as request body fields. See
+    # ``litellm_settings_utils`` for the full rationale and blocklist.
+    litellm_params = derive_per_model_litellm_params(os.environ.get("LITELLM_CONFIG_OBJ"))
 
     # Only set api_key if it's present in the event
     if "apiKey" in event:

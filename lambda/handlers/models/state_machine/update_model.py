@@ -14,7 +14,6 @@
 
 """Lambda handlers for UpdateModel state machine."""
 
-import json
 import logging
 import os
 from collections.abc import Callable
@@ -28,6 +27,7 @@ from lisa.utilities.common_functions import get_cert_path, get_rest_api_containe
 from lisa.utilities.time import now
 
 from .failure_utils import extract_model_failure_details
+from .litellm_settings_utils import derive_per_model_litellm_params
 
 ddbResource = boto3.resource("dynamodb", region_name=os.environ["AWS_REGION"], config=retry_config)
 model_table = ddbResource.Table(os.environ["MODEL_TABLE_NAME"])
@@ -430,14 +430,11 @@ def handle_finish_update(event: dict[str, Any], context: Any) -> dict[str, Any]:
     model_type = ddb_item.get("model_config", {}).get("modelType", "").upper()
     is_video_model = model_type == ModelType.VIDEOGEN.value.upper()
 
-    # Parse the JSON string from environment variable
-    litellm_config_str = os.environ.get("LITELLM_CONFIG_OBJ", json.dumps({}))
-    try:
-        litellm_params = json.loads(litellm_config_str)
-        litellm_params = litellm_params.get("litellm_settings", {})
-    except json.JSONDecodeError:
-        # Fallback to default if JSON parsing fails
-        litellm_params = {}
+    # Seed per-model ``litellm_params`` from the proxy-level ``litellm_settings``
+    # block, but strip proxy-scope keys (callbacks, cache, fallbacks, ...) that
+    # break some providers when forwarded as request body fields. See
+    # ``litellm_settings_utils`` for the full rationale and blocklist.
+    litellm_params = derive_per_model_litellm_params(os.environ.get("LITELLM_CONFIG_OBJ"))
 
     # For video generation models, use empty litellm_settings to avoid drop_params error
     if is_video_model:

@@ -140,6 +140,7 @@ def setup_auth_patches(request, mock_auth, aws_credentials):
         "test_user_preferences_lambda",
         "test_bedrock_agent_discovery",
         "test_s3_event_handler",
+        "test_litellm_settings_utils",
     )
     if not any(s in request.node.nodeid for s in _skip_models):
         patches.extend(

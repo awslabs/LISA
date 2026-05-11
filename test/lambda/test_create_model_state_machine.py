@@ -764,6 +764,44 @@ def test_handle_add_model_to_litellm_json_decode_error(model_table, sample_event
             assert call_args[1]["litellm_params"]["drop_params"] is True
 
 
+def test_handle_add_model_to_litellm_strips_proxy_callbacks(model_table, sample_event, lambda_context):
+    """Regression: proxy-level ``callbacks`` must not leak onto per-model litellm_params.
+
+    Reproduces the original Opus 4.7 / Bedrock failure: when
+    ``litellm_settings.callbacks: ["otel"]`` was set in ``config-custom.yaml``,
+    every newly registered model carried ``callbacks`` in its per-model
+    ``litellm_params``. LiteLLM then forwarded that to Bedrock, whose strict
+    request-body schema rejected it with "Extra inputs are not permitted".
+    """
+    event = deepcopy(sample_event)
+    event["create_infra"] = True
+    event["modelUrl"] = "https://test-model.example.com"
+    mock_litellm_client.reset_mock()
+
+    config_with_callbacks = json.dumps(
+        {
+            "litellm_settings": {
+                "callbacks": ["otel"],
+                "turn_off_message_logging": False,
+                "drop_params": True,
+            }
+        }
+    )
+
+    with patch.dict("os.environ", {"LITELLM_CONFIG_OBJ": config_with_callbacks}):
+        with patch("models.state_machine.create_model.model_table", model_table):
+            handle_add_model_to_litellm(event, lambda_context)
+
+    call_args = mock_litellm_client.add_model.call_args
+    litellm_params = call_args[1]["litellm_params"]
+    assert "callbacks" not in litellm_params, (
+        "Proxy-level ``callbacks`` leaked into per-model litellm_params; "
+        "this is exactly what broke Bedrock + Claude Opus 4.7."
+    )
+    assert "turn_off_message_logging" not in litellm_params
+    assert litellm_params["drop_params"] is True
+
+
 def test_handle_start_create_stack_camelize_function(sample_event, lambda_context):
     """Test the internal camelize function in handle_start_create_stack."""
     event = deepcopy(sample_event)

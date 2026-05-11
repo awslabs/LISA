@@ -43,6 +43,7 @@ declare global {
             API_BASE_URL: string;
             USE_CUSTOM_BRANDING: boolean;
             CUSTOM_DISPLAY_NAME: string;
+            AWS_REGION?: string;
         };
         gitInfo?: {
             revisionTag?: string;

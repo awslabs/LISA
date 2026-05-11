@@ -69,7 +69,10 @@ export const DocumentSummarizationModal = ({
     handleSendGenerateRequest,
 }: DocumentSummarizationModalProps) => {
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-    const [successfulUploads, setSuccessfulUpload] = useState<string[]>(undefined);
+    // Initialized to [] (not undefined) so the React Compiler can safely
+    // read .length during render-phase memoization. The button's disabled
+    // check uses successfulUploads.length === 0 instead of !successfulUploads.
+    const [successfulUploads, setSuccessfulUpload] = useState<string[]>([]);
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
     const [createNewChatSession, setCreateNewChatSession] = useState<boolean>(true);
@@ -110,7 +113,7 @@ export const DocumentSummarizationModal = ({
         handleSendGenerateRequest();
         setShowDocumentSummarizationModal(false);
         setSelectedPromptType(undefined);
-        setSuccessfulUpload(undefined);
+        setSuccessfulUpload([]);
         setSelectedFiles([]);
         setFileContext('');
     };
@@ -123,7 +126,7 @@ export const DocumentSummarizationModal = ({
                 setSelectedFiles([]);
                 setUserPrompt('');
                 setSelectedModel(undefined);
-                setSuccessfulUpload(undefined);
+                setSuccessfulUpload([]);
                 setSelectedPromptType('');
             }}
             visible={showDocumentSummarizationModal}
@@ -139,7 +142,7 @@ export const DocumentSummarizationModal = ({
                                 setSelectedFiles([]);
                                 setUserPrompt('');
                                 setSelectedModel(undefined);
-                                setSuccessfulUpload(undefined);
+                                setSuccessfulUpload([]);
                                 setSelectedPromptType('');
                             }}
                             variant={'link'}
@@ -164,7 +167,7 @@ export const DocumentSummarizationModal = ({
                                     triggerSummarization();
                                 }
                             }}
-                            disabled={selectedFiles.length === 0 || !selectedModel || !selectedPromptType || !successfulUploads || !userPrompt}
+                            disabled={selectedFiles.length === 0 || !selectedModel || !selectedPromptType || successfulUploads.length === 0 || !userPrompt}
                         >
                             Summarize
                         </Button>
@@ -185,7 +188,7 @@ export const DocumentSummarizationModal = ({
                     onChange={async ({ detail }) => {
                         setSelectedFiles(detail.value);
                         const uploads = await handleUpload(detail.value, handleError, processFile, [FileTypes.TEXT], 20971520);
-                        setSuccessfulUpload(uploads);
+                        setSuccessfulUpload(uploads ?? []);
                     }}
                     value={selectedFiles}
                     i18nStrings={{

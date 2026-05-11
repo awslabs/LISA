@@ -14,7 +14,8 @@
  limitations under the License.
  */
 
-import react from '@vitejs/plugin-react';
+import react, { reactCompilerPreset } from '@vitejs/plugin-react';
+import babel from '@rolldown/plugin-babel';
 import { defineConfig } from 'vite';
 import { resolve } from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
@@ -84,7 +85,15 @@ const vendorChunkFor = (id: string): string | undefined => {
 
 // https://vitejs.dev/config/
 export default defineConfig({
-    plugins: [react(), tailwindcss()] as any,
+    plugins: [
+        react(),
+        // React Compiler auto-memoizes components and hooks. In
+        // @vitejs/plugin-react@6 the compiler is wired in via a
+        // separate @rolldown/plugin-babel using the reactCompilerPreset
+        // helper. See https://www.npmjs.com/package/@vitejs/plugin-react#react-compiler
+        babel({ presets: [reactCompilerPreset()] }),
+        tailwindcss(),
+    ] as any,
     server: {
         port: 3000,
     },

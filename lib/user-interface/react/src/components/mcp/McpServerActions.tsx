@@ -54,7 +54,16 @@ export function McpServerActions (props: McpServerActionsProps): ReactElement {
                 }}
                 ariaLabel='Refresh MCP Connections'
             />
-            {McpServerActionButton(dispatch, notificationService, props, {isUserAdmin, username, preferences})}
+            <McpServerActionButton
+                dispatch={dispatch}
+                notificationService={notificationService}
+                selectedItems={props.selectedItems}
+                setSelectedItems={props.setSelectedItems}
+                preferences={preferences}
+                toggleAutopilotMode={props.toggleAutopilotMode}
+                isUserAdmin={isUserAdmin}
+                username={username}
+            />
             <Button variant='primary' onClick={() => {
                 navigate('./new');
             }}>
@@ -64,8 +73,19 @@ export function McpServerActions (props: McpServerActionsProps): ReactElement {
     );
 }
 
-function McpServerActionButton (dispatch: ThunkDispatch<any, any, Action>, notificationService: INotificationService, props: McpServerActionsProps, user: {isUserAdmin: boolean, username: string, preferences: McpPreferences}): ReactElement {
-    const selectedMcpServer: McpServer = props?.selectedItems[0];
+// Rendered as a JSX child so the React Compiler treats it as a component
+// (own hook scope) instead of memoizing the call by args and skipping its
+// hook bodies on re-renders. See note in RepositoryActions.tsx.
+type McpServerActionButtonProps = McpServerActionsProps & {
+    dispatch: ThunkDispatch<any, any, Action>;
+    notificationService: INotificationService;
+    isUserAdmin: boolean;
+    username: string;
+};
+
+function McpServerActionButton (props: McpServerActionButtonProps): ReactElement {
+    const { dispatch, notificationService, isUserAdmin, username, preferences, selectedItems, setSelectedItems, toggleAutopilotMode } = props;
+    const selectedMcpServer: McpServer = selectedItems[0];
     const navigate = useNavigate();
     const [
         deleteMutation,
@@ -75,10 +95,10 @@ function McpServerActionButton (dispatch: ThunkDispatch<any, any, Action>, notif
     useEffect(() => {
         if (!isDeleteLoading && isDeleteSuccess && selectedMcpServer) {
             notificationService.generateNotification(`Successfully deleted MCP Connection: ${selectedMcpServer.name}`, 'success');
-            props.setSelectedItems([]);
+            setSelectedItems([]);
         } else if (!isDeleteLoading && isDeleteError && selectedMcpServer) {
             notificationService.generateNotification(`Error deleting MCP Connection: ${deleteError.data?.message ?? deleteError.data}`, 'error');
-            props.setSelectedItems([]);
+            setSelectedItems([]);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isDeleteSuccess, isDeleteError, deleteError, isDeleteLoading]);
@@ -88,20 +108,20 @@ function McpServerActionButton (dispatch: ThunkDispatch<any, any, Action>, notif
         items.push({
             text: 'Edit',
             id: 'editMcpServer',
-            disabled: !user.isUserAdmin && !(selectedMcpServer.owner === user.username),
+            disabled: !isUserAdmin && !(selectedMcpServer.owner === username),
             disabledReason: 'You cannot edit a MCP Connection you don\'t own.',
         });
 
         items.push({
             text: 'Delete',
             id: 'deleteMcpServer',
-            disabled: !user.isUserAdmin && !(selectedMcpServer.owner === user.username),
+            disabled: !isUserAdmin && !(selectedMcpServer.owner === username),
             disabledReason: 'You cannot delete a MCP Connection you don\'t own.',
         });
     }
 
     items.push({
-        text: `${user.preferences?.overrideAllApprovals === true ? 'Activate Safe Mode' : 'Activate Autopilot Mode'}`,
+        text: `${preferences?.overrideAllApprovals === true ? 'Activate Safe Mode' : 'Activate Autopilot Mode'}`,
         id: 'toggleAutopilotMode',
     });
 
@@ -112,7 +132,7 @@ function McpServerActionButton (dispatch: ThunkDispatch<any, any, Action>, notif
             disabled={!items}
             loading={isDeleteLoading}
             onItemClick={(e) =>
-                ModelActionHandler(e, selectedMcpServer, dispatch, deleteMutation, navigate, props.toggleAutopilotMode)
+                ModelActionHandler(e, selectedMcpServer, dispatch, deleteMutation, navigate, toggleAutopilotMode)
             }
         >
             Actions

@@ -51,7 +51,16 @@ export function PromptTemplatesActions (props: PromptTemplatesActionsProps): Rea
                 }}
                 ariaLabel='Refresh prompt templates'
             />
-            {PromptTemplatesActionButton(dispatch, notificationService, props, {isUserAdmin, username})}
+            <PromptTemplatesActionButton
+                dispatch={dispatch}
+                notificationService={notificationService}
+                isUserAdmin={isUserAdmin}
+                username={username}
+                selectedItems={props.selectedItems}
+                setSelectedItems={props.setSelectedItems}
+                showPublic={props.showPublic}
+                isFetching={props.isFetching}
+            />
             <Button variant='primary' onClick={() => {
                 navigate('./new');
             }}>
@@ -61,8 +70,19 @@ export function PromptTemplatesActions (props: PromptTemplatesActionsProps): Rea
     );
 }
 
-function PromptTemplatesActionButton (dispatch: ThunkDispatch<any, any, Action>, notificationService: INotificationService, props: PromptTemplatesActionsProps, user: {isUserAdmin: boolean, username: string}): ReactElement {
-    const selectedPromptTemplate: PromptTemplate = props?.selectedItems[0];
+// Rendered as a JSX child so the React Compiler treats it as a component
+// (own hook scope) instead of memoizing the call by args and skipping its
+// hook bodies on re-renders. See note in RepositoryActions.tsx.
+type PromptTemplatesActionButtonProps = PromptTemplatesActionsProps & {
+    dispatch: ThunkDispatch<any, any, Action>;
+    notificationService: INotificationService;
+    isUserAdmin: boolean;
+    username: string;
+};
+
+function PromptTemplatesActionButton (props: PromptTemplatesActionButtonProps): ReactElement {
+    const { dispatch, notificationService, isUserAdmin, selectedItems, setSelectedItems, showPublic } = props;
+    const selectedPromptTemplate: PromptTemplate = selectedItems[0];
     const navigate = useNavigate();
     const [
         deleteMutation,
@@ -72,10 +92,10 @@ function PromptTemplatesActionButton (dispatch: ThunkDispatch<any, any, Action>,
     useEffect(() => {
         if (!isDeleteLoading && isDeleteSuccess && selectedPromptTemplate) {
             notificationService.generateNotification(`Successfully deleted Prompt Template: ${selectedPromptTemplate.title}`, 'success');
-            props.setSelectedItems([]);
+            setSelectedItems([]);
         } else if (!isDeleteLoading && isDeleteError && selectedPromptTemplate) {
             notificationService.generateNotification(`Error deleting Prompt Template: ${deleteError.data?.message ?? deleteError.data}`, 'error');
-            props.setSelectedItems([]);
+            setSelectedItems([]);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isDeleteSuccess, isDeleteError, deleteError, isDeleteLoading]);
@@ -85,14 +105,14 @@ function PromptTemplatesActionButton (dispatch: ThunkDispatch<any, any, Action>,
         items.push({
             text: 'Edit',
             id: 'editPromptTemplate',
-            disabled: !user.isUserAdmin && props.showPublic,
+            disabled: !isUserAdmin && showPublic,
             disabledReason: 'You cannot edit a Prompt Template you down own.',
         });
 
         items.push({
             text: 'Delete',
             id: 'deletePromptTemplate',
-            disabled: !user.isUserAdmin && props.showPublic,
+            disabled: !isUserAdmin && showPublic,
             disabledReason: 'You cannot delete a Prompt Template you down own.',
         });
     }

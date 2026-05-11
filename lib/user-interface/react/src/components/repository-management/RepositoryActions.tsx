@@ -66,7 +66,15 @@ function RepositoryActions (props: RepositoryActionProps): ReactElement {
                 onClick={handleRefresh}
                 ariaLabel='Refresh repository table'
             />
-            {RepositoryActionButton(dispatch, notificationService, props, isAdmin)}
+            <RepositoryActionButton
+                dispatch={dispatch}
+                notificationService={notificationService}
+                isAdmin={isAdmin}
+                setEdit={props.setEdit}
+                selectedItems={props.selectedItems}
+                setSelectedItems={props.setSelectedItems}
+                setNewRepositoryModalVisible={props.setNewRepositoryModalVisible}
+            />
             {isAdmin && (
                 <Button variant='primary' onClick={() => {
                     setEdit(false);
@@ -83,8 +91,19 @@ type RagRepository = RagRepositoryConfig & {
     legacy?: boolean
 };
 
-function RepositoryActionButton (dispatch: ThunkDispatch<any, any, Action>, notificationService: INotificationService, props: RepositoryActionProps, isAdmin: boolean): ReactElement {
-    const { setEdit, selectedItems, setSelectedItems, setNewRepositoryModalVisible } = props;
+// Rendered as a JSX child so the React Compiler treats it as a component
+// (own hook scope) instead of memoizing the call by args and skipping its
+// hook bodies on re-renders. The latter produces "Rendered fewer hooks than
+// expected" because the compiler caches the JSX result of a function call
+// keyed on its arguments.
+type RepositoryActionButtonProps = RepositoryActionProps & {
+    dispatch: ThunkDispatch<any, any, Action>;
+    notificationService: INotificationService;
+    isAdmin: boolean;
+};
+
+function RepositoryActionButton (props: RepositoryActionButtonProps): ReactElement {
+    const { dispatch, notificationService, isAdmin, setEdit, selectedItems, setSelectedItems, setNewRepositoryModalVisible } = props;
     const [disabledModal, setDisabledModel] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const selectedRepo: RagRepository = selectedItems[0];
@@ -97,17 +116,23 @@ function RepositoryActionButton (dispatch: ThunkDispatch<any, any, Action>, noti
         = useUpdateRagRepositoryMutation();
 
     useEffect(() => {
-        if (!isDeleteLoading && isDeleteSuccess && selectedRepo) {
+        const finishedSuccess = !isDeleteLoading && isDeleteSuccess && selectedRepo;
+        const finishedError = !isDeleteLoading && isDeleteError && selectedRepo;
+        if (finishedSuccess) {
             notificationService.generateNotification(`Successfully deleted repository: ${selectedRepo?.repositoryId}`, 'success');
-            setSelectedItems([]);
-            setDisabledModel(false);
-            setShowModal(false);
-        } else if (!isDeleteLoading && isDeleteError && selectedRepo) {
+        } else if (finishedError) {
             const errorMessage = 'data' in deleteError ? deleteError.data?.message ?? deleteError.data : deleteError.message;
             notificationService.generateNotification(`Error deleting repository: ${errorMessage}`, 'error');
-            setSelectedItems([]);
-            setDisabledModel(false);
-            setShowModal(false);
+        }
+        // Defer local-state resets outside the synchronous effect body so we
+        // don't cascade renders from inside an effect (matches the queueMicrotask
+        // pattern used elsewhere in the codebase, e.g. useMcpPreferencesUpdate).
+        if (finishedSuccess || finishedError) {
+            queueMicrotask(() => {
+                setSelectedItems([]);
+                setDisabledModel(false);
+                setShowModal(false);
+            });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isDeleteSuccess, isDeleteError, deleteError, isDeleteLoading]);

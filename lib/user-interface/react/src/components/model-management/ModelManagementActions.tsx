@@ -55,7 +55,7 @@ function ModelActions (props: ModelActionProps): ReactElement {
                 ariaLabel='Refresh models cards'
             />
 
-            {ModelActionButton(dispatch, notificationService, props)}
+            <ModelActionButton dispatch={dispatch} notificationService={notificationService} {...props} />
             <Button
                 variant='primary'
                 onClick={() => {
@@ -69,7 +69,16 @@ function ModelActions (props: ModelActionProps): ReactElement {
     );
 }
 
-function ModelActionButton (dispatch: ThunkDispatch<any, any, Action>, notificationService: INotificationService, props?: any): ReactElement {
+// Rendered as a JSX child so the React Compiler treats it as a component
+// (own hook scope) instead of memoizing the call by args and skipping its
+// hook bodies on re-renders. See note in RepositoryActions.tsx.
+type ModelActionButtonProps = ModelActionProps & {
+    dispatch: ThunkDispatch<any, any, Action>;
+    notificationService: INotificationService;
+};
+
+function ModelActionButton (props: ModelActionButtonProps): ReactElement {
+    const { dispatch, notificationService } = props;
     const selectedModel: IModel = props?.selectedItems[0];
     const currentUsername = useAppSelector(selectCurrentUsername);
     const [

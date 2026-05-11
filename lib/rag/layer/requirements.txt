@@ -29,4 +29,4 @@ numpy==2.4.4
 
 # psycopg2-binary provided by Common Layer
 # boto3/botocore provided by Lambda runtime
-urllib3==2.6.3
+urllib3==2.7.0

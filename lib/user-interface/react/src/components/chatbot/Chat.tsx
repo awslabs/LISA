@@ -178,7 +178,6 @@ export default function Chat ({ sessionId, initialStack }) {
     const [fileContextName, setFileContextName] = useState('');
     const [fileContextFiles, setFileContextFiles] = useState<Array<{name: string, content: string}>>([]);
     const [dirtySession, setDirtySession] = useState(false);
-    const [isConnected, setIsConnected] = useState(false);
     const [useRag, setUseRag] = useState(false);
     const [preferences, setPreferences] = useState<UserPreferences>(undefined);
     const [modelFilterValue, setModelFilterValue] = useState('');
@@ -260,6 +259,24 @@ export default function Chat ({ sessionId, initialStack }) {
     const consecutiveToolCallCount = useRef(0);
     const TOOL_CALL_LIMIT = 20;
     const pendingToolChainExecution = useRef<(() => Promise<void>) | null>(null);
+
+    // Loop-prevention modal handlers. Declared before the tool-call effect
+    // (later in this file) so the effect's closure captures a stable reference,
+    // satisfying react-hooks/immutability.
+    const handleContinueToolCalls = useCallback(async () => {
+        consecutiveToolCallCount.current = 0;
+
+        if (pendingToolChainExecution.current) {
+            await pendingToolChainExecution.current();
+            pendingToolChainExecution.current = null;
+        }
+    }, []);
+
+    const handleStopToolCalls = useCallback(() => {
+        consecutiveToolCallCount.current = 0;
+        pendingToolChainExecution.current = null;
+        notificationService.generateNotification('Tool call chain stopped by user', 'info');
+    }, [notificationService]);
 
     const needsWorkbenchToolList = Boolean(enabledServers?.some(isWorkbenchMcpServer));
     const workbenchListQuery = useListMcpToolsQuery(undefined, { skip: !needsWorkbenchToolList });
@@ -409,14 +426,33 @@ export default function Chat ({ sessionId, initialStack }) {
         bedrockAgentsCatalog?.agents,
     ]);
 
-    const [updatePreferences, {isSuccess: isUpdatingPreferencesSuccess, isError: isUpdatingPreferencesError, isLoading: isUpdatingPreferences}] = useUpdateUserPreferencesMutation();
+    const [updatePreferences, {isLoading: isUpdatingPreferences}] = useUpdateUserPreferencesMutation();
 
-    // Load markdown preview preference from user preferences
-    useEffect(() => {
-        if (userPreferences?.preferences?.showMarkdownPreview !== undefined) {
-            setShowMarkdownPreview(userPreferences.preferences.showMarkdownPreview);
+    // Update tool/MCP preferences and resolve the auto-approval spinner at
+    // the call site via .unwrap(), replacing two useEffect mirrors on the
+    // mutation's isSuccess/isError flags. Declared first so subsequent
+    // handlers can capture it without violating react-hooks/immutability.
+    const updatePreferencesAndNotify = useCallback(async (next: UserPreferences) => {
+        try {
+            await updatePreferences(next).unwrap();
+            notificationService.generateNotification('Successfully updated tool preferences', 'success');
+        } catch {
+            notificationService.generateNotification('Error updating tool preferences', 'error');
+        } finally {
+            setUpdatingAutoApprovalForTool(null);
         }
-    }, [userPreferences]);
+    }, [updatePreferences, notificationService]);
+
+    // Sync the local markdown-preview toggle from the persisted preference
+    // using React's "adjusting state while rendering" pattern. Only resyncs
+    // when the upstream preference actually changes (e.g. user changes it
+    // elsewhere or it loads after mount).
+    const upstreamShowMarkdownPreview = userPreferences?.preferences?.showMarkdownPreview;
+    const [lastSyncedShowMarkdownPreview, setLastSyncedShowMarkdownPreview] = useState(upstreamShowMarkdownPreview);
+    if (upstreamShowMarkdownPreview !== undefined && upstreamShowMarkdownPreview !== lastSyncedShowMarkdownPreview) {
+        setLastSyncedShowMarkdownPreview(upstreamShowMarkdownPreview);
+        setShowMarkdownPreview(upstreamShowMarkdownPreview);
+    }
 
     // Handle markdown preview toggle
     const handleToggleMarkdownPreview = useCallback((enabled: boolean) => {
@@ -430,32 +466,19 @@ export default function Chat ({ sessionId, initialStack }) {
             }
         };
         setPreferences(updated);
-        updatePreferences(updated);
-    }, [preferences, updatePreferences, setPreferences]);
+        updatePreferencesAndNotify(updated);
+    }, [preferences, updatePreferencesAndNotify, setPreferences]);
 
-    useEffect(() => {
-        if (userPreferences) {
-            setPreferences(userPreferences);
-        } else {
-            setPreferences({ ...DefaultUserPreferences, user: userName });
-        }
-    }, [userPreferences, userName]);
-
-    // Handle preferences update success
-    useEffect(() => {
-        if (isUpdatingPreferencesSuccess) {
-            notificationService.generateNotification('Successfully updated tool preferences', 'success');
-            setUpdatingAutoApprovalForTool(null);
-        }
-    }, [isUpdatingPreferencesSuccess, notificationService]);
-
-    // Handle preferences update error
-    useEffect(() => {
-        if (isUpdatingPreferencesError) {
-            notificationService.generateNotification('Error updating tool preferences', 'error');
-            setUpdatingAutoApprovalForTool(null);
-        }
-    }, [isUpdatingPreferencesError, notificationService]);
+    // Sync the local preferences copy from upstream user preferences using
+    // React's "adjusting state while rendering" pattern. Local state is kept
+    // because handlers optimistically setPreferences(...) before the mutation
+    // round-trip completes; we only resync when the upstream identity changes
+    // (initial load, external refresh, or query invalidation).
+    const [lastSyncedUserPreferences, setLastSyncedUserPreferences] = useState<UserPreferences | undefined>(undefined);
+    if (userPreferences !== lastSyncedUserPreferences) {
+        setLastSyncedUserPreferences(userPreferences);
+        setPreferences(userPreferences ?? { ...DefaultUserPreferences, user: userName });
+    }
 
     // Custom hooks
     const { dynamicMaxRows } = useDynamicMaxRows();
@@ -500,12 +523,25 @@ export default function Chat ({ sessionId, initialStack }) {
         }
     }, [selectedModel, hasUserInteractedWithModel, config?.configuration?.global?.defaultModel, availableModelsForDefault, handleModelChange, setSelectedModel]);
 
-    // Apply stack config when starting a new session from a Chat Assistant (after session exists so RAG isn't overwritten by createNewSession)
-    const initialStackApplied = useRef(false);
+    // Apply stack config when starting a new session from a Chat Assistant
+    // (after session exists so RAG isn't overwritten by createNewSession).
+    // This is a one-shot init that responds to several pieces of async-loaded
+    // data converging. The synchronous setStates happen during render-phase
+    // via a guarded block ("adjusting state while rendering" pattern). The
+    // async persona-prompt fetch is split into its own effect with an
+    // explicit await boundary so all setStates run after the await.
+    const [initialStackApplied, setInitialStackApplied] = useState(false);
     const [getPromptTemplate] = useLazyGetPromptTemplateQuery();
-    useEffect(() => {
-        const sessionReady = sessionId != null || internalSessionId != null;
-        if (!initialStack || session.history.length > 0 || initialStackApplied.current || !allModels?.length || !sessionReady) return;
+
+    const sessionReady = sessionId != null || internalSessionId != null;
+    if (
+        !initialStackApplied
+        && initialStack
+        && session.history.length === 0
+        && Boolean(allModels?.length)
+        && sessionReady
+    ) {
+        setInitialStackApplied(true);
         const firstModelId = initialStack.modelIds?.[0];
         const model = firstModelId ? allModels.find((m) => m.modelId === firstModelId) : undefined;
         if (model) {
@@ -516,22 +552,6 @@ export default function Chat ({ sessionId, initialStack }) {
         setChatAssistantId(initialStack.stackId);
         setChatConfiguration((prev) => ({ ...prev, chatAssistantId: initialStack.stackId }));
 
-        // Set system prompt from persona prompt if configured
-        if (initialStack.personaPromptId) {
-            getPromptTemplate(initialStack.personaPromptId).then((result) => {
-                if (result.data?.body) {
-                    setChatConfiguration((prev) => ({
-                        ...prev,
-                        promptConfiguration: {
-                            ...prev.promptConfiguration,
-                            promptTemplate: result.data.body,
-                        },
-                    }));
-                }
-            });
-        }
-
-        // Set initial RAG from stack when present; clear RAG when stack has no repos
         const repoIds = initialStack.repositoryIds ?? [];
         if (repoIds.length) {
             setRagConfig((prev) => ({
@@ -541,9 +561,32 @@ export default function Chat ({ sessionId, initialStack }) {
         } else {
             setRagConfig({} as import('./components/RagOptions').RagConfig);
         }
+    }
 
-        initialStackApplied.current = true;
-    }, [initialStack, session.history.length, sessionId, internalSessionId, allModels, setSession, handleModelChange, setSelectedModel, selectedModel, getPromptTemplate, setChatConfiguration, setRagConfig, setChatAssistantId]);
+    useEffect(() => {
+        if (!initialStackApplied || !initialStack?.personaPromptId) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const result = await getPromptTemplate(initialStack.personaPromptId);
+                if (cancelled) return;
+                if (result.data?.body) {
+                    setChatConfiguration((prev) => ({
+                        ...prev,
+                        promptConfiguration: {
+                            ...prev.promptConfiguration,
+                            promptTemplate: result.data.body,
+                        },
+                    }));
+                }
+            } catch (err) {
+                console.error('Error loading persona prompt template:', err);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [initialStackApplied, initialStack?.personaPromptId, getPromptTemplate, setChatConfiguration]);
 
 
     // Wrapper for handleModelChange that tracks user interaction
@@ -553,10 +596,15 @@ export default function Chat ({ sessionId, initialStack }) {
         handleModelChange(value, selectedModel, setSelectedModel);
     };
 
-    // Update filter value when selected model changes
-    useEffect(() => {
+    // Keep the filter input in sync with externally-set selectedModel
+    // (default model selection, session load, stack apply) using React's
+    // "adjusting state while rendering" pattern. This avoids a redundant
+    // render that a useEffect-driven sync would incur.
+    const [lastSyncedModelId, setLastSyncedModelId] = useState(selectedModel?.modelId);
+    if (selectedModel?.modelId !== lastSyncedModelId) {
+        setLastSyncedModelId(selectedModel?.modelId);
         setModelFilterValue(selectedModel?.modelId ?? '');
-    }, [selectedModel]);
+    }
 
     const { memory, metadata } = useMemory(
         session,
@@ -792,7 +840,7 @@ export default function Chat ({ sessionId, initialStack }) {
                 },
             };
             setPreferences(updated);
-            updatePreferences(updated);
+            updatePreferencesAndNotify(updated);
             return;
         }
         setUpdatingAutoApprovalForTool(toolName);
@@ -836,7 +884,7 @@ export default function Chat ({ sessionId, initialStack }) {
             }
         };
         setPreferences(updated);
-        updatePreferences(updated);
+        updatePreferencesAndNotify(updated);
     };
 
     // Handle stop functionality
@@ -850,12 +898,9 @@ export default function Chat ({ sessionId, initialStack }) {
     // Determine if we should show stop button
     const shouldShowStopButton = Boolean(isRunning || callingToolName);
 
-    useEffect(() => {
-        if (sessionHealth) {
-            setIsConnected(true);
-        }
-
-    }, [sessionHealth]);
+    // Connection status is derived directly from the session-health query
+    // result; no useEffect mirror needed.
+    const isConnected = Boolean(sessionHealth);
 
     // Handle tool calls with chaining support
     useEffect(() => {
@@ -968,39 +1013,35 @@ export default function Chat ({ sessionId, initialStack }) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isRunning, isStreaming, session.history.length, dirtySession, chatConfiguration, chatAssistantId, effectiveStack?.stackId]);
 
-    // Connection health check
+    // Re-enable auto-scroll the moment a session is ready. Detected during
+    // render with the "adjusting state while rendering" pattern so we don't
+    // call setShouldAutoScroll directly from a useEffect body.
+    const sessionLoadedKey = (!loadingSession && session.history.length > 0 && sessionId)
+        ? `${sessionId}|${session.history.length}`
+        : null;
+    const [lastSessionLoadedKey, setLastSessionLoadedKey] = useState<string | null>(null);
+    if (sessionLoadedKey && sessionLoadedKey !== lastSessionLoadedKey) {
+        setLastSessionLoadedKey(sessionLoadedKey);
+        setShouldAutoScroll(true);
+    }
+
+    // Schedule multiple scroll attempts once a session is ready. For sessions
+    // with images we need several attempts because:
+    // - Base64 images load instantly (synchronously)
+    // - Cached images load very quickly
+    // - The browser needs time to reflow the layout with image dimensions
     useEffect(() => {
-        if (sessionHealth) {
-            setIsConnected(true);
-        }
-    }, [sessionHealth]);
-
-    // When session finishes loading, enable auto-scroll and scroll to bottom
-    useEffect(() => {
-        if (!loadingSession && session.history.length > 0 && sessionId) {
-            // Re-enable auto-scroll when a session is loaded
-            setShouldAutoScroll(true);
-
-            // For sessions with images, we need multiple scroll attempts because:
-            // - Base64 images load instantly (synchronously)
-            // - Cached images load very quickly
-            // - The browser needs time to reflow the layout with image dimensions
-            const scrollToBottom = () => {
-                if (scrollContainerRef.current) {
-                    scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
-                }
-            };
-
-            // Multiple scroll attempts with increasing delays to ensure we reach the bottom
-            // as images fully load and the container height updates
-            const delays = [0, 50, 150, 300, 500];
-            const timeoutIds = delays.map((delay) => setTimeout(scrollToBottom, delay));
-
-            // Cleanup timeouts if component unmounts or effect re-runs
-            return () => {
-                timeoutIds.forEach((id) => clearTimeout(id));
-            };
-        }
+        if (loadingSession || session.history.length === 0 || !sessionId) return;
+        const scrollToBottom = () => {
+            if (scrollContainerRef.current) {
+                scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+            }
+        };
+        const delays = [0, 50, 150, 300, 500];
+        const timeoutIds = delays.map((delay) => setTimeout(scrollToBottom, delay));
+        return () => {
+            timeoutIds.forEach((id) => clearTimeout(id));
+        };
     }, [loadingSession, sessionId, session.history.length]);
 
     useEffect(() => {
@@ -1046,22 +1087,6 @@ export default function Chat ({ sessionId, initialStack }) {
     useEffect(() => {
         consecutiveToolCallCount.current = 0;
     }, [sessionId]);
-
-    // Handle loop prevention modal actions
-    const handleContinueToolCalls = useCallback(async () => {
-        consecutiveToolCallCount.current = 0; // Reset counter
-
-        if (pendingToolChainExecution.current) {
-            await pendingToolChainExecution.current();
-            pendingToolChainExecution.current = null;
-        }
-    }, []);
-
-    const handleStopToolCalls = useCallback(() => {
-        consecutiveToolCallCount.current = 0; // Reset counter
-        pendingToolChainExecution.current = null; // Clear pending execution
-        notificationService.generateNotification('Tool call chain stopped by user', 'info');
-    }, [notificationService]);
 
     const handleSendGenerateRequest = useCallback(async () => {
         if (!userPrompt.trim()) return;

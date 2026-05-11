@@ -82,6 +82,25 @@ const dependencies: DependencyMap<{
     mcpConnections: { dependents: ['showMcpWorkbench', 'awsSessions'] }
 };
 
+// Recursively collect all dependents. Defined at module scope so it can
+// reference itself without violating react-hooks/immutability (no useCallback
+// closure capturing itself before declaration).
+function collectAllDependents (optionKey: string, visited = new Set<string>()): string[] {
+    if (visited.has(optionKey)) return [];
+    visited.add(optionKey);
+
+    const dependency = dependencies[optionKey];
+    if (!dependency?.dependents) return [];
+
+    const allDependents: string[] = [];
+    for (const dependent of dependency.dependents) {
+        allDependents.push(dependent);
+        allDependents.push(...collectAllDependents(dependent, visited));
+    }
+
+    return allDependents;
+}
+
 const configurableOperations = [{
     header: 'RAG',
     items: ragOptions
@@ -120,23 +139,6 @@ export function ActivatedUserComponents (props: ActivatedComponentConfigurationP
         return Boolean(dependency?.prerequisites?.some((prereq) => !props.enabledComponents[prereq]));
     }, [props.enabledComponents]);
 
-    // Helper function to recursively collect all dependents
-    const getAllDependents = useCallback((optionKey: string, visited = new Set<string>()): string[] => {
-        if (visited.has(optionKey)) return [];
-        visited.add(optionKey);
-
-        const dependency = dependencies[optionKey];
-        if (!dependency?.dependents) return [];
-
-        const allDependents: string[] = [];
-        for (const dependent of dependency.dependents) {
-            allDependents.push(dependent);
-            allDependents.push(...getAllDependents(dependent, visited));
-        }
-
-        return allDependents;
-    }, []);
-
     // Handle toggle changes with dependency management
     const handleToggleChange = useCallback((item: string, checked: boolean) => {
         const updatedFields: Record<string, boolean> = {};
@@ -144,14 +146,14 @@ export function ActivatedUserComponents (props: ActivatedComponentConfigurationP
 
         // If turning off, also turn off all dependents recursively
         if (!checked) {
-            const allDependents = getAllDependents(item);
+            const allDependents = collectAllDependents(item);
             for (const dependent of allDependents) {
                 updatedFields[`enabledComponents.${dependent}`] = false;
             }
         }
 
         setFields(updatedFields);
-    }, [setFields, getAllDependents]);
+    }, [setFields]);
 
     return (
         <Container

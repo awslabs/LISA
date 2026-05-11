@@ -15,7 +15,7 @@
 */
 
 import 'regenerator-runtime/runtime';
-import { lazy, ReactElement, Suspense, useEffect, useState } from 'react';
+import { lazy, ReactElement, Suspense, useEffect, useRef, useState } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout, Box } from '@cloudscape-design/components';
 import Spinner from '@cloudscape-design/components/spinner';
@@ -240,14 +240,16 @@ function App () {
     useAnnouncementNotifier(config);
 
     // Prefetch every route chunk the signed-in user can reach, once, during
-    // idle time. Turns subsequent route navigation into a cache hit.
-    const [prefetchTriggered, setPrefetchTriggered] = useState(false);
+    // idle time. Turns subsequent route navigation into a cache hit. Uses a
+    // ref instead of state so the one-shot flag doesn't drive a re-render
+    // (which also avoids react-hooks/set-state-in-effect).
+    const prefetchTriggeredRef = useRef(false);
     useEffect(() => {
-        if (prefetchTriggered) return;
+        if (prefetchTriggeredRef.current) return;
         if (!auth.isAuthenticated || !config) return;
-        setPrefetchTriggered(true);
+        prefetchTriggeredRef.current = true;
         prefetchRouteChunks(config, isAdmin);
-    }, [auth.isAuthenticated, config, isAdmin, prefetchTriggered]);
+    }, [auth.isAuthenticated, config, isAdmin]);
 
     const [colorScheme, setColorScheme] = useState(() => {
         // Check to see if Media-Queries are supported

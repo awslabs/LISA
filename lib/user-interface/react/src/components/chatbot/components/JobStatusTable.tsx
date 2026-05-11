@@ -98,19 +98,28 @@ export function JobStatusTable ({
         }
     }, [lastEvaluatedKey, refetch, ragConfig.repositoryId, shouldFetch]);
 
-    // Auto-load jobs when component mounts or ragConfig changes
-    React.useEffect(() => {
+    // Re-enable fetching when autoLoad, the selected repository, or the time
+    // filter changes. Uses the "adjusting state while rendering" pattern
+    // (React docs) instead of useEffect so the new
+    // react-hooks/set-state-in-effect rule doesn't fire.
+    const autoLoadKey = `${autoLoad}|${ragConfig.repositoryId}|${timeFilter.id}`;
+    const [lastAutoLoadKey, setLastAutoLoadKey] = useState(autoLoadKey);
+    if (autoLoadKey !== lastAutoLoadKey) {
+        setLastAutoLoadKey(autoLoadKey);
         if (autoLoad && ragConfig.repositoryId) {
             setShouldFetch(true);
         }
-    }, [autoLoad, ragConfig.repositoryId, timeFilter.id]);
+    }
 
-    // Reset pagination when page size or time filter changes
-    React.useEffect(() => {
+    // Reset pagination whenever page size or time filter changes.
+    const paginationKey = `${preferences.pageSize}|${timeFilter.id}`;
+    const [lastPaginationKey, setLastPaginationKey] = useState(paginationKey);
+    if (paginationKey !== lastPaginationKey) {
+        setLastPaginationKey(paginationKey);
         setCurrentPage(1);
         setLastEvaluatedKey(null);
         setPageHistory([]);
-    }, [preferences.pageSize, timeFilter.id]);
+    }
 
     const handleRefreshJobs = React.useCallback(() => {
         if (ragConfig.repositoryId) {

@@ -324,10 +324,14 @@ export function McpWorkbenchManagementComponent (): ReactElement {
         dispatch(setBreadcrumbs([]));
     }, [dispatch]);
 
-    // Reset pagination when filter changes
-    useEffect(() => {
+    // Reset pagination when filter changes — "adjusting state while
+    // rendering" pattern (React docs) avoids the new
+    // react-hooks/set-state-in-effect warning.
+    const [lastFilterText, setLastFilterText] = useState(filterText);
+    if (filterText !== lastFilterText) {
+        setLastFilterText(filterText);
         setCurrentPageIndex(1);
-    }, [filterText]);
+    }
 
     useEffect(() => {
         async function loadAce () {
@@ -346,20 +350,22 @@ export function McpWorkbenchManagementComponent (): ReactElement {
         loadAce();
     }, []);
 
-    // Update editor content when a tool is selected
-    useEffect(() => {
-        if (!isUninitialized && selectedToolData?.id) {
-            setFields({
-                id: selectedToolData.id,
-                contents: selectedToolData.contents,
-                size: selectedToolData.size,
-                updated_at: selectedToolData.updated_at
-            });
-            setIsDirty(false);
-            setStatusText(undefined);
-        }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isUninitialized, selectedToolData]);
+    // Load freshly-fetched tool data into local form state when the
+    // RTK Query result reference changes (new tool or refetch). Uses
+    // the "store previous render's value" pattern so the work happens
+    // during render rather than via cascading effect.
+    const [lastLoadedToolData, setLastLoadedToolData] = useState<typeof selectedToolData>(undefined);
+    if (!isUninitialized && selectedToolData?.id && selectedToolData !== lastLoadedToolData) {
+        setLastLoadedToolData(selectedToolData);
+        setFields({
+            id: selectedToolData.id,
+            contents: selectedToolData.contents,
+            size: selectedToolData.size,
+            updated_at: selectedToolData.updated_at
+        });
+        setIsDirty(false);
+        setStatusText(undefined);
+    }
 
     // Handle tool selection
     const handleToolSelect = (tool: IMcpTool) => {

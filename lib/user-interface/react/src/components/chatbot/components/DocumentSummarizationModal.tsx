@@ -25,7 +25,7 @@ import {
     TextContent,
 } from '@cloudscape-design/components';
 import { FileTypes, LisaChatSession } from '../../types';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useAppDispatch } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
 import { useGetAllModelsQuery } from '@/shared/reducers/model-management.reducer';
@@ -72,7 +72,6 @@ export const DocumentSummarizationModal = ({
     const [successfulUploads, setSuccessfulUpload] = useState<string[]>(undefined);
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
-    const [summarize, setSummarize] = useState<boolean>(false);
     const [createNewChatSession, setCreateNewChatSession] = useState<boolean>(true);
 
     const { data: allModels, isFetching: isFetchingModels } = useGetAllModelsQuery(undefined, {
@@ -104,20 +103,17 @@ export const DocumentSummarizationModal = ({
         return true;
     }
 
-    useEffect(
-        () => {
-            if (summarize) {
-                setSummarize(false);
-                handleSendGenerateRequest();
-
-                setShowDocumentSummarizationModal(false);
-                setSelectedPromptType(undefined);
-                setSuccessfulUpload(undefined);
-                setSelectedFiles([]);
-                setFileContext('');
-            }
-            // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [summarize]);
+    // Run summarization and reset modal state. Replaces a useEffect-driven
+    // trigger that used a `summarize` state-flag, which violated
+    // react-hooks/set-state-in-effect.
+    const triggerSummarization = () => {
+        handleSendGenerateRequest();
+        setShowDocumentSummarizationModal(false);
+        setSelectedPromptType(undefined);
+        setSuccessfulUpload(undefined);
+        setSelectedFiles([]);
+        setFileContext('');
+    };
 
     return (
         <Modal
@@ -165,7 +161,7 @@ export const DocumentSummarizationModal = ({
                                         setSession(newSession);
                                     }
 
-                                    setSummarize(true);
+                                    triggerSummarization();
                                 }
                             }}
                             disabled={selectedFiles.length === 0 || !selectedModel || !selectedPromptType || !successfulUploads || !userPrompt}

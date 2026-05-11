@@ -67,50 +67,45 @@ export function BedrockKnowledgeBaseConfigForm (
         isLoading: dsLoading,
     } = useListBedrockDataSourcesQuery({ kbId: selectedKbId || '' }, { skip: !selectedKbId });
 
-    // Auto-select data sources from existing config or pipelines
-    useEffect(() => {
-        if (!dsData?.dataSources || !selectedKbId || dataSourcesInitialized) {
-            return;
-        }
+    // One-shot auto-select of data sources once the list first arrives.
+    // Uses the "store previous render's value" pattern so the work happens
+    // during render rather than via cascading effect. `dataSourcesInitialized`
+    // is the single-transition guard (preserves original "init once" behavior).
+    if (dsData?.dataSources && selectedKbId && !dataSourcesInitialized) {
+        setDataSourcesInitialized(true);
 
         // First, try to restore from bedrockKnowledgeBaseConfig.dataSources
         const existingDataSources = item.bedrockKnowledgeBaseConfig?.dataSources;
-        if (existingDataSources && existingDataSources.length > 0) {
-            const existingIds = new Set(existingDataSources.map((ds) => ds.id));
-            const selectedRows: DataSourceRow[] = dsData.dataSources
+        const existingIds = new Set(existingDataSources?.map((ds) => ds.id) ?? []);
+        const restoredRows: DataSourceRow[] = existingIds.size
+            ? dsData.dataSources
                 .filter((ds) => existingIds.has(ds.dataSourceId))
                 .map((ds) => ({
                     id: ds.dataSourceId,
                     name: ds.name,
                     s3Uri: `s3://${ds.s3Bucket}/${ds.s3Prefix || ''}`,
-                }));
+                }))
+            : [];
 
-            if (selectedRows.length > 0) {
-                setSelectedDataSources(selectedRows);
-                setDataSourcesInitialized(true);
-                return;
+        if (restoredRows.length > 0) {
+            setSelectedDataSources(restoredRows);
+        } else {
+            // Fallback: Get collection IDs from pipelines config (for edit mode)
+            const pipelineCollectionIds = new Set(
+                (item as any).pipelines?.map((p: any) => p.collectionId).filter(Boolean) || []
+            );
+            if (pipelineCollectionIds.size > 0) {
+                const fallbackRows: DataSourceRow[] = dsData.dataSources
+                    .filter((ds) => pipelineCollectionIds.has(ds.dataSourceId))
+                    .map((ds) => ({
+                        id: ds.dataSourceId,
+                        name: ds.name,
+                        s3Uri: `s3://${ds.s3Bucket}/${ds.s3Prefix || ''}`,
+                    }));
+                setSelectedDataSources(fallbackRows);
             }
         }
-
-        // Fallback: Get collection IDs from pipelines config (for edit mode)
-        const pipelineCollectionIds = new Set(
-            (item as any).pipelines?.map((p: any) => p.collectionId).filter(Boolean) || []
-        );
-
-        if (pipelineCollectionIds.size > 0) {
-            const selectedRows: DataSourceRow[] = dsData.dataSources
-                .filter((ds) => pipelineCollectionIds.has(ds.dataSourceId))
-                .map((ds) => ({
-                    id: ds.dataSourceId,
-                    name: ds.name,
-                    s3Uri: `s3://${ds.s3Bucket}/${ds.s3Prefix || ''}`,
-                }));
-
-            setSelectedDataSources(selectedRows);
-        }
-        setDataSourcesInitialized(true);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [dsData, selectedKbId, dataSourcesInitialized]);
+    }
 
     // Update form when selections change
     useEffect(() => {

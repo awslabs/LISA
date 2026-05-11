@@ -59,16 +59,8 @@ export function Sessions ({ newSession }) {
     const currentSessionId = window.location.href.includes('ai-assistant/') ? window.location.href.split('ai-assistant/')[1] : undefined;
 
 
-    const [deleteById, {
-        isSuccess: isDeleteByIdSuccess,
-        isError: isDeleteByIdError,
-        error: deleteByIdError,
-        isLoading: isDeleteByIdLoading,
-    }] = useDeleteSessionByIdMutation();
+    const [deleteById] = useDeleteSessionByIdMutation();
     const [updateSessionName, {
-        isSuccess: isUpdateSessionNameSuccess,
-        isError: isUpdateSessionNameError,
-        error: updateSessionNameError,
         isLoading: isUpdateSessionNameLoading,
     }] = useUpdateSessionNameMutation();
     const [assignSessionProject] = useAssignSessionProjectMutation();
@@ -92,7 +84,6 @@ export function Sessions ({ newSession }) {
     const [renameModalVisible, setRenameModalVisible] = useState<boolean>(false);
     const [sessionToRename, setSessionToRename] = useState<LisaChatSession | null>(null);
     const [newSessionName, setNewSessionName] = useState<string>('');
-    const [sessionBeingDeleted, setSessionBeingDeleted] = useState<string | null>(null);
     const [assistantCarouselIndex, setAssistantCarouselIndex] = useState(0);
     const { data: sessions, isLoading: isSessionsLoading } = useListSessionsQuery();
     const { data: availableStacks = [] } = useListStacksQuery(undefined, {
@@ -161,38 +152,22 @@ export function Sessions ({ newSession }) {
         }
     }, [auth.isLoading, auth.isAuthenticated, getConfiguration]);
 
-    useEffect(() => {
-        if (!isDeleteByIdLoading && isDeleteByIdSuccess) {
+    // Delete a session and react to the result at the call site via
+    // .unwrap(). Replaces a useEffect mirror on isSuccess/isError flags,
+    // which violated react-hooks/set-state-in-effect.
+    const performDeleteSession = useCallback(async (sessionId: string) => {
+        try {
+            await deleteById(sessionId).unwrap();
             notificationService.generateNotification('Successfully deleted session', 'success');
             // Only reload if we are deleting the current session or there is no current session (/ai-assistant with no session ID)
-            if (sessionBeingDeleted === currentSessionId || !currentSessionId) {
+            if (sessionId === currentSessionId || !currentSessionId) {
                 newSession();
             }
-
-            // Reset the tracking state
-            setSessionBeingDeleted(null);
-        } else if (!isDeleteByIdLoading && isDeleteByIdError) {
-            const errorMessage = 'message' in deleteByIdError ? deleteByIdError.message : 'Unknown error';
+        } catch (error: any) {
+            const errorMessage = error && 'message' in error ? error.message : 'Unknown error';
             notificationService.generateNotification(`Error deleting session: ${errorMessage}`, 'error');
-
-            // Reset the tracking state on error too
-            setSessionBeingDeleted(null);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isDeleteByIdSuccess, isDeleteByIdError, deleteByIdError, isDeleteByIdLoading]);
-
-    useEffect(() => {
-        if (!isUpdateSessionNameLoading && isUpdateSessionNameSuccess) {
-            notificationService.generateNotification('Successfully renamed session', 'success');
-            setRenameModalVisible(false);
-            setSessionToRename(null);
-            setNewSessionName('');
-        } else if (!isUpdateSessionNameLoading && isUpdateSessionNameError) {
-            const errorMessage = 'message' in updateSessionNameError ? updateSessionNameError.message : 'Unknown error';
-            notificationService.generateNotification(`Error renaming session: ${errorMessage}`, 'error');
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isUpdateSessionNameSuccess, isUpdateSessionNameError, updateSessionNameError, isUpdateSessionNameLoading]);
+    }, [deleteById, notificationService, currentSessionId, newSession]);
 
     const handleRenameSession = (session: LisaChatSession) => {
         setSessionToRename(session);
@@ -200,13 +175,22 @@ export function Sessions ({ newSession }) {
         setRenameModalVisible(true);
     };
 
-    const handleRenameConfirm = () => {
+    const handleRenameConfirm = async () => {
         if (sessionToRename && newSessionName.trim()) {
             const updatedSession = {
                 ...sessionToRename,
                 name: newSessionName.trim()
             };
-            updateSessionName(updatedSession);
+            try {
+                await updateSessionName(updatedSession).unwrap();
+                notificationService.generateNotification('Successfully renamed session', 'success');
+                setRenameModalVisible(false);
+                setSessionToRename(null);
+                setNewSessionName('');
+            } catch (error: any) {
+                const errorMessage = error && 'message' in error ? error.message : 'Unknown error';
+                notificationService.generateNotification(`Error renaming session: ${errorMessage}`, 'error');
+            }
         }
     };
 
@@ -226,9 +210,16 @@ export function Sessions ({ newSession }) {
     const canGoNext = availableStacks.length > 1 && safeIndex < availableStacks.length - 1;
     const goPrev = useCallback(() => setAssistantCarouselIndex((i) => Math.max(0, i - 1)), []);
     const goNext = useCallback(() => setAssistantCarouselIndex((i) => Math.min(availableStacks.length - 1, i + 1)), [availableStacks.length]);
-    useEffect(() => {
-        setAssistantCarouselIndex((i) => Math.min(i, Math.max(0, availableStacks.length - 1)));
-    }, [availableStacks.length]);
+    // Clamp the carousel index back into range when stacks shrink. The
+    // visible-position fallback above (safeIndex) already keeps the UI
+    // correct; this just persists the clamp so subsequent goNext/goPrev
+    // don't behave as if they're past the end.
+    const stacksLength = availableStacks.length;
+    const [lastStacksLength, setLastStacksLength] = useState(stacksLength);
+    if (stacksLength !== lastStacksLength) {
+        setLastStacksLength(stacksLength);
+        setAssistantCarouselIndex((i) => Math.min(i, Math.max(0, stacksLength - 1)));
+    }
 
     return (
         <div className='p-5'>
@@ -449,8 +440,7 @@ export function Sessions ({ newSession }) {
                                                                                     action: 'Delete',
                                                                                     resourceName: 'Session',
                                                                                     onConfirm: () => {
-                                                                                        setSessionBeingDeleted(item.sessionId);
-                                                                                        deleteById(item.sessionId);
+                                                                                        performDeleteSession(item.sessionId);
                                                                                     },
                                                                                     description: `This will delete the Session: ${item.name || getDisplayableMessage(item.firstHumanMessage)}.`
                                                                                 })

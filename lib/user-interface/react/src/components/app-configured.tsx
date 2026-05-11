@@ -51,50 +51,48 @@ function UserStateSync () {
     return null;
 }
 
+// Pure synchronous validation of the OAuth callback URL and localStorage
+// state. Runs before delegating to use-mcp so unsanitized query params can
+// never reach innerHTML (XSS mitigation — covers `error`/`error_description`
+// and an unknown-`state` vector).
+//
+// NOTE: The localStorage key format `mcp:auth:state_${state}` is coupled to
+// the use-mcp library's internal storage convention. If the library changes
+// its key naming this check may incorrectly block legitimate callbacks. The
+// patched escapeHtml in patches/use-mcp+0.0.21.patch is the primary XSS fix;
+// this pre-validation is a defense-in-depth layer.
+function validateOAuthCallback (): string | null {
+    const queryParams = new URLSearchParams(window.location.search);
+    const error = queryParams.get('error');
+    if (error) {
+        const errorDescription = queryParams.get('error_description');
+        const safeMessage = `OAuth error: ${error} - ${errorDescription || 'No description provided.'}`;
+        console.error('[OAuthCallback]', safeMessage);
+        return safeMessage;
+    }
+    const code = queryParams.get('code');
+    const state = queryParams.get('state');
+    if (code && state) {
+        const stateKey = `mcp:auth:state_${state}`;
+        if (!localStorage.getItem(stateKey)) {
+            console.error('[OAuthCallback] Invalid or expired state parameter');
+            return 'Invalid or expired OAuth state parameter. No matching state found in storage.';
+        }
+    }
+    return null;
+}
+
 function OAuthCallback () {
-    const [oauthError, setOauthError] = useState<string | null>(null);
+    // Synchronous validation happens during render via the lazy state
+    // initializer — no cascading effect, no setState-in-effect.
+    const [oauthError, setOauthError] = useState<string | null>(validateOAuthCallback);
 
     useEffect(() => {
-        // Check for OAuth error params before delegating to the library.
-        // This prevents the use-mcp library from injecting unsanitized
-        // query params into innerHTML (XSS mitigation — covers the
-        // "error" and "error_description" vectors).
-        const queryParams = new URLSearchParams(window.location.search);
-        const error = queryParams.get('error');
-        const errorDescription = queryParams.get('error_description');
-
-        if (error) {
-            const safeMessage = `OAuth error: ${error} - ${errorDescription || 'No description provided.'}`;
-            console.error('[OAuthCallback]', safeMessage);
-            setOauthError(safeMessage);
-            return;
-        }
-
-        // Validate the state parameter before the library can inject it
-        // into innerHTML. When code is present but state doesn't match
-        // a stored OAuth flow, the library throws an error containing
-        // the raw state value and renders it via innerHTML (XSS vector).
-        //
-        // NOTE: The localStorage key format `mcp:auth:state_${state}` is
-        // coupled to the use-mcp library's internal storage convention.
-        // If the library changes its key naming this check may incorrectly
-        // block legitimate callbacks. The patched escapeHtml in
-        // patches/use-mcp+0.0.21.patch is the primary XSS fix; this
-        // pre-validation is a defense-in-depth layer. If false positives
-        // occur after a use-mcp upgrade, update or remove this check.
-        const code = queryParams.get('code');
-        const state = queryParams.get('state');
-        if (code && state) {
-            const stateKey = `mcp:auth:state_${state}`;
-            if (!localStorage.getItem(stateKey)) {
-                console.error('[OAuthCallback] Invalid or expired state parameter');
-                setOauthError('Invalid or expired OAuth state parameter. No matching state found in storage.');
-                return;
-            }
-        }
-
-        // All params look safe — proceed with normal authorization flow.
-        // onMcpAuthorization is async; catch any unexpected rejections.
+        // Skip the async authorization flow if URL/state validation
+        // already produced an error during the initial render.
+        if (validateOAuthCallback()) return;
+        // setState inside the Promise rejection callback runs after the
+        // async boundary, which is permitted by react-hooks/set-state-in-effect.
         onMcpAuthorization().catch((err) => {
             console.error('OAuth callback error:', err);
             setOauthError(err instanceof Error ? err.message : String(err));

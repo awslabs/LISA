@@ -50,22 +50,77 @@ export function DocumentSidePanel ({ visible, onClose, document }: DocumentSideP
 
     const fileType = document ? getFileType(document.name) : 'txt';
 
-    // Load document URL when document changes
-    useEffect(() => {
-        if (!visible || !document) {
-            // Revoke object URL to prevent memory leaks
-            if (documentUrl) {
-                URL.revokeObjectURL(documentUrl);
-            }
-            setDocumentUrl(null);
-            setTextContent('');
-            setError(null);
-            return;
-        }
+    // Reset transient state synchronously whenever the visible document
+    // changes. The "adjusting state while rendering" pattern keeps the
+    // setState calls out of useEffect (react-hooks/set-state-in-effect).
+    const currentDocKey = visible && document?.documentId ? document.documentId : null;
+    const [lastDocKey, setLastDocKey] = useState<string | null>(null);
+    if (currentDocKey !== lastDocKey) {
+        setLastDocKey(currentDocKey);
+        setDocumentUrl((prev) => {
+            if (prev) URL.revokeObjectURL(prev);
+            return null;
+        });
+        setTextContent('');
+        setError(null);
+    }
 
-        loadDocument();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [visible, document?.documentId]);
+    // Async load: setState calls happen after the await, so they're not
+    // synchronously in the effect body and the rule is satisfied.
+    useEffect(() => {
+        if (!visible || !document) return;
+        let cancelled = false;
+
+        (async () => {
+            try {
+                const urlResponse = await downloadUrl({
+                    documentId: document.documentId,
+                    repositoryId: document.repositoryId,
+                }).unwrap();
+                if (cancelled) return;
+
+                if (fileType === 'pdf') {
+                    // Fetch PDF as blob and create object URL with correct MIME type
+                    // This ensures browser displays it inline instead of downloading
+                    const response = await fetch(urlResponse);
+                    if (cancelled) return;
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch document: ${response.status} ${response.statusText}`);
+                    }
+                    const blob = await response.blob();
+                    if (cancelled) return;
+
+                    const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+                    const objectUrl = URL.createObjectURL(pdfBlob);
+                    setDocumentUrl(objectUrl);
+                } else if (fileType === 'txt') {
+                    const response = await fetch(urlResponse);
+                    if (cancelled) return;
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch document: ${response.status} ${response.statusText}`);
+                    }
+                    const text = await response.text();
+                    if (cancelled) return;
+                    setTextContent(text);
+                }
+            } catch (err) {
+                if (cancelled) return;
+                const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+                notificationService.generateNotification(
+                    `Failed to load document: ${errorMessage}`,
+                    'error'
+                );
+                setError('Failed to load document. Please try again.');
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    // notificationService is intentionally omitted because it's recreated on every
+    // render; including it would cause the load effect to thrash.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [visible, document?.documentId, downloadUrl, fileType]);
 
     // Cleanup object URL on unmount
     useEffect(() => {
@@ -75,49 +130,6 @@ export function DocumentSidePanel ({ visible, onClose, document }: DocumentSideP
             }
         };
     }, [documentUrl]);
-
-    const loadDocument = async () => {
-        if (!document) return;
-
-        try {
-            setError(null);
-
-            const urlResponse = await downloadUrl({
-                documentId: document.documentId,
-                repositoryId: document.repositoryId,
-            }).unwrap();
-
-            if (fileType === 'pdf') {
-                // Fetch PDF as blob and create object URL with correct MIME type
-                // This ensures browser displays it inline instead of downloading
-                const response = await fetch(urlResponse);
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch document: ${response.status} ${response.statusText}`);
-                }
-                const blob = await response.blob();
-
-                // Create a new blob with the correct MIME type
-                const pdfBlob = new Blob([blob], { type: 'application/pdf' });
-                const objectUrl = URL.createObjectURL(pdfBlob);
-                setDocumentUrl(objectUrl);
-            } else if (fileType === 'txt') {
-                // For text files, fetch and display content
-                const response = await fetch(urlResponse);
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch document: ${response.status} ${response.statusText}`);
-                }
-                const text = await response.text();
-                setTextContent(text);
-            }
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-            notificationService.generateNotification(
-                `Failed to load document: ${errorMessage}`,
-                'error'
-            );
-            setError('Failed to load document. Please try again.');
-        }
-    };
 
     const handleDownload = async () => {
         if (!document) return;

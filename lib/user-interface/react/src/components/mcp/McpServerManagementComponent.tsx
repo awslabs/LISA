@@ -51,13 +51,17 @@ import { useGetConfigurationQuery } from '@/shared/reducers/configuration.reduce
 export function McpServerManagementComponent () {
     const navigate = useNavigate();
     const dispatch = useAppDispatch();
-    const [activeTabId, setActiveTabId] = useState('mcp');
     const isUserAdmin = useAppSelector(selectCurrentUserIsAdmin);
     const { data: fullConfig } = useGetConfigurationQuery('global');
     const globalConfig = fullConfig?.[0];
     const enabledComponents = globalConfig?.configuration?.enabledComponents;
     const mcpConnectionsEnabled = Boolean(enabledComponents?.mcpConnections);
     const bedrockAgentsEnabled = Boolean(enabledComponents?.bedrockAgents);
+    // Initial tab depends on which feature is enabled; the user can switch
+    // afterwards via the Tabs component.
+    const [activeTabId, setActiveTabId] = useState(
+        !mcpConnectionsEnabled && bedrockAgentsEnabled ? 'bedrock' : 'mcp',
+    );
 
     const {data: userPreferences} = useGetUserPreferencesQuery();
     const { data: {Items: allItems} = {Items: []}, isFetching } = useListMcpServersQuery(undefined, {
@@ -70,13 +74,14 @@ export function McpServerManagementComponent () {
         errorMessage: 'Error updating server preferences'
     });
 
-    useEffect(() => {
-        if (userPreferences) {
-            setPreferences(userPreferences);
-        } else {
-            setPreferences({...DefaultUserPreferences});
-        }
-    }, [userPreferences]);
+    // Sync local preferences copy from upstream using the "adjusting state
+    // while rendering" pattern. Local state is preserved so optimistic
+    // updates from toggle handlers render before the mutation round-trips.
+    const [lastSyncedUserPreferences, setLastSyncedUserPreferences] = useState<UserPreferences | undefined>(undefined);
+    if (userPreferences !== lastSyncedUserPreferences) {
+        setLastSyncedUserPreferences(userPreferences);
+        setPreferences(userPreferences ?? {...DefaultUserPreferences});
+    }
 
     const toggleServer = (serverId: string, serverName: string, enabled: boolean) => {
         updateMcpPreferences(
@@ -128,11 +133,12 @@ export function McpServerManagementComponent () {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    useEffect(() => {
-        if (!mcpConnectionsEnabled && bedrockAgentsEnabled) {
-            setActiveTabId('bedrock');
-        }
-    }, [mcpConnectionsEnabled, bedrockAgentsEnabled]);
+    // Switch to the bedrock tab if MCP gets disabled while it was selected.
+    // Uses the "adjusting state while rendering" pattern to avoid useEffect.
+    const shouldForceBedrockTab = !mcpConnectionsEnabled && bedrockAgentsEnabled && activeTabId !== 'bedrock';
+    if (shouldForceBedrockTab) {
+        setActiveTabId('bedrock');
+    }
 
     const { paginationProps, items, collectionProps, filteredItemsCount, actions } = useCollection(allItems, {
         selection: {

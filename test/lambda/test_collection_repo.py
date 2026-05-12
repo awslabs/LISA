@@ -34,7 +34,7 @@ def collection_repo(mock_dynamodb_table, monkeypatch):
 
     with patch("boto3.resource") as mock_resource:
         mock_resource.return_value.Table.return_value = mock_dynamodb_table
-        from repository.collection_repo import CollectionRepository
+        from lisa.rag.collection_repo import CollectionRepository
 
         return CollectionRepository()
 
@@ -54,7 +54,7 @@ def test_count_by_repository(collection_repo, mock_dynamodb_table):
 
 # Additional coverage tests
 def test_collection_repo_create(collection_repo, mock_dynamodb_table):
-    from models.domain_objects import CollectionStatus, RagCollectionConfig
+    from lisa.domain.domain_objects import CollectionStatus, RagCollectionConfig
 
     collection = RagCollectionConfig(
         collectionId="col1",
@@ -111,7 +111,7 @@ def test_collection_repo_update(collection_repo, mock_dynamodb_table):
 
 def test_collection_repo_update_error(collection_repo, mock_dynamodb_table):
     from botocore.exceptions import ClientError
-    from repository.collection_repo import CollectionRepositoryError
+    from lisa.rag.collection_repo import CollectionRepositoryError
 
     mock_dynamodb_table.update_item.side_effect = ClientError(
         {"Error": {"Code": "ConditionalCheckFailedException"}}, "UpdateItem"
@@ -122,7 +122,7 @@ def test_collection_repo_update_error(collection_repo, mock_dynamodb_table):
 
 
 def test_collection_repo_update_no_valid_fields(collection_repo):
-    from repository.collection_repo import CollectionRepositoryError
+    from lisa.rag.collection_repo import CollectionRepositoryError
 
     with pytest.raises(CollectionRepositoryError):
         collection_repo.update("col1", "repo1", {"collectionId": "new_id", "repositoryId": "new_repo"})
@@ -130,7 +130,7 @@ def test_collection_repo_update_no_valid_fields(collection_repo):
 
 def test_collection_repo_update_with_expected_version_conflict(collection_repo, mock_dynamodb_table):
     from botocore.exceptions import ClientError
-    from repository.collection_repo import CollectionRepositoryError
+    from lisa.rag.collection_repo import CollectionRepositoryError
 
     mock_dynamodb_table.update_item.side_effect = ClientError(
         {"Error": {"Code": "ConditionalCheckFailedException"}}, "UpdateItem"
@@ -142,7 +142,7 @@ def test_collection_repo_update_with_expected_version_conflict(collection_repo, 
 
 def test_collection_repo_delete_error(collection_repo, mock_dynamodb_table):
     from botocore.exceptions import ClientError
-    from repository.collection_repo import CollectionRepositoryError
+    from lisa.rag.collection_repo import CollectionRepositoryError
 
     mock_dynamodb_table.delete_item.side_effect = ClientError(
         {"Error": {"Code": "ConditionalCheckFailedException"}}, "DeleteItem"
@@ -171,7 +171,7 @@ def test_collection_repo_list_by_repository(collection_repo, mock_dynamodb_table
 
 
 def test_collection_repo_list_with_filters(collection_repo, mock_dynamodb_table):
-    from models.domain_objects import CollectionSortBy, CollectionStatus, SortOrder
+    from lisa.domain.domain_objects import CollectionSortBy, CollectionStatus, SortOrder
 
     mock_dynamodb_table.query.return_value = {
         "Items": [
@@ -212,7 +212,7 @@ def test_collection_repo_list_with_text_filter(collection_repo, mock_dynamodb_ta
 
 
 def test_collection_repo_list_with_sort_by_updated_at(collection_repo, mock_dynamodb_table):
-    from models.domain_objects import CollectionSortBy, SortOrder
+    from lisa.domain.domain_objects import CollectionSortBy, SortOrder
 
     mock_dynamodb_table.query.return_value = {
         "Items": [
@@ -270,8 +270,8 @@ def test_collection_repo_find_by_name_not_found(collection_repo, mock_dynamodb_t
 
 def test_collection_repo_create_error(collection_repo, mock_dynamodb_table):
     from botocore.exceptions import ClientError
-    from models.domain_objects import CollectionStatus, RagCollectionConfig
-    from repository.collection_repo import CollectionRepositoryError
+    from lisa.domain.domain_objects import CollectionStatus, RagCollectionConfig
+    from lisa.rag.collection_repo import CollectionRepositoryError
 
     mock_dynamodb_table.put_item.side_effect = ClientError(
         {"Error": {"Code": "ConditionalCheckFailedException"}}, "PutItem"

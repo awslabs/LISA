@@ -38,7 +38,7 @@ os.environ["ADMIN_GROUP"] = "admin-group"
 
 import pytest
 from fastapi import Request
-from models.domain_objects import (
+from lisa.domain.domain_objects import (
     AutoScalingConfig,
     ContainerConfig,
     ContainerConfigImage,
@@ -84,9 +84,9 @@ class TestCreateModelAuditLogging:
 
         # Mock the handler and auth functions
         with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
-            "utilities.fastapi_middleware.auth_decorators.is_admin"
-        ) as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-            "utilities.auth.get_username"
+            "lisa.utilities.fastapi_middleware.auth_decorators.is_admin"
+        ) as mock_is_admin, patch("lisa.utilities.auth.get_groups") as mock_get_groups, patch(
+            "lisa.utilities.auth.get_username"
         ) as mock_get_username, caplog.at_level(
             logging.INFO
         ):
@@ -132,7 +132,7 @@ class TestCreateModelAuditLogging:
     @pytest.mark.asyncio
     async def test_create_model_logs_container_details_for_lisa_hosted(self, caplog):
         """Test that CreateModel logs container details for LISA-hosted models."""
-        from models.domain_objects import InferenceContainer, LoadBalancerConfig, LoadBalancerHealthCheckConfig
+        from lisa.domain.domain_objects import InferenceContainer, LoadBalancerConfig, LoadBalancerHealthCheckConfig
 
         # Setup mock request
         mock_request = MagicMock(spec=Request)
@@ -201,9 +201,9 @@ class TestCreateModelAuditLogging:
 
         # Mock the handler and auth functions
         with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
-            "utilities.fastapi_middleware.auth_decorators.is_admin"
-        ) as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-            "utilities.auth.get_username"
+            "lisa.utilities.fastapi_middleware.auth_decorators.is_admin"
+        ) as mock_is_admin, patch("lisa.utilities.auth.get_groups") as mock_get_groups, patch(
+            "lisa.utilities.auth.get_username"
         ) as mock_get_username, caplog.at_level(
             logging.INFO
         ):
@@ -271,9 +271,9 @@ class TestCreateModelAuditLogging:
 
         # Mock the handler and auth functions
         with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
-            "utilities.fastapi_middleware.auth_decorators.is_admin"
-        ) as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-            "utilities.auth.get_username"
+            "lisa.utilities.fastapi_middleware.auth_decorators.is_admin"
+        ) as mock_is_admin, patch("lisa.utilities.auth.get_groups") as mock_get_groups, patch(
+            "lisa.utilities.auth.get_username"
         ) as mock_get_username, caplog.at_level(
             logging.INFO
         ):
@@ -338,9 +338,9 @@ class TestCreateModelAuditLogging:
 
         # Mock the handler and auth functions
         with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
-            "utilities.fastapi_middleware.auth_decorators.is_admin"
-        ) as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-            "utilities.auth.get_username"
+            "lisa.utilities.fastapi_middleware.auth_decorators.is_admin"
+        ) as mock_is_admin, patch("lisa.utilities.auth.get_groups") as mock_get_groups, patch(
+            "lisa.utilities.auth.get_username"
         ) as mock_get_username, caplog.at_level(
             logging.INFO
         ):
@@ -408,9 +408,9 @@ class TestCreateModelAuditLogging:
 
         # Mock the handler and auth functions
         with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
-            "utilities.fastapi_middleware.auth_decorators.is_admin"
-        ) as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-            "utilities.auth.get_username"
+            "lisa.utilities.fastapi_middleware.auth_decorators.is_admin"
+        ) as mock_is_admin, patch("lisa.utilities.auth.get_groups") as mock_get_groups, patch(
+            "lisa.utilities.auth.get_username"
         ) as mock_get_username, caplog.at_level(
             logging.INFO
         ):
@@ -435,7 +435,7 @@ class TestCreateModelAuditLogging:
     @pytest.mark.asyncio
     async def test_create_model_logs_for_failed_request(self, caplog):
         """Test that logs are written for failed CreateModel requests."""
-        from models.exception import ModelAlreadyExistsError
+        from lisa.domain.exception import ModelAlreadyExistsError
 
         # Setup mock request
         mock_request = MagicMock(spec=Request)
@@ -463,9 +463,9 @@ class TestCreateModelAuditLogging:
 
         # Mock the handler to raise ModelAlreadyExistsError
         with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
-            "utilities.fastapi_middleware.auth_decorators.is_admin"
-        ) as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-            "utilities.auth.get_username"
+            "lisa.utilities.fastapi_middleware.auth_decorators.is_admin"
+        ) as mock_is_admin, patch("lisa.utilities.auth.get_groups") as mock_get_groups, patch(
+            "lisa.utilities.auth.get_username"
         ) as mock_get_username, caplog.at_level(
             logging.INFO
         ):
@@ -536,9 +536,9 @@ class TestCreateModelAuditLogging:
 
         # Mock the handler and auth functions
         with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
-            "utilities.fastapi_middleware.auth_decorators.is_admin"
-        ) as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-            "utilities.auth.get_username"
+            "lisa.utilities.fastapi_middleware.auth_decorators.is_admin"
+        ) as mock_is_admin, patch("lisa.utilities.auth.get_groups") as mock_get_groups, patch(
+            "lisa.utilities.auth.get_username"
         ) as mock_get_username, caplog.at_level(
             logging.INFO
         ):
@@ -588,9 +588,9 @@ class TestCreateModelAuditLogging:
 
         # Mock the handler and auth functions
         with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
-            "utilities.auth.is_admin"
+            "lisa.utilities.auth.is_admin"
         ) as mock_is_admin, patch(
-            "utilities.fastapi_middleware.auth_decorators.is_admin"
+            "lisa.utilities.fastapi_middleware.auth_decorators.is_admin"
         ) as mock_decorator_is_admin, caplog.at_level(
             logging.INFO
         ):
@@ -623,7 +623,7 @@ class TestCreateModelAuditLogging:
     @pytest.mark.asyncio
     async def test_create_model_extracts_registry_domain_from_various_formats(self, caplog):
         """Test that registry domain is correctly extracted from different image URL formats."""
-        from models.domain_objects import InferenceContainer, LoadBalancerConfig, LoadBalancerHealthCheckConfig
+        from lisa.domain.domain_objects import InferenceContainer, LoadBalancerConfig, LoadBalancerHealthCheckConfig
 
         test_cases = [
             # (image_url, expected_domain)
@@ -708,9 +708,9 @@ class TestCreateModelAuditLogging:
 
             # Mock the handler and auth functions
             with patch("models.lambda_functions.CreateModelHandler") as mock_handler_class, patch(
-                "utilities.fastapi_middleware.auth_decorators.is_admin"
-            ) as mock_is_admin, patch("utilities.auth.get_groups") as mock_get_groups, patch(
-                "utilities.auth.get_username"
+                "lisa.utilities.fastapi_middleware.auth_decorators.is_admin"
+            ) as mock_is_admin, patch("lisa.utilities.auth.get_groups") as mock_get_groups, patch(
+                "lisa.utilities.auth.get_username"
             ) as mock_get_username, caplog.at_level(
                 logging.INFO
             ):

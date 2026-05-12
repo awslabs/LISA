@@ -18,12 +18,12 @@ from unittest.mock import MagicMock
 
 import pytest
 from botocore.exceptions import ClientError
-from utilities.bedrock_kb_validation import (
+from lisa.utilities.bedrock_kb_validation import (
     validate_bedrock_kb_exists,
     validate_bedrock_kb_repository,
     validate_data_source_exists,
 )
-from utilities.validation import ValidationError
+from lisa.utilities.validation import ValidationError
 
 
 class TestValidateBedrockKBExists:

@@ -18,7 +18,6 @@ import crypto from 'node:crypto';
 import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { IRole } from 'aws-cdk-lib/aws-iam';
-import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
@@ -26,7 +25,7 @@ import { getPythonRuntime, PythonLambdaFunction, registerAPIEndpoint } from '../
 import { BaseProps } from '../schema';
 import { Vpc } from '../networking/vpc';
 import { createLambdaRole } from '../core/utils';
-import { LAMBDA_PATH } from '../util';
+import { getPythonLambdaLayers } from '../util';
 import { Table } from 'aws-cdk-lib/aws-dynamodb';
 import { getAuditLoggingEnv, LISA_AUDIT_API_GATEWAY_BASE_PATH } from '../api-base/auditEnv';
 
@@ -56,20 +55,7 @@ export class ApiTokensApi extends Construct {
 
         const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
 
-        // Get lambda layers from SSM
-        const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
-            this,
-            'api-tokens-common-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
-        );
-
-        const fastapiLambdaLayer = LayerVersion.fromLayerVersionArn(
-            this,
-            'api-tokens-fastapi-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/fastapi`),
-        );
-
-        const lambdaLayers = [commonLambdaLayer, fastapiLambdaLayer];
+        const lambdaLayers = getPythonLambdaLayers(this, config, ['common', 'fastapi'], 'ApiTokens');
 
         // Reference existing REST API
         const restApi = RestApi.fromRestApiAttributes(this, 'RestApi', {
@@ -109,13 +95,11 @@ export class ApiTokensApi extends Construct {
             config.roles?.ApiTokensApiRole
         );
 
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
-
         // Create main proxy handler for /api-tokens/{proxy+}
         const lambdaFunction = registerAPIEndpoint(
             this,
             restApi,
-            lambdaPath,
+            config,
             lambdaLayers,
             {
                 name: 'handler',
@@ -180,7 +164,7 @@ export class ApiTokensApi extends Construct {
             registerAPIEndpoint(
                 this,
                 restApi,
-                lambdaPath,
+                config,
                 lambdaLayers,
                 f,
                 getPythonRuntime(),

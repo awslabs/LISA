@@ -18,7 +18,7 @@ import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { Effect, IRole, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
-import { IFunction, LayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
@@ -27,7 +27,7 @@ import { BaseProps } from '../../schema';
 import { createLambdaRole } from '../../core/utils';
 import { getAuditLoggingEnv } from '../../api-base/auditEnv';
 import { Vpc } from '../../networking/vpc';
-import { LAMBDA_PATH } from '../../util';
+import { getPythonLambdaLayers } from '../../util';
 import { RemovalPolicy } from 'aws-cdk-lib';
 
 /**
@@ -60,18 +60,7 @@ export class McpApi extends Construct {
 
         const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc } = props;
 
-        // Get common layer based on arn from SSM due to issues with cross stack references
-        const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
-            this,
-            'mcp-common-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
-        );
-
-        const fastapiLambdaLayer = LayerVersion.fromLayerVersionArn(
-            this,
-            'mcp-fastapi-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/fastapi`),
-        );
+        const lambdaLayers = getPythonLambdaLayers(this, config, ['common', 'fastapi'], 'McpApi');
 
         // Create DynamoDB table to handle configured mcp servers
         const mcpServersTable = new dynamodb.Table(this, 'McpServersTable', {
@@ -246,14 +235,13 @@ export class McpApi extends Construct {
                 resources: ['*'],
             }),
         );
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         const mcpLambdas: IFunction[] = [];
         apis.forEach((f) => {
             const lambdaFunction = registerAPIEndpoint(
                 this,
                 restApi,
-                lambdaPath,
-                [commonLambdaLayer, fastapiLambdaLayer],
+                config,
+                lambdaLayers,
                 f,
                 getPythonRuntime(),
                 vpc,

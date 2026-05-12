@@ -214,6 +214,7 @@ export class UserInterfaceConstruct extends Construct {
             API_BASE_URL: config.apiGatewayConfig?.domainName ? '/' : `/${config.deploymentStage}/`,
             USE_CUSTOM_BRANDING: config.useCustomBranding,
             CUSTOM_DISPLAY_NAME: config.customDisplayName,
+            AWS_REGION: config.region,
         };
 
         const appEnvSource = Source.data('env.js', `window.env = ${JSON.stringify(appEnvConfig)}`);

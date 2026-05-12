@@ -93,14 +93,18 @@ export function McpManagementComponent (): ReactElement {
         refetchOnFocus: false,
     });
 
-    useEffect(() => {
-        if (hostedServers.length) {
-            const shouldContinuePolling = hostedServers.some(
-                (server) => !FINAL_STATUSES.has(server.status),
-            );
-            setShouldPoll(shouldContinuePolling);
+    // Adjust polling decision during render once data has arrived. The
+    // "adjusting state while rendering" pattern (React docs) replaces a
+    // useEffect that just syncs derived state, and avoids the new
+    // react-hooks/set-state-in-effect warning.
+    if (hostedServers.length > 0) {
+        const desiredShouldPoll = hostedServers.some(
+            (server) => !FINAL_STATUSES.has(server.status),
+        );
+        if (desiredShouldPoll !== shouldPoll) {
+            setShouldPoll(desiredShouldPoll);
         }
-    }, [hostedServers]);
+    }
 
     useEffect(() => {
         dispatch(setBreadcrumbs([

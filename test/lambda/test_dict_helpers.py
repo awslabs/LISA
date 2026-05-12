@@ -14,7 +14,7 @@
 
 """Unit tests for dict_helpers module."""
 
-from utilities.dict_helpers import get_item, get_property_path, merge_fields
+from lisa.utilities.dict_helpers import get_item, get_property_path, merge_fields
 
 
 class TestMergeFields:

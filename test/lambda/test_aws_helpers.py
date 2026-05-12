@@ -20,7 +20,7 @@ from unittest.mock import MagicMock, patch
 # Set required environment variables before importing aws_helpers
 os.environ.setdefault("AWS_REGION", "us-east-1")
 
-from utilities.aws_helpers import (
+from lisa.utilities.aws_helpers import (
     get_account_and_partition,
     get_cert_path,
     get_lambda_role_name,
@@ -98,7 +98,7 @@ def test_caches_result():
 class TestGetRestApiContainerEndpoint:
     """Test get_rest_api_container_endpoint function."""
 
-    @patch("utilities.aws_helpers.ssm_client")
+    @patch("lisa.utilities.aws_helpers.ssm_client")
     @patch.dict(os.environ, {"LISA_API_URL_PS_NAME": "/lisa/api/url", "REST_API_VERSION": "v2"}, clear=False)
     def test_retrieves_endpoint_from_ssm(self, mock_ssm):
         """Test get_rest_api_container_endpoint retrieves endpoint from SSM."""
@@ -112,7 +112,7 @@ class TestGetRestApiContainerEndpoint:
         assert result == "https://api.example.com/v2/serve"
         mock_ssm.get_parameter.assert_called_once_with(Name="/lisa/api/url")
 
-    @patch("utilities.aws_helpers.ssm_client")
+    @patch("lisa.utilities.aws_helpers.ssm_client")
     @patch.dict(os.environ, {"LISA_API_URL_PS_NAME": "/test/url", "REST_API_VERSION": "v1"}, clear=False)
     def test_constructs_correct_endpoint(self, mock_ssm):
         """Test get_rest_api_container_endpoint constructs correct endpoint."""
@@ -125,7 +125,7 @@ class TestGetRestApiContainerEndpoint:
 
         assert result == "https://test.api.com/v1/serve"
 
-    @patch("utilities.aws_helpers.ssm_client")
+    @patch("lisa.utilities.aws_helpers.ssm_client")
     @patch.dict(os.environ, {"LISA_API_URL_PS_NAME": "/api/url", "REST_API_VERSION": "v3"}, clear=False)
     def test_caches_result(self, mock_ssm):
         """Test get_rest_api_container_endpoint caches the result."""
@@ -147,7 +147,7 @@ class TestGetRestApiContainerEndpoint:
 class TestGetLambdaRoleName:
     """Test get_lambda_role_name function."""
 
-    @patch("utilities.aws_helpers.boto3.client")
+    @patch("lisa.utilities.aws_helpers.boto3.client")
     def test_extracts_role_name_from_arn(self, mock_boto_client):
         """Test get_lambda_role_name extracts role name from ARN."""
         mock_sts = MagicMock()
@@ -160,7 +160,7 @@ class TestGetLambdaRoleName:
 
         assert role_name == "MyLambdaRole"
 
-    @patch("utilities.aws_helpers.boto3.client")
+    @patch("lisa.utilities.aws_helpers.boto3.client")
     def test_handles_different_role_names(self, mock_boto_client):
         """Test get_lambda_role_name handles different role name formats."""
         mock_sts = MagicMock()

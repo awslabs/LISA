@@ -42,7 +42,7 @@ def test_vector_store_repo_find_by_id():
         mock_table = Mock()
         mock_resource.return_value.Table.return_value = mock_table
 
-        from repository.vector_store_repo import VectorStoreRepository
+        from lisa.rag.vector_store_repo import VectorStoreRepository
 
         repo = VectorStoreRepository()
 
@@ -71,7 +71,7 @@ def test_vector_store_repo_get_registered():
         mock_table = Mock()
         mock_resource.return_value.Table.return_value = mock_table
 
-        from repository.vector_store_repo import VectorStoreRepository
+        from lisa.rag.vector_store_repo import VectorStoreRepository
 
         repo = VectorStoreRepository()
 
@@ -101,7 +101,7 @@ def test_vector_store_repo_save():
         mock_table = Mock()
         mock_resource.return_value.Table.return_value = mock_table
 
-        from repository.vector_store_repo import VectorStoreRepository
+        from lisa.rag.vector_store_repo import VectorStoreRepository
 
         repo = VectorStoreRepository()
 
@@ -132,7 +132,7 @@ def test_vector_store_repo_delete():
         mock_table = Mock()
         mock_resource.return_value.Table.return_value = mock_table
 
-        from repository.vector_store_repo import VectorStoreRepository
+        from lisa.rag.vector_store_repo import VectorStoreRepository
 
         repo = VectorStoreRepository()
 
@@ -149,7 +149,7 @@ def test_vector_store_repo_get_status():
         mock_table = Mock()
         mock_resource.return_value.Table.return_value = mock_table
 
-        from repository.vector_store_repo import VectorStoreRepository
+        from lisa.rag.vector_store_repo import VectorStoreRepository
 
         repo = VectorStoreRepository()
 

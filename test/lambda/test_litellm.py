@@ -30,10 +30,10 @@ os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 
 def test_litellm_client_basic():
     """Test basic LiteLLMClient functionality."""
-    if "models.clients.litellm_client" in sys.modules:
-        del sys.modules["models.clients.litellm_client"]
+    if "lisa.domain.clients.litellm_client" in sys.modules:
+        del sys.modules["lisa.domain.clients.litellm_client"]
 
-    from models.clients.litellm_client import LiteLLMClient
+    from lisa.domain.clients.litellm_client import LiteLLMClient
     from starlette.datastructures import Headers
 
     headers = Headers({"Authorization": "Bearer test-token"})
@@ -49,10 +49,10 @@ def test_litellm_client_basic():
 @patch("requests.get")
 def test_list_models_basic(mock_get):
     """Test list_models basic functionality."""
-    if "models.clients.litellm_client" in sys.modules:
-        del sys.modules["models.clients.litellm_client"]
+    if "lisa.domain.clients.litellm_client" in sys.modules:
+        del sys.modules["lisa.domain.clients.litellm_client"]
 
-    from models.clients.litellm_client import LiteLLMClient
+    from lisa.domain.clients.litellm_client import LiteLLMClient
     from starlette.datastructures import Headers
 
     mock_response = MagicMock()
@@ -69,10 +69,10 @@ def test_list_models_basic(mock_get):
 @patch("requests.post")
 def test_add_model_basic(mock_post):
     """Test add_model basic functionality."""
-    if "models.clients.litellm_client" in sys.modules:
-        del sys.modules["models.clients.litellm_client"]
+    if "lisa.domain.clients.litellm_client" in sys.modules:
+        del sys.modules["lisa.domain.clients.litellm_client"]
 
-    from models.clients.litellm_client import LiteLLMClient
+    from lisa.domain.clients.litellm_client import LiteLLMClient
     from starlette.datastructures import Headers
 
     mock_response = MagicMock()
@@ -88,13 +88,13 @@ def test_add_model_basic(mock_post):
 
 def test_get_model_not_found_basic():
     """Test get_model raises ModelNotFoundError when model doesn't exist."""
-    if "models.clients.litellm_client" in sys.modules:
-        del sys.modules["models.clients.litellm_client"]
+    if "lisa.domain.clients.litellm_client" in sys.modules:
+        del sys.modules["lisa.domain.clients.litellm_client"]
     if "models.exception" in sys.modules:
         del sys.modules["models.exception"]
 
-    from models.clients.litellm_client import LiteLLMClient
-    from models.exception import ModelNotFoundError
+    from lisa.domain.clients.litellm_client import LiteLLMClient
+    from lisa.domain.exception import ModelNotFoundError
     from starlette.datastructures import Headers
 
     headers = Headers({})
@@ -107,10 +107,10 @@ def test_get_model_not_found_basic():
 
 def test_get_model_found_basic():
     """Test get_model returns model data when model exists."""
-    if "models.clients.litellm_client" in sys.modules:
-        del sys.modules["models.clients.litellm_client"]
+    if "lisa.domain.clients.litellm_client" in sys.modules:
+        del sys.modules["lisa.domain.clients.litellm_client"]
 
-    from models.clients.litellm_client import LiteLLMClient
+    from lisa.domain.clients.litellm_client import LiteLLMClient
     from starlette.datastructures import Headers
 
     headers = Headers({})
@@ -133,10 +133,10 @@ def test_get_model_found_basic():
 
 def test_get_model_returns_context_window_info():
     """Test get_model returns model_info containing max_input_tokens (context window)."""
-    if "models.clients.litellm_client" in sys.modules:
-        del sys.modules["models.clients.litellm_client"]
+    if "lisa.domain.clients.litellm_client" in sys.modules:
+        del sys.modules["lisa.domain.clients.litellm_client"]
 
-    from models.clients.litellm_client import LiteLLMClient
+    from lisa.domain.clients.litellm_client import LiteLLMClient
     from starlette.datastructures import Headers
 
     headers = Headers({})
@@ -163,10 +163,10 @@ def test_get_model_returns_context_window_info():
 
 def test_get_model_without_context_window():
     """Test get_model handles models that have no max_input_tokens in model_info."""
-    if "models.clients.litellm_client" in sys.modules:
-        del sys.modules["models.clients.litellm_client"]
+    if "lisa.domain.clients.litellm_client" in sys.modules:
+        del sys.modules["lisa.domain.clients.litellm_client"]
 
-    from models.clients.litellm_client import LiteLLMClient
+    from lisa.domain.clients.litellm_client import LiteLLMClient
     from starlette.datastructures import Headers
 
     headers = Headers({})

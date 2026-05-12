@@ -45,10 +45,6 @@ class AwsStsClient:
             "aws_access_key_id": access_key_id,
             "aws_secret_access_key": secret_access_key,
             "region_name": region,
-            # Use the regional STS endpoint so traffic stays within the VPC
-            # when an STS VPC endpoint is configured (the global endpoint
-            # sts.amazonaws.com is not reachable from private subnets).
-            "endpoint_url": f"https://sts.{region}.amazonaws.com",
         }
         if session_token:
             kwargs["aws_session_token"] = session_token

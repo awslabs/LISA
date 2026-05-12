@@ -50,7 +50,7 @@ retry_config = Config(retries=dict(max_attempts=3), defaults_mode="standard")
 
 def mock_api_wrapper(_func=None, **kwargs):
     """Mock api_wrapper that accepts any kwargs and uses real response builder."""
-    from utilities.response_builder import generate_exception_response, generate_html_response
+    from lisa.utilities.response_builder import generate_exception_response, generate_html_response
 
     def decorator(func):
         @functools.wraps(func)
@@ -160,18 +160,15 @@ patch.dict(
 ).start()
 
 # Then patch the specific functions
-patch("utilities.auth.get_username", mock_common.get_username).start()
-patch("utilities.auth.get_user_context", mock_common.get_user_context).start()
-patch("utilities.common_functions.get_session_id", mock_common.get_session_id).start()
-patch("utilities.common_functions.retry_config", retry_config).start()
-patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()
+patch("lisa.utilities.auth.get_username", mock_common.get_username).start()
+patch("lisa.utilities.auth.get_user_context", mock_common.get_user_context).start()
+patch("lisa.utilities.common_functions.get_session_id", mock_common.get_session_id).start()
+patch("lisa.utilities.common_functions.retry_config", retry_config).start()
+patch("lisa.utilities.common_functions.api_wrapper", mock_api_wrapper).start()
 
 # Import Pydantic models for type-safe testing
-from models.domain_objects import DeleteResponse, SuccessResponse
-
-# Now import the lambda functions
-from session.lambda_functions import delete_session, delete_user_sessions, get_session, list_sessions, put_session
-from session.models import (
+from lisa.domain.domain_objects import DeleteResponse, SuccessResponse
+from lisa.session.models import (
     PutSessionRequest,
     RenameSessionRequest,
     SelectedModel,
@@ -179,6 +176,9 @@ from session.models import (
     SessionConfigurationModel,
     SessionSummary,
 )
+
+# Now import the lambda functions
+from session.lambda_functions import delete_session, delete_user_sessions, get_session, list_sessions, put_session
 
 
 @pytest.fixture
@@ -818,7 +818,7 @@ def test_find_first_human_message_encrypted_without_user_id():
 
 def test_find_first_human_message_encrypted_decryption_error():
     """Test _find_first_human_message with encrypted session decryption error."""
-    from utilities.session_encryption import SessionEncryptionError
+    from lisa.utilities.session_encryption import SessionEncryptionError
 
     session = {"sessionId": "test-session", "is_encrypted": True, "history": [{"type": "human", "content": "Hello"}]}
 
@@ -964,7 +964,7 @@ def test_get_session_encrypted_success(mock_decrypt, dynamodb_table, sample_sess
 @patch("session.lambda_functions.decrypt_session_fields")
 def test_get_session_encrypted_decryption_error(mock_decrypt, dynamodb_table, sample_session, lambda_context):
     """Test get_session with encrypted session and decryption error."""
-    from utilities.session_encryption import SessionEncryptionError
+    from lisa.utilities.session_encryption import SessionEncryptionError
 
     # Create encrypted session
     encrypted_session = sample_session.copy()
@@ -1185,7 +1185,7 @@ def test_put_session_encryption_error(
     mock_migrate, mock_encryption_enabled, dynamodb_table, config_table, sample_session, lambda_context
 ):
     """Test put_session with encryption enabled but encryption error."""
-    from utilities.session_encryption import SessionEncryptionError
+    from lisa.utilities.session_encryption import SessionEncryptionError
 
     # Mock encryption enabled
     mock_encryption_enabled.return_value = True
@@ -1648,7 +1648,7 @@ def test_delete_user_session_with_video_cleanup(mock_table, mock_s3_resource, mo
     mock_s3_client.delete_object.assert_any_call(Bucket="bucket", Key="videos/v2.mp4")
 
 
-@patch("session.repository.decrypt_session_fields")
+@patch("lisa.session.repository.decrypt_session_fields")
 @patch("session.lambda_functions.s3_client")
 @patch("session.lambda_functions.s3_resource")
 @patch("session.lambda_functions.table")
@@ -1698,7 +1698,7 @@ def test_delete_user_session_encrypted_with_videos(mock_table, mock_s3_resource,
 @patch("session.lambda_functions.table")
 def test_delete_user_session_encrypted_decryption_fails(mock_table, mock_s3_resource, mock_s3_client, mock_decrypt):
     """Test _delete_user_session when decryption fails - should still delete session."""
-    from utilities.session_encryption import SessionEncryptionError
+    from lisa.utilities.session_encryption import SessionEncryptionError
 
     encrypted_session = {
         "sessionId": "test-session",
@@ -1908,10 +1908,8 @@ def test_find_first_human_message_list_content_no_text_key():
 
 
 # ---------------------------------------------------------------------------
-# list_sessions — project feature (projectId resolution via BatchGetItem)
+# list_sessions — project feature (projectId resolution via get_item on projects table)
 # ---------------------------------------------------------------------------
-
-os.environ.setdefault("PROJECTS_TABLE_NAME", "projects-table")
 
 
 @pytest.fixture(scope="function")
@@ -1931,23 +1929,7 @@ def projects_table(dynamodb):
     )
     table.wait_until_exists()
 
-    def fake_batch_get_item(RequestItems=None, **kwargs):
-        items = []
-        for key in (RequestItems or {}).get(table.name, {}).get("Keys", []):
-            resp = table.get_item(Key={"userId": key["userId"]["S"], "projectId": key["projectId"]["S"]})
-            item = resp.get("Item")
-            if item:
-                result = {"projectId": {"S": item["projectId"]}}
-                if "status" in item:
-                    result["status"] = {"S": item["status"]}
-                items.append(result)
-        return {"Responses": {table.name: items}, "UnprocessedKeys": {}}
-
-    mock_ddb_client = MagicMock()
-    mock_ddb_client.batch_get_item.side_effect = fake_batch_get_item
-
-    with patch("session.lambda_functions.projects_table", table), patch("session.lambda_functions.boto3") as mock_boto3:
-        mock_boto3.client.return_value = mock_ddb_client
+    with patch("session.lambda_functions.projects_table", table):
         yield table
 
 
@@ -2017,7 +1999,7 @@ def test_list_sessions_project_id_cleared_for_deleting_project(dynamodb_table, p
 
 
 def test_list_sessions_no_project_id_unaffected(dynamodb_table, projects_table, lambda_context):
-    """Sessions without a projectId are returned with projectId=None and no BatchGetItem is issued."""
+    """Sessions without a projectId are returned with projectId=None; no project-table reads are needed."""
     dynamodb_table.put_item(Item={"sessionId": "s1", "userId": "test-user", "history": []})
 
     event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}}}}
@@ -2046,8 +2028,8 @@ def test_list_sessions_projects_table_none_skips_validation(dynamodb_table, lamb
     assert body[0]["projectId"] is None
 
 
-def test_list_sessions_batch_get_item_error_falls_back_gracefully(dynamodb_table, projects_table, lambda_context):
-    """A BatchGetItem failure is swallowed; all projectIds resolve to None."""
+def test_list_sessions_get_item_error_falls_back_gracefully(dynamodb_table, projects_table, lambda_context):
+    """If project validation get_item calls fail, projectIds that needed validation become None."""
     dynamodb_table.put_item(
         Item={
             "sessionId": "s1",
@@ -2058,11 +2040,7 @@ def test_list_sessions_batch_get_item_error_falls_back_gracefully(dynamodb_table
     )
 
     event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}}}}
-    with patch("boto3.client") as mock_boto_client:
-        mock_ddb_client = MagicMock()
-        mock_ddb_client.batch_get_item.side_effect = Exception("DynamoDB unavailable")
-        mock_boto_client.return_value = mock_ddb_client
-
+    with patch.object(projects_table, "get_item", side_effect=Exception("DynamoDB unavailable")):
         response = list_sessions(event, lambda_context)
     assert response["statusCode"] == 200
     body = json.loads(response["body"])

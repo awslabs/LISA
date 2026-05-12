@@ -69,10 +69,12 @@ patch.dict(
 ).start()
 
 # Then patch the specific functions
-patch("utilities.common_functions.get_cert_path", mock_common.get_cert_path).start()
-patch("utilities.common_functions.get_rest_api_container_endpoint", mock_common.get_rest_api_container_endpoint).start()
-patch("utilities.common_functions.retry_config", retry_config).start()
-patch("models.clients.litellm_client.LiteLLMClient", return_value=mock_litellm_client).start()
+patch("lisa.utilities.common_functions.get_cert_path", mock_common.get_cert_path).start()
+patch(
+    "lisa.utilities.common_functions.get_rest_api_container_endpoint", mock_common.get_rest_api_container_endpoint
+).start()
+patch("lisa.utilities.common_functions.retry_config", retry_config).start()
+patch("lisa.domain.clients.litellm_client.LiteLLMClient", return_value=mock_litellm_client).start()
 
 # Mock boto3 clients
 mock_lambda = MagicMock()
@@ -153,7 +155,7 @@ patch("models.state_machine.create_model.ec2Client", mock_ec2).start()
 patch("models.state_machine.create_model.cfnClient", mock_cfn).start()
 patch("models.state_machine.create_model.lambdaClient", mock_lambda).start()
 
-from models.domain_objects import InferenceContainer, ModelStatus
+from lisa.domain.domain_objects import InferenceContainer, ModelStatus
 
 # Now import the state machine functions
 from models.state_machine.create_model import (
@@ -388,7 +390,7 @@ def test_handle_poll_docker_image_available_max_polls_exceeded(sample_event, lam
     # Mock image not found
     mock_ecr.describe_images.side_effect = mock_ecr.exceptions.ImageNotFoundException()
 
-    from models.exception import MaxPollsExceededException
+    from lisa.domain.exception import MaxPollsExceededException
 
     with pytest.raises(MaxPollsExceededException):
         handle_poll_docker_image_available(event, lambda_context)
@@ -426,7 +428,7 @@ def test_handle_start_create_stack_no_stack_name(sample_event, lambda_context):
     # Mock ECS model deployer response without stack name
     mock_lambda.invoke.return_value = {"Payload": MagicMock(read=lambda: json.dumps({}).encode())}
 
-    from models.exception import StackFailedToCreateException
+    from lisa.domain.exception import StackFailedToCreateException
 
     with pytest.raises(StackFailedToCreateException):
         handle_start_create_stack(event, lambda_context)
@@ -469,7 +471,7 @@ def test_handle_poll_create_stack_max_polls_exceeded(sample_event, lambda_contex
     # Mock stack in progress
     mock_cfn.describe_stacks.return_value = {"Stacks": [{"StackStatus": "CREATE_IN_PROGRESS"}]}
 
-    from models.exception import MaxPollsExceededException
+    from lisa.domain.exception import MaxPollsExceededException
 
     with pytest.raises(MaxPollsExceededException):
         handle_poll_create_stack(event, lambda_context)
@@ -483,7 +485,7 @@ def test_handle_poll_create_stack_unexpected_state(sample_event, lambda_context)
     # Mock unexpected stack state
     mock_cfn.describe_stacks.return_value = {"Stacks": [{"StackStatus": "DELETE_COMPLETE"}]}
 
-    from models.exception import UnexpectedCloudFormationStateException
+    from lisa.domain.exception import UnexpectedCloudFormationStateException
 
     with pytest.raises(UnexpectedCloudFormationStateException):
         handle_poll_create_stack(event, lambda_context)
@@ -760,6 +762,44 @@ def test_handle_add_model_to_litellm_json_decode_error(model_table, sample_event
             # Should fallback to empty dict when JSON parsing fails
             call_args = mock_litellm_client.add_model.call_args
             assert call_args[1]["litellm_params"]["drop_params"] is True
+
+
+def test_handle_add_model_to_litellm_strips_proxy_callbacks(model_table, sample_event, lambda_context):
+    """Regression: proxy-level ``callbacks`` must not leak onto per-model litellm_params.
+
+    Reproduces the original Opus 4.7 / Bedrock failure: when
+    ``litellm_settings.callbacks: ["otel"]`` was set in ``config-custom.yaml``,
+    every newly registered model carried ``callbacks`` in its per-model
+    ``litellm_params``. LiteLLM then forwarded that to Bedrock, whose strict
+    request-body schema rejected it with "Extra inputs are not permitted".
+    """
+    event = deepcopy(sample_event)
+    event["create_infra"] = True
+    event["modelUrl"] = "https://test-model.example.com"
+    mock_litellm_client.reset_mock()
+
+    config_with_callbacks = json.dumps(
+        {
+            "litellm_settings": {
+                "callbacks": ["otel"],
+                "turn_off_message_logging": False,
+                "drop_params": True,
+            }
+        }
+    )
+
+    with patch.dict("os.environ", {"LITELLM_CONFIG_OBJ": config_with_callbacks}):
+        with patch("models.state_machine.create_model.model_table", model_table):
+            handle_add_model_to_litellm(event, lambda_context)
+
+    call_args = mock_litellm_client.add_model.call_args
+    litellm_params = call_args[1]["litellm_params"]
+    assert "callbacks" not in litellm_params, (
+        "Proxy-level ``callbacks`` leaked into per-model litellm_params; "
+        "this is exactly what broke Bedrock + Claude Opus 4.7."
+    )
+    assert "turn_off_message_logging" not in litellm_params
+    assert litellm_params["drop_params"] is True
 
 
 def test_handle_start_create_stack_camelize_function(sample_event, lambda_context):

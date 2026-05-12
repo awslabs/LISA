@@ -16,8 +16,8 @@
 
 from unittest.mock import MagicMock
 
-from models.domain_objects import IngestionType
-from utilities.bedrock_kb import ingest_bedrock_s3_documents
+from lisa.domain.domain_objects import IngestionType
+from lisa.utilities.bedrock_kb import ingest_bedrock_s3_documents
 
 
 class TestDocumentDiscovery:

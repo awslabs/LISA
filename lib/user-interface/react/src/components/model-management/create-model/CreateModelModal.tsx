@@ -54,19 +54,19 @@ export type ModelCreateState = {
 export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
     const [
         createModelMutation,
-        { isSuccess: isCreateSuccess, isError: isCreateError, error: createError, isLoading: isCreating, reset: resetCreate },
+        { isError: isCreateError, error: createError, isLoading: isCreating, reset: resetCreate },
     ] = useCreateModelMutation();
     const [
         updateModelMutation,
-        { isSuccess: isUpdateSuccess, isError: isUpdateError, error: updateError, isLoading: isUpdating, reset: resetUpdate },
+        { isError: isUpdateError, error: updateError, isLoading: isUpdating, reset: resetUpdate },
     ] = useUpdateModelMutation();
     const [
         updateScheduleMutation,
-        { isSuccess: isScheduleUpdateSuccess, isError: isScheduleUpdateError, error: scheduleUpdateError, isLoading: isScheduleUpdating, reset: resetScheduleUpdate },
+        { isError: isScheduleUpdateError, error: scheduleUpdateError, isLoading: isScheduleUpdating, reset: resetScheduleUpdate },
     ] = useUpdateScheduleMutation();
     const [
         deleteScheduleMutation,
-        { isSuccess: isScheduleDeleteSuccess, isError: isScheduleDeleteError, error: scheduleDeleteError, isLoading: isScheduleDeleting, reset: resetScheduleDelete },
+        { isError: isScheduleDeleteError, error: scheduleDeleteError, isLoading: isScheduleDeleting, reset: resetScheduleDelete },
     ] = useDeleteScheduleMutation();
     const initialForm = ModelRequestBaseSchema.partial().parse({});
     const dispatch = useAppDispatch();
@@ -172,22 +172,49 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         return isLisaHosted && hasContainerChanges;
     }, [props.isEdit, props.selectedItems, changesDiff]);
 
-    useEffect(() => {
+    // Reset the ECS-restart acknowledgement when the user enters a state
+    // that requires it. Uses "adjusting state while rendering" instead of
+    // useEffect to satisfy react-hooks/set-state-in-effect.
+    const [lastRequiresEcsRestart, setLastRequiresEcsRestart] = useState(requiresEcsRestart);
+    if (requiresEcsRestart !== lastRequiresEcsRestart) {
+        setLastRequiresEcsRestart(requiresEcsRestart);
         if (requiresEcsRestart) {
             setEcsRestartAcknowledged(false);
         }
-    }, [requiresEcsRestart]);
+    }
 
-    function handleSubmit () {
+    // Close the modal and reset state. Centralised so the various submit
+    // paths can call it from .unwrap() success handlers instead of relying
+    // on useEffect mirrors of RTK Query result flags.
+    const finalizeSuccessfulSubmit = (successMessage: string, clearSelectedItems: boolean) => {
+        notificationService.generateNotification(successMessage, 'success');
+        props.setVisible(false);
+        props.setIsEdit(false);
+        if (clearSelectedItems) {
+            props.setSelectedItems([]);
+        }
+        resetState();
+    };
+
+    async function handleSubmit () {
         // Check if ECS restart acknowledgment is required but not provided
         if (requiresEcsRestart && !ecsRestartAcknowledged) {
             return; // Don't proceed with submission
         }
 
-        delete toSubmit.lisaHostedModel;
+        // Clone before mutating; `toSubmit` is a value derived during render
+        // and modifying it directly violates React's immutability rules.
+        const submission = _.omit(toSubmit, 'lisaHostedModel') as IModelRequest;
         if (isValid && !props.isEdit && !_.isEmpty(changesDiff)) {
             resetCreate();
-            createModelMutation(toSubmit);
+            try {
+                await createModelMutation(submission).unwrap();
+                finalizeSuccessfulSubmit(`Successfully created model: ${state.form.modelId}`, false);
+            } catch {
+                // Error surfaces via reviewError; the user-facing notification
+                // already comes from the Review step's error rendering.
+            }
+            return;
         } else if (isValid && props.isEdit && !_.isEmpty(changesDiff)) {
             // pick only the values we care about for update
             resetUpdate();
@@ -299,15 +326,21 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
 
                 if (isScheduleDisabled) {
                     resetScheduleDelete();
-                    deleteScheduleMutation({
-                        modelId: props.selectedItems[0].modelId
-                    });
+                    try {
+                        await deleteScheduleMutation({
+                            modelId: props.selectedItems[0].modelId
+                        }).unwrap();
+                        finalizeSuccessfulSubmit(`Successfully disabled schedule: ${state.form.modelId}`, true);
+                    } catch { /* error displays via reviewError */ }
                 } else {
                     resetScheduleUpdate();
-                    updateScheduleMutation({
-                        modelId: props.selectedItems[0].modelId,
-                        scheduleConfig: schedulingConfig
-                    });
+                    try {
+                        await updateScheduleMutation({
+                            modelId: props.selectedItems[0].modelId,
+                            scheduleConfig: schedulingConfig
+                        }).unwrap();
+                        finalizeSuccessfulSubmit(`Successfully updated schedule: ${state.form.modelId}`, true);
+                    } catch { /* error displays via reviewError */ }
                 }
             } else {
                 // Handle autoScalingConfig if present (non-scheduling changes)
@@ -328,7 +361,10 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
                     updateRequest.guardrailsConfig = state.form.guardrailsConfig;
                 }
 
-                updateModelMutation(updateRequest);
+                try {
+                    await updateModelMutation(updateRequest).unwrap();
+                    finalizeSuccessfulSubmit(`Successfully updated model: ${state.form.modelId}`, true);
+                } catch { /* error displays via reviewError */ }
             }
         }
     }
@@ -377,49 +413,6 @@ export function CreateModelModal (props: CreateModelModalProps) : ReactElement {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [props.isEdit]);
-
-    useEffect(() => {
-        if (!isCreating && isCreateSuccess) {
-            notificationService.generateNotification(`Successfully created model: ${state.form.modelId}`, 'success');
-            props.setVisible(false);
-            props.setIsEdit(false);
-            resetState();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isCreating, isCreateSuccess]);
-
-    useEffect(() => {
-        if (!isUpdating && isUpdateSuccess) {
-            notificationService.generateNotification(`Successfully updated model: ${state.form.modelId}`, 'success');
-            props.setVisible(false);
-            props.setIsEdit(false);
-            props.setSelectedItems([]);
-            resetState();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isUpdating, isUpdateSuccess]);
-
-    useEffect(() => {
-        if (!isScheduleUpdating && isScheduleUpdateSuccess) {
-            notificationService.generateNotification(`Successfully updated schedule: ${state.form.modelId}`, 'success');
-            props.setVisible(false);
-            props.setIsEdit(false);
-            props.setSelectedItems([]);
-            resetState();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isScheduleUpdating, isScheduleUpdateSuccess]);
-
-    useEffect(() => {
-        if (!isScheduleDeleting && isScheduleDeleteSuccess) {
-            notificationService.generateNotification(`Successfully disabled schedule: ${state.form.modelId}`, 'success');
-            props.setVisible(false);
-            props.setIsEdit(false);
-            props.setSelectedItems([]);
-            resetState();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isScheduleDeleting, isScheduleDeleteSuccess]);
 
     const reviewError = normalizeError('Model',
         isCreateError ? createError :

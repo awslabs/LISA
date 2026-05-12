@@ -24,7 +24,7 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../"))
 
 # Import after setting up environment
-from models.domain_objects import (
+from lisa.domain.domain_objects import (
     ChunkingStrategyType,
     FixedChunkingStrategy,
     IngestionJob,
@@ -52,8 +52,8 @@ def sample_ingestion_job():
 
 def test_ingest_success(sample_ingestion_job):
     """Test successful ingest function."""
-    with patch("repository.pipeline_ingestion.ingestion_job_repository") as mock_job_repo, patch(
-        "repository.pipeline_ingestion.pipeline_ingest"
+    with patch("lisa.rag.pipeline_ingestion.ingestion_job_repository") as mock_job_repo, patch(
+        "lisa.rag.pipeline_ingestion.pipeline_ingest"
     ) as mock_pipeline_ingest:
 
         # Setup mocks
@@ -61,10 +61,10 @@ def test_ingest_success(sample_ingestion_job):
         mock_pipeline_ingest.return_value = None
 
         # Import the module
-        import repository.pipeline_ingestion
+        import lisa.rag.pipeline_ingestion
 
         # Call the function
-        repository.pipeline_ingestion.ingest(sample_ingestion_job)
+        lisa.rag.pipeline_ingestion.ingest(sample_ingestion_job)
 
         # Verify calls
         mock_job_repo.update_status.assert_called_once_with(sample_ingestion_job, IngestionStatus.INGESTION_IN_PROGRESS)
@@ -73,8 +73,8 @@ def test_ingest_success(sample_ingestion_job):
 
 def test_ingest_error(sample_ingestion_job):
     """Test ingest function with error."""
-    with patch("repository.pipeline_ingestion.ingestion_job_repository") as mock_job_repo, patch(
-        "repository.pipeline_ingestion.pipeline_ingest"
+    with patch("lisa.rag.pipeline_ingestion.ingestion_job_repository") as mock_job_repo, patch(
+        "lisa.rag.pipeline_ingestion.pipeline_ingest"
     ) as mock_pipeline_ingest:
 
         # Setup mocks
@@ -82,11 +82,11 @@ def test_ingest_error(sample_ingestion_job):
         mock_pipeline_ingest.side_effect = Exception("Test error")
 
         # Import the module
-        import repository.pipeline_ingestion
+        import lisa.rag.pipeline_ingestion
 
         # Call the function and expect exception
         with pytest.raises(Exception, match="Test error"):
-            repository.pipeline_ingestion.ingest(sample_ingestion_job)
+            lisa.rag.pipeline_ingestion.ingest(sample_ingestion_job)
 
         # Verify calls
         mock_job_repo.update_status.assert_called_once_with(sample_ingestion_job, IngestionStatus.INGESTION_IN_PROGRESS)
@@ -94,8 +94,8 @@ def test_ingest_error(sample_ingestion_job):
 
 def test_delete_success(sample_ingestion_job):
     """Test successful delete function."""
-    with patch("repository.pipeline_ingestion.ingestion_job_repository") as mock_job_repo, patch(
-        "repository.pipeline_ingestion.pipeline_delete"
+    with patch("lisa.rag.pipeline_ingestion.ingestion_job_repository") as mock_job_repo, patch(
+        "lisa.rag.pipeline_ingestion.pipeline_delete"
     ) as mock_pipeline_delete:
 
         # Setup mocks
@@ -103,10 +103,10 @@ def test_delete_success(sample_ingestion_job):
         mock_pipeline_delete.return_value = None
 
         # Import the module
-        import repository.pipeline_ingestion
+        import lisa.rag.pipeline_ingestion
 
         # Call the function
-        repository.pipeline_ingestion.delete(sample_ingestion_job)
+        lisa.rag.pipeline_ingestion.delete(sample_ingestion_job)
 
         # Verify calls
         mock_job_repo.update_status.assert_called_once_with(sample_ingestion_job, IngestionStatus.DELETE_IN_PROGRESS)
@@ -115,8 +115,8 @@ def test_delete_success(sample_ingestion_job):
 
 def test_delete_error(sample_ingestion_job):
     """Test delete function with error."""
-    with patch("repository.pipeline_ingestion.ingestion_job_repository") as mock_job_repo, patch(
-        "repository.pipeline_ingestion.pipeline_delete"
+    with patch("lisa.rag.pipeline_ingestion.ingestion_job_repository") as mock_job_repo, patch(
+        "lisa.rag.pipeline_ingestion.pipeline_delete"
     ) as mock_pipeline_delete:
 
         # Setup mocks
@@ -124,11 +124,11 @@ def test_delete_error(sample_ingestion_job):
         mock_pipeline_delete.side_effect = Exception("Test error")
 
         # Import the module
-        import repository.pipeline_ingestion
+        import lisa.rag.pipeline_ingestion
 
         # Call the function and expect exception
         with pytest.raises(Exception, match="Test error"):
-            repository.pipeline_ingestion.delete(sample_ingestion_job)
+            lisa.rag.pipeline_ingestion.delete(sample_ingestion_job)
 
         # Verify calls
         mock_job_repo.update_status.assert_called_once_with(sample_ingestion_job, IngestionStatus.DELETE_IN_PROGRESS)
@@ -136,8 +136,8 @@ def test_delete_error(sample_ingestion_job):
 
 def test_main_ingest_action(sample_ingestion_job):
     """Test main function with ingest action."""
-    with patch("repository.pipeline_ingestion.ingestion_job_repository") as mock_job_repo, patch(
-        "repository.pipeline_ingestion.ingest"
+    with patch("lisa.rag.pipeline_ingestion.ingestion_job_repository") as mock_job_repo, patch(
+        "lisa.rag.pipeline_ingestion.ingest"
     ) as mock_ingest, patch("sys.argv", ["pipeline_ingestion.py", "ingest", "test-job-id"]):
 
         # Setup mocks
@@ -148,12 +148,12 @@ def test_main_ingest_action(sample_ingestion_job):
         # Simulate the main function logic
         import sys
 
-        import repository.pipeline_ingestion
+        import lisa.rag.pipeline_ingestion
 
         if len(sys.argv) > 2:
-            job = repository.pipeline_ingestion.ingestion_job_repository.find_by_id(sys.argv[2])
+            job = lisa.rag.pipeline_ingestion.ingestion_job_repository.find_by_id(sys.argv[2])
             if sys.argv[1] == "ingest":
-                repository.pipeline_ingestion.ingest(job)
+                lisa.rag.pipeline_ingestion.ingest(job)
 
         # Verify calls
         mock_job_repo.find_by_id.assert_called_once_with("test-job-id")
@@ -162,8 +162,8 @@ def test_main_ingest_action(sample_ingestion_job):
 
 def test_main_delete_action(sample_ingestion_job):
     """Test main function with delete action."""
-    with patch("repository.pipeline_ingestion.ingestion_job_repository") as mock_job_repo, patch(
-        "repository.pipeline_ingestion.delete"
+    with patch("lisa.rag.pipeline_ingestion.ingestion_job_repository") as mock_job_repo, patch(
+        "lisa.rag.pipeline_ingestion.delete"
     ) as mock_delete, patch("sys.argv", ["pipeline_ingestion.py", "delete", "test-job-id"]):
 
         # Setup mocks
@@ -174,12 +174,12 @@ def test_main_delete_action(sample_ingestion_job):
         # Simulate the main function logic
         import sys
 
-        import repository.pipeline_ingestion
+        import lisa.rag.pipeline_ingestion
 
         if len(sys.argv) > 2:
-            job = repository.pipeline_ingestion.ingestion_job_repository.find_by_id(sys.argv[2])
+            job = lisa.rag.pipeline_ingestion.ingestion_job_repository.find_by_id(sys.argv[2])
             if sys.argv[1] == "delete":
-                repository.pipeline_ingestion.delete(job)
+                lisa.rag.pipeline_ingestion.delete(job)
 
         # Verify calls
         mock_job_repo.find_by_id.assert_called_once_with("test-job-id")
@@ -188,9 +188,9 @@ def test_main_delete_action(sample_ingestion_job):
 
 def test_main_invalid_action(sample_ingestion_job):
     """Test main function with invalid action."""
-    with patch("repository.pipeline_ingestion.ingestion_job_repository"), patch(
-        "repository.pipeline_ingestion.ingest"
-    ), patch("repository.pipeline_ingestion.delete"), patch(
+    with patch("lisa.rag.pipeline_ingestion.ingestion_job_repository"), patch(
+        "lisa.rag.pipeline_ingestion.ingest"
+    ), patch("lisa.rag.pipeline_ingestion.delete"), patch(
         "sys.argv", ["pipeline_ingestion.py", "invalid", "test-job-id"]
     ), patch(
         "sys.exit"
@@ -200,14 +200,14 @@ def test_main_invalid_action(sample_ingestion_job):
         # Simulate the main function logic - should not call any functions for invalid action
         import sys
 
-        import repository.pipeline_ingestion
+        import lisa.rag.pipeline_ingestion
 
         if len(sys.argv) > 2:
-            job = repository.pipeline_ingestion.ingestion_job_repository.find_by_id(sys.argv[2])
+            job = lisa.rag.pipeline_ingestion.ingestion_job_repository.find_by_id(sys.argv[2])
             if sys.argv[1] == "ingest":
-                repository.pipeline_ingestion.ingest(job)
+                lisa.rag.pipeline_ingestion.ingest(job)
             elif sys.argv[1] == "delete":
-                repository.pipeline_ingestion.delete(job)
+                lisa.rag.pipeline_ingestion.delete(job)
             else:
                 # Invalid action - should exit
                 sys.exit(1)

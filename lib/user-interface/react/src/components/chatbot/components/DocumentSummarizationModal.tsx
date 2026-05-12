@@ -25,7 +25,7 @@ import {
     TextContent,
 } from '@cloudscape-design/components';
 import { FileTypes, LisaChatSession } from '../../types';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useAppDispatch } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
 import { useGetAllModelsQuery } from '@/shared/reducers/model-management.reducer';
@@ -69,10 +69,12 @@ export const DocumentSummarizationModal = ({
     handleSendGenerateRequest,
 }: DocumentSummarizationModalProps) => {
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-    const [successfulUploads, setSuccessfulUpload] = useState<string[]>(undefined);
+    // Initialized to [] (not undefined) so the React Compiler can safely
+    // read .length during render-phase memoization. The button's disabled
+    // check uses successfulUploads.length === 0 instead of !successfulUploads.
+    const [successfulUploads, setSuccessfulUpload] = useState<string[]>([]);
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
-    const [summarize, setSummarize] = useState<boolean>(false);
     const [createNewChatSession, setCreateNewChatSession] = useState<boolean>(true);
 
     const { data: allModels, isFetching: isFetchingModels } = useGetAllModelsQuery(undefined, {
@@ -104,20 +106,17 @@ export const DocumentSummarizationModal = ({
         return true;
     }
 
-    useEffect(
-        () => {
-            if (summarize) {
-                setSummarize(false);
-                handleSendGenerateRequest();
-
-                setShowDocumentSummarizationModal(false);
-                setSelectedPromptType(undefined);
-                setSuccessfulUpload(undefined);
-                setSelectedFiles([]);
-                setFileContext('');
-            }
-            // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [summarize]);
+    // Run summarization and reset modal state. Replaces a useEffect-driven
+    // trigger that used a `summarize` state-flag, which violated
+    // react-hooks/set-state-in-effect.
+    const triggerSummarization = () => {
+        handleSendGenerateRequest();
+        setShowDocumentSummarizationModal(false);
+        setSelectedPromptType(undefined);
+        setSuccessfulUpload([]);
+        setSelectedFiles([]);
+        setFileContext('');
+    };
 
     return (
         <Modal
@@ -127,7 +126,7 @@ export const DocumentSummarizationModal = ({
                 setSelectedFiles([]);
                 setUserPrompt('');
                 setSelectedModel(undefined);
-                setSuccessfulUpload(undefined);
+                setSuccessfulUpload([]);
                 setSelectedPromptType('');
             }}
             visible={showDocumentSummarizationModal}
@@ -143,7 +142,7 @@ export const DocumentSummarizationModal = ({
                                 setSelectedFiles([]);
                                 setUserPrompt('');
                                 setSelectedModel(undefined);
-                                setSuccessfulUpload(undefined);
+                                setSuccessfulUpload([]);
                                 setSelectedPromptType('');
                             }}
                             variant={'link'}
@@ -165,10 +164,10 @@ export const DocumentSummarizationModal = ({
                                         setSession(newSession);
                                     }
 
-                                    setSummarize(true);
+                                    triggerSummarization();
                                 }
                             }}
-                            disabled={selectedFiles.length === 0 || !selectedModel || !selectedPromptType || !successfulUploads || !userPrompt}
+                            disabled={selectedFiles.length === 0 || !selectedModel || !selectedPromptType || successfulUploads.length === 0 || !userPrompt}
                         >
                             Summarize
                         </Button>
@@ -189,7 +188,7 @@ export const DocumentSummarizationModal = ({
                     onChange={async ({ detail }) => {
                         setSelectedFiles(detail.value);
                         const uploads = await handleUpload(detail.value, handleError, processFile, [FileTypes.TEXT], 20971520);
-                        setSuccessfulUpload(uploads);
+                        setSuccessfulUpload(uploads ?? []);
                     }}
                     value={selectedFiles}
                     i18nStrings={{

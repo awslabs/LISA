@@ -101,8 +101,8 @@ patch.dict(
 ).start()
 
 # Then patch the specific functions
-patch("utilities.common_functions.retry_config", retry_config).start()
-patch("utilities.common_functions.api_wrapper", mock_api_wrapper).start()
+patch("lisa.utilities.common_functions.retry_config", retry_config).start()
+patch("lisa.utilities.common_functions.api_wrapper", mock_api_wrapper).start()
 
 # Now import the lambda functions
 from configuration.lambda_functions import get_configuration, update_configuration

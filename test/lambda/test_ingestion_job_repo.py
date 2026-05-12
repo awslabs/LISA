@@ -27,7 +27,7 @@ def ingestion_repo(monkeypatch):
     monkeypatch.setenv("AWS_REGION", "us-east-1")
     monkeypatch.setenv("LISA_INGESTION_JOB_TABLE_NAME", "test-table")
 
-    from repository.ingestion_job_repo import IngestionJobRepository
+    from lisa.rag.ingestion_job_repo import IngestionJobRepository
 
     return IngestionJobRepository()
 
@@ -55,9 +55,9 @@ def test_find_batch_job_for_document(ingestion_repo):
 def test_ingestion_job_repo_save(ingestion_repo):
     from unittest.mock import patch
 
-    from models.domain_objects import IngestionJob
+    from lisa.domain.domain_objects import IngestionJob
 
-    with patch("repository.ingestion_job_repo._get_ingestion_job_table") as mock_table:
+    with patch("lisa.rag.ingestion_job_repo._get_ingestion_job_table") as mock_table:
         job = IngestionJob(
             id="job1", repository_id="repo1", collection_id="col1", s3_path="s3://bucket/key", username="user1"
         )
@@ -68,7 +68,7 @@ def test_ingestion_job_repo_save(ingestion_repo):
 def test_ingestion_job_repo_find_by_id(ingestion_repo):
     from unittest.mock import patch
 
-    with patch("repository.ingestion_job_repo._get_ingestion_job_table") as mock_table:
+    with patch("lisa.rag.ingestion_job_repo._get_ingestion_job_table") as mock_table:
         mock_table.return_value.get_item.return_value = {
             "Item": {
                 "id": "job1",
@@ -85,7 +85,7 @@ def test_ingestion_job_repo_find_by_id(ingestion_repo):
 def test_ingestion_job_repo_find_by_path(ingestion_repo):
     from unittest.mock import patch
 
-    with patch("repository.ingestion_job_repo._get_ingestion_job_table") as mock_table:
+    with patch("lisa.rag.ingestion_job_repo._get_ingestion_job_table") as mock_table:
         mock_table.return_value.query.return_value = {
             "Items": [
                 {
@@ -104,7 +104,7 @@ def test_ingestion_job_repo_find_by_path(ingestion_repo):
 def test_ingestion_job_repo_find_by_document(ingestion_repo):
     from unittest.mock import patch
 
-    with patch("repository.ingestion_job_repo._get_ingestion_job_table") as mock_table:
+    with patch("lisa.rag.ingestion_job_repo._get_ingestion_job_table") as mock_table:
         mock_table.return_value.query.return_value = {
             "Items": [
                 {
@@ -124,7 +124,7 @@ def test_ingestion_job_repo_find_by_document(ingestion_repo):
 def test_ingestion_job_repo_find_by_document_none(ingestion_repo):
     from unittest.mock import patch
 
-    with patch("repository.ingestion_job_repo._get_ingestion_job_table") as mock_table:
+    with patch("lisa.rag.ingestion_job_repo._get_ingestion_job_table") as mock_table:
         mock_table.return_value.query.return_value = {"Items": []}
         result = ingestion_repo.find_by_document("doc1")
         assert result is None
@@ -133,9 +133,9 @@ def test_ingestion_job_repo_find_by_document_none(ingestion_repo):
 def test_ingestion_job_repo_update_status(ingestion_repo):
     from unittest.mock import patch
 
-    from models.domain_objects import IngestionJob
+    from lisa.domain.domain_objects import IngestionJob
 
-    with patch("repository.ingestion_job_repo._get_ingestion_job_table") as mock_table:
+    with patch("lisa.rag.ingestion_job_repo._get_ingestion_job_table") as mock_table:
         mock_table.return_value.update_item.return_value = {}
         job = IngestionJob(
             id="job1", repository_id="repo1", collection_id="col1", s3_path="s3://bucket/key", username="user1"
@@ -165,7 +165,7 @@ def test_ingestion_job_repo_find_batch_job_not_found(ingestion_repo):
 def test_ingestion_job_repo_list_jobs_by_repository(ingestion_repo):
     from unittest.mock import patch
 
-    with patch("repository.ingestion_job_repo._get_ingestion_job_table") as mock_table:
+    with patch("lisa.rag.ingestion_job_repo._get_ingestion_job_table") as mock_table:
         mock_table.return_value.query.return_value = {
             "Items": [
                 {
@@ -184,7 +184,7 @@ def test_ingestion_job_repo_list_jobs_by_repository(ingestion_repo):
 def test_ingestion_job_repo_list_jobs_non_admin(ingestion_repo):
     from unittest.mock import patch
 
-    with patch("repository.ingestion_job_repo._get_ingestion_job_table") as mock_table:
+    with patch("lisa.rag.ingestion_job_repo._get_ingestion_job_table") as mock_table:
         mock_table.return_value.query.return_value = {
             "Items": [
                 {

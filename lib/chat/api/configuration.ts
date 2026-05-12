@@ -17,7 +17,6 @@
 import { IAuthorizer, RestApi } from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { ISecurityGroup } from 'aws-cdk-lib/aws-ec2';
-import { LayerVersion } from 'aws-cdk-lib/aws-lambda';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
@@ -28,7 +27,7 @@ import { getAuditLoggingEnv } from '../../api-base/auditEnv';
 import { Vpc } from '../../networking/vpc';
 import { AwsCustomResource, PhysicalResourceId } from 'aws-cdk-lib/custom-resources';
 import { IRole } from 'aws-cdk-lib/aws-iam';
-import { LAMBDA_PATH } from '../../util';
+import { getPythonLambdaLayers } from '../../util';
 import { McpApi } from './mcp';
 import { RemovalPolicy } from 'aws-cdk-lib';
 
@@ -62,18 +61,7 @@ export class ConfigurationApi extends Construct {
 
         const { authorizer, config, mcpApi, restApiId, rootResourceId, securityGroups, vpc } = props;
 
-        // Get common layer based on arn from SSM due to issues with cross stack references
-        const commonLambdaLayer = LayerVersion.fromLayerVersionArn(
-            this,
-            'configuration-common-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/common`),
-        );
-
-        const fastapiLambdaLayer = LayerVersion.fromLayerVersionArn(
-            this,
-            'mcp-fastapi-lambda-layer',
-            StringParameter.valueForStringParameter(this, `${config.deploymentPrefix}/layerVersion/fastapi`),
-        );
+        const lambdaLayers = getPythonLambdaLayers(this, config, ['common', 'fastapi'], 'Configuration');
 
         // Create DynamoDB table to handle config data
         this.configTable = new dynamodb.Table(this, 'ConfigurationTable', {
@@ -196,13 +184,12 @@ export class ConfigurationApi extends Construct {
             },
         ];
 
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
         apis.forEach((f) => {
             const lambdaFunction = registerAPIEndpoint(
                 this,
                 restApi,
-                lambdaPath,
-                [commonLambdaLayer, fastapiLambdaLayer],
+                config,
+                lambdaLayers,
                 f,
                 getPythonRuntime(),
                 vpc,

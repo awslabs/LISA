@@ -27,8 +27,8 @@ os.environ["AWS_REGION"] = "us-east-1"
 # Add the lambda directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../"))
 
-from repository.services.opensearch_repository_service import OpenSearchRepositoryService
-from repository.services.pgvector_repository_service import PGVectorRepositoryService
+from lisa.rag.services.opensearch_repository_service import OpenSearchRepositoryService
+from lisa.rag.services.pgvector_repository_service import PGVectorRepositoryService
 
 
 def test_opensearch_retrieve_documents_without_score():
@@ -43,7 +43,7 @@ def test_opensearch_retrieve_documents_without_score():
     mock_doc.metadata = {"source": "test.txt"}
     mock_vs.similarity_search_with_score.return_value = [(mock_doc, 0.8)]
 
-    with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
+    with patch("lisa.rag.services.opensearch_repository_service.RagEmbeddings"):
         with patch.object(service, "_get_vector_store_client", return_value=mock_vs):
             result = service.retrieve_documents("test query", "test-collection", 5, "test-model", include_score=False)
 
@@ -66,7 +66,7 @@ def test_pgvector_retrieve_documents_with_score():
     mock_doc.metadata = {"source": "test.txt"}
     mock_vs.similarity_search_with_score.return_value = [(mock_doc, 0.8)]  # cosine distance
 
-    with patch("repository.services.vector_store_repository_service.RagEmbeddings"):
+    with patch("lisa.rag.services.vector_store_repository_service.RagEmbeddings"):
         with patch.object(service, "_get_vector_store_client", return_value=mock_vs):
             result = service.retrieve_documents("test query", "test-collection", 3, "test-model", include_score=True)
 
@@ -89,7 +89,7 @@ def test_opensearch_retrieve_documents_with_score():
     mock_doc.metadata = {"source": "test.txt"}
     mock_vs.similarity_search_with_score.return_value = [(mock_doc, 0.9)]  # similarity score
 
-    with patch("repository.services.opensearch_repository_service.RagEmbeddings"):
+    with patch("lisa.rag.services.opensearch_repository_service.RagEmbeddings"):
         with patch.object(service, "_get_vector_store_client", return_value=mock_vs):
             result = service.retrieve_documents("test query", "test-collection", 3, "test-model", include_score=True)
 

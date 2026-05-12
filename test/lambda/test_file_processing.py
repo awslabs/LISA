@@ -35,15 +35,15 @@ os.environ["AWS_REGION"] = "us-east-1"
 from langchain_core.documents import Document
 
 # Import after setting up environment
-from models.domain_objects import (
+from lisa.domain.domain_objects import (
     ChunkingStrategyType,
     FixedChunkingStrategy,
     IngestionJob,
     IngestionStatus,
     IngestionType,
 )
-from utilities.exceptions import RagUploadException
-from utilities.file_processing import generate_chunks
+from lisa.utilities.exceptions import RagUploadException
+from lisa.utilities.file_processing import generate_chunks
 
 
 @pytest.fixture
@@ -76,8 +76,8 @@ def test_generate_chunks_success_with_valid_path(sample_ingestion_job):
     """Test generate_chunks with valid S3 path."""
     # Use a supported file extension for the test
     sample_ingestion_job.s3_path = "s3://test-bucket/test-key.txt"
-    with patch("utilities.file_processing.boto3.client") as mock_client, patch(
-        "utilities.file_processing.s3"
+    with patch("lisa.utilities.file_processing.boto3.client") as mock_client, patch(
+        "lisa.utilities.file_processing.s3"
     ) as mock_s3_global:
 
         # Setup mocks
@@ -96,11 +96,11 @@ def test_generate_chunks_success_with_valid_path(sample_ingestion_job):
 
 def test_extract_text_by_content_type_pdf():
     """Test _extract_text_by_content_type with PDF file."""
-    from utilities.file_processing import _extract_text_by_content_type
+    from lisa.utilities.file_processing import _extract_text_by_content_type
 
     mock_s3_object = {"Body": BytesIO(b"mock pdf content")}
 
-    with patch("utilities.file_processing._extract_pdf_content") as mock_extract:
+    with patch("lisa.utilities.file_processing._extract_pdf_content") as mock_extract:
         mock_extract.return_value = "Extracted PDF text"
 
         result = _extract_text_by_content_type("pdf", mock_s3_object)
@@ -111,11 +111,11 @@ def test_extract_text_by_content_type_pdf():
 
 def test_extract_text_by_content_type_docx():
     """Test _extract_text_by_content_type with DOCX file."""
-    from utilities.file_processing import _extract_text_by_content_type
+    from lisa.utilities.file_processing import _extract_text_by_content_type
 
     mock_s3_object = {"Body": BytesIO(b"mock docx content")}
 
-    with patch("utilities.file_processing._extract_docx_content") as mock_extract:
+    with patch("lisa.utilities.file_processing._extract_docx_content") as mock_extract:
         mock_extract.return_value = "Extracted DOCX text"
 
         result = _extract_text_by_content_type("docx", mock_s3_object)
@@ -126,11 +126,11 @@ def test_extract_text_by_content_type_docx():
 
 def test_extract_text_by_content_type_txt():
     """Test _extract_text_by_content_type with TXT file."""
-    from utilities.file_processing import _extract_text_by_content_type
+    from lisa.utilities.file_processing import _extract_text_by_content_type
 
     mock_s3_object = {"Body": BytesIO(b"mock text content")}
 
-    with patch("utilities.file_processing._extract_text_content") as mock_extract:
+    with patch("lisa.utilities.file_processing._extract_text_content") as mock_extract:
         mock_extract.return_value = "Extracted text content"
 
         result = _extract_text_by_content_type("txt", mock_s3_object)
@@ -141,7 +141,7 @@ def test_extract_text_by_content_type_txt():
 
 def test_extract_text_by_content_type_unsupported():
     """Test _extract_text_by_content_type with unsupported file type."""
-    from utilities.file_processing import _extract_text_by_content_type
+    from lisa.utilities.file_processing import _extract_text_by_content_type
 
     mock_s3_object = {"Body": BytesIO(b"mock content")}
 
@@ -151,12 +151,12 @@ def test_extract_text_by_content_type_unsupported():
 
 def test_extract_pdf_content_error():
     """Test _extract_pdf_content with PDF read error."""
+    from lisa.utilities.file_processing import _extract_pdf_content
     from pypdf.errors import PdfReadError
-    from utilities.file_processing import _extract_pdf_content
 
     mock_s3_object = {"Body": BytesIO(b"invalid pdf content")}
 
-    with patch("utilities.file_processing.PdfReader") as mock_reader:
+    with patch("lisa.utilities.file_processing.PdfReader") as mock_reader:
         mock_reader.side_effect = PdfReadError("Invalid PDF")
 
         with pytest.raises(PdfReadError):
@@ -165,11 +165,11 @@ def test_extract_pdf_content_error():
 
 def test_extract_pdf_content_success():
     """Test _extract_pdf_content with valid PDF."""
-    from utilities.file_processing import _extract_pdf_content
+    from lisa.utilities.file_processing import _extract_pdf_content
 
     mock_s3_object = {"Body": BytesIO(b"mock pdf content")}
 
-    with patch("utilities.file_processing.PdfReader") as mock_reader:
+    with patch("lisa.utilities.file_processing.PdfReader") as mock_reader:
         mock_page = MagicMock()
         mock_page.extract_text.return_value = "Page 1 content"
         mock_reader.return_value.pages = [mock_page]
@@ -180,11 +180,11 @@ def test_extract_pdf_content_success():
 
 def test_extract_pdf_content_cleanup_success():
     """Test _extract_pdf_content with valid PDF including text normalization."""
-    from utilities.file_processing import _extract_pdf_content
+    from lisa.utilities.file_processing import _extract_pdf_content
 
     mock_s3_object = {"Body": BytesIO(b"mock pdf content")}
 
-    with patch("utilities.file_processing.PdfReader") as mock_reader:
+    with patch("lisa.utilities.file_processing.PdfReader") as mock_reader:
         mock_page = MagicMock()
         # Include soft hyphen, zero-width space, and extra whitespace to test cleanup
         mock_page.extract_text.return_value = "Page\xad1\u200b con\ufefftent  here"
@@ -196,11 +196,11 @@ def test_extract_pdf_content_cleanup_success():
 
 def test_extract_docx_content_success():
     """Test _extract_docx_content with valid DOCX."""
-    from utilities.file_processing import _extract_docx_content
+    from lisa.utilities.file_processing import _extract_docx_content
 
     mock_s3_object = {"Body": BytesIO(b"mock docx content")}
 
-    with patch("utilities.file_processing.docx.Document") as mock_doc:
+    with patch("lisa.utilities.file_processing.docx.Document") as mock_doc:
         mock_para = MagicMock()
         mock_para.text = "Paragraph content"
         mock_doc.return_value.paragraphs = [mock_para]
@@ -211,7 +211,7 @@ def test_extract_docx_content_success():
 
 def test_extract_text_content_success():
     """Test _extract_text_content with valid text."""
-    from utilities.file_processing import _extract_text_content
+    from lisa.utilities.file_processing import _extract_text_content
 
     mock_s3_object = {"Body": BytesIO(b"test text content")}
 
@@ -226,7 +226,7 @@ def test_generate_chunks_s3_error(sample_ingestion_job):
     job = sample_ingestion_job
     job.s3_path = "s3://test-bucket/test-key.txt"
 
-    with patch("utilities.file_processing.s3") as mock_s3:
+    with patch("lisa.utilities.file_processing.s3") as mock_s3:
         mock_s3.get_object.side_effect = ClientError(
             error_response={"Error": {"Code": "NoSuchKey"}}, operation_name="GetObject"
         )
@@ -237,7 +237,7 @@ def test_generate_chunks_s3_error(sample_ingestion_job):
 
 def test_generate_chunks_unrecognized_strategy(sample_ingestion_job):
     """Test generate_chunks with unrecognized chunk strategy."""
-    from models.domain_objects import ChunkingStrategyType, FixedChunkingStrategy
+    from lisa.domain.domain_objects import ChunkingStrategyType, FixedChunkingStrategy
 
     job = sample_ingestion_job
     job.s3_path = "s3://test-bucket/test-key.txt"
@@ -246,7 +246,7 @@ def test_generate_chunks_unrecognized_strategy(sample_ingestion_job):
     job.chunk_strategy = FixedChunkingStrategy(type=ChunkingStrategyType.FIXED, size=512, overlap=51)
     job.chunk_strategy.type = "INVALID_TYPE"  # Override the type after creation
 
-    with patch("utilities.file_processing.s3") as mock_s3:
+    with patch("lisa.utilities.file_processing.s3") as mock_s3:
         mock_s3.get_object.return_value = {"Body": BytesIO(b"test content")}
 
         with pytest.raises(ValueError, match="Unsupported chunking strategy"):

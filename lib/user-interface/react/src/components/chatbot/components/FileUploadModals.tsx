@@ -28,8 +28,6 @@ import {
 } from '@cloudscape-design/components';
 import { FileTypes, StatusTypes } from '@/components/types';
 import React, { useState, useEffect } from 'react';
-import * as pdfjsLib from 'pdfjs-dist';
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { RagConfig } from './RagOptions';
 import { useAppDispatch } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
@@ -46,8 +44,25 @@ import { ChunkingConfigForm } from '@/shared/form/ChunkingConfigForm';
 import { MetadataForm } from '@/shared/form/MetadataForm';
 import { getDisplayName } from '@/shared/util/branding';
 
-// Configure PDF.js worker to use local file
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+/**
+ * Lazily load pdfjs-dist (~2 MB + its worker) only when the user actually
+ * uploads a PDF. Keeps it out of the initial Chatbot route chunk so that
+ * navigating to the chat screen doesn't pay that cost up front.
+ */
+let pdfjsModulePromise: Promise<typeof import('pdfjs-dist')> | null = null;
+const getPdfjs = async () => {
+    if (!pdfjsModulePromise) {
+        pdfjsModulePromise = (async () => {
+            const [pdfjsLib, workerUrlModule] = await Promise.all([
+                import('pdfjs-dist'),
+                import('pdfjs-dist/build/pdf.worker.min.mjs?url'),
+            ]);
+            pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrlModule.default;
+            return pdfjsLib;
+        })();
+    }
+    return pdfjsModulePromise;
+};
 
 // File extension mappings as fallback if MIME types are not
 // specified. Primarily an issue with any compiled languages and
@@ -182,6 +197,7 @@ export const ContextUploadModal = ({
 
     async function extractTextFromPDF (file: File): Promise<string> {
         const arrayBuffer = await file.arrayBuffer();
+        const pdfjsLib = await getPdfjs();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer, useSystemFonts: true }).promise;
 
         let fullText = '';

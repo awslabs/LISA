@@ -16,7 +16,7 @@
 import { Construct } from 'constructs';
 import { BaseProps, VectorStoreStatus,  } from '../../../schema';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { Code, Function, ILayerVersion } from 'aws-cdk-lib/aws-lambda';
+import { ILayerVersion } from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import { Choice, Condition, IStateMachine } from 'aws-cdk-lib/aws-stepfunctions';
@@ -26,10 +26,9 @@ import { Duration } from 'aws-cdk-lib';
 import { Vpc } from '../../../networking/vpc';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { createCdkId } from '../../../core/utils';
-import { getPythonRuntime } from '../../../api-base/utils';
 import { LAMBDA_MEMORY, LAMBDA_TIMEOUT } from '../../state_machine/constants';
 import { OUTPUT_PATH } from '../../../models/state-machine/constants';
-import { LAMBDA_PATH } from '../../../util';
+import { definePythonLambda } from '../../../util';
 
 type DeleteStoreStateMachineProps = BaseProps & {
     ragVectorStoreTable: ITable,
@@ -169,30 +168,26 @@ export class DeleteStoreStateMachine extends Construct {
             resultPath: '$.ddbResult',
         }).next(checkStackNameExists);
 
-        const lambdaPath = config.lambdaPath || LAMBDA_PATH;
-
-        const cleanupDocsFunc =  new Function(this, 'CleanupRepositoryDocsFunc', {
-            runtime: getPythonRuntime(),
-            handler: 'repository.state_machine.cleanup_repo_docs.lambda_handler',
-            code: Code.fromAsset(lambdaPath),
+        const cleanupDocsFunc = definePythonLambda(this, 'CleanupRepositoryDocsFunc', {
+            handlerDir: 'repository',
+            entry: 'state_machine.cleanup_repo_docs.lambda_handler',
+            config,
             timeout: LAMBDA_TIMEOUT,
             memorySize: LAMBDA_MEMORY,
-            vpc: vpc.vpc,
-            vpcSubnets: vpc.subnetSelection,
-            environment: environment,
+            vpc,
+            environment,
             layers: lambdaLayers,
             role: executionRole,
         });
 
-        const waitForCollectionDeletionsFunc = new Function(this, 'WaitForCollectionDeletionsFunc', {
-            runtime: getPythonRuntime(),
-            handler: 'repository.state_machine.wait_for_collection_deletions.lambda_handler',
-            code: Code.fromAsset(lambdaPath),
+        const waitForCollectionDeletionsFunc = definePythonLambda(this, 'WaitForCollectionDeletionsFunc', {
+            handlerDir: 'repository',
+            entry: 'state_machine.wait_for_collection_deletions.lambda_handler',
+            config,
             timeout: Duration.seconds(30),
             memorySize: LAMBDA_MEMORY,
-            vpc: vpc.vpc,
-            vpcSubnets: vpc.subnetSelection,
-            environment: environment,
+            vpc,
+            environment,
             layers: lambdaLayers,
             role: executionRole,
         });

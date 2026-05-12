@@ -30,9 +30,9 @@ import Toggle from '@cloudscape-design/components/toggle';
 import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { IModel, ModelType } from '@/shared/model/model-management.model';
 import { IConfiguration } from '@/shared/model/configuration.model';
-import { LisaChatSession } from '@/components/types';
-import { ModelFeatures } from '@/components/types';
+import { LisaChatMessage, LisaChatSession, ModelFeatures } from '@/components/types';
 import AwsCredentialsPanel from '@/components/settings/AwsCredentialsPanel';
+import { sessionHistoryHasPendingAssistantToolCalls } from '../utils/sessionPersist.utils';
 
 export type SessionConfigurationProps = {
     title?: string;
@@ -74,8 +74,14 @@ export const SessionConfiguration = ({
 
         setChatConfiguration(updatedConfiguration);
 
-        // Immediately persist the configuration to the session if available
-        if (session && updateSession && session.history.length > 0) {
+        // Immediately persist the configuration to the session if available (avoid PUT while assistant
+        // tool calls are still pending — same half-finished history issue as Chat auto-save)
+        if (
+            session &&
+            updateSession &&
+            session.history.length > 0 &&
+            !sessionHistoryHasPendingAssistantToolCalls(session.history as LisaChatMessage[])
+        ) {
             updateSession({
                 ...session,
                 configuration: {

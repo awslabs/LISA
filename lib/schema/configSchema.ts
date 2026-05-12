@@ -85,6 +85,13 @@ type Ec2Type = z.infer<typeof Ec2TypeSchema>;
  */
 export class Ec2Metadata {
     private static instances: Record<string, Ec2Type> = {
+        'm6id.xlarge': {
+            memory: 16 * 1000,
+            gpuCount: 0,
+            nvmePath: '',
+            maxThroughput: 10,
+            vCpus: 4,
+        },
         'm5.large': {
             memory: 8 * 1000,
             gpuCount: 0,

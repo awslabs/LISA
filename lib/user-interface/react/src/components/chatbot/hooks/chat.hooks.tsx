@@ -25,7 +25,6 @@ import {
 import { RESTAPI_URI, RESTAPI_VERSION, markLastUserMessageAsGuardrailTriggered } from '@/components/utils';
 import { IModel } from '@/shared/model/model-management.model';
 import { GenerateLLMRequestParams, IChatConfiguration } from '@/shared/model/chat.configurations.model';
-import { ChatMemory } from '@/shared/util/chat-memory';
 import { useAppDispatch } from '@/config/store';
 import { sessionApi } from '@/shared/reducers/session.reducer';
 
@@ -125,7 +124,6 @@ export const useChatGeneration = ({
     session,
     setSession,
     metadata,
-    memory,
     openAiTools,
     auth,
     notificationService,
@@ -138,7 +136,6 @@ export const useChatGeneration = ({
     session: LisaChatSession;
     setSession: React.Dispatch<React.SetStateAction<LisaChatSession>>;
     metadata: LisaChatMessageMetadata;
-    memory: ChatMemory;
     openAiTools: any;
     auth: any;
     notificationService: any;
@@ -449,7 +446,6 @@ export const useChatGeneration = ({
                         return prev;
                     });
 
-                    await memory.saveContext({ input: params.input }, { output: videoContent });
                 } catch (error) {
                     notificationService.generateNotification('Video generation failed', 'error', undefined, error.message ? <p>{error.message}</p> : undefined);
                     setSession((prev) => ({
@@ -610,7 +606,6 @@ export const useChatGeneration = ({
                         return prev;
                     });
 
-                    await memory.saveContext({ input: params.input }, { output: imageContent });
                 } catch (error) {
                     notificationService.generateNotification('Image generation failed', 'error', undefined, error.message ? <p>{error.message}</p> : undefined);
                     // Remove the loading message on error
@@ -669,7 +664,7 @@ export const useChatGeneration = ({
                 });
 
                 const [systemMessage, ...initialRemainingMessages] = messages;
-                let remainingMessages = initialRemainingMessages.slice(-(chatConfiguration.sessionConfiguration.chatHistoryBufferSize * 2) - 1);
+                let remainingMessages = initialRemainingMessages;
 
                 if (remainingMessages[0]?.role === MessageTypes.TOOL) {
                     remainingMessages = remainingMessages.slice(1);
@@ -919,7 +914,6 @@ export const useChatGeneration = ({
                             return prev;
                         });
 
-                        await memory.saveContext({ input: params.input }, { output: finalCleanedContent });
                         setIsStreaming(false);
                     } catch (exception) {
                         if (isGuardrailError(exception)) {
@@ -966,7 +960,6 @@ export const useChatGeneration = ({
 
                     const responseTime = calculateResponseTime(startTime);
 
-                    await memory.saveContext({ input: params.input }, { output: cleanedContent });
 
                     // Create the AI message with cleaned content (thinking blocks removed)
                     const aiMessage = new LisaChatMessage({

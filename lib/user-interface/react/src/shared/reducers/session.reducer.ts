@@ -188,6 +188,33 @@ export const sessionApi = createApi({
                 }
             },
         }),
+        postMessages: builder.mutation<any, { sessionId: string; messages: LisaChatMessageFields[]; configuration?: any; name?: string }>({
+            query: ({ sessionId, messages, configuration, name }) => ({
+                url: `/session/${sessionId}/messages`,
+                method: 'POST',
+                data: { messages, configuration, name }
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => ({
+                name: 'Post Messages Error',
+                message: extractErrorMessage(baseQueryReturnValue)
+            }),
+            invalidatesTags: (result, error, { sessionId }) => [
+                'sessions',
+                { type: 'session', id: sessionId }
+            ],
+        }),
+        getMessages: builder.query<{ messages: any[]; nextCursor: string | null; hasMore: boolean }, { sessionId: string; limit?: number; order?: string; cursor?: string }>({
+            query: ({ sessionId, limit = 50, order = 'desc', cursor }) => {
+                const params = new URLSearchParams({ limit: String(limit), order });
+                if (cursor) params.set('cursor', cursor);
+                return {
+                    url: `/session/${sessionId}/messages?${params.toString()}`
+                };
+            },
+            providesTags: (result, error, { sessionId }) => [
+                { type: 'session', id: sessionId }
+            ],
+        }),
     }),
 });
 
@@ -201,4 +228,6 @@ export const {
     useGetSessionHealthQuery,
     useAttachImageToSessionMutation,
     useAssignSessionProjectMutation,
+    usePostMessagesMutation,
+    useLazyGetMessagesQuery,
 } = sessionApi;

@@ -14,10 +14,8 @@
   limitations under the License.
 */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../../auth/useAuth';
-import { ChatMemory } from '@/shared/util/chat-memory';
-import { LisaChatMessageHistory } from '@/components/adapters/lisa-chat-history';
 import { LisaChatMessageMetadata, LisaChatSession } from '@/components/types';
 import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { IModel } from '@/shared/model/model-management.model';
@@ -30,36 +28,24 @@ export const useMemory = (
     fileContext: string,
     notificationService: any
 ) => {
+    void session;
+    void userPrompt;
     const auth = useAuth();
     const [metadata, setMetadata] = useState<LisaChatMessageMetadata>({});
-
-    // Memoize memory to update when session history or buffer size changes
-    const memory = useMemo(
-        () =>
-            new ChatMemory({
-                chatHistory: new LisaChatMessageHistory(session),
-                returnMessages: false,
-                memoryKey: 'history',
-                k: chatConfiguration.sessionConfiguration.chatHistoryBufferSize,
-            }),
-        [session, chatConfiguration.sessionConfiguration.chatHistoryBufferSize]
-    );
 
     // Update metadata when model or configuration changes
     useEffect(() => {
         if (selectedModel && auth.isAuthenticated) {
-            memory.loadMemoryVariables().then(async () => {
-                const newMetadata: LisaChatMessageMetadata = {
-                    modelName: selectedModel.modelId,
-                    modelKwargs: {
-                        max_tokens: chatConfiguration.sessionConfiguration.max_tokens,
-                        modelKwargs: chatConfiguration.sessionConfiguration.modelArgs,
-                    },
-                };
-                setMetadata(newMetadata);
-            });
+            const newMetadata: LisaChatMessageMetadata = {
+                modelName: selectedModel.modelId,
+                modelKwargs: {
+                    max_tokens: chatConfiguration.sessionConfiguration.max_tokens,
+                    modelKwargs: chatConfiguration.sessionConfiguration.modelArgs,
+                },
+            };
+            setMetadata(newMetadata);
         }
-    }, [selectedModel, chatConfiguration.sessionConfiguration.max_tokens, chatConfiguration.sessionConfiguration.modelArgs, auth.isAuthenticated, memory]);
+    }, [selectedModel, chatConfiguration.sessionConfiguration.max_tokens, chatConfiguration.sessionConfiguration.modelArgs, auth.isAuthenticated]);
 
     // Handle image input validation
     useEffect(() => {
@@ -74,7 +60,6 @@ export const useMemory = (
     }, [selectedModel, fileContext, notificationService]);
 
     return {
-        memory,
         metadata,
     };
 };

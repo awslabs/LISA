@@ -92,6 +92,22 @@ export class SessionApi extends Construct {
             removalPolicy: config.removalPolicy,
             deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
         });
+
+        // Create DynamoDB table for individual session messages
+        const messagesTable = new dynamodb.Table(this, 'SessionMessagesTable', {
+            partitionKey: {
+                name: 'sessionId',
+                type: dynamodb.AttributeType.STRING,
+            },
+            sortKey: {
+                name: 'messageIndex',
+                type: dynamodb.AttributeType.NUMBER,
+            },
+            billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+            encryption: dynamodb.TableEncryption.AWS_MANAGED,
+            removalPolicy: config.removalPolicy,
+            deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
+        });
         const byUserIdIndex = 'byUserId';
         this.sessionTable.addGlobalSecondaryIndex({
             indexName: byUserIdIndex,
@@ -137,6 +153,7 @@ export class SessionApi extends Construct {
 
         const env = {
             SESSIONS_TABLE_NAME: this.sessionTable.tableName,
+            MESSAGES_TABLE_NAME: messagesTable.tableName,
             SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
             GENERATED_IMAGES_S3_BUCKET_NAME: imagesBucketName,
             MODEL_TABLE_NAME: modelTableName,
@@ -214,6 +231,21 @@ export class SessionApi extends Construct {
             })
         );
 
+        // Add full read/write permissions on the messages table for all session Lambdas
+        lambdaRole.addToPrincipalPolicy(
+            new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: [
+                    'dynamodb:Query',
+                    'dynamodb:PutItem',
+                    'dynamodb:BatchWriteItem',
+                    'dynamodb:DeleteItem',
+                    'dynamodb:GetItem',
+                ],
+                resources: [messagesTable.tableArn]
+            })
+        );
+
         // Create API Lambda functions
         const apis: PythonLambdaFunction[] = [
             {
@@ -269,6 +301,22 @@ export class SessionApi extends Construct {
                 description: 'Attaches image to session',
                 path: 'session/{sessionId}/attachImage',
                 method: 'PUT',
+                environment: env,
+            },
+            {
+                name: 'post_messages',
+                resource: 'session',
+                description: 'Appends messages to a session',
+                path: 'session/{sessionId}/messages',
+                method: 'POST',
+                environment: env,
+            },
+            {
+                name: 'get_messages',
+                resource: 'session',
+                description: 'Gets paginated messages for a session',
+                path: 'session/{sessionId}/messages',
+                method: 'GET',
                 environment: env,
             },
         ];

@@ -77,6 +77,53 @@ def extract_video_s3_keys(session: dict) -> list[str]:
     return video_keys
 
 
+def delete_session_messages(
+    messages_table: Any,
+    dynamodb_resource: Any,
+    session_id: str,
+) -> None:
+    """Delete all messages for a session from the messages table."""
+    if not messages_table:
+        return
+
+    try:
+        # Query all message items for this session
+        exclusive_start_key = None
+        while True:
+            query_params: dict[str, Any] = {
+                "KeyConditionExpression": "sessionId = :sid",
+                "ExpressionAttributeValues": {":sid": session_id},
+                "ProjectionExpression": "sessionId, messageIndex",
+            }
+            if exclusive_start_key:
+                query_params["ExclusiveStartKey"] = exclusive_start_key
+
+            response = messages_table.query(**query_params)
+            items = response.get("Items", [])
+
+            # Delete in batches of 25
+            for batch_start in range(0, len(items), 25):
+                batch_chunk = items[batch_start : batch_start + 25]
+                delete_requests = [
+                    {"DeleteRequest": {"Key": {"sessionId": item["sessionId"], "messageIndex": item["messageIndex"]}}}
+                    for item in batch_chunk
+                ]
+                try:
+                    dynamodb_resource.meta.client.batch_write_item(
+                        RequestItems={messages_table.name: delete_requests}
+                    )
+                except ClientError as e:
+                    logger.warning(f"Failed to delete message batch for session {session_id}: {e}")
+
+            exclusive_start_key = response.get("LastEvaluatedKey")
+            if not exclusive_start_key:
+                break
+
+        logger.info(f"Deleted all messages from messages table for session {session_id}")
+    except ClientError as e:
+        logger.warning(f"Error deleting messages for session {session_id}: {e}")
+
+
 def delete_user_session(
     table: Any,
     s3_resource: Any,
@@ -84,8 +131,10 @@ def delete_user_session(
     s3_bucket_name: str,
     session_id: str,
     user_id: str,
+    messages_table: Any = None,
+    dynamodb_resource: Any = None,
 ) -> DeleteResponse:
-    """Delete a session from DynamoDB and clean up associated S3 objects."""
+    """Delete a session from DynamoDB and clean up associated S3 objects and messages."""
     deleted = False
     try:
         response = table.get_item(Key={"sessionId": session_id, "userId": user_id})
@@ -99,6 +148,10 @@ def delete_user_session(
                 logger.warning(f"Failed to decrypt session {session_id} for video cleanup: {e}")
 
         video_keys = extract_video_s3_keys(session)
+
+        # Delete all messages from the messages table (if using storageVersion 2.0)
+        if messages_table and dynamodb_resource:
+            delete_session_messages(messages_table, dynamodb_resource, session_id)
 
         table.delete_item(Key={"sessionId": session_id, "userId": user_id})
 

@@ -40,7 +40,6 @@ export type ISessionConfiguration = {
     showMetadata: boolean,
     showReasoningContent: boolean,
     max_tokens: number,
-    chatHistoryBufferSize: number,
     ragTopK: number,
     modelArgs: {
         n: number;
@@ -81,7 +80,6 @@ export const baseConfig: IChatConfiguration = {
         showReasoningContent: true,
         showMetadata: false,
         max_tokens: null,
-        chatHistoryBufferSize: 7,
         ragTopK: 3,
         modelArgs: {
             n: null,

@@ -69,7 +69,6 @@ class SessionConfiguration(BaseModel):
     showMetadata: bool = False
     showReasoningContent: bool = True
     max_tokens: int | None = None
-    chatHistoryBufferSize: int = 7
     ragTopK: int = 3
     modelArgs: ModelArgs = Field(default_factory=ModelArgs)
     imageGenerationArgs: ImageGenerationArgs = Field(default_factory=ImageGenerationArgs)
@@ -224,6 +223,8 @@ class Session(BaseModel):
     createTime: str | None = None
     lastUpdated: str | None = None
     projectId: str | None = None
+    nextCursor: str | None = None
+    hasMoreMessages: bool = False
 
     @classmethod
     def from_dynamodb_item(cls, item: dict[str, Any]) -> "Session":
@@ -303,3 +304,49 @@ class AttachImageRequest(BaseModel):
     """Request model for attaching an image to a session."""
 
     message: dict[str, Any] = Field(description="Message object containing image data")
+
+
+class PostMessagesRequest(BaseModel):
+    """Request model for appending messages to a session."""
+
+    messages: list[dict[str, Any]] = Field(description="List of message objects to append")
+    configuration: SessionConfigurationModel | None = Field(
+        default=None,
+        description="Optional updated session configuration",
+    )
+    name: str | None = Field(default=None, description="Optional session name")
+
+    @field_validator("configuration", mode="before")
+    @classmethod
+    def _parse_configuration(cls, v: Any) -> SessionConfigurationModel | None:
+        if v is None:
+            return None
+        if isinstance(v, SessionConfigurationModel):
+            return v
+        if isinstance(v, dict):
+            return SessionConfigurationModel.from_dict(v)
+        return None
+
+
+class MessageItem(BaseModel):
+    """A single message item as stored in the SessionMessages table."""
+
+    sessionId: str
+    messageIndex: int
+    type: str  # "human" | "ai" | "system" | "tool"
+    content: Any = None  # string or list of content blocks
+    metadata: dict[str, Any] | None = None
+    toolCalls: list[Any] | None = None
+    usage: dict[str, Any] | None = None
+    guardrailTriggered: bool | None = None
+    reasoningContent: str | None = None
+    reasoningSignature: str | None = None
+    createdAt: str | None = None
+
+
+class PaginatedMessagesResponse(BaseModel):
+    """Response model for paginated message retrieval."""
+
+    messages: list[dict[str, Any]] = Field(default_factory=list)
+    nextCursor: str | None = None
+    hasMore: bool = False

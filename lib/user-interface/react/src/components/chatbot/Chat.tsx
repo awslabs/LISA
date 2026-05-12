@@ -44,8 +44,10 @@ import { ModelStatus, ModelType } from '@/shared/model/model-management.model';
 import {
     useAttachImageToSessionMutation,
     useGetSessionHealthQuery,
+    useLazyGetMessagesQuery,
     useLazyGetSessionByIdQuery,
     useListSessionsQuery,
+    usePostMessagesMutation,
     useUpdateSessionMutation,
 } from '@/shared/reducers/session.reducer';
 import { useAppDispatch, useAppSelector } from '@/config/store';
@@ -116,7 +118,18 @@ export default function Chat ({ sessionId, initialStack }) {
     const { data: sessionHealth } = useGetSessionHealthQuery(undefined, { refetchOnMountOrArgChange: true });
     const [getSessionById] = useLazyGetSessionByIdQuery();
     const [updateSession] = useUpdateSessionMutation();
+    const [postMessages] = usePostMessagesMutation();
     const [attachImageToSession] = useAttachImageToSessionMutation();
+
+    // Track how many messages have been persisted to the messages table
+    const lastSavedIndexRef = useRef(-1);
+
+    // Pagination: track cursor for loading older messages
+    const [olderMessagesCursor, setOlderMessagesCursor] = useState<string | null>(null);
+    const [hasOlderMessages, setHasOlderMessages] = useState(false);
+    const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+    const topSentinelRef = useRef<HTMLDivElement>(null);
+    const [getMessages] = useLazyGetMessagesQuery();
     const { data: allModelsRaw, isFetching: isFetchingModels } = useGetAllModelsQuery(undefined, {
         refetchOnMountOrArgChange: 5,
     });
@@ -550,7 +563,7 @@ export default function Chat ({ sessionId, initialStack }) {
         setModelFilterValue(selectedModel?.modelId ?? '');
     }, [selectedModel]);
 
-    const { memory, metadata } = useMemory(
+    const { metadata } = useMemory(
         session,
         chatConfiguration,
         selectedModel,
@@ -709,7 +722,6 @@ export default function Chat ({ sessionId, initialStack }) {
         session,
         setSession,
         metadata,
-        memory,
         openAiTools: (config?.configuration?.enabledComponents?.mcpConnections
             || config?.configuration?.enabledComponents?.bedrockAgents)
             ? openAiTools
@@ -860,7 +872,7 @@ export default function Chat ({ sessionId, initialStack }) {
                     if (session.history.at(-1)?.type === MessageTypes.AI && !auth.isLoading) {
                         setDirtySession(false);
                         const message = session.history.at(-1);
-                        if (session.history.at(-1).metadata.imageGeneration && Array.isArray(session.history.at(-1).content)) {
+                        if (session.history.at(-1).metadata?.imageGeneration && Array.isArray(session.history.at(-1).content)) {
                             // Session was updated and response contained images that need to be attached to the session
                             await Promise.all(
                                 (Array.isArray(message.content) ? message.content : []).map(async (content: { type?: string; image_url?: { url?: string; s3_key?: string } }) => {
@@ -882,19 +894,51 @@ export default function Chat ({ sessionId, initialStack }) {
                                 })
                             );
                         }
-                        const updatedHistory = [...session.history.slice(0, -1), message];
 
+                        // Determine which messages are new (unsaved) since last persist
+                        const newMessages = session.history.slice(lastSavedIndexRef.current + 1);
                         const assistantId = chatAssistantId || effectiveStack?.stackId;
-                        updateSession({
-                            ...session,
-                            history: updatedHistory,
-                            configuration: {
-                                ...chatConfiguration,
-                                selectedModel: selectedModel,
-                                ragConfig: ragConfig,
-                                ...(assistantId ? { chatAssistantId: assistantId } : {}),
-                            },
-                        });
+
+                        if (newMessages.length > 0) {
+                            // Generate a session name if one isn't set yet (for new sessions)
+                            let sessionName = session.name;
+                            if (!sessionName) {
+                                // Use the first human message content as the session name (truncated)
+                                const firstHuman = newMessages.find((m) => m.type === 'human' || m.type === MessageTypes.HUMAN);
+                                if (firstHuman) {
+                                    const text = typeof firstHuman.content === 'string'
+                                        ? firstHuman.content
+                                        : Array.isArray(firstHuman.content)
+                                            ? (firstHuman.content.find((c) => c?.text)?.text || '')
+                                            : '';
+                                    sessionName = text.slice(0, 50) || 'New Chat';
+                                }
+                            }
+
+                            // Use the new postMessages endpoint for incremental writes
+                            postMessages({
+                                sessionId: session.sessionId,
+                                messages: newMessages.map((msg) => ({
+                                    type: msg.type,
+                                    content: msg.content,
+                                    metadata: msg.metadata,
+                                    toolCalls: msg.toolCalls,
+                                    usage: msg.usage,
+                                    guardrailTriggered: msg.guardrailTriggered,
+                                    reasoningContent: msg.reasoningContent,
+                                    reasoningSignature: msg.reasoningSignature,
+                                })),
+                                configuration: {
+                                    ...chatConfiguration,
+                                    selectedModel: selectedModel,
+                                    ragConfig: ragConfig,
+                                    ...(assistantId ? { chatAssistantId: assistantId } : {}),
+                                },
+                                name: sessionName,
+                            });
+                            // Update the saved index to the end of the current history
+                            lastSavedIndexRef.current = session.history.length - 1;
+                        }
                     }
                 }
 
@@ -960,9 +1004,26 @@ export default function Chat ({ sessionId, initialStack }) {
         }
     }, [sessionHealth]);
 
-    // When session finishes loading, enable auto-scroll and scroll to bottom
+    // When session ID changes (navigation to different session), reset lastSavedIndex
+    useEffect(() => {
+        lastSavedIndexRef.current = -1;
+    }, [sessionId]);
+
+    // When session finishes loading, capture pagination cursor and enable auto-scroll
     useEffect(() => {
         if (!loadingSession && session.history.length > 0 && sessionId) {
+            // Only reset lastSavedIndex if it hasn't been updated yet for this session load
+            if (lastSavedIndexRef.current === -1) {
+                lastSavedIndexRef.current = session.history.length - 1;
+            }
+
+            // Capture pagination info from the session response (v2.0 sessions)
+            const sess = session as any;
+            if (sess.nextCursor !== undefined) {
+                setOlderMessagesCursor(sess.nextCursor);
+                setHasOlderMessages(sess.hasMoreMessages || false);
+            }
+
             // Re-enable auto-scroll when a session is loaded
             setShouldAutoScroll(true);
 
@@ -986,7 +1047,7 @@ export default function Chat ({ sessionId, initialStack }) {
                 timeoutIds.forEach((id) => clearTimeout(id));
             };
         }
-    }, [loadingSession, sessionId, session.history.length]);
+    }, [loadingSession, sessionId]);
 
     useEffect(() => {
         if (shouldAutoScroll && scrollContainerRef.current) {
@@ -1026,6 +1087,58 @@ export default function Chat ({ sessionId, initialStack }) {
         scrollContainer.addEventListener('scroll', handleScroll);
         return () => scrollContainer.removeEventListener('scroll', handleScroll);
     }, [shouldAutoScroll]);
+
+    // IntersectionObserver: load older messages when user scrolls to top
+    useEffect(() => {
+        if (!topSentinelRef.current || !hasOlderMessages || !olderMessagesCursor || !scrollContainerRef.current) return;
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting && !isLoadingOlder && olderMessagesCursor) {
+                    // User scrolled to the top — fetch older messages
+                    setIsLoadingOlder(true);
+                    const scrollContainer = scrollContainerRef.current;
+                    const prevScrollHeight = scrollContainer?.scrollHeight || 0;
+
+                    getMessages({ sessionId: session.sessionId, limit: 50, order: 'desc', cursor: olderMessagesCursor })
+                        .then((result) => {
+                            if (result.data) {
+                                // Update cursor FIRST to prevent re-triggering with same cursor
+                                setOlderMessagesCursor(result.data.nextCursor || null);
+                                setHasOlderMessages(result.data.hasMore === true && !!result.data.nextCursor);
+
+                                if (result.data.messages.length > 0) {
+                                    const olderMessages = [...result.data.messages].reverse(); // Reverse to chronological
+                                    // Prepend older messages to the session history
+                                    setSession((prev) => ({
+                                        ...prev,
+                                        history: [...olderMessages, ...prev.history],
+                                    }));
+                                    // Update lastSavedIndexRef since prepended messages are already saved
+                                    lastSavedIndexRef.current += olderMessages.length;
+
+                                    // Preserve scroll position after prepending
+                                    requestAnimationFrame(() => {
+                                        if (scrollContainer) {
+                                            const newScrollHeight = scrollContainer.scrollHeight;
+                                            scrollContainer.scrollTop = newScrollHeight - prevScrollHeight;
+                                        }
+                                    });
+                                }
+                            }
+                        })
+                        .finally(() => setIsLoadingOlder(false));
+                }
+            },
+            {
+                root: scrollContainerRef.current,
+                threshold: 0.1,
+            }
+        );
+
+        observer.observe(topSentinelRef.current);
+        return () => observer.disconnect();
+    }, [hasOlderMessages, isLoadingOlder, olderMessagesCursor, session.sessionId, getMessages, setSession]);
 
     // Reset tool call counter when session changes
     useEffect(() => {
@@ -1397,6 +1510,17 @@ export default function Chat ({ sessionId, initialStack }) {
                 <div ref={scrollContainerRef} className='overflow-y-auto bottom-8'>
                     <SpaceBetween direction='vertical' size='l'>
 
+                        {/* Sentinel for infinite scroll upward — triggers loading older messages */}
+                        {hasOlderMessages && !loadingSession && (
+                            <div ref={topSentinelRef} style={{ height: '1px' }}>
+                                {isLoadingOlder && (
+                                    <Box textAlign='center' padding='xs'>
+                                        <Spinner size='normal' /> Loading older messages...
+                                    </Box>
+                                )}
+                            </div>
+                        )}
+
                         {loadingSession && (
                             <Box textAlign='center' padding='l'>
                                 <SpaceBetween size='s' direction='vertical'>
@@ -1550,19 +1674,9 @@ export default function Chat ({ sessionId, initialStack }) {
                                             )?.contextWindow;
 
                                             if (!contextWindow || session.history.length === 0) return null;
-                                            // Sum live in-memory tokens for immediate UI updates after
-                                            // each response. Fall back to the DDB value on reload.
-                                            // Coerce to Number() because DDB Decimal values deserialize
-                                            // as strings, which cause string concatenation bugs.
-                                            const liveTokens = session.history.reduce((sum, msg) => {
-                                                const u = (msg as any).usage;
-                                                return sum + (Number(u?.completionTokens) || 0) + (Number(u?.promptTokens) || 0);
-                                            }, 0);
-
-                                            const usedTokens = liveTokens > 0
-                                                ? liveTokens
-                                                : (currentSessionSummary?.totalTokensUsed ?? 0);
-                                            if (!usedTokens) return null;
+                                            // Use the server-side totalTokensUsed from the session summary
+                                            // (avoids being impacted by pagination prepending old messages)
+                                            const usedTokens = Number(currentSessionSummary?.totalTokensUsed) || 0;
 
                                             return (
                                                 `${formatContextAndTokenCount(usedTokens)} - Tokens Used`

@@ -22,7 +22,6 @@ import { useMemory } from './useMemory.hooks';
 import { LisaChatSession } from '@/components/types';
 import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { IModel } from '@/shared/model/model-management.model';
-import { ChatMemory } from '@/shared/util/chat-memory';
 
 vi.mock('../../../auth/useAuth');
 
@@ -36,7 +35,6 @@ const createMockSession = (overrides?: Partial<LisaChatSession>): LisaChatSessio
 
 const createMockChatConfiguration = (overrides?: Partial<IChatConfiguration['sessionConfiguration']>): IChatConfiguration => ({
     sessionConfiguration: {
-        chatHistoryBufferSize: 10,
         max_tokens: 1024,
         modelArgs: {},
         ...overrides,
@@ -61,77 +59,6 @@ describe('useMemory', () => {
             isAuthenticated: true,
             user: { profile: { sub: 'test-user' } },
         });
-    });
-
-    it('creates memory with correct configuration from session and chat config', () => {
-        const session = createMockSession();
-        const chatConfig = createMockChatConfiguration({ chatHistoryBufferSize: 15 });
-
-        const { result } = renderHook(() =>
-            useMemory(session, chatConfig, undefined, '', '', mockNotificationService)
-        );
-
-        expect(result.current.memory).toBeInstanceOf(ChatMemory);
-        expect(result.current.memory.k).toBe(15);
-        expect(result.current.memory.memoryKey).toBe('history');
-        expect(result.current.memory.returnMessages).toBe(false);
-    });
-
-    it('updates memory when session changes', () => {
-        const session1 = createMockSession({ sessionId: 'session-1' });
-        const session2 = createMockSession({ sessionId: 'session-2' });
-        const chatConfig = createMockChatConfiguration();
-
-        const { result, rerender } = renderHook(
-            ({ session }) => useMemory(session, chatConfig, undefined, '', '', mockNotificationService),
-            { initialProps: { session: session1 } }
-        );
-
-        const firstMemory = result.current.memory;
-
-        rerender({ session: session2 });
-
-        expect(result.current.memory).not.toBe(firstMemory);
-    });
-
-    it('updates memory when buffer size changes', () => {
-        const session = createMockSession();
-        const chatConfig1 = createMockChatConfiguration({ chatHistoryBufferSize: 10 });
-        const chatConfig2 = createMockChatConfiguration({ chatHistoryBufferSize: 20 });
-
-        const { result, rerender } = renderHook(
-            ({ chatConfig }) => useMemory(session, chatConfig, undefined, '', '', mockNotificationService),
-            { initialProps: { chatConfig: chatConfig1 } }
-        );
-
-        expect(result.current.memory.k).toBe(10);
-
-        rerender({ chatConfig: chatConfig2 });
-
-        expect(result.current.memory.k).toBe(20);
-    });
-
-    it('does not recreate memory when unrelated props change', async () => {
-        const session = createMockSession();
-        const chatConfig = createMockChatConfiguration();
-        const model = createMockModel();
-
-        const { result, rerender } = renderHook(
-            ({ userPrompt }) => useMemory(session, chatConfig, model, userPrompt, '', mockNotificationService),
-            { initialProps: { userPrompt: 'initial prompt' } }
-        );
-
-        await act(async () => {
-            await new Promise((resolve) => setTimeout(resolve, 0));
-        });
-
-        const firstMemory = result.current.memory;
-
-        await act(async () => {
-            rerender({ userPrompt: 'updated prompt' });
-        });
-
-        expect(result.current.memory).toBe(firstMemory);
     });
 
     it('updates metadata when model and auth are available', async () => {

@@ -142,20 +142,6 @@ export const SessionConfiguration = ({
                                 Show Message Metadata
                             </Toggle>
                         ] : []),
-                        ...(systemConfig && systemConfig.configuration.enabledComponents.editChatHistoryBuffer && !isImageModel && !isVideoModel && !modelOnly ? [
-                            <FormField key='chatHistoryBuffer' label='Chat History Buffer Size'>
-                                <Select
-                                    disabled={isRunning}
-                                    filteringType='auto'
-                                    selectedOption={{
-                                        value: chatConfiguration.sessionConfiguration.chatHistoryBufferSize.toString(),
-                                        label: chatConfiguration.sessionConfiguration.chatHistoryBufferSize.toString(),
-                                    }}
-                                    onChange={({ detail }) => updateSessionConfiguration('chatHistoryBufferSize', parseInt(detail.selectedOption.value))}
-                                    options={oneThroughTenOptions}
-                                />
-                            </FormField>
-                        ] : []),
                         ...(systemConfig && systemConfig.configuration.enabledComponents.editNumOfRagDocument && !isImageModel && !isVideoModel && !modelOnly ? [
                             <FormField key='ragTopK' label='Matching RAG Excerpts'>
                                 <Select

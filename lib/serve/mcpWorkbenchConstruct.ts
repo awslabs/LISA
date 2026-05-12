@@ -93,7 +93,7 @@ export class McpWorkbenchConstruct extends Construct {
 
     private buildWorkbenchEcsConfig (config: Config): ECSConfig {
         const o = config.mcpWorkbenchEcsConfig ?? {};
-        const instanceType = o.instanceType ?? 'm5.xlarge';
+        const instanceType = o.instanceType ?? 'm6id.xlarge';
         // Workbench uses its own ALB; never reuse restApiConfig.domainName (that name resolves to the Serve ALB).
         // mcpWorkbenchRestApiConfig mirrors restApiConfig for YAML parity; mcpWorkbenchEcsConfig.domainName remains supported.
         const workbenchDomainName =

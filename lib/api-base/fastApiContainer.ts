@@ -30,12 +30,12 @@ import * as path from 'path';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 
 // Memory reservations (soft limits) - what ECS uses for task placement decisions
-// Sized so that one REST + one Workbench task fully reserves the instance (~14 GiB usable on m5.xlarge)
+// Sized so that one REST + one Workbench task fully reserves the instance (~14 GiB usable on m6id.xlarge)
 const SERVE_CONTAINER_MEMORY_RESERVATION = 1024 * 4; // 4 GiB soft reservation for REST/LiteLLM
 export const WORKBENCH_CONTAINER_MEMORY_RESERVATION = 1024 * 8; // 8 GiB soft reservation for MCP Workbench
 
 // Memory hard limits - maximum memory each container can use before being OOM killed
-// Sized for 1 task pair per m5.xlarge (16 GiB), leaving ~2 GiB for OS/ECS agent
+// Sized for 1 task pair per m6id.xlarge (16 GiB), leaving ~2 GiB for OS/ECS agent
 const SERVE_CONTAINER_MEMORY_LIMIT = 1024 * 4; // 4 GiB hard limit for REST/LiteLLM proxy
 export const WORKBENCH_CONTAINER_MEMORY_LIMIT = 1024 * 8; // 8 GiB hard limit for MCP Workbench (user code)
 
@@ -75,7 +75,7 @@ export class FastApiContainer extends Construct {
 
         const { config, securityGroup, tokenTable, vpc, managementKeyName} = props;
 
-        const instanceType = 'm5.xlarge';
+        const instanceType = 'm6id.xlarge';
 
         const buildArgs: Record<string, string> | undefined = {
             BASE_IMAGE: config.baseImage,

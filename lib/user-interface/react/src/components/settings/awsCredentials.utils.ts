@@ -22,10 +22,10 @@ export type ParsedAwsCredentials = {
 
 const ENV_VAR =
     (name: string) =>
-    new RegExp(
-        `(?:^|\\n)\\s*(?:export\\s+)?${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s\\n]+))`,
-        'm',
-    );
+        new RegExp(
+            `(?:^|\\n)\\s*(?:export\\s+)?${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s\\n]+))`,
+            'm',
+        );
 
 const ACCESS_KEY_ID_PATTERN = ENV_VAR('AWS_ACCESS_KEY_ID');
 const SECRET_ACCESS_KEY_PATTERN = ENV_VAR('AWS_SECRET_ACCESS_KEY');

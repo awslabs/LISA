@@ -29,6 +29,7 @@ import {
 } from '@cloudscape-design/components';
 import { lisaAxios } from '@/shared/reducers/reducer.utils';
 import { MCP_WORKBENCH_URI } from '@/components/utils';
+import { parseAwsCredentialExport } from './awsCredentials.utils';
 
 type AwsStatusResponse = {
     connected: boolean;
@@ -163,6 +164,21 @@ const AwsCredentialsPanel: React.FC<AwsCredentialsPanelProps> = ({ onStatusChang
     const isConnected = status?.connected;
     const isExpired = isConnected && expiresInMinutes !== null && expiresInMinutes <= 0;
 
+    const handleCredentialPaste = useCallback((event: React.ClipboardEvent) => {
+        const parsed = parseAwsCredentialExport(event.clipboardData.getData('text'));
+        if (!parsed) return;
+
+        setAccessKeyId(parsed.accessKeyId);
+        setSecretAccessKey(parsed.secretAccessKey);
+        setSessionToken(parsed.sessionToken ?? '');
+        event.preventDefault();
+    }, []);
+
+    const credentialInputAttributes = useMemo(
+        () => ({ onPaste: handleCredentialPaste }),
+        [handleCredentialPaste],
+    );
+
     return (
         <Form
             header={<Header variant='h2'>{title}</Header>}
@@ -252,12 +268,14 @@ const AwsCredentialsPanel: React.FC<AwsCredentialsPanelProps> = ({ onStatusChang
                     <SpaceBetween size='s' direction='vertical'>
                         <FormField
                             label='Access key ID'
+                            description='Paste export-style credential blocks (e.g. export AWS_ACCESS_KEY_ID=...) to fill all fields.'
                         >
                             <Input
                                 value={accessKeyId}
                                 onChange={({ detail }) => setAccessKeyId(detail.value)}
                                 type='text'
                                 autoComplete='off'
+                                nativeInputAttributes={credentialInputAttributes}
                             />
                         </FormField>
                         <FormField
@@ -268,6 +286,7 @@ const AwsCredentialsPanel: React.FC<AwsCredentialsPanelProps> = ({ onStatusChang
                                 onChange={({ detail }) => setSecretAccessKey(detail.value)}
                                 type='password'
                                 autoComplete='off'
+                                nativeInputAttributes={credentialInputAttributes}
                             />
                         </FormField>
                         <FormField
@@ -278,6 +297,7 @@ const AwsCredentialsPanel: React.FC<AwsCredentialsPanelProps> = ({ onStatusChang
                                 onChange={({ detail }) => setSessionToken(detail.value)}
                                 type='password'
                                 autoComplete='off'
+                                nativeInputAttributes={credentialInputAttributes}
                             />
                         </FormField>
                         <FormField

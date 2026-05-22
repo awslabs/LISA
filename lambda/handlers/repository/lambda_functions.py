@@ -115,7 +115,8 @@ def list_all(event: dict, context: dict) -> list[dict[str, Any]]:
     result = []
     for repo in registered_repositories:
         if is_admin or user_has_group_access(groups, repo.get("allowedGroups", [])):
-            repo["supportsHybridSearch"] = RepositoryType.is_type(repo, RepositoryType.BEDROCK_KB)
+            service = RepositoryServiceFactory.create_service(repo)
+            repo["supportsHybridSearch"] = service.supports_hybrid_search()
             result.append(repo)
     return result
 
@@ -262,7 +263,7 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
     use_hybrid = search_mode == "hybrid" and service.supports_hybrid_search()
 
     if use_hybrid:
-        docs = service.hybrid_retrieve(
+        docs, retrieval_metadata = service.hybrid_retrieve(
             query=query,
             collection_id=search_collection_id,
             top_k=top_k,
@@ -270,6 +271,8 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
             include_score=include_score,
             bedrock_agent_client=bedrock_client,
         )
+        actual_mode = retrieval_metadata.get("actual_mode_used", "hybrid")
+        hybrid_supported = retrieval_metadata.get("hybrid_supported", True)
     else:
         docs = service.retrieve_documents(
             query=query,
@@ -279,12 +282,7 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
             include_score=include_score,
             bedrock_agent_client=bedrock_client,
         )
-
-    if use_hybrid and docs:
-        actual_mode = docs[0].get("metadata", {}).get("actual_mode_used", "hybrid")
-        hybrid_supported = docs[0].get("metadata", {}).get("hybrid_supported", True)
-    else:
-        actual_mode = "hybrid" if use_hybrid else "vector"
+        actual_mode = "vector"
         hybrid_supported = service.supports_hybrid_search()
 
     response_metadata = {

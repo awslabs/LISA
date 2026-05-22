@@ -341,7 +341,7 @@ class TestBedrockKBRepositoryService:
         assert vector_config["filter"]["equals"]["value"] == "ds-456"
 
     def test_hybrid_retrieve_returns_documents_with_hybrid_metadata(self, bedrock_kb_service):
-        """hybrid_retrieve includes retrieval_method, actual_mode_used, hybrid_supported in metadata."""
+        """hybrid_retrieve returns (docs, retrieval_metadata) tuple with hybrid mode."""
         mock_client = MagicMock()
         mock_client.retrieve.return_value = {
             "retrievalResults": [
@@ -354,7 +354,7 @@ class TestBedrockKBRepositoryService:
             ]
         }
 
-        results = bedrock_kb_service.hybrid_retrieve(
+        docs, retrieval_metadata = bedrock_kb_service.hybrid_retrieve(
             query="test",
             collection_id="ds-456",
             top_k=5,
@@ -363,14 +363,12 @@ class TestBedrockKBRepositoryService:
             bedrock_agent_client=mock_client,
         )
 
-        assert len(results) == 1
-        assert results[0]["page_content"] == "Hybrid result"
-        meta = results[0]["metadata"]
-        assert meta["retrieval_method"] == "hybrid"
-        assert meta["actual_mode_used"] == "hybrid"
-        assert meta["hybrid_supported"] is True
-        assert meta["similarity_score"] == 0.92
-        assert meta["source"] == "s3://bucket/doc.pdf"
+        assert len(docs) == 1
+        assert docs[0]["page_content"] == "Hybrid result"
+        assert docs[0]["metadata"]["similarity_score"] == 0.92
+        assert docs[0]["metadata"]["source"] == "s3://bucket/doc.pdf"
+        assert retrieval_metadata["actual_mode_used"] == "hybrid"
+        assert retrieval_metadata["hybrid_supported"] is True
 
     def test_hybrid_retrieve_missing_bedrock_client(self, bedrock_kb_service):
         """hybrid_retrieve raises ValueError when bedrock_agent_client is None."""
@@ -400,7 +398,7 @@ class TestBedrockKBRepositoryService:
             },
         ]
 
-        results = bedrock_kb_service.hybrid_retrieve(
+        docs, retrieval_metadata = bedrock_kb_service.hybrid_retrieve(
             query="test",
             collection_id="ds-456",
             top_k=5,
@@ -409,39 +407,28 @@ class TestBedrockKBRepositoryService:
             bedrock_agent_client=mock_client,
         )
 
-        assert len(results) == 1
-        assert results[0]["page_content"] == "fallback result"
-        assert results[0]["metadata"]["actual_mode_used"] == "vector"
-        assert results[0]["metadata"]["hybrid_supported"] is False
-        assert results[0]["metadata"]["retrieval_method"] == "hybrid"
-        assert results[0]["metadata"]["similarity_score"] == 0.8
+        assert len(docs) == 1
+        assert docs[0]["page_content"] == "fallback result"
+        assert docs[0]["metadata"]["similarity_score"] == 0.8
+        assert retrieval_metadata["actual_mode_used"] == "vector"
+        assert retrieval_metadata["hybrid_supported"] is False
         assert mock_client.retrieve.call_count == 2
 
-    def test_hybrid_retrieve_fallback_metadata_on_all_docs(self, bedrock_kb_service):
-        """All documents in fallback response include correct metadata."""
+    def test_hybrid_retrieve_fallback_metadata_when_docs_empty(self, bedrock_kb_service):
+        """Fallback metadata is reported even when the fallback response has zero docs.
+
+        Regression for the empty-docs bug: previously the per-doc metadata stamping was the
+        only signal of fallback, which disappeared when no docs matched. The retrieval
+        metadata returned alongside docs must still indicate vector fallback.
+        """
         mock_client = MagicMock()
         error_response = {"Error": {"Code": "ValidationException", "Message": "Hybrid not supported"}}
         mock_client.retrieve.side_effect = [
             ClientError(error_response, "Retrieve"),
-            {
-                "retrievalResults": [
-                    {
-                        "content": {"text": "doc1"},
-                        "metadata": {},
-                        "score": 0.9,
-                        "location": {"s3Location": {"uri": "s3://b/a.pdf"}},
-                    },
-                    {
-                        "content": {"text": "doc2"},
-                        "metadata": {},
-                        "score": 0.7,
-                        "location": {"s3Location": {"uri": "s3://b/b.pdf"}},
-                    },
-                ]
-            },
+            {"retrievalResults": []},
         ]
 
-        results = bedrock_kb_service.hybrid_retrieve(
+        docs, retrieval_metadata = bedrock_kb_service.hybrid_retrieve(
             query="test",
             collection_id="ds-456",
             top_k=5,
@@ -450,11 +437,10 @@ class TestBedrockKBRepositoryService:
             bedrock_agent_client=mock_client,
         )
 
-        assert len(results) == 2
-        for doc in results:
-            assert doc["metadata"]["actual_mode_used"] == "vector"
-            assert doc["metadata"]["hybrid_supported"] is False
-            assert doc["metadata"]["retrieval_method"] == "hybrid"
+        assert docs == []
+        assert retrieval_metadata["actual_mode_used"] == "vector"
+        assert retrieval_metadata["hybrid_supported"] is False
+        assert mock_client.retrieve.call_count == 2
 
     def test_hybrid_retrieve_reraises_non_validation_client_error(self, bedrock_kb_service):
         """Non-ValidationException ClientErrors propagate normally."""

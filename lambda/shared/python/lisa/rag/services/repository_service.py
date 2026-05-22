@@ -195,7 +195,7 @@ class RepositoryService(ABC):
         model_name: str,
         include_score: bool = False,
         bedrock_agent_client: Any | None = None,
-    ) -> list[dict[str, Any]]:
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         """Retrieve documents using hybrid (semantic + lexical) search.
 
         Args:
@@ -207,7 +207,11 @@ class RepositoryService(ABC):
             bedrock_agent_client: Bedrock agent client (for Bedrock KB only)
 
         Returns:
-            List of matching documents with page_content and metadata
+            Tuple of (docs, retrieval_metadata):
+              - docs: list of matching documents with page_content and metadata
+              - retrieval_metadata: dict with at least 'actual_mode_used' ('hybrid' or
+                'vector') and 'hybrid_supported' (bool). Reported even when docs is empty
+                so callers can distinguish "ran hybrid, found nothing" from "fell back".
 
         Raises:
             NotImplementedError: If the repository does not support hybrid search

@@ -210,7 +210,11 @@ class TestRagMixin:
 
     @responses.activate
     def test_similarity_search(self, lisa_api: LisaApi, api_url: str, caplog):
-        """Test performing similarity search."""
+        """Test performing similarity search with include_score=True.
+
+        Backend places the normalized similarity score on Document.metadata.similarity_score
+        when the request opts in via include_score=True.
+        """
         repo_id = "pgvector-rag"
         collection_id = "col-123"
         query = "What is machine learning?"
@@ -220,16 +224,24 @@ class TestRagMixin:
                 {
                     "Document": {
                         "page_content": "Machine learning is a subset of AI...",
-                        "metadata": {"source": "ml-guide.pdf", "page": 1, "document_id": "doc-123"},
+                        "metadata": {
+                            "source": "ml-guide.pdf",
+                            "page": 1,
+                            "document_id": "doc-123",
+                            "similarity_score": 0.95,
+                        },
                     },
-                    "score": 0.95,
                 },
                 {
                     "Document": {
                         "page_content": "Deep learning uses neural networks...",
-                        "metadata": {"source": "dl-guide.pdf", "page": 3, "document_id": "doc-456"},
+                        "metadata": {
+                            "source": "dl-guide.pdf",
+                            "page": 3,
+                            "document_id": "doc-456",
+                            "similarity_score": 0.87,
+                        },
                     },
-                    "score": 0.87,
                 },
             ]
         }
@@ -243,14 +255,16 @@ class TestRagMixin:
 
         logging.disable(logging.CRITICAL)
 
-        result = lisa_api.similarity_search(repo_id=repo_id, query=query, k=5, collection_id=collection_id)
+        result = lisa_api.similarity_search(
+            repo_id=repo_id, query=query, k=5, collection_id=collection_id, include_score=True
+        )
 
         # Re-enable logging
         logging.disable(logging.NOTSET)
 
         docs = result["docs"]
         assert len(docs) == 2
-        assert docs[0]["score"] == 0.95
+        assert docs[0]["Document"]["metadata"]["similarity_score"] == 0.95
         assert "machine learning" in docs[0]["Document"]["page_content"].lower()
         # Verify document_id is present in metadata (enriched by similarity_search)
         assert "document_id" in docs[0]["Document"]["metadata"]
@@ -259,6 +273,7 @@ class TestRagMixin:
         assert responses.calls[0].request.params["query"] == query
         assert responses.calls[0].request.params["topK"] == "5"
         assert responses.calls[0].request.params["collectionId"] == collection_id
+        assert responses.calls[0].request.params["score"] == "true"
 
     @responses.activate
     def test_similarity_search_with_model_name(self, lisa_api: LisaApi, api_url: str):

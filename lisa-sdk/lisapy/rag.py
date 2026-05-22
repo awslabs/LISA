@@ -207,7 +207,12 @@ class RagMixin(BaseMixin):
             include_score: Include similarity scores in results
 
         Returns:
-            Dict with 'docs' list and optional 'metadata' (present for hybrid requests)
+            Dict with:
+              - 'docs': list of matching documents (each with 'Document.page_content' and
+                'Document.metadata'; 'Document.metadata.similarity_score' present when
+                include_score=True)
+              - 'metadata': dict with 'search_mode', 'actual_mode_used', 'backend',
+                and 'hybrid_supported' fields describing the retrieval that was performed
         """
         url = f"{self.url}/repository/{repo_id}/similaritySearch"
         params: dict[str, str | int] = {"query": query, "repositoryType": repo_id, "topK": k}

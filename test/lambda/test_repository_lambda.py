@@ -1420,6 +1420,66 @@ def test_list_all_includes_supports_hybrid_search():
         assert kb_repo["supportsHybridSearch"] is True
 
 
+def test_list_all_supports_hybrid_search_is_capability_driven():
+    """list_all delegates to RepositoryService.supports_hybrid_search(), not a type check.
+
+    Guards against regression to hardcoded RepositoryType.is_type(...) — we want OpenSearch
+    and other backends to flip on automatically when their service reports capability.
+    """
+    from repository.lambda_functions import list_all
+
+    repos = [
+        {
+            "repositoryId": "os-repo",
+            "name": "OpenSearch Repo",
+            "type": "opensearch",
+            "allowedGroups": ["test-group"],
+            "status": "active",
+        },
+        {
+            "repositoryId": "kb-repo",
+            "name": "Bedrock KB Repo",
+            "type": "bedrock_knowledge_base",
+            "allowedGroups": ["test-group"],
+            "status": "active",
+        },
+    ]
+
+    def fake_create_service(repo):
+        service = MagicMock()
+        # Invert the natural defaults: OpenSearch=True, BedrockKB=False.
+        # A type-hardcoded implementation would still return False/True respectively
+        # and fail this test.
+        service.supports_hybrid_search.return_value = repo["type"] == "opensearch"
+        return service
+
+    with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
+        "lisa.utilities.auth.get_groups"
+    ) as mock_get_groups, patch(
+        "repository.lambda_functions.RepositoryServiceFactory.create_service",
+        side_effect=fake_create_service,
+    ):
+        mock_get_groups.return_value = ["test-group"]
+        mock_vs_repo.get_registered_repositories.return_value = repos
+
+        event = {
+            "requestContext": {
+                "authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["test-group"])}
+            }
+        }
+
+        result = list_all(event, SimpleNamespace())
+
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+
+        os_repo = next(r for r in body if r["repositoryId"] == "os-repo")
+        kb_repo = next(r for r in body if r["repositoryId"] == "kb-repo")
+
+        assert os_repo["supportsHybridSearch"] is True
+        assert kb_repo["supportsHybridSearch"] is False
+
+
 def test_real_list_status_function():
     """Test the actual list_status function with real imports"""
     from repository.lambda_functions import list_status
@@ -2861,8 +2921,8 @@ def test_list_all_with_groups():
         "repository.lambda_functions.get_user_context", return_value=("test-user", False, ["group1"])
     ), patch("repository.lambda_functions.is_admin", return_value=False):
         mock_repo.get_registered_repositories.return_value = [
-            {"allowedGroups": ["group1"], "name": "repo1"},
-            {"allowedGroups": ["group2"], "name": "repo2"},
+            {"allowedGroups": ["group1"], "name": "repo1", "type": "opensearch"},
+            {"allowedGroups": ["group2"], "name": "repo2", "type": "opensearch"},
         ]
         event = {}
         context = SimpleNamespace(function_name="test", aws_request_id="123")
@@ -4297,9 +4357,10 @@ def _mock_service(supports_hybrid=True):
     service.retrieve_documents.return_value = [
         {"page_content": "semantic result", "metadata": {"source": "s3://bucket/doc1.pdf"}}
     ]
-    service.hybrid_retrieve.return_value = [
-        {"page_content": "hybrid result", "metadata": {"source": "s3://bucket/doc1.pdf", "retrieval_method": "hybrid"}}
-    ]
+    service.hybrid_retrieve.return_value = (
+        [{"page_content": "hybrid result", "metadata": {"source": "s3://bucket/doc1.pdf"}}],
+        {"actual_mode_used": "hybrid", "hybrid_supported": True},
+    )
     return service
 
 
@@ -4468,6 +4529,40 @@ def test_response_metadata_present(mock_auth):
         body = json.loads(result["body"])
         metadata = body["metadata"]
         assert set(metadata.keys()) == {"search_mode", "actual_mode_used", "backend", "hybrid_supported"}
+
+
+def test_hybrid_fallback_with_empty_docs_reports_vector_metadata(mock_auth):
+    """Regression: hybrid fallback returning zero docs must still report actual_mode_used='vector'.
+
+    Previously the handler inferred actual_mode_used / hybrid_supported from docs[0].metadata,
+    which silently dropped to defaults ('hybrid', True) when docs was empty — masking a fallback.
+    """
+    from repository.lambda_functions import similarity_search
+
+    mock_auth.set_user("test-user", ["test-group"], is_rag_admin=True)
+
+    stack, setup = _hybrid_search_patches(is_rag_admin_val=True)
+    with stack:
+        p = setup()
+        p.vs_repo.find_repository_by_id.return_value = _bedrock_kb_repo()
+        p.cs.get_collection_model.return_value = "test-model"
+        service = _mock_service(supports_hybrid=True)
+        # Hybrid call falls back to vector internally and returns zero matches.
+        service.hybrid_retrieve.return_value = (
+            [],
+            {"actual_mode_used": "vector", "hybrid_supported": False},
+        )
+        p.factory.create_service.return_value = service
+
+        event = _similarity_search_event({"searchMode": "hybrid"})
+        result = similarity_search(event, SimpleNamespace())
+
+        assert result["statusCode"] == 200
+        body = json.loads(result["body"])
+        assert body["docs"] == []
+        assert body["metadata"]["search_mode"] == "hybrid"
+        assert body["metadata"]["actual_mode_used"] == "vector"
+        assert body["metadata"]["hybrid_supported"] is False
 
 
 def test_backward_compatible_response(mock_auth):

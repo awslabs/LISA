@@ -371,13 +371,14 @@ class TestRagCollectionsIntegration(RagIntegrationFixtures):
 
         # Verify results
         assert results is not None, "No results returned from similarity search"
-        assert len(results) > 0, "Similarity search returned empty results"
-        logger.info(f"✓ Similarity search returned {len(results)} results")
+        docs = results["docs"]
+        assert len(docs) > 0, "Similarity search returned empty results"
+        logger.info(f"✓ Similarity search returned {len(docs)} results")
 
         # Verify results contain relevant content
         found_relevant = False
-        for result in results:
-            content = result.get("Document", {}).get("page_content", "")
+        for doc in docs:
+            content = doc.get("Document", {}).get("page_content", "")
             if "trumpet" in content.lower() or "ryan" in content.lower():
                 found_relevant = True
                 break
@@ -386,11 +387,9 @@ class TestRagCollectionsIntegration(RagIntegrationFixtures):
         logger.info("✓ Search results contain relevant content")
 
         # Verify document_id enrichment in metadata
-        for result in results:
-            metadata = result.get("Document", {}).get("metadata", {})
+        for doc in docs:
+            metadata = doc.get("Document", {}).get("metadata", {})
             if metadata.get("source"):  # Only check if source is present
-                # document_id should be enriched for documents with source
-                # Note: May not be present if lookup failed, which is acceptable
                 if "document_id" in metadata:
                     logger.info(f"✓ Document has enriched document_id: {metadata['document_id']}")
                 else:

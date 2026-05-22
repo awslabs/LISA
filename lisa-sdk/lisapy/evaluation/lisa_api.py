@@ -58,4 +58,4 @@ class LisaApiEvaluator(BaseEvaluator):
             k=self.k,
             collection_id=self.collection_id,
         )
-        return [r["Document"]["metadata"]["source"] for r in results]
+        return [r["Document"]["metadata"]["source"] for r in results["docs"]]

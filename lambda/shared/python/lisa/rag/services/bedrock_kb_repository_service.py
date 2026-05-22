@@ -297,7 +297,8 @@ class BedrockKBRepositoryService(RepositoryService):
     ) -> dict[str, Any]:
         """Call Bedrock retrieve API with error handling."""
         try:
-            return bedrock_agent_client.retrieve(**retrieve_params)
+            result: dict[str, Any] = bedrock_agent_client.retrieve(**retrieve_params)
+            return result
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "")
             error_message = str(e)
@@ -386,7 +387,7 @@ class BedrockKBRepositoryService(RepositoryService):
             include_score,
             extra_metadata={
                 "retrieval_method": "hybrid",
-                "actual_mode_used": "semantic",
+                "actual_mode_used": "vector",
                 "hybrid_supported": False,
             },
         )

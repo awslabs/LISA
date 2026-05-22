@@ -678,6 +678,21 @@ def test_session_configuration_preserves_rag_search_mode():
     assert restored.ragSearchMode == "hybrid"
 
 
+def test_session_configuration_rejects_invalid_rag_search_mode():
+    """ragSearchMode only accepts 'vector', 'hybrid', or None."""
+    from lisa.session.models import SessionConfiguration
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        SessionConfiguration.model_validate({"ragSearchMode": "foobar"})
+
+    config_vector = SessionConfiguration.model_validate({"ragSearchMode": "vector"})
+    assert config_vector.ragSearchMode == "vector"
+
+    config_none = SessionConfiguration.model_validate({})
+    assert config_none.ragSearchMode is None
+
+
 def test_full_session_config_round_trip_with_hybrid_fields():
     """Full session config round-trip preserves both hybrid-related fields."""
     payload = {

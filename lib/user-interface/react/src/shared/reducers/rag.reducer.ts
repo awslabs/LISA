@@ -241,6 +241,7 @@ export const ragApi = createApi({
                 const params: any = {
                     query: request.query,
                     topK: request.topK,
+                    // Always request scores — needed for metadata panel display and zero-cost from Bedrock
                     score: 'true',
                 };
 

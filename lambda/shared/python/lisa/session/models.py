@@ -71,7 +71,7 @@ class SessionConfiguration(BaseModel):
     max_tokens: int | None = None
     chatHistoryBufferSize: int = 7
     ragTopK: int = 3
-    ragSearchMode: str | None = None
+    ragSearchMode: Literal["vector", "hybrid"] | None = None
     modelArgs: ModelArgs = Field(default_factory=ModelArgs)
     imageGenerationArgs: ImageGenerationArgs = Field(default_factory=ImageGenerationArgs)
     videoGenerationArgs: VideoGenerationArgs = Field(default_factory=VideoGenerationArgs)

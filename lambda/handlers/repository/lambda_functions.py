@@ -115,7 +115,7 @@ def list_all(event: dict, context: dict) -> list[dict[str, Any]]:
     result = []
     for repo in registered_repositories:
         if is_admin or user_has_group_access(groups, repo.get("allowedGroups", [])):
-            repo["supportsHybridSearch"] = repo.get("type", "") in {"bedrock_knowledge_base"}
+            repo["supportsHybridSearch"] = RepositoryType.is_type(repo, RepositoryType.BEDROCK_KB)
             result.append(repo)
     return result
 

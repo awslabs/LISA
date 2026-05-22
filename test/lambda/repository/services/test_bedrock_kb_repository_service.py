@@ -411,7 +411,7 @@ class TestBedrockKBRepositoryService:
 
         assert len(results) == 1
         assert results[0]["page_content"] == "fallback result"
-        assert results[0]["metadata"]["actual_mode_used"] == "semantic"
+        assert results[0]["metadata"]["actual_mode_used"] == "vector"
         assert results[0]["metadata"]["hybrid_supported"] is False
         assert results[0]["metadata"]["retrieval_method"] == "hybrid"
         assert results[0]["metadata"]["similarity_score"] == 0.8
@@ -452,7 +452,7 @@ class TestBedrockKBRepositoryService:
 
         assert len(results) == 2
         for doc in results:
-            assert doc["metadata"]["actual_mode_used"] == "semantic"
+            assert doc["metadata"]["actual_mode_used"] == "vector"
             assert doc["metadata"]["hybrid_supported"] is False
             assert doc["metadata"]["retrieval_method"] == "hybrid"
 

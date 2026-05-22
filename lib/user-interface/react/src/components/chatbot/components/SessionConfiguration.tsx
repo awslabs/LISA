@@ -33,6 +33,7 @@ import { IConfiguration } from '@/shared/model/configuration.model';
 import { LisaChatMessage, LisaChatSession, ModelFeatures } from '@/components/types';
 import AwsCredentialsPanel from '@/components/settings/AwsCredentialsPanel';
 import { sessionHistoryHasPendingAssistantToolCalls } from '../utils/sessionPersist.utils';
+import { RagConfig } from './RagOptions';
 
 export type SessionConfigurationProps = {
     title?: string;
@@ -46,7 +47,7 @@ export type SessionConfigurationProps = {
     modelOnly?: boolean;
     session?: LisaChatSession;
     updateSession?: (session: LisaChatSession) => void;
-    ragConfig?: any;
+    ragConfig?: RagConfig;
 };
 
 export const SessionConfiguration = ({

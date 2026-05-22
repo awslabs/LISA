@@ -649,7 +649,7 @@ def test_update_session_with_current_model_config_success():
 
 def test_rag_config_preserves_supports_hybrid_search():
     """supportsHybridSearch must survive save/load round-trip."""
-    from session.models import RagConfig
+    from lisa.session.models import RagConfig
 
     payload = {
         "repositoryId": "test-repo",
@@ -667,7 +667,7 @@ def test_rag_config_preserves_supports_hybrid_search():
 
 def test_session_configuration_preserves_rag_search_mode():
     """ragSearchMode must survive save/load round-trip."""
-    from session.models import SessionConfiguration
+    from lisa.session.models import SessionConfiguration
 
     payload = {"ragTopK": 5, "ragSearchMode": "hybrid", "streaming": True}
     config = SessionConfiguration.model_validate(payload)

@@ -1380,7 +1380,7 @@ def test_list_all_includes_supports_hybrid_search():
     from repository.lambda_functions import list_all
 
     with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch(
-        "utilities.auth.get_groups"
+        "lisa.utilities.auth.get_groups"
     ) as mock_get_groups:
         mock_get_groups.return_value = ["test-group"]
         mock_vs_repo.get_registered_repositories.return_value = [

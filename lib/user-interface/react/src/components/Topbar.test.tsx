@@ -82,17 +82,17 @@ const renderTopbar = (props = {}) => {
 
 /**
  * Open the user-profile menu dropdown and click the item matching the given text.
- * Cloudscape renders the user menu as a ButtonDropdown; we find its trigger button
- * inside the last utility wrapper.
+ * In JSDOM, Cloudscape TopNavigation renders in narrow/responsive mode where
+ * findUtilities() returns an empty array. Instead, we locate the user menu via
+ * findAllButtonDropdowns() — the user-profile menu is the last ButtonDropdown in
+ * the DOM — and use its findNativeButton() trigger.
  */
 const clickUserMenuItemByText = async (itemText: string) => {
     const user = userEvent.setup();
     const wrapper = createWrapper();
-    const topNav = wrapper.findTopNavigation()!;
-    const utilities = topNav.findUtilities();
-    const userMenuUtility = utilities[utilities.length - 1];
-    const triggerBtn = userMenuUtility.getElement().querySelector('button')!;
-    await user.click(triggerBtn);
+    const buttonDropdowns = wrapper.findAllButtonDropdowns();
+    const userMenu = buttonDropdowns[buttonDropdowns.length - 1];
+    await user.click(userMenu.findNativeButton().getElement());
     const item = screen.getByText(itemText);
     await user.click(item);
 };

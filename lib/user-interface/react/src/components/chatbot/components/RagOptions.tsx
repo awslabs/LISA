@@ -41,9 +41,11 @@ type RagControlProps = {
     allowedRepositoryIds?: string[];
     /** When set (e.g. from Chat Assistant stack), only these collection IDs are shown */
     allowedCollectionIds?: string[];
+    /** Called when the user changes the selected repository */
+    onRepositoryChanged?: () => void;
 };
 
-export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragConfig, selectionAvailable, allowedRepositoryIds, allowedCollectionIds }: RagControlProps) {
+export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragConfig, selectionAvailable, allowedRepositoryIds, allowedCollectionIds, onRepositoryChanged }: RagControlProps) {
     const { data: repositories, isLoading: isLoadingRepositories } = useListRagRepositoriesQuery(undefined, {
         refetchOnMountOrArgChange: 5
     });
@@ -171,6 +173,7 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
     const handleRepositoryChange = ({ detail }) => {
         const newRepositoryId = detail.value;
         setUserHasSelectedCollection(false); // Reset collection selection flag
+        onRepositoryChanged?.();
 
         if (newRepositoryId) {
             const repository = filteredRepositories?.find((repo) => repo.repositoryId === newRepositoryId);

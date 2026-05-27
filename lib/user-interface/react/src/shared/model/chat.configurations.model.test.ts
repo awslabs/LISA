@@ -18,7 +18,7 @@ import { describe, it, expect } from 'vitest';
 import { baseConfig } from './chat.configurations.model';
 
 describe('baseConfig', () => {
-    it('defaults ragSearchMode to vector', () => {
-        expect(baseConfig.sessionConfiguration.ragSearchMode).toBe('vector');
+    it('defaults ragSearchMode to undefined (system-derived default)', () => {
+        expect(baseConfig.sessionConfiguration.ragSearchMode).toBeUndefined();
     });
 });

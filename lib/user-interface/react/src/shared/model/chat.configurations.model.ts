@@ -103,6 +103,6 @@ export const baseConfig: IChatConfiguration = {
             seconds: '4',
             size: '720x1280',
         },
-        ragSearchMode: 'vector',
+        ragSearchMode: undefined,
     }
 };

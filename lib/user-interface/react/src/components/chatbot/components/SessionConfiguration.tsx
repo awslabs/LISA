@@ -34,6 +34,7 @@ import { LisaChatMessage, LisaChatSession, ModelFeatures } from '@/components/ty
 import AwsCredentialsPanel from '@/components/settings/AwsCredentialsPanel';
 import { sessionHistoryHasPendingAssistantToolCalls } from '../utils/sessionPersist.utils';
 import { RagConfig } from './RagOptions';
+import { deriveRagSearchMode } from '@/shared/util/ragSearchMode';
 
 export type SessionConfigurationProps = {
     title?: string;
@@ -112,6 +113,11 @@ export const SessionConfiguration = ({
     ];
     const isImageModel = selectedModel?.modelType === ModelType.imagegen;
     const isVideoModel = selectedModel?.modelType === ModelType.videogen;
+    const effectiveRagSearchMode = deriveRagSearchMode(
+        chatConfiguration.sessionConfiguration.ragSearchMode,
+        systemConfig?.configuration?.enabledComponents?.hybridSearch ?? false,
+        ragConfig?.supportsHybridSearch ?? false,
+    );
 
     return (
         <Modal
@@ -182,8 +188,8 @@ export const SessionConfiguration = ({
                                 <Select
                                     disabled={isRunning}
                                     selectedOption={{
-                                        value: chatConfiguration.sessionConfiguration.ragSearchMode ?? 'vector',
-                                        label: (chatConfiguration.sessionConfiguration.ragSearchMode ?? 'vector') === 'hybrid' ? 'Hybrid' : 'Vector',
+                                        value: effectiveRagSearchMode,
+                                        label: effectiveRagSearchMode === 'hybrid' ? 'Hybrid' : 'Vector',
                                     }}
                                     onChange={({ detail }) => updateSessionConfiguration('ragSearchMode', detail.selectedOption.value)}
                                     options={[

@@ -38,11 +38,19 @@ describe('deriveRagSearchMode', () => {
         expect(deriveRagSearchMode('vector', true, true)).toBe('vector');
     });
 
-    it('respects explicit user choice of hybrid', () => {
+    it('respects explicit user choice of hybrid when both flags enabled', () => {
         expect(deriveRagSearchMode('hybrid', true, true)).toBe('hybrid');
     });
 
-    it('respects explicit user choice of hybrid even when flags are false', () => {
-        expect(deriveRagSearchMode('hybrid', false, false)).toBe('hybrid');
+    it('forces vector when admin disables hybrid regardless of user choice', () => {
+        expect(deriveRagSearchMode('hybrid', false, true)).toBe('vector');
+    });
+
+    it('forces vector when repo does not support hybrid regardless of user choice', () => {
+        expect(deriveRagSearchMode('hybrid', true, false)).toBe('vector');
+    });
+
+    it('forces vector when both flags false regardless of user choice', () => {
+        expect(deriveRagSearchMode('hybrid', false, false)).toBe('vector');
     });
 });

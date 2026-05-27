@@ -15,14 +15,15 @@
 */
 
 /**
- * Derives the effective RAG search mode. When the user hasn't made an explicit
- * choice (undefined), the system defaults to 'hybrid' if both the admin toggle
- * and repository capability are enabled, otherwise 'vector'.
+ * Derives the effective RAG search mode. When hybrid is disabled globally or
+ * the repository doesn't support it, always returns 'vector' regardless of
+ * user choice. Otherwise defaults to 'hybrid' unless the user explicitly chose.
  */
 export function deriveRagSearchMode (
     userChoice: 'vector' | 'hybrid' | undefined,
     hybridEnabled: boolean,
     repoSupportsHybrid: boolean,
 ): 'vector' | 'hybrid' {
-    return userChoice ?? ((hybridEnabled && repoSupportsHybrid) ? 'hybrid' : 'vector');
+    if (!hybridEnabled || !repoSupportsHybrid) return 'vector';
+    return userChoice ?? 'hybrid';
 }

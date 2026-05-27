@@ -121,6 +121,17 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
         if (repositoryHasChanged) {
             lastRepositoryIdRef.current = currentRepositoryId;
             queueMicrotask(() => setUserHasSelectedCollection(false));
+
+            if (currentRepositoryId && filteredRepositories) {
+                const repo = filteredRepositories.find((r) => r.repositoryId === currentRepositoryId);
+                if (repo && !ragConfig?.repositoryType) {
+                    setRagConfig((config) => ({
+                        ...config,
+                        repositoryType: repo.type,
+                        supportsHybridSearch: (repo as ListRagRepositoryResponse)?.supportsHybridSearch ?? false,
+                    }));
+                }
+            }
         }
 
         if (currentRepositoryId && filteredRepositories && allModels && (!userHasSelectedCollection || repositoryHasChanged)) {

@@ -115,3 +115,7 @@ class TestOpenSearchRepositoryService:
 
             assert "not registered" in str(exc_info.value)
             assert opensearch_service.repository_id in str(exc_info.value)
+
+    def test_supports_hybrid_search(self, opensearch_service):
+        """OpenSearch repositories advertise hybrid search capability."""
+        assert opensearch_service.supports_hybrid_search() is True

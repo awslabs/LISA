@@ -1416,7 +1416,7 @@ def test_list_all_includes_supports_hybrid_search():
         os_repo = next(r for r in body if r["repositoryId"] == "os-repo")
         kb_repo = next(r for r in body if r["repositoryId"] == "kb-repo")
 
-        assert os_repo["supportsHybridSearch"] is False
+        assert os_repo["supportsHybridSearch"] is True
         assert kb_repo["supportsHybridSearch"] is True
 
 

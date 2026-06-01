@@ -43,6 +43,15 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
     Only implements OpenSearch-specific index management.
     """
 
+    def supports_hybrid_search(self) -> bool:
+        """OpenSearch repositories support hybrid search.
+
+        Implementation: see ``OpenSearchRepositoryService.hybrid_retrieve()``,
+        which transparently falls back to vector search if the cluster does
+        not support hybrid (e.g., OpenSearch < 2.13).
+        """
+        return True
+
     def retrieve_documents(
         self,
         query: str,

@@ -20,6 +20,10 @@
       "Type": "AWS::SSM::Parameter::Value<String>",
       "Default": "/dev/test-lisa/lisa/layerVersion/cdk"
     },
+    "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/layerVersion/lisa-shared"
+    },
     "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter": {
       "Type": "AWS::SSM::Parameter::Value<String>",
       "Default": "/dev/test-lisa/lisa/appManagementKeySecretName"
@@ -820,7 +824,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e0abe7e129573de67fd96a0297ca15c2fb3dee475fb7c9086510d4bd59b908da.zip"
+          "S3Key": "75b0ffe3de7ccc7fc280e85cfa29e4f6c3d91915da97e93f0cd2c42553aca7fb.zip"
         },
         "Environment": {
           "Variables": {
@@ -830,7 +834,7 @@
             "LISA_SECURITY_GROUP_ID": {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
             },
-            "LISA_CONFIG": "{\"appName\":\"lisa\",\"deploymentName\":\"test-lisa\",\"deploymentPrefix\":\"/dev/test-lisa/lisa\",\"region\":\"us-iso-east-1\",\"deploymentStage\":\"dev\",\"removalPolicy\":\"destroy\",\"s3BucketModels\":\"hf-models-gaiic\",\"mountS3DebUrl\":\"https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb\",\"certificateAuthorityBundle\":\"\",\"pypiConfig\":{\"indexUrl\":\"localhost:8080\",\"trustedHost\":\"localhost\"},\"nvmeContainerMountPath\":\"/nvme\",\"nvmeHostMountPath\":\"/nvme\",\"condaUrl\":\"\"}"
+            "LISA_CONFIG": "{\"appName\":\"lisa\",\"deploymentName\":\"test-lisa\",\"deploymentPrefix\":\"/dev/test-lisa/lisa\",\"region\":\"us-iso-east-1\",\"deploymentStage\":\"dev\",\"removalPolicy\":\"destroy\",\"s3BucketModels\":\"hf-models-gaiic\",\"mountS3DebUrl\":\"https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/mount-s3.deb\",\"convertInlinePoliciesToManaged\":false,\"certificateAuthorityBundle\":\"\",\"pypiConfig\":{\"indexUrl\":\"localhost:8080\",\"trustedHost\":\"localhost\"},\"nvmeContainerMountPath\":\"/nvme\",\"nvmeHostMountPath\":\"/nvme\",\"condaUrl\":\"\"}"
           }
         },
         "EphemeralStorage": {
@@ -1041,7 +1045,7 @@
           "cdk-hnb659fds-assets-012345678901-us-iso-east-1"
         ],
         "SourceObjectKeys": [
-          "f87e32c3d678d7000fa7d5aa767f80feb781b448b1d87df4da6692d33d0439c2.zip"
+          "2643ee3205ccd1aabe5f366fd2d51979fe49e1539674787f771f2a770e0dea20.zip"
         ],
         "DestinationBucketName": {
           "Ref": "ModelsApidockerimagebuilderLisaModelsdockerimagebuilderec2bucketA3074A95"
@@ -1240,7 +1244,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "29cc0ee2358fae89979376b3aa5b080fde3ff61a4cb918636c41355087a64a3e.zip"
         },
         "Environment": {
           "Variables": {
@@ -1306,7 +1310,12 @@
           }
         },
         "FunctionName": "LisaModels-docker-image-builder",
-        "Handler": "dockerimagebuilder.handler",
+        "Handler": "lambda_functions.handler",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
         "MemorySize": 1024,
         "Role": {
           "Fn::GetAtt": [
@@ -1600,7 +1609,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Description": "Manages Auto Scaling scheduled actions for LISA model scheduling",
         "Environment": {
@@ -1610,8 +1619,11 @@
             }
           }
         },
-        "Handler": "models.scheduling.schedule_management.lambda_handler",
+        "Handler": "lisa.domain.scheduling.schedule_management.lambda_handler",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -1619,6 +1631,7 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
             "ModelsApiModelsSfnLambdaRoleF400F0BC",
@@ -1655,7 +1668,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Description": "Processes Auto Scaling Group CloudWatch events to update model status",
         "Environment": {
@@ -1671,8 +1684,11 @@
             "REST_API_VERSION": "v2"
           }
         },
-        "Handler": "models.scheduling.schedule_monitoring.lambda_handler",
+        "Handler": "lisa.domain.scheduling.schedule_monitoring.lambda_handler",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -1680,6 +1696,7 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
             "ModelsApiModelsSfnLambdaRoleF400F0BC",
@@ -1788,7 +1805,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Environment": {
           "Variables": {
@@ -1831,8 +1848,11 @@
             "MODELS_BUCKET_NAME": "hf-models-gaiic"
           }
         },
-        "Handler": "models.state_machine.create_model.handle_set_model_to_creating",
+        "Handler": "state_machine.create_model.handle_set_model_to_creating",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -1877,7 +1897,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Environment": {
           "Variables": {
@@ -1920,8 +1940,11 @@
             "MODELS_BUCKET_NAME": "hf-models-gaiic"
           }
         },
-        "Handler": "models.state_machine.create_model.handle_start_copy_docker_image",
+        "Handler": "state_machine.create_model.handle_start_copy_docker_image",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -1966,7 +1989,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Environment": {
           "Variables": {
@@ -2009,8 +2032,11 @@
             "MODELS_BUCKET_NAME": "hf-models-gaiic"
           }
         },
-        "Handler": "models.state_machine.create_model.handle_poll_docker_image_available",
+        "Handler": "state_machine.create_model.handle_poll_docker_image_available",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -2055,7 +2081,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Environment": {
           "Variables": {
@@ -2098,8 +2124,11 @@
             "MODELS_BUCKET_NAME": "hf-models-gaiic"
           }
         },
-        "Handler": "models.state_machine.create_model.handle_failure",
+        "Handler": "state_machine.create_model.handle_failure",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -2144,7 +2173,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Environment": {
           "Variables": {
@@ -2187,8 +2216,11 @@
             "MODELS_BUCKET_NAME": "hf-models-gaiic"
           }
         },
-        "Handler": "models.state_machine.create_model.handle_start_create_stack",
+        "Handler": "state_machine.create_model.handle_start_create_stack",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -2233,7 +2265,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Environment": {
           "Variables": {
@@ -2276,8 +2308,11 @@
             "MODELS_BUCKET_NAME": "hf-models-gaiic"
           }
         },
-        "Handler": "models.state_machine.create_model.handle_poll_create_stack",
+        "Handler": "state_machine.create_model.handle_poll_create_stack",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -2322,7 +2357,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Environment": {
           "Variables": {
@@ -2365,8 +2400,11 @@
             "MODELS_BUCKET_NAME": "hf-models-gaiic"
           }
         },
-        "Handler": "models.state_machine.create_model.handle_poll_model_ready",
+        "Handler": "state_machine.create_model.handle_poll_model_ready",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -2411,7 +2449,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Environment": {
           "Variables": {
@@ -2457,8 +2495,11 @@
             }
           }
         },
-        "Handler": "models.state_machine.schedule_handlers.handle_schedule_creation",
+        "Handler": "state_machine.schedule_handlers.handle_schedule_creation",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -2503,7 +2544,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Environment": {
           "Variables": {
@@ -2546,8 +2587,11 @@
             "MODELS_BUCKET_NAME": "hf-models-gaiic"
           }
         },
-        "Handler": "models.state_machine.create_model.handle_add_model_to_litellm",
+        "Handler": "state_machine.create_model.handle_add_model_to_litellm",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -2592,7 +2636,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Environment": {
           "Variables": {
@@ -2635,8 +2679,11 @@
             "MODELS_BUCKET_NAME": "hf-models-gaiic"
           }
         },
-        "Handler": "models.state_machine.create_model.handle_enrich_context_window",
+        "Handler": "state_machine.create_model.handle_enrich_context_window",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -2681,7 +2728,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Environment": {
           "Variables": {
@@ -2724,8 +2771,11 @@
             "MODELS_BUCKET_NAME": "hf-models-gaiic"
           }
         },
-        "Handler": "models.state_machine.create_model.handle_add_guardrails_to_litellm",
+        "Handler": "state_machine.create_model.handle_add_guardrails_to_litellm",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -3235,7 +3285,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Environment": {
           "Variables": {
@@ -3253,8 +3303,11 @@
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev"
           }
         },
-        "Handler": "models.state_machine.delete_model.handle_set_model_to_deleting",
+        "Handler": "state_machine.delete_model.handle_set_model_to_deleting",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -3299,7 +3352,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Environment": {
           "Variables": {
@@ -3317,8 +3370,11 @@
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev"
           }
         },
-        "Handler": "models.state_machine.delete_model.handle_delete_from_litellm",
+        "Handler": "state_machine.delete_model.handle_delete_from_litellm",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -3363,7 +3419,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Environment": {
           "Variables": {
@@ -3381,8 +3437,11 @@
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev"
           }
         },
-        "Handler": "models.state_machine.delete_model.handle_delete_stack",
+        "Handler": "state_machine.delete_model.handle_delete_stack",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -3427,7 +3486,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Environment": {
           "Variables": {
@@ -3445,8 +3504,11 @@
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev"
           }
         },
-        "Handler": "models.state_machine.delete_model.handle_monitor_delete_stack",
+        "Handler": "state_machine.delete_model.handle_monitor_delete_stack",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -3491,7 +3553,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Environment": {
           "Variables": {
@@ -3509,8 +3571,11 @@
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev"
           }
         },
-        "Handler": "models.state_machine.delete_model.handle_delete_from_ddb",
+        "Handler": "state_machine.delete_model.handle_delete_from_ddb",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -3555,7 +3620,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Environment": {
           "Variables": {
@@ -3573,8 +3638,11 @@
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev"
           }
         },
-        "Handler": "models.state_machine.delete_model.handle_delete_guardrails",
+        "Handler": "state_machine.delete_model.handle_delete_guardrails",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -3619,7 +3687,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Environment": {
           "Variables": {
@@ -3637,8 +3705,11 @@
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev"
           }
         },
-        "Handler": "models.state_machine.delete_model.handle_failure",
+        "Handler": "state_machine.delete_model.handle_failure",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -4000,7 +4071,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Environment": {
           "Variables": {
@@ -4019,13 +4090,16 @@
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}"
           }
         },
-        "Handler": "models.state_machine.update_model.handle_job_intake",
+        "Handler": "state_machine.update_model.handle_job_intake",
         "Layers": [
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
         "MemorySize": 128,
@@ -4065,7 +4139,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Environment": {
           "Variables": {
@@ -4084,13 +4158,16 @@
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}"
           }
         },
-        "Handler": "models.state_machine.update_model.handle_poll_capacity",
+        "Handler": "state_machine.update_model.handle_poll_capacity",
         "Layers": [
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
         "MemorySize": 128,
@@ -4130,7 +4207,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Environment": {
           "Variables": {
@@ -4149,13 +4226,16 @@
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}"
           }
         },
-        "Handler": "models.state_machine.update_model.handle_ecs_update",
+        "Handler": "state_machine.update_model.handle_ecs_update",
         "Layers": [
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
         "MemorySize": 128,
@@ -4195,7 +4275,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Environment": {
           "Variables": {
@@ -4214,13 +4294,16 @@
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}"
           }
         },
-        "Handler": "models.state_machine.update_model.handle_poll_ecs_deployment",
+        "Handler": "state_machine.update_model.handle_poll_ecs_deployment",
         "Layers": [
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
         "MemorySize": 128,
@@ -4260,7 +4343,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Environment": {
           "Variables": {
@@ -4279,13 +4362,16 @@
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}"
           }
         },
-        "Handler": "models.state_machine.update_model.handle_update_guardrails",
+        "Handler": "state_machine.update_model.handle_update_guardrails",
         "Layers": [
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
         "MemorySize": 128,
@@ -4325,7 +4411,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Environment": {
           "Variables": {
@@ -4344,13 +4430,16 @@
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}"
           }
         },
-        "Handler": "models.state_machine.update_model.handle_finish_update",
+        "Handler": "state_machine.update_model.handle_finish_update",
         "Layers": [
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
         "MemorySize": 128,
@@ -4390,7 +4479,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Environment": {
           "Variables": {
@@ -4409,13 +4498,16 @@
             "LITELLM_CONFIG_OBJ": "{\"db_key\":\"sk-012345\"}"
           }
         },
-        "Handler": "models.state_machine.update_model.handle_failure",
+        "Handler": "state_machine.update_model.handle_failure",
         "Layers": [
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
         "MemorySize": 128,
@@ -4891,7 +4983,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Description": "Manage model",
         "Environment": {
@@ -4933,8 +5025,11 @@
           }
         },
         "FunctionName": "LisaModels-models-handler",
-        "Handler": "models.lambda_functions.handler",
+        "Handler": "lambda_functions.handler",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -5022,7 +5117,7 @@
         ]
       }
     },
-    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler62c6CFCAD12C": {
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler8ef5C72976C2": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
@@ -5061,7 +5156,7 @@
         }
       }
     },
-    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandlere40aF0599D01": {
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler5139141A9A79": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
@@ -5105,7 +5200,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Description": "Manage model",
         "Environment": {
@@ -5147,8 +5242,11 @@
           }
         },
         "FunctionName": "LisaModels-models-docs",
-        "Handler": "models.lambda_functions.docs",
+        "Handler": "lambda_functions.docs",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -5212,7 +5310,7 @@
         "RetentionInDays": 30
       }
     },
-    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler8e6aE5EDFD11": {
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler65402BF3BA05": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
@@ -5428,7 +5526,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Description": "Remove api_key from existing Bedrock models to fix Invalid API Key format errors",
         "Environment": {
@@ -5441,8 +5539,11 @@
             "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
           }
         },
-        "Handler": "models.model_api_key_cleanup.lambda_handler",
+        "Handler": "model_api_key_cleanup.lambda_handler",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -5450,6 +5551,7 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
             "ModelsApiModelsSfnLambdaRoleF400F0BC",
@@ -5620,7 +5722,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Description": "One-time backfill of context_window for existing model DynamoDB records",
         "Environment": {
@@ -5637,8 +5739,11 @@
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev"
           }
         },
-        "Handler": "models.model_context_window_backfill.lambda_handler",
+        "Handler": "model_context_window_backfill.lambda_handler",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -5646,6 +5751,7 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
             "ModelsApiModelsSfnLambdaRoleF400F0BC",
@@ -5902,7 +6008,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "657e88d2c1c45af903bb701b3cb187703b8bf396116c8f5ae2b77b878f69f88e.zip"
         },
         "Description": "Sync all models from DynamoDB to LiteLLM when the LiteLLM database is created or updated",
         "Environment": {
@@ -5918,8 +6024,11 @@
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev"
           }
         },
-        "Handler": "models.litellm_model_sync.handler",
+        "Handler": "litellm_model_sync.handler",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -5927,6 +6036,7 @@
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
             "ModelsApiLiteLLMSyncLiteLLMModelSyncRoleD581AB58",
@@ -6088,7 +6198,7 @@
             "Arn"
           ]
         },
-        "timestamp": "2026-04-24T16:35:40.575Z"
+        "timestamp": "2026-06-02T22:52:47.853Z"
       },
       "UpdateReplacePolicy": "Delete",
       "DeletionPolicy": "Delete"

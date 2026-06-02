@@ -119,3 +119,154 @@ class TestOpenSearchRepositoryService:
     def test_supports_hybrid_search(self, opensearch_service):
         """OpenSearch repositories advertise hybrid search capability."""
         assert opensearch_service.supports_hybrid_search() is True
+
+    def test_hybrid_retrieve_sends_inline_pipeline(self, opensearch_service):
+        """hybrid_retrieve sends an inline search_pipeline body with the hybrid query shape.
+
+        Asserts the request body has:
+          - query.hybrid.queries with both BM25 (match on `text`) and kNN (on `vector_field`)
+          - search_pipeline.phase_results_processors with normalization-processor (min_max)
+          - combination weights [0.3, 0.7] (lexical, vector) — hardcoded in slice 2.2.2
+          - top_k preserved as `size`
+        """
+        mock_vector_store = MagicMock()
+        mock_vector_store.client.indices.exists.return_value = True
+        mock_vector_store.client.search.return_value = {"hits": {"hits": []}}
+
+        mock_embeddings = MagicMock()
+        mock_embeddings.embed_query.return_value = [0.1, 0.2, 0.3]
+
+        with patch(
+            "lisa.rag.services.opensearch_repository_service.RagEmbeddings", return_value=mock_embeddings
+        ), patch.object(opensearch_service, "_get_vector_store_client", return_value=mock_vector_store):
+            opensearch_service.hybrid_retrieve(
+                query="exact phrase",
+                collection_id="test-collection",
+                top_k=5,
+                model_name="amazon.titan-embed-text-v1",
+            )
+
+        mock_vector_store.client.search.assert_called_once()
+        call_kwargs = mock_vector_store.client.search.call_args.kwargs
+        assert call_kwargs["index"] == "test-collection"
+        body = call_kwargs["body"]
+
+        assert body["size"] == 5
+        hybrid_queries = body["query"]["hybrid"]["queries"]
+        assert {"match": {"text": {"query": "exact phrase"}}} in hybrid_queries
+        knn_clause = next(q for q in hybrid_queries if "knn" in q)
+        assert knn_clause["knn"]["vector_field"]["vector"] == [0.1, 0.2, 0.3]
+        assert knn_clause["knn"]["vector_field"]["k"] == 5
+
+        processors = body["search_pipeline"]["phase_results_processors"]
+        norm = processors[0]["normalization-processor"]
+        assert norm["normalization"]["technique"] == "min_max"
+        assert norm["combination"]["technique"] == "arithmetic_mean"
+        assert norm["combination"]["parameters"]["weights"] == [0.3, 0.7]
+
+    def test_hybrid_retrieve_returns_docs_and_hybrid_metadata(self, opensearch_service):
+        """hybrid_retrieve returns (docs, retrieval_metadata) with actual_mode_used='hybrid'.
+
+        With include_score=True, copies hit['_score'] into metadata['similarity_score']
+        (already 0-1 from min_max normalization — no further normalization needed).
+        """
+        mock_vector_store = MagicMock()
+        mock_vector_store.client.indices.exists.return_value = True
+        mock_vector_store.client.search.return_value = {
+            "hits": {
+                "hits": [
+                    {
+                        "_score": 0.87,
+                        "_source": {
+                            "text": "Hybrid result content",
+                            "metadata": {"source": "s3://bucket/doc.pdf"},
+                        },
+                    }
+                ]
+            }
+        }
+        mock_embeddings = MagicMock()
+        mock_embeddings.embed_query.return_value = [0.1, 0.2, 0.3]
+
+        with patch(
+            "lisa.rag.services.opensearch_repository_service.RagEmbeddings", return_value=mock_embeddings
+        ), patch.object(opensearch_service, "_get_vector_store_client", return_value=mock_vector_store):
+            docs, retrieval_metadata = opensearch_service.hybrid_retrieve(
+                query="test",
+                collection_id="test-collection",
+                top_k=5,
+                model_name="amazon.titan-embed-text-v1",
+                include_score=True,
+            )
+
+        assert len(docs) == 1
+        assert docs[0]["page_content"] == "Hybrid result content"
+        assert docs[0]["metadata"]["source"] == "s3://bucket/doc.pdf"
+        assert docs[0]["metadata"]["similarity_score"] == 0.87
+        assert retrieval_metadata["actual_mode_used"] == "hybrid"
+        assert retrieval_metadata["hybrid_supported"] is True
+
+    def test_hybrid_retrieve_omits_similarity_score_by_default(self, opensearch_service):
+        """include_score=False (default) MUST NOT leak hit scores into doc metadata.
+
+        Locks the default contract: callers that don't ask for scores don't get them.
+        Without this assertion, a future refactor could populate similarity_score
+        unconditionally and the happy-path test would still pass.
+        """
+        mock_vector_store = MagicMock()
+        mock_vector_store.client.indices.exists.return_value = True
+        mock_vector_store.client.search.return_value = {
+            "hits": {
+                "hits": [
+                    {
+                        "_score": 0.42,
+                        "_source": {
+                            "text": "doc",
+                            "metadata": {"source": "s3://b/d.pdf"},
+                        },
+                    }
+                ]
+            }
+        }
+        mock_embeddings = MagicMock()
+        mock_embeddings.embed_query.return_value = [0.1, 0.2, 0.3]
+
+        with patch(
+            "lisa.rag.services.opensearch_repository_service.RagEmbeddings", return_value=mock_embeddings
+        ), patch.object(opensearch_service, "_get_vector_store_client", return_value=mock_vector_store):
+            docs, _ = opensearch_service.hybrid_retrieve(
+                query="test",
+                collection_id="test-collection",
+                top_k=5,
+                model_name="amazon.titan-embed-text-v1",
+            )
+
+        assert len(docs) == 1
+        assert "similarity_score" not in docs[0]["metadata"]
+
+    def test_hybrid_retrieve_returns_empty_docs_with_hybrid_metadata(self, opensearch_service):
+        """Empty hits still report actual_mode_used='hybrid' — metadata reports the mode that ran.
+
+        Mirrors BedrockKB's empty-fallback semantics: a caller distinguishing
+        "ran hybrid, found nothing" from "fell back to vector" needs the metadata
+        independent of whether docs is empty.
+        """
+        mock_vector_store = MagicMock()
+        mock_vector_store.client.indices.exists.return_value = True
+        mock_vector_store.client.search.return_value = {"hits": {"hits": []}}
+        mock_embeddings = MagicMock()
+        mock_embeddings.embed_query.return_value = [0.1, 0.2, 0.3]
+
+        with patch(
+            "lisa.rag.services.opensearch_repository_service.RagEmbeddings", return_value=mock_embeddings
+        ), patch.object(opensearch_service, "_get_vector_store_client", return_value=mock_vector_store):
+            docs, retrieval_metadata = opensearch_service.hybrid_retrieve(
+                query="test",
+                collection_id="test-collection",
+                top_k=5,
+                model_name="amazon.titan-embed-text-v1",
+            )
+
+        assert docs == []
+        assert retrieval_metadata["actual_mode_used"] == "hybrid"
+        assert retrieval_metadata["hybrid_supported"] is True

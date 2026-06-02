@@ -52,6 +52,97 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
         """
         return True
 
+    def hybrid_retrieve(
+        self,
+        query: str,
+        collection_id: str,
+        top_k: int,
+        model_name: str,
+        include_score: bool = False,
+        bedrock_agent_client: Any = None,
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        """Retrieve documents using hybrid (BM25 + kNN) search via inline search pipeline.
+
+        Sends the search pipeline definition inline in the request body — no persistent
+        pipeline, no admin state, one round-trip. Requires OpenSearch 2.13+; older
+        clusters trip the narrow-exception fallback to vector search (slice 2.2.4).
+
+        Args:
+            query: Search query text
+            collection_id: Index/collection to search
+            top_k: Number of results to return
+            model_name: Embedding model name (used for query vector)
+            include_score: When True, copies hit['_score'] (already 0-1 from min_max
+                normalization) to metadata['similarity_score']
+            bedrock_agent_client: Unused for OpenSearch (kept for base-class signature parity)
+
+        Returns:
+            Tuple of (docs, retrieval_metadata) where retrieval_metadata reports
+            ``actual_mode_used='hybrid'`` and ``hybrid_supported=True`` on success.
+        """
+        embeddings = RagEmbeddings(model_name=model_name)
+        vector_store = self._get_vector_store_client(
+            collection_id=collection_id,
+            embeddings=embeddings,
+        )
+
+        query_vector = embeddings.embed_query(query)
+        body = self._build_hybrid_body(query=query, query_vector=query_vector, top_k=top_k)
+
+        logger.info(f"Hybrid retrieving from OpenSearch: collection={collection_id}, query={query[:50]}...")
+        response = vector_store.client.search(index=collection_id, body=body)
+
+        docs = self._extract_hits(response, include_score)
+        return docs, {"actual_mode_used": "hybrid", "hybrid_supported": True}
+
+    @staticmethod
+    def _build_hybrid_body(query: str, query_vector: list[float], top_k: int) -> dict[str, Any]:
+        """Construct the OpenSearch hybrid query + inline search_pipeline body.
+
+        Built as a Python dict — no string interpolation — to prevent DSL injection
+        (OWASP A03). Weights ``[0.3, 0.7]`` are hardcoded in slice 2.2.2; phase 2.3
+        wires per-request weight overrides.
+        """
+        return {
+            "size": top_k,
+            "query": {
+                "hybrid": {
+                    "queries": [
+                        {"match": {"text": {"query": query}}},
+                        {"knn": {"vector_field": {"vector": query_vector, "k": top_k}}},
+                    ]
+                }
+            },
+            "search_pipeline": {
+                "phase_results_processors": [
+                    {
+                        "normalization-processor": {
+                            "normalization": {"technique": "min_max"},
+                            "combination": {
+                                "technique": "arithmetic_mean",
+                                "parameters": {"weights": [0.3, 0.7]},
+                            },
+                        }
+                    }
+                ]
+            },
+        }
+
+    @staticmethod
+    def _extract_hits(response: dict[str, Any], include_score: bool) -> list[dict[str, Any]]:
+        """Transform OpenSearch hits into the {page_content, metadata} doc shape."""
+        documents: list[dict[str, Any]] = []
+        for hit in response.get("hits", {}).get("hits", []):
+            source = hit.get("_source", {})
+            metadata = dict(source.get("metadata", {}) or {})
+            if include_score:
+                # Already 0-1 from min_max normalization in the search pipeline.
+                # Intentionally overwrites any pre-existing similarity_score in source metadata
+                # so retrieval-time scoring is authoritative over ingest-time fields.
+                metadata["similarity_score"] = hit.get("_score")
+            documents.append({"page_content": source.get("text", ""), "metadata": metadata})
+        return documents
+
     def retrieve_documents(
         self,
         query: str,

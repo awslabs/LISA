@@ -43,9 +43,11 @@ import { useGetAllModelsQuery } from '@/shared/reducers/model-management.reducer
 import { ModelStatus, ModelType } from '@/shared/model/model-management.model';
 import {
     useAttachImageToSessionMutation,
+    useCompactSessionMutation,
     useGetSessionHealthQuery,
     useLazyGetMessagesQuery,
     useLazyGetSessionByIdQuery,
+    useLazyGetSessionContextQuery,
     useListSessionsQuery,
     usePostMessagesMutation,
     useUpdateSessionMutation,
@@ -121,6 +123,8 @@ export default function Chat ({ sessionId, initialStack }) {
     const [updateSession] = useUpdateSessionMutation();
     const [postMessages] = usePostMessagesMutation();
     const [attachImageToSession] = useAttachImageToSessionMutation();
+    const [compactSession] = useCompactSessionMutation();
+    const [getSessionContext] = useLazyGetSessionContextQuery();
 
     // Track how many messages have been persisted to the messages table
     const lastSavedIndexRef = useRef(-1);
@@ -191,6 +195,7 @@ export default function Chat ({ sessionId, initialStack }) {
     const [fileContextName, setFileContextName] = useState('');
     const [fileContextFiles, setFileContextFiles] = useState<Array<{name: string, content: string}>>([]);
     const [dirtySession, setDirtySession] = useState(false);
+    const [isCompacting, setIsCompacting] = useState(false);
     const [useRag, setUseRag] = useState(false);
     const [preferences, setPreferences] = useState<UserPreferences>(undefined);
     const [modelFilterValue, setModelFilterValue] = useState('');
@@ -960,10 +965,9 @@ export default function Chat ({ sessionId, initialStack }) {
                         const assistantId = chatAssistantId || effectiveStack?.stackId;
 
                         if (newMessages.length > 0) {
-                            // Generate a session name if one isn't set yet (for new sessions)
-                            let sessionName = session.name;
-                            if (!sessionName) {
-                                // Use the first human message content as the session name (truncated)
+                            // Generate a session name only for the new sessions
+                            let sessionName: string | undefined = undefined;
+                            if (!session.name) {
                                 const firstHuman = newMessages.find((m) => m.type === 'human' || m.type === MessageTypes.HUMAN);
                                 if (firstHuman) {
                                     const text = typeof firstHuman.content === 'string'
@@ -972,6 +976,7 @@ export default function Chat ({ sessionId, initialStack }) {
                                             ? (firstHuman.content.find((c) => c?.text)?.text || '')
                                             : '';
                                     sessionName = text.slice(0, 50) || 'New Chat';
+                                    setSession((prev) => ({ ...prev, name: sessionName }));
                                 }
                             }
 
@@ -1105,11 +1110,10 @@ export default function Chat ({ sessionId, initialStack }) {
     useEffect(() => {
         if (shouldAutoScroll && scrollContainerRef.current) {
             // Scroll the container directly to the bottom
-            // This is more reliable than scrollIntoView for ensuring we reach the actual bottom
             const container = scrollContainerRef.current;
             container.scrollTop = container.scrollHeight;
         }
-    }, [isStreaming, session, mermaidRenderComplete, videoLoadComplete, imageLoadComplete, shouldAutoScroll]);
+    }, [isStreaming, session, mermaidRenderComplete, videoLoadComplete, imageLoadComplete, shouldAutoScroll, isCompacting]);
 
     // Scroll event listener to detect scroll position
     useEffect(() => {
@@ -1200,6 +1204,46 @@ export default function Chat ({ sessionId, initialStack }) {
 
     const handleSendGenerateRequest = useCallback(async () => {
         if (!userPrompt.trim()) return;
+
+        // Compaction Check
+        const contextWindow = allModelsRaw?.find(
+            (m) => m.modelId === selectedModel?.modelId
+        )?.contextWindow;
+        const usedTokens = Number(currentSessionSummary?.tokensUsedSinceCompaction ?? currentSessionSummary?.totalTokensUsed) || 0;
+
+        if (contextWindow && usedTokens > 0 && selectedModel?.modelId && session.history.length >= 3) {
+            const ratio = usedTokens / contextWindow;
+            if (ratio >= 0.75) {
+                setIsCompacting(true);
+                setShouldAutoScroll(true);
+                try {
+                    const result = await compactSession({
+                        sessionId: session.sessionId,
+                        modelId: selectedModel.modelId,
+                        contextWindow,
+                    }).unwrap();
+
+                    setSession((prev) => ({
+                        ...prev,
+                        compactionMessageIndex: result.compactionMessageIndex,
+                        history: [...prev.history, new LisaChatMessage({
+                            type: MessageTypes.SUMMARY,
+                            content: result.summaryContent,
+                            metadata: { systemPrompt: result.systemPrompt },
+                        })],
+                    }));
+                    lastSavedIndexRef.current = session.history.length;
+                } catch {
+                    notificationService.generateNotification(
+                        'Session compaction failed. Continuing without compaction.',
+                        'warning'
+                    );
+                } finally {
+                    setIsCompacting(false);
+                }
+            }
+        }
+
         setIsRunning(true);
 
         // Reset tool call counter when human provides input
@@ -1263,12 +1307,17 @@ export default function Chat ({ sessionId, initialStack }) {
             history: prev.history.slice(0, -1).concat(...messages),
         }));
 
+        setUserPrompt('');
+
+        // Fetch the full context from the backend
+        const contextResult = await getSessionContext(session.sessionId);
+        const contextMessages = contextResult.data?.messages || [];
+
         const params: GenerateLLMRequestParams = {
             input: userPrompt,
             message: messages,
+            contextMessages,
         };
-
-        setUserPrompt('');
 
         await generateResponse({
             ...params
@@ -1276,7 +1325,7 @@ export default function Chat ({ sessionId, initialStack }) {
 
         setDirtySession(true);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [userPrompt, useRag, fileContext, chatConfiguration, generateResponse, isImageGenerationMode, isVideoGenerationMode, fetchRelevantDocuments, notificationService]);
+    }, [userPrompt, useRag, fileContext, chatConfiguration, generateResponse, isImageGenerationMode, isVideoGenerationMode, fetchRelevantDocuments, notificationService, compactSession, getSessionContext]);
 
     // Ref to track if we're processing a keyboard event
     const isKeyboardEventRef = useRef(false);
@@ -1293,11 +1342,11 @@ export default function Chat ({ sessionId, initialStack }) {
             handleStop();
         } else {
             // Normal send functionality - allow both button clicks and Enter key
-            if (userPrompt.length > 0 && !isRunning && !callingToolName && !loadingSession) {
+            if (userPrompt.length > 0 && !isRunning && !callingToolName && !loadingSession && !isCompacting) {
                 handleSendGenerateRequest();
             }
         }
-    }, [shouldShowStopButton, handleStop, userPrompt.length, isRunning, callingToolName, loadingSession, handleSendGenerateRequest]);
+    }, [shouldShowStopButton, handleStop, userPrompt.length, isRunning, callingToolName, loadingSession, isCompacting, handleSendGenerateRequest]);
 
     // Handle Enter key press
     const handleKeyPress = useCallback((event: any) => {
@@ -1310,7 +1359,7 @@ export default function Chat ({ sessionId, initialStack }) {
                 // Do nothing for stop button when Enter is pressed
             } else {
                 // Normal send functionality for Enter key
-                if (userPrompt.length > 0 && !isRunning && !callingToolName && !loadingSession) {
+                if (userPrompt.length > 0 && !isRunning && !callingToolName && !loadingSession && !isCompacting) {
                     handleSendGenerateRequest();
                 }
             }
@@ -1320,7 +1369,7 @@ export default function Chat ({ sessionId, initialStack }) {
                 isKeyboardEventRef.current = false;
             }, 100);
         }
-    }, [shouldShowStopButton, userPrompt.length, isRunning, callingToolName, loadingSession, handleSendGenerateRequest]);
+    }, [shouldShowStopButton, userPrompt.length, isRunning, callingToolName, loadingSession, isCompacting, handleSendGenerateRequest]);
 
     const getButtonItemsWithAssistantMode = useCallback((...args: Parameters<typeof getButtonItems>) => {
         const [config, useRag, isImageGen, isVideoGen, isConnected, isModelDel, showMd] = args;
@@ -1335,6 +1384,7 @@ export default function Chat ({ sessionId, initialStack }) {
         isConnected,
         selectedModel,
         loadingSession,
+        isCompacting,
         isImageGenerationMode,
         isVideoGenerationMode,
         fileContext,
@@ -1359,6 +1409,7 @@ export default function Chat ({ sessionId, initialStack }) {
         isConnected,
         selectedModel,
         loadingSession,
+        isCompacting,
         isImageGenerationMode,
         isVideoGenerationMode,
         fileContext,
@@ -1592,6 +1643,16 @@ export default function Chat ({ sessionId, initialStack }) {
                             />));
                             // eslint-disable-next-line react-hooks/exhaustive-deps
                         }, [session.history, chatConfiguration, loadingSession])}
+
+                        {!loadingSession && isCompacting && (
+                            <Box textAlign='center' padding='l'>
+                                <SpaceBetween size='s' direction='vertical'>
+                                    <Spinner size='large' />
+                                    <Box color='text-status-info'>Compacting conversation history...</Box>
+                                    <Box variant='small' color='text-status-inactive'>Summarizing older messages to optimize context window</Box>
+                                </SpaceBetween>
+                            </Box>
+                        )}
 
                         {!loadingSession && (isRunning || callingToolName) && !isStreaming && !isImageGenerationMode && !isVideoGenerationMode && <Message
                             isRunning={isRunning}

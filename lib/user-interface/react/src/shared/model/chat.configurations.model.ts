@@ -65,7 +65,8 @@ export type ISessionConfiguration = {
 
 export type GenerateLLMRequestParams = {
     input: string,
-    message: LisaChatMessage[]
+    message: LisaChatMessage[],
+    contextMessages?: any[],
 };
 
 export const DEFAULT_PROMPT_TEMPLATE = SYSTEM_PROMPT;

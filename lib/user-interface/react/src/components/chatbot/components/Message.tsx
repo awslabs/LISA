@@ -259,7 +259,7 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
     };
 
     return (
-        (message.type === MessageTypes.HUMAN || message.type === MessageTypes.AI || message.type === MessageTypes.TOOL) &&
+        (message.type === MessageTypes.HUMAN || message.type === MessageTypes.AI || message.type === MessageTypes.TOOL || message.type === MessageTypes.SUMMARY) &&
         <div className='mt-2' style={{ overflow: 'auto' }} data-testid={`chat-message-${message.type}`}>
             <ImageViewer setVisible={setShowImageViewer} visible={showImageViewer} selectedImage={selectedImage} metadata={selectedMetadata} />
             {(isRunning && !callingToolName && !message?.metadata?.videoGeneration) && (
@@ -500,6 +500,22 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                         arguments: (message?.metadata as any)?.args,
                         result: message?.content,
                     }} style={isDarkMode ? darkStyles : defaultStyles} />
+                </ExpandableSection>
+            )}
+            {message?.type === MessageTypes.SUMMARY && (
+                <ExpandableSection variant='footer' headerText='Conversation Summary' defaultExpanded={false}>
+                    <Box color='text-status-inactive' padding='s'>
+                        {markdownDisplay ? (
+                            <ReactMarkdown
+                                remarkPlugins={markdownPlugins.remarkPlugins}
+                                rehypePlugins={markdownPlugins.rehypePlugins}
+                                children={typeof message.content === 'string' ? message.content : ''}
+                                components={markdownComponents}
+                            />
+                        ) : (
+                            <div style={{ whiteSpace: 'pre-line' }}>{typeof message.content === 'string' ? message.content : ''}</div>
+                        )}
+                    </Box>
                 </ExpandableSection>
             )}
         </div>

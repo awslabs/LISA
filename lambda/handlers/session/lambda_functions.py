@@ -18,6 +18,7 @@ import base64
 import json
 import logging
 import os
+import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal
@@ -25,12 +26,15 @@ from typing import Any, cast
 
 import boto3
 import create_env_variables  # noqa: F401
+import requests as http_requests
 from botocore.exceptions import ClientError
 from cachetools import cached, TTLCache  # type: ignore[import-untyped,unused-ignore]
 from lisa.domain.domain_objects import DeleteResponse, SuccessResponse
 from lisa.metrics.models import MetricsEvent
 from lisa.session.models import (
     AttachImageRequest,
+    CompactSessionRequest,
+    CompactSessionResponse,
     PaginatedMessagesResponse,
     PostMessagesRequest,
     PutSessionRequest,
@@ -42,11 +46,14 @@ from lisa.session.models import (
 )
 from lisa.session.repository import delete_user_session, extract_video_s3_keys, get_all_user_sessions
 from lisa.utilities.auth import get_user_context, get_username
+from lisa.utilities.aws_helpers import get_cert_path, get_rest_api_container_endpoint
 from lisa.utilities.common_functions import api_wrapper, get_session_id, retry_config
 from lisa.utilities.encoders import convert_decimal
 from lisa.utilities.input_validation import MAX_LARGE_REQUEST_SIZE
 from lisa.utilities.session_encryption import (
+    decrypt_session_data,
     decrypt_session_fields,
+    encrypt_session_data,
     migrate_session_to_encrypted,
     SessionEncryptionError,
 )
@@ -70,7 +77,8 @@ projects_table = dynamodb.Table(os.environ["PROJECTS_TABLE_NAME"]) if os.environ
 # a DynamoDB reserved word.
 _LIST_SESSIONS_PROJECTION_EXPRESSION = (
     "sessionId, userId, #n, projectId, startTime, createTime, lastUpdated, "
-    "is_encrypted, history, encrypted_history, totalTokensUsed"
+    "is_encrypted, history, encrypted_history, totalTokensUsed, compactionMessageIndex, "
+    "tokensUsedSinceCompaction"
 )
 _LIST_SESSIONS_ATTRIBUTE_NAMES = {"#n": "name"}
 s3_bucket_name = os.environ.get("GENERATED_IMAGES_S3_BUCKET_NAME", "")
@@ -227,8 +235,14 @@ def _get_user_sessions_for_listing(user_id: str) -> list[dict[str, Any]]:
 
 def _delete_user_session(session_id: str, user_id: str) -> DeleteResponse:
     return delete_user_session(
-        table, s3_resource, s3_client, s3_bucket_name, session_id, user_id,
-        messages_table=messages_table, dynamodb_resource=dynamodb,
+        table,
+        s3_resource,
+        s3_client,
+        s3_bucket_name,
+        session_id,
+        user_id,
+        messages_table=messages_table,
+        dynamodb_resource=dynamodb,
     )
 
 
@@ -276,6 +290,12 @@ def _map_session(
             resolved_project_id = str(raw_project_id)
     raw_tokens = session.get("totalTokensUsed")
     total_tokens_used = int(raw_tokens) if raw_tokens is not None else None
+    raw_compactionMessageIndex = session.get("compactionMessageIndex")
+    compaction_message_index = int(raw_compactionMessageIndex) if raw_compactionMessageIndex is not None else None
+    raw_tokensUsedSinceCompaction = session.get("tokensUsedSinceCompaction")
+    tokens_used_since_compaction = (
+        int(raw_tokensUsedSinceCompaction) if raw_tokensUsedSinceCompaction is not None else None
+    )
     return SessionSummary(
         sessionId=session.get("sessionId"),
         name=session.get("name"),
@@ -286,6 +306,8 @@ def _map_session(
         isEncrypted=session.get("is_encrypted", False),
         projectId=resolved_project_id,
         totalTokensUsed=total_tokens_used,
+        compactionMessageIndex=compaction_message_index,
+        tokensUsedSinceCompaction=tokens_used_since_compaction,
     )
 
 
@@ -319,7 +341,6 @@ def _find_first_human_message(session: dict, user_id: str | None = None) -> str:
                     # Decrypt content if encrypted
                     if msg_item.get("is_encrypted") and content:
                         try:
-                            from lisa.utilities.session_encryption import decrypt_session_data
                             decrypted = decrypt_session_data(content, user_id, session_id)
                             # Handle bundled payload {content, metadata, reasoningContent}
                             if isinstance(decrypted, dict) and "content" in decrypted:
@@ -348,10 +369,7 @@ def _find_first_human_message(session: dict, user_id: str | None = None) -> str:
     if session.get("is_encrypted", False):
         try:
             if user_id:
-                logging.info(
-                    f"Decrypting encrypted session {session_id} "
-                    f"to find first message for user {user_id}"
-                )
+                logging.info(f"Decrypting encrypted session {session_id} " f"to find first message for user {user_id}")
                 decrypted_session = decrypt_session_fields(session, user_id, session_id)
                 session = decrypted_session
             else:
@@ -371,7 +389,7 @@ def _find_first_human_message(session: dict, user_id: str | None = None) -> str:
             elif isinstance(content, list):
                 for item in content:
                     if isinstance(item, dict):
-                        text: str = item.get("text", "")
+                        text = item.get("text", "")
                         if text:
                             cleaned = _strip_context_from_display_text(text)
                             if cleaned:
@@ -473,13 +491,13 @@ def get_session(event: dict, context: dict) -> Session | dict:
             config_data = item.get("configuration")
             if item.get("is_encrypted", False) and item.get("encrypted_configuration"):
                 try:
-                    from lisa.utilities.session_encryption import decrypt_session_data
                     config_data = decrypt_session_data(item["encrypted_configuration"], user_id, session_id)
                 except Exception as e:
                     logger.warning(f"Failed to decrypt configuration for session {session_id}: {e}")
                     config_data = None
 
             # Build Session object from metadata (no history in the item)
+            raw_cmi = item.get("compactionMessageIndex")
             session = Session(
                 sessionId=item.get("sessionId", ""),
                 userId=item.get("userId", ""),
@@ -490,6 +508,7 @@ def get_session(event: dict, context: dict) -> Session | dict:
                 createTime=item.get("createTime"),
                 lastUpdated=item.get("lastUpdated"),
                 projectId=item.get("projectId"),
+                compactionMessageIndex=int(raw_cmi) if raw_cmi is not None else None,
             )
 
             # Query the most recent 20 messages (descending) then reverse for chronological order
@@ -515,7 +534,6 @@ def get_session(event: dict, context: dict) -> Session | dict:
             for msg_item in all_messages:
                 if msg_item.get("is_encrypted") and msg_item.get("content"):
                     try:
-                        from lisa.utilities.session_encryption import decrypt_session_data
                         decrypted = decrypt_session_data(msg_item["content"], user_id, session_id)
                         # The encrypted blob contains {content, metadata, reasoningContent}
                         if isinstance(decrypted, dict) and "content" in decrypted:
@@ -531,11 +549,13 @@ def get_session(event: dict, context: dict) -> Session | dict:
                     except Exception as e:
                         logger.warning(f"Failed to decrypt message {msg_item.get('messageIndex')}: {e}")
 
-            session = session.model_copy(update={
-                "history": all_messages,
-                "nextCursor": next_cursor,
-                "hasMoreMessages": has_more,
-            })
+            session = session.model_copy(
+                update={
+                    "history": all_messages,
+                    "nextCursor": next_cursor,
+                    "hasMoreMessages": has_more,
+                }
+            )
         else:
             # Legacy (v1.0): Read history from the sessions table item
             # Check if session data is encrypted and decrypt if necessary
@@ -833,7 +853,9 @@ def _encode_cursor(last_evaluated_key: dict[str, Any]) -> str:
 
 def _decode_cursor(cursor: str) -> dict[str, Any]:
     """Decode a base64 cursor string back to a DynamoDB ExclusiveStartKey."""
-    decoded = json.loads(base64.urlsafe_b64decode(cursor.encode("utf-8")).decode("utf-8"), parse_float=Decimal)
+    decoded: dict[str, Any] = json.loads(
+        base64.urlsafe_b64decode(cursor.encode("utf-8")).decode("utf-8"), parse_float=Decimal
+    )
     # Ensure messageIndex is a Decimal (DynamoDB Number type)
     if "messageIndex" in decoded:
         decoded["messageIndex"] = Decimal(str(decoded["messageIndex"]))
@@ -910,14 +932,12 @@ def post_messages(event: dict, context: dict) -> SuccessResponse | dict:
                 }
                 content = msg.get("content")
                 if encryption_enabled:
-                    from lisa.utilities.session_encryption import encrypt_session_data as _encrypt
-                    # Bundle content + metadata + reasoningContent into encrypted blob
                     sensitive_payload = {
                         "content": content,
                         "metadata": msg.get("metadata"),
                         "reasoningContent": msg.get("reasoningContent"),
                     }
-                    message_item["content"] = _encrypt(sensitive_payload, user_id, session_id)
+                    message_item["content"] = encrypt_session_data(sensitive_payload, user_id, session_id)
                     message_item["is_encrypted"] = True
                 else:
                     message_item["content"] = content
@@ -940,9 +960,7 @@ def post_messages(event: dict, context: dict) -> SuccessResponse | dict:
             for batch_start in range(0, len(migration_batch_items), 25):
                 batch_chunk = migration_batch_items[batch_start : batch_start + 25]
                 try:
-                    resp = dynamodb.meta.client.batch_write_item(
-                        RequestItems={messages_table.name: batch_chunk}
-                    )
+                    resp = dynamodb.meta.client.batch_write_item(RequestItems={messages_table.name: batch_chunk})
                     unprocessed = resp.get("UnprocessedItems", {})
                     retry_delay = 0.1
                     retries = 0
@@ -989,7 +1007,7 @@ def post_messages(event: dict, context: dict) -> SuccessResponse | dict:
             total_new_tokens += int(usage.get("completionTokens") or 0) + int(usage.get("promptTokens") or 0)
 
             # Build the message item for DynamoDB
-            message_item: dict[str, Any] = {
+            message_item = {
                 "sessionId": session_id,
                 "messageIndex": message_index,
                 "type": msg.get("type", "human"),
@@ -1002,9 +1020,6 @@ def post_messages(event: dict, context: dict) -> SuccessResponse | dict:
             # encrypted together under the history attribute)
             content = msg.get("content")
             if encryption_enabled:
-                from lisa.utilities.session_encryption import encrypt_session_data
-
-                # Build the sensitive payload to encrypt together
                 sensitive_payload = {
                     "content": content,
                     "metadata": msg.get("metadata"),
@@ -1036,9 +1051,7 @@ def post_messages(event: dict, context: dict) -> SuccessResponse | dict:
         for batch_start in range(0, len(batch_items), 25):
             batch_chunk = batch_items[batch_start : batch_start + 25]
             try:
-                response = dynamodb.meta.client.batch_write_item(
-                    RequestItems={messages_table.name: batch_chunk}
-                )
+                response = dynamodb.meta.client.batch_write_item(RequestItems={messages_table.name: batch_chunk})
                 # Handle unprocessed items with exponential backoff
                 unprocessed = response.get("UnprocessedItems", {})
                 retry_delay = 0.1
@@ -1073,6 +1086,7 @@ def post_messages(event: dict, context: dict) -> SuccessResponse | dict:
             "#startTime": "startTime",
             "#is_encrypted": "is_encrypted",
             "#totalTokensUsed": "totalTokensUsed",
+            "#tokensUsedSinceCompaction": "tokensUsedSinceCompaction",
         }
         expression_attr_values: dict[str, Any] = {
             ":messageCount": new_message_count,
@@ -1088,8 +1102,7 @@ def post_messages(event: dict, context: dict) -> SuccessResponse | dict:
         # Also track attributes to REMOVE (cleanup stale plaintext/encrypted fields)
         remove_parts = []
         if encryption_enabled:
-            from lisa.utilities.session_encryption import encrypt_session_data as _encrypt_config
-            encrypted_config = _encrypt_config(configuration.model_dump_for_storage(), user_id, session_id)
+            encrypted_config = encrypt_session_data(configuration.model_dump_for_storage(), user_id, session_id)
             set_parts.append("#encrypted_configuration = :encrypted_configuration")
             set_parts.append("#encryption_version = :encryption_version")
             expression_attr_names["#encrypted_configuration"] = "encrypted_configuration"
@@ -1116,7 +1129,9 @@ def post_messages(event: dict, context: dict) -> SuccessResponse | dict:
             expression_attr_values[":name"] = request.name
 
         # Construct the full expression: SET ... ADD ... [REMOVE ...]
-        update_expression = "SET " + ", ".join(set_parts) + " ADD #totalTokensUsed :newTokens"
+        update_expression = (
+            "SET " + ", ".join(set_parts) + " ADD #totalTokensUsed :newTokens, #tokensUsedSinceCompaction :newTokens"
+        )
         if remove_parts:
             update_expression += " REMOVE " + ", ".join(remove_parts)
 
@@ -1213,8 +1228,6 @@ def get_messages(event: dict, context: dict) -> PaginatedMessagesResponse | dict
         for item in items:
             if item.get("is_encrypted") and item.get("content"):
                 try:
-                    from lisa.utilities.session_encryption import decrypt_session_data
-
                     decrypted = decrypt_session_data(item["content"], user_id, session_id)
                     # The encrypted blob contains {content, metadata, reasoningContent}
                     if isinstance(decrypted, dict) and "content" in decrypted:
@@ -1260,5 +1273,388 @@ def get_messages(event: dict, context: dict) -> PaginatedMessagesResponse | dict
             nextCursor=next_cursor,
             hasMore=last_evaluated_key is not None,
         )
+    except ValueError as e:
+        return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
+
+
+def _format_messages_for_summary(messages: list[dict[str, Any]]) -> str:
+    """Format messages into a readable conversation transcript for summarization."""
+    lines = []
+    for msg in messages:
+        msg_type = msg.get("type", "unknown")
+        content = msg.get("content", "")
+        if isinstance(content, list):
+            text_parts = [
+                item.get("text", "") for item in content if isinstance(item, dict) and item.get("type") == "text"
+            ]
+            content = "\n".join(text_parts)
+        if not isinstance(content, str):
+            content = str(content)
+
+        role_label = {
+            "human": "USER",
+            "ai": "ASSISTANT",
+            "system": "SYSTEM",
+            "tool": "TOOL_RESULT",
+            "summary": "PREVIOUS_SUMMARY",
+        }.get(msg_type, msg_type.upper())
+
+        lines.append(f"[{role_label}]: {content}")
+
+        if msg.get("toolCalls"):
+            for tc in msg["toolCalls"]:
+                tc_name = tc.get("name", "unknown") if isinstance(tc, dict) else "unknown"
+                tc_args = tc.get("args", {}) if isinstance(tc, dict) else {}
+                lines.append(f"  [TOOL_CALL]: {tc_name}({json.dumps(tc_args, default=str)})")
+
+    return "\n\n".join(lines)
+
+
+def _build_summary_prompt(conversation_text: str) -> str:
+    """Build the summarization prompt for session compaction."""
+    return (
+        "Summarize the following conversation into a concise but comprehensive summary.\n\n"
+        "CRITICAL REQUIREMENTS - You MUST preserve:\n"
+        "1. All factual conclusions and decisions made by the user\n"
+        "2. All tool call results and their outcomes (tool names, key arguments, return values)\n"
+        "3. All file paths, code snippets, configuration values, and structured data mentioned\n"
+        "4. All RAG/document search findings and their sources\n"
+        "5. The user's stated goals, preferences, and constraints\n"
+        "6. Any errors encountered and how they were resolved\n"
+        "7. Key context needed to continue the conversation\n\n"
+        "FORMAT: Structured narrative with sections for multiple topics. "
+        "Use bullet points for facts/decisions. "
+        "Preserve exact values (numbers, paths, names) rather than paraphrasing.\n\n"
+        "Do NOT include conversational pleasantries or redundant back-and-forth. "
+        "Focus on information density.\n\n"
+        f"CONVERSATION:\n{conversation_text}"
+    )
+
+
+@api_wrapper
+def compact_session(event: dict, context: dict) -> CompactSessionResponse | dict:
+    """Compact a session by summarizing older messages into a SUMMARY message.
+
+    When token usage approaches the context window limit, this endpoint summarizes
+    older messages so subsequent LLM calls use a bounded context. The summary is
+    written as a new message with type 'summary' and the session's
+    compactionMessageIndex is updated to point to it.
+    """
+    try:
+        if not messages_table:
+            return {"statusCode": 500, "body": json.dumps({"error": "Messages table not configured"})}
+
+        user_id = get_username(event)
+        session_id = get_session_id(event)
+
+        try:
+            body = json.loads(event["body"], parse_float=Decimal)
+        except json.JSONDecodeError as e:
+            return {"statusCode": 400, "body": json.dumps({"error": f"Invalid JSON: {str(e)}"})}
+
+        try:
+            request = CompactSessionRequest.model_validate(body)
+        except ValidationError as e:
+            return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
+
+        # 1. Verify session ownership and get current state
+        session_response = table.get_item(Key={"sessionId": session_id, "userId": user_id})
+        session_item = session_response.get("Item", {})
+        if not session_item:
+            return {"statusCode": 404, "body": json.dumps({"error": "Session not found"})}
+
+        current_message_count = int(session_item.get("messageCount", 0))
+        current_compaction_index = session_item.get("compactionMessageIndex")
+        storage_version = session_item.get("storageVersion", "1.0")
+
+        # If messageCount is not tracked (pre-existing session), derive it from messages table
+        if current_message_count == 0 and messages_table:
+            count_resp = messages_table.query(
+                KeyConditionExpression="sessionId = :sid",
+                ExpressionAttributeValues={":sid": session_id},
+                Select="COUNT",
+            )
+            current_message_count = count_resp.get("Count", 0)
+
+        # 2. Guard: need at least 3 messages (system + 1 exchange)
+        if current_message_count < 3:
+            return {"statusCode": 400, "body": json.dumps({"error": "Session too short to compact"})}
+
+        if storage_version != "2.0":
+            return {
+                "statusCode": 400,
+                "body": json.dumps(
+                    {"error": "Session must use storageVersion 2.0. Send a message first to trigger migration."}
+                ),
+            }
+
+        # 3. Load messages from messages table (asc)
+        all_messages: list[dict[str, Any]] = []
+        exclusive_start_key: dict[str, Any] | None = None
+        while True:
+            query_params: dict[str, Any] = {
+                "KeyConditionExpression": "sessionId = :sid",
+                "ExpressionAttributeValues": {":sid": session_id},
+                "ScanIndexForward": True,
+            }
+            if exclusive_start_key:
+                query_params["ExclusiveStartKey"] = exclusive_start_key
+            resp = messages_table.query(**query_params)
+            all_messages.extend(resp.get("Items", []))
+            exclusive_start_key = resp.get("LastEvaluatedKey")
+            if not exclusive_start_key:
+                break
+
+        # 4. Decrypt messages if encrypted
+        encryption_enabled = _is_session_encryption_enabled()
+        for msg in all_messages:
+            if msg.get("is_encrypted") and msg.get("content"):
+                try:
+                    decrypted = decrypt_session_data(msg["content"], user_id, session_id)
+                    if isinstance(decrypted, dict) and "content" in decrypted:
+                        msg["content"] = decrypted["content"]
+                    else:
+                        msg["content"] = decrypted
+                except Exception as e:
+                    logger.warning(f"Failed to decrypt message {msg.get('messageIndex')} during compaction: {e}")
+
+        # 5. Determine summarization range
+        if current_compaction_index is not None:
+            summarize_start = int(current_compaction_index)
+        else:
+            # First compaction: skip index 0 (system message)
+            summarize_start = 1
+
+        messages_for_summary = [m for m in all_messages if int(m["messageIndex"]) >= summarize_start]
+
+        if not messages_for_summary:
+            return {"statusCode": 400, "body": json.dumps({"error": "No messages available for compaction"})}
+
+        # 6. Format messages and build prompt
+        conversation_text = _format_messages_for_summary(messages_for_summary)
+        summary_prompt = _build_summary_prompt(conversation_text)
+
+        # 7. Call serve API
+        serve_endpoint = get_rest_api_container_endpoint()
+        headers = event.get("headers") or {}
+        auth_token = headers.get("Authorization", "") or headers.get("authorization", "")
+
+        iam_client = boto3.client("iam", region_name=os.environ["AWS_REGION"])
+        cert_path = get_cert_path(iam_client)
+
+        llm_response = http_requests.post(
+            f"{serve_endpoint}/chat/completions",
+            headers={
+                "Authorization": auth_token,
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": request.modelId,
+                "messages": [
+                    {"role": "system", "content": "You are a precise conversation summarizer."},
+                    {"role": "user", "content": summary_prompt},
+                ],
+                "max_tokens": 4096,
+                "temperature": 0.0,
+            },
+            verify=cert_path,
+            timeout=120,
+        )
+
+        if llm_response.status_code != 200:
+            logger.error(f"Summarization call failed with status {llm_response.status_code}: {llm_response.text}")
+            return {"statusCode": 502, "body": json.dumps({"error": "Summarization call failed"})}
+
+        response_data = llm_response.json()
+        summary_content = response_data["choices"][0]["message"]["content"]
+
+        # 8. Write SUMMARY to messages table
+        summary_message_index = current_message_count
+        timestamp = iso_string()
+
+        summary_item: dict[str, Any] = {
+            "sessionId": session_id,
+            "messageIndex": summary_message_index,
+            "type": "summary",
+            "createdAt": timestamp,
+        }
+
+        if encryption_enabled:
+            sensitive_payload = {"content": summary_content}
+            summary_item["content"] = encrypt_session_data(sensitive_payload, user_id, session_id)
+            summary_item["is_encrypted"] = True
+        else:
+            summary_item["content"] = summary_content
+
+        messages_table.put_item(Item=summary_item)
+
+        # Extract system prompt from the already-loaded messages
+        system_prompt = ""
+        if all_messages:
+            first_msg = all_messages[0]
+            content = first_msg.get("content", "")
+            if isinstance(content, str):
+                system_prompt = content
+            elif isinstance(content, list):
+                system_prompt = " ".join(item.get("text", "") for item in content if isinstance(item, dict))
+
+        # Build the compacted system prompt (persisted for reuse by get_session_context)
+        compacted_system_prompt = f"{system_prompt}\n\n--- Conversation Summary (prior context) ---\n{summary_content}"
+
+        # 9. Update sessions table and reset tokensUsedSinceCompaction
+        table.update_item(
+            Key={"sessionId": session_id, "userId": user_id},
+            UpdateExpression=(
+                "SET #cmi = :cmi, #mc = :mc, #lastUpdated = :lastUpdated, "
+                "#tokensUsedSinceCompaction = :zero, #csp = :csp"
+            ),
+            ExpressionAttributeNames={
+                "#cmi": "compactionMessageIndex",
+                "#mc": "messageCount",
+                "#lastUpdated": "lastUpdated",
+                "#tokensUsedSinceCompaction": "tokensUsedSinceCompaction",
+                "#csp": "compactedSystemPrompt",
+            },
+            ExpressionAttributeValues={
+                ":cmi": summary_message_index,
+                ":mc": summary_message_index + 1,
+                ":lastUpdated": timestamp,
+                ":zero": 0,
+                ":csp": compacted_system_prompt,
+            },
+        )
+
+        logger.info(
+            f"Session {session_id} compacted: summary at index {summary_message_index}, "
+            f"summarized {len(messages_for_summary)} messages starting at index {summarize_start}"
+        )
+
+        return CompactSessionResponse(
+            summaryMessageIndex=summary_message_index,
+            summaryContent=summary_content,
+            compactionMessageIndex=summary_message_index,
+            systemPrompt=system_prompt,
+        )
+    except ValueError as e:
+        return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
+    except Exception as e:
+        logger.error(f"Compaction failed for session: {e}", exc_info=True)
+        return {"statusCode": 500, "body": json.dumps({"error": f"Compaction failed: {str(e)}"})}
+
+
+def _query_all_messages(session_id: str, user_id: str) -> list[dict[str, Any]]:
+    """Query all messages for a session from the messages table, ascending order. Decrypts if needed."""
+    if messages_table is None:
+        raise RuntimeError("messages_table must be configured")
+    all_msgs: list[dict[str, Any]] = []
+    exclusive_start_key: dict[str, Any] | None = None
+    while True:
+        query_params: dict[str, Any] = {
+            "KeyConditionExpression": "sessionId = :sid",
+            "ExpressionAttributeValues": {":sid": session_id},
+            "ScanIndexForward": True,
+        }
+        if exclusive_start_key:
+            query_params["ExclusiveStartKey"] = exclusive_start_key
+        resp = messages_table.query(**query_params)
+        all_msgs.extend(resp.get("Items", []))
+        exclusive_start_key = resp.get("LastEvaluatedKey")
+        if not exclusive_start_key:
+            break
+
+    for msg in all_msgs:
+        if msg.get("is_encrypted") and msg.get("content"):
+            try:
+                decrypted = decrypt_session_data(msg["content"], user_id, session_id)
+                if isinstance(decrypted, dict) and "content" in decrypted:
+                    msg["content"] = decrypted["content"]
+                    if decrypted.get("metadata"):
+                        msg["metadata"] = decrypted["metadata"]
+                    if decrypted.get("reasoningContent"):
+                        msg["reasoningContent"] = decrypted["reasoningContent"]
+                else:
+                    msg["content"] = decrypted
+                if "is_encrypted" in msg:
+                    del msg["is_encrypted"]
+            except Exception as e:
+                logger.warning(f"Failed to decrypt message {msg.get('messageIndex')} in context: {e}")
+
+    return all_msgs
+
+
+def _query_messages_from_index(session_id: str, start_index: int, user_id: str) -> list[dict[str, Any]]:
+    """Query messages from a given index onward (inclusive), ascending. Decrypts if needed."""
+    if messages_table is None:
+        raise RuntimeError("messages_table must be configured")
+    all_msgs: list[dict[str, Any]] = []
+    exclusive_start_key: dict[str, Any] | None = None
+    while True:
+        query_params: dict[str, Any] = {
+            "KeyConditionExpression": "sessionId = :sid AND messageIndex >= :start",
+            "ExpressionAttributeValues": {":sid": session_id, ":start": start_index},
+            "ScanIndexForward": True,
+        }
+        if exclusive_start_key:
+            query_params["ExclusiveStartKey"] = exclusive_start_key
+        resp = messages_table.query(**query_params)
+        all_msgs.extend(resp.get("Items", []))
+        exclusive_start_key = resp.get("LastEvaluatedKey")
+        if not exclusive_start_key:
+            break
+
+    for msg in all_msgs:
+        if msg.get("is_encrypted") and msg.get("content"):
+            try:
+                decrypted = decrypt_session_data(msg["content"], user_id, session_id)
+                if isinstance(decrypted, dict) and "content" in decrypted:
+                    msg["content"] = decrypted["content"]
+                    if decrypted.get("metadata"):
+                        msg["metadata"] = decrypted["metadata"]
+                    if decrypted.get("reasoningContent"):
+                        msg["reasoningContent"] = decrypted["reasoningContent"]
+                else:
+                    msg["content"] = decrypted
+                if "is_encrypted" in msg:
+                    del msg["is_encrypted"]
+            except Exception as e:
+                logger.warning(f"Failed to decrypt message {msg.get('messageIndex')} in context: {e}")
+
+    return all_msgs
+
+
+@api_wrapper
+def get_session_context(event: dict, context: dict) -> dict:
+    """Return the LLM-ready message array for a session.
+
+    Non-compacted sessions: returns all messages in ascending order.
+    Compacted sessions: returns compactedSystemPrompt as the system message
+    followed by all messages after compactionMessageIndex.
+    """
+    try:
+        if not messages_table:
+            return {"statusCode": 500, "body": json.dumps({"error": "Messages table not configured"})}
+
+        user_id = get_username(event)
+        session_id = get_session_id(event)
+
+        # Get session metadata
+        session_response = table.get_item(Key={"sessionId": session_id, "userId": user_id})
+        session_item = session_response.get("Item", {})
+        if not session_item:
+            return {"statusCode": 404, "body": json.dumps({"error": "Session not found"})}
+
+        compaction_index = session_item.get("compactionMessageIndex")
+        compacted_system_prompt = session_item.get("compactedSystemPrompt")
+
+        if compaction_index is not None and compacted_system_prompt:
+            # Compacted: fetch only post-summary messages
+            post_compaction_msgs = _query_messages_from_index(session_id, int(compaction_index) + 1, user_id)
+            # Prepend the persisted compacted system prompt as a system message
+            context_messages = [{"type": "system", "content": compacted_system_prompt}] + post_compaction_msgs
+        else:
+            # Non-compacted: fetch ALL messages
+            context_messages = _query_all_messages(session_id, user_id)
+
+        return {"messages": context_messages}
     except ValueError as e:
         return {"statusCode": 400, "body": json.dumps({"error": str(e)})}

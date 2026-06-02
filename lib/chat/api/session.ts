@@ -233,6 +233,25 @@ export class SessionApi extends Construct {
             })
         );
 
+        // Used by compact_session
+        lambdaRole.addToPrincipalPolicy(
+            new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: ['ssm:GetParameter'],
+                resources: [`arn:${config.partition}:ssm:${config.region}:${config.accountNumber}:parameter${config.deploymentPrefix}/*`]
+            })
+        );
+
+        if (config.restApiConfig?.sslCertIamArn) {
+            lambdaRole.addToPrincipalPolicy(
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: ['iam:GetServerCertificate'],
+                    resources: [config.restApiConfig.sslCertIamArn],
+                })
+            );
+        }
+
         // Create API Lambda functions
         const apis: PythonLambdaFunction[] = [
             {
@@ -305,6 +324,27 @@ export class SessionApi extends Construct {
                 path: 'session/{sessionId}/messages',
                 method: 'GET',
                 environment: env,
+            },
+            {
+                name: 'get_session_context',
+                resource: 'session',
+                description: 'Gets the LLM-ready message context for a session',
+                path: 'session/{sessionId}/context',
+                method: 'GET',
+                environment: env,
+            },
+            {
+                name: 'compact_session',
+                resource: 'session',
+                description: 'Compacts session by summarizing older messages',
+                path: 'session/{sessionId}/compact',
+                method: 'POST',
+                environment: {
+                    ...env,
+                    LISA_API_URL_PS_NAME: `${config.deploymentPrefix}/lisaServeRestApiUri`,
+                    REST_API_VERSION: 'v2',
+                    RESTAPI_SSL_CERT_ARN: config.restApiConfig?.sslCertIamArn ?? '',
+                },
             },
         ];
 

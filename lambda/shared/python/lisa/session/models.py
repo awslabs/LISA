@@ -225,10 +225,12 @@ class Session(BaseModel):
     projectId: str | None = None
     nextCursor: str | None = None
     hasMoreMessages: bool = False
+    compactionMessageIndex: int | None = None
 
     @classmethod
     def from_dynamodb_item(cls, item: dict[str, Any]) -> "Session":
         """Create a Session from a DynamoDB item."""
+        raw_cmi = item.get("compactionMessageIndex")
         return cls(
             sessionId=item.get("sessionId", ""),
             userId=item.get("userId", ""),
@@ -239,6 +241,7 @@ class Session(BaseModel):
             createTime=item.get("createTime"),
             lastUpdated=item.get("lastUpdated"),
             projectId=item.get("projectId"),
+            compactionMessageIndex=int(raw_cmi) if raw_cmi is not None else None,
         )
 
 
@@ -254,6 +257,8 @@ class SessionSummary(BaseModel):
     isEncrypted: bool = False
     projectId: str | None = None
     totalTokensUsed: int | None = None
+    compactionMessageIndex: int | None = None
+    tokensUsedSinceCompaction: int | None = None
 
 
 class PutSessionRequest(BaseModel):
@@ -350,3 +355,19 @@ class PaginatedMessagesResponse(BaseModel):
     messages: list[dict[str, Any]] = Field(default_factory=list)
     nextCursor: str | None = None
     hasMore: bool = False
+
+
+class CompactSessionRequest(BaseModel):
+    """Request model for session compaction (summarization of older messages)."""
+
+    modelId: str = Field(description="Model ID to use for summarization")
+    contextWindow: int = Field(description="Context window size of the model")
+
+
+class CompactSessionResponse(BaseModel):
+    """Response model for session compaction."""
+
+    summaryMessageIndex: int = Field(description="Message index where the summary was written")
+    summaryContent: str = Field(description="The generated summary content")
+    compactionMessageIndex: int = Field(description="Index to use as the compaction cursor")
+    systemPrompt: str = Field(description="The system prompt content (message index 0)")

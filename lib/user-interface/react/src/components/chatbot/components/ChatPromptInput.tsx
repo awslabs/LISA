@@ -26,6 +26,7 @@ type ChatPromptInputProps = {
     isConnected: boolean;
     selectedModel: any;
     loadingSession: boolean;
+    isCompacting: boolean;
     isImageGenerationMode: boolean;
     isVideoGenerationMode: boolean;
     fileContext: string;
@@ -59,6 +60,7 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
     isConnected,
     selectedModel,
     loadingSession,
+    isCompacting,
     isImageGenerationMode,
     isVideoGenerationMode,
     fileContext,
@@ -117,7 +119,7 @@ export const ChatPromptInput: React.FC<ChatPromptInputProps> = ({
                         isImageGenerationMode ? 'Describe the image you want to generate...' :
                             'Send a message'
             }
-            disabled={!selectedModel || loadingSession || !isConnected || isModelDeleted}
+            disabled={!selectedModel || loadingSession || isCompacting || !isConnected || isModelDeleted}
             onChange={({ detail }) => setUserPrompt(detail.value)}
             onAction={handleAction}
             onKeyDown={handleKeyPress}

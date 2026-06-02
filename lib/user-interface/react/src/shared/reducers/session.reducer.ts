@@ -222,6 +222,29 @@ export const sessionApi = createApi({
                 { type: 'session', id: sessionId }
             ],
         }),
+        getSessionContext: builder.query<{ messages: any[] }, string>({
+            query: (sessionId) => ({
+                url: `/session/${sessionId}/context`
+            }),
+        }),
+        compactSession: builder.mutation<
+            { summaryMessageIndex: number; summaryContent: string; compactionMessageIndex: number; systemPrompt: string },
+            { sessionId: string; modelId: string; contextWindow: number }
+        >({
+            query: ({ sessionId, modelId, contextWindow }) => ({
+                url: `/session/${sessionId}/compact`,
+                method: 'POST',
+                data: { modelId, contextWindow }
+            }),
+            transformErrorResponse: (baseQueryReturnValue) => ({
+                name: 'Compact Session Error',
+                message: extractErrorMessage(baseQueryReturnValue)
+            }),
+            invalidatesTags: (result, error, { sessionId }) => [
+                'sessions',
+                { type: 'session', id: sessionId }
+            ],
+        }),
     }),
 });
 
@@ -237,4 +260,6 @@ export const {
     useAssignSessionProjectMutation,
     usePostMessagesMutation,
     useLazyGetMessagesQuery,
+    useLazyGetSessionContextQuery,
+    useCompactSessionMutation,
 } = sessionApi;

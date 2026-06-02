@@ -131,9 +131,7 @@ def delete_session_messages(
                     for item in batch_chunk
                 ]
                 try:
-                    dynamodb_resource.meta.client.batch_write_item(
-                        RequestItems={messages_table.name: delete_requests}
-                    )
+                    dynamodb_resource.meta.client.batch_write_item(RequestItems={messages_table.name: delete_requests})
                 except ClientError as e:
                     logger.warning(f"Failed to delete message batch for session {session_id}: {e}")
 

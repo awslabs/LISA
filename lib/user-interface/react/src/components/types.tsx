@@ -138,11 +138,13 @@ export type LisaChatSession = {
     startTime: string;
     lastUpdated?: string;  // Optional for backward compatibility
     totalTokensUsed?: number;
+    tokensUsedSinceCompaction?: number;
     history: LisaChatMessage[];
     name?: string;
     firstHumanMessage?: MessageContent;
     configuration?: IChatConfiguration & IModelConfiguration;
     projectId?: string;
+    compactionMessageIndex?: number;
 };
 
 export type LisaAttachImageRequest = {
@@ -269,6 +271,7 @@ export enum MessageTypes {
     SYSTEM = 'system',
     AI = 'ai',
     TOOL = 'tool',
+    SUMMARY = 'summary',
 }
 
 /**

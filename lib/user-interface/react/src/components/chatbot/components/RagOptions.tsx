@@ -18,7 +18,7 @@ import { Autosuggest, Grid, SpaceBetween } from '@cloudscape-design/components';
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useGetAllModelsQuery } from '@/shared/reducers/model-management.reducer';
 import { IModel, ModelStatus, ModelType } from '@/shared/model/model-management.model';
-import { useListRagRepositoriesQuery, useListCollectionsQuery, RagCollectionConfig } from '@/shared/reducers/rag.reducer';
+import { useListRagRepositoriesQuery, useListCollectionsQuery, RagCollectionConfig, ListRagRepositoryResponse } from '@/shared/reducers/rag.reducer';
 import { RagRepositoryType, VectorStoreStatus } from '#root/lib/schema';
 import { CollectionStatus } from '#root/lib/schema/collectionSchema';
 
@@ -27,6 +27,7 @@ export type RagConfig = {
     embeddingModel: IModel;
     repositoryId: string;
     repositoryType: string;
+    supportsHybridSearch?: boolean;
 };
 
 type RagControlProps = {
@@ -40,9 +41,11 @@ type RagControlProps = {
     allowedRepositoryIds?: string[];
     /** When set (e.g. from Chat Assistant stack), only these collection IDs are shown */
     allowedCollectionIds?: string[];
+    /** Called when the user changes the selected repository */
+    onRepositoryChanged?: () => void;
 };
 
-export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragConfig, selectionAvailable, allowedRepositoryIds, allowedCollectionIds }: RagControlProps) {
+export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragConfig, selectionAvailable, allowedRepositoryIds, allowedCollectionIds, onRepositoryChanged }: RagControlProps) {
     const { data: repositories, isLoading: isLoadingRepositories } = useListRagRepositoriesQuery(undefined, {
         refetchOnMountOrArgChange: 5
     });
@@ -118,6 +121,17 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
         if (repositoryHasChanged) {
             lastRepositoryIdRef.current = currentRepositoryId;
             queueMicrotask(() => setUserHasSelectedCollection(false));
+
+            if (currentRepositoryId && filteredRepositories) {
+                const repo = filteredRepositories.find((r) => r.repositoryId === currentRepositoryId);
+                if (repo && !ragConfig?.repositoryType) {
+                    setRagConfig((config) => ({
+                        ...config,
+                        repositoryType: repo.type,
+                        supportsHybridSearch: (repo as ListRagRepositoryResponse)?.supportsHybridSearch ?? false,
+                    }));
+                }
+            }
         }
 
         if (currentRepositoryId && filteredRepositories && allModels && (!userHasSelectedCollection || repositoryHasChanged)) {
@@ -170,6 +184,7 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
     const handleRepositoryChange = ({ detail }) => {
         const newRepositoryId = detail.value;
         setUserHasSelectedCollection(false); // Reset collection selection flag
+        onRepositoryChanged?.();
 
         if (newRepositoryId) {
             const repository = filteredRepositories?.find((repo) => repo.repositoryId === newRepositoryId);
@@ -177,14 +192,16 @@ export default function RagControls ({ isRunning, setUseRag, setRagConfig, ragCo
                 ...config,
                 repositoryId: newRepositoryId,
                 repositoryType: repository?.type || 'unknown',
-                collection: undefined, // Clear collection when repository changes
-                embeddingModel: undefined, // Clear current model so useEffect can set default
+                supportsHybridSearch: (repository as ListRagRepositoryResponse)?.supportsHybridSearch ?? false,
+                collection: undefined,
+                embeddingModel: undefined,
             }));
         } else {
             setRagConfig((config) => ({
                 ...config,
                 repositoryId: undefined,
                 repositoryType: undefined,
+                supportsHybridSearch: false,
                 collection: undefined,
                 embeddingModel: undefined,
             }));

@@ -210,7 +210,11 @@ class TestRagMixin:
 
     @responses.activate
     def test_similarity_search(self, lisa_api: LisaApi, api_url: str, caplog):
-        """Test performing similarity search."""
+        """Test performing similarity search with include_score=True.
+
+        Backend places the normalized similarity score on Document.metadata.similarity_score
+        when the request opts in via include_score=True.
+        """
         repo_id = "pgvector-rag"
         collection_id = "col-123"
         query = "What is machine learning?"
@@ -220,16 +224,24 @@ class TestRagMixin:
                 {
                     "Document": {
                         "page_content": "Machine learning is a subset of AI...",
-                        "metadata": {"source": "ml-guide.pdf", "page": 1, "document_id": "doc-123"},
+                        "metadata": {
+                            "source": "ml-guide.pdf",
+                            "page": 1,
+                            "document_id": "doc-123",
+                            "similarity_score": 0.95,
+                        },
                     },
-                    "score": 0.95,
                 },
                 {
                     "Document": {
                         "page_content": "Deep learning uses neural networks...",
-                        "metadata": {"source": "dl-guide.pdf", "page": 3, "document_id": "doc-456"},
+                        "metadata": {
+                            "source": "dl-guide.pdf",
+                            "page": 3,
+                            "document_id": "doc-456",
+                            "similarity_score": 0.87,
+                        },
                     },
-                    "score": 0.87,
                 },
             ]
         }
@@ -243,13 +255,16 @@ class TestRagMixin:
 
         logging.disable(logging.CRITICAL)
 
-        docs = lisa_api.similarity_search(repo_id=repo_id, query=query, k=5, collection_id=collection_id)
+        result = lisa_api.similarity_search(
+            repo_id=repo_id, query=query, k=5, collection_id=collection_id, include_score=True
+        )
 
         # Re-enable logging
         logging.disable(logging.NOTSET)
 
+        docs = result["docs"]
         assert len(docs) == 2
-        assert docs[0]["score"] == 0.95
+        assert docs[0]["Document"]["metadata"]["similarity_score"] == 0.95
         assert "machine learning" in docs[0]["Document"]["page_content"].lower()
         # Verify document_id is present in metadata (enriched by similarity_search)
         assert "document_id" in docs[0]["Document"]["metadata"]
@@ -258,6 +273,7 @@ class TestRagMixin:
         assert responses.calls[0].request.params["query"] == query
         assert responses.calls[0].request.params["topK"] == "5"
         assert responses.calls[0].request.params["collectionId"] == collection_id
+        assert responses.calls[0].request.params["score"] == "true"
 
     @responses.activate
     def test_similarity_search_with_model_name(self, lisa_api: LisaApi, api_url: str):
@@ -272,11 +288,74 @@ class TestRagMixin:
             responses.GET, f"{api_url}/repository/{repo_id}/similaritySearch", json=expected_response, status=200
         )
 
-        docs = lisa_api.similarity_search(repo_id=repo_id, query=query, model_name=model_name)
+        result = lisa_api.similarity_search(repo_id=repo_id, query=query, model_name=model_name)
 
-        assert len(docs) == 0
+        assert len(result["docs"]) == 0
         # Verify model_name was sent
         assert responses.calls[0].request.params["modelName"] == model_name
+
+    @responses.activate
+    def test_similarity_search_with_search_mode(self, lisa_api: LisaApi, api_url: str):
+        """Test similarity search with search_mode=hybrid returns docs and metadata."""
+        repo_id = "bedrock-kb-repo"
+        collection_id = "ds-123"
+        query = "What is machine learning?"
+
+        expected_response = {
+            "docs": [
+                {
+                    "Document": {
+                        "page_content": "ML is a subset of AI...",
+                        "metadata": {"source": "s3://bucket/doc.pdf"},
+                    }
+                }
+            ],
+            "metadata": {
+                "search_mode": "hybrid",
+                "actual_mode_used": "hybrid",
+                "backend": "bedrock_knowledge_base",
+                "hybrid_supported": True,
+            },
+        }
+
+        responses.add(
+            responses.GET, f"{api_url}/repository/{repo_id}/similaritySearch", json=expected_response, status=200
+        )
+
+        result = lisa_api.similarity_search(
+            repo_id=repo_id, query=query, collection_id=collection_id, search_mode="hybrid"
+        )
+
+        assert len(result["docs"]) == 1
+        assert result["metadata"]["search_mode"] == "hybrid"
+        assert result["metadata"]["hybrid_supported"] is True
+        assert responses.calls[0].request.params["searchMode"] == "hybrid"
+
+    @responses.activate
+    def test_similarity_search_default_has_metadata(self, lisa_api: LisaApi, api_url: str):
+        """Test similarity search without search_mode omits searchMode param but returns metadata."""
+        repo_id = "pgvector-rag"
+        query = "test"
+
+        expected_response = {
+            "docs": [],
+            "metadata": {
+                "search_mode": "vector",
+                "actual_mode_used": "vector",
+                "backend": "pgvector",
+                "hybrid_supported": False,
+            },
+        }
+
+        responses.add(
+            responses.GET, f"{api_url}/repository/{repo_id}/similaritySearch", json=expected_response, status=200
+        )
+
+        result = lisa_api.similarity_search(repo_id=repo_id, query=query, model_name="test-model")
+
+        assert "metadata" in result
+        assert result["metadata"]["search_mode"] == "vector"
+        assert "searchMode" not in responses.calls[0].request.params
 
     @responses.activate
     def test_list_documents_error(self, lisa_api: LisaApi, api_url: str):

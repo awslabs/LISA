@@ -76,9 +76,9 @@ class TestRunEvaluation:
         """Config with one LISA API backend returns correct results."""
         mock_client = MagicMock()
         mock_create_client.return_value = mock_client
-        mock_client.similarity_search.return_value = [
-            {"Document": {"page_content": "text", "metadata": {"source": "s3://bucket/a.pdf"}}, "score": 0.9}
-        ]
+        mock_client.similarity_search.return_value = {
+            "docs": [{"Document": {"page_content": "text", "metadata": {"source": "s3://bucket/a.pdf"}}, "score": 0.9}]
+        }
 
         dataset_file = tmp_path / "golden.jsonl"
         dataset_file.write_text(_golden_dataset_jsonl(GOLDEN))
@@ -108,9 +108,9 @@ class TestRunEvaluation:
         """Two LISA backends with same (api_url, deployment_name) share one client."""
         mock_client = MagicMock()
         mock_create_client.return_value = mock_client
-        mock_client.similarity_search.return_value = [
-            {"Document": {"page_content": "text", "metadata": {"source": "s3://bucket/a.pdf"}}, "score": 0.9}
-        ]
+        mock_client.similarity_search.return_value = {
+            "docs": [{"Document": {"page_content": "text", "metadata": {"source": "s3://bucket/a.pdf"}}, "score": 0.9}]
+        }
 
         dataset_file = tmp_path / "golden.jsonl"
         dataset_file.write_text(_golden_dataset_jsonl(GOLDEN))

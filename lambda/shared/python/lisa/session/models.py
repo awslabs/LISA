@@ -70,6 +70,7 @@ class SessionConfiguration(BaseModel):
     showReasoningContent: bool = True
     max_tokens: int | None = None
     ragTopK: int = 3
+    ragSearchMode: Literal["vector", "hybrid"] | None = None
     modelArgs: ModelArgs = Field(default_factory=ModelArgs)
     imageGenerationArgs: ImageGenerationArgs = Field(default_factory=ImageGenerationArgs)
     videoGenerationArgs: VideoGenerationArgs = Field(default_factory=VideoGenerationArgs)
@@ -115,6 +116,7 @@ class RagConfig(BaseModel):
     embeddingModel: dict[str, Any] | None = None
     repositoryId: str | None = None
     repositoryType: str | None = None
+    supportsHybridSearch: bool | None = None
 
 
 # --- Selected model (session snapshot of IModel) ---

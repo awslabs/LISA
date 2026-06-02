@@ -15,7 +15,7 @@
 */
 
 import { describe, it, expect } from 'vitest';
-import { announcementConfigSchema } from './configuration.model';
+import { announcementConfigSchema, enabledComponentsSchema } from './configuration.model';
 
 describe('announcementConfigSchema', () => {
     it('accepts when isEnabled is false with empty message', () => {
@@ -42,5 +42,17 @@ describe('announcementConfigSchema', () => {
             );
             expect(messageErrors.length).toBeGreaterThanOrEqual(1);
         }
+    });
+});
+
+describe('enabledComponentsSchema', () => {
+    it('defaults hybridSearch to false', () => {
+        const result = enabledComponentsSchema.parse({});
+        expect(result.hybridSearch).toBe(false);
+    });
+
+    it('accepts hybridSearch set to true', () => {
+        const result = enabledComponentsSchema.parse({ hybridSearch: true });
+        expect(result.hybridSearch).toBe(true);
     });
 });

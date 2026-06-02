@@ -232,33 +232,31 @@ class BedrockKBRepositoryService(RepositoryService):
         else:
             logger.info("No LISA-managed documents to delete from KB")
 
-    def retrieve_documents(
+    def supports_hybrid_search(self) -> bool:
+        """Bedrock KB supports hybrid search with automatic fallback.
+
+        Returns True because hybrid_retrieve() handles unsupported KBs
+        internally by falling back to semantic search. Individual KB
+        instances may or may not support hybrid; the fallback is transparent.
+        """
+        return True
+
+    def _build_retrieve_params(
         self,
         query: str,
         collection_id: str,
         top_k: int,
-        model_name: str,
-        include_score: bool = False,
         bedrock_agent_client: Any | None = None,
-    ) -> list[dict[str, Any]]:
-        """Retrieve documents from Bedrock KB using retrieve API.
-
-        Args:
-            query: Search query
-            collection_id: Collection to search (data source ID)
-            top_k: Number of results to return
-            model_name: Embedding model name (not used for Bedrock KB)
-            include_score: Whether to include similarity scores in metadata
-            bedrock_agent_client: Bedrock agent client for KB operations
+    ) -> tuple[dict[str, Any], str]:
+        """Build Bedrock retrieve API parameters.
 
         Returns:
-            List of documents with page_content and metadata
+            Tuple of (retrieve_params dict, kb_id string)
         """
         if not bedrock_agent_client:
             raise ValueError("Bedrock agent client required for KB operations")
 
         bedrock_config = self.repository.get("bedrockKnowledgeBaseConfig", {})
-        # Support both field names for backward compatibility
         kb_id: str | None = bedrock_config.get("knowledgeBaseId", bedrock_config.get("bedrockKnowledgeBaseId"))
 
         if not kb_id:
@@ -269,10 +267,6 @@ class BedrockKBRepositoryService(RepositoryService):
                 f"(e.g., 'KB123456' or a UUID format, not the LISA repository ID)."
             )
 
-        # Use Bedrock retrieve API with data source filter
-        logger.info(f"Retrieving from KB: kb_id={kb_id}, data_source={collection_id}, query={query[:50]}...")
-
-        # Build retrieve params with data source filter
         retrieve_params: dict[str, Any] = {
             "knowledgeBaseId": kb_id,
             "retrievalQuery": {"text": query},
@@ -283,8 +277,6 @@ class BedrockKBRepositoryService(RepositoryService):
             },
         }
 
-        # Add data source filter if collection_id is provided
-        # collection_id corresponds to the data source ID in Bedrock KB
         if collection_id:
             vector_search_config = retrieve_params["retrievalConfiguration"]["vectorSearchConfiguration"]
             vector_search_config["filter"] = {
@@ -295,13 +287,22 @@ class BedrockKBRepositoryService(RepositoryService):
             }
             logger.info(f"Filtering to data source: {collection_id}")
 
+        return retrieve_params, kb_id
+
+    def _call_retrieve_api(
+        self,
+        bedrock_agent_client: Any,
+        retrieve_params: dict[str, Any],
+        kb_id: str,
+    ) -> dict[str, Any]:
+        """Call Bedrock retrieve API with error handling."""
         try:
-            response = bedrock_agent_client.retrieve(**retrieve_params)
+            result: dict[str, Any] = bedrock_agent_client.retrieve(**retrieve_params)
+            return result
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "")
             error_message = str(e)
 
-            # Check for Aurora DB auto-pause error
             if error_code == "ValidationException" and "auto-paused" in error_message.lower():
                 logger.warning(f"Aurora DB is resuming from auto-pause for KB {kb_id}")
                 raise ServiceUnavailableException(
@@ -322,19 +323,26 @@ class BedrockKBRepositoryService(RepositoryService):
             logger.error(f"Bedrock retrieve failed for KB {kb_id}: {str(e)}")
             raise
 
-        # Transform Bedrock results to standard format
+    def _transform_retrieve_results(
+        self,
+        response: dict[str, Any],
+        include_score: bool = False,
+        extra_metadata: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Transform Bedrock retrieve response to standard document format."""
         documents = []
         for result in response.get("retrievalResults", []):
             metadata = result.get("metadata", {}).copy()
 
-            # Add score to metadata if requested
             if include_score:
                 metadata["similarity_score"] = result.get("score", 0.0)
 
-            # Add location info to metadata
             location = result.get("location", {})
             if location:
                 metadata["source"] = location.get("s3Location", {}).get("uri", "")
+
+            if extra_metadata:
+                metadata.update(extra_metadata)
 
             documents.append(
                 {
@@ -344,6 +352,79 @@ class BedrockKBRepositoryService(RepositoryService):
             )
 
         return documents
+
+    def retrieve_documents(
+        self,
+        query: str,
+        collection_id: str,
+        top_k: int,
+        model_name: str,
+        include_score: bool = False,
+        bedrock_agent_client: Any | None = None,
+    ) -> list[dict[str, Any]]:
+        """Retrieve documents from Bedrock KB using retrieve API."""
+        retrieve_params, kb_id = self._build_retrieve_params(query, collection_id, top_k, bedrock_agent_client)
+
+        logger.info(f"Retrieving from KB: kb_id={kb_id}, data_source={collection_id}, query={query[:50]}...")
+
+        response = self._call_retrieve_api(bedrock_agent_client, retrieve_params, kb_id)
+        return self._transform_retrieve_results(response, include_score)
+
+    def _semantic_fallback(
+        self,
+        query: str,
+        collection_id: str,
+        top_k: int,
+        include_score: bool,
+        bedrock_agent_client: Any,
+    ) -> list[dict[str, Any]]:
+        """Fall back to semantic search when hybrid is unsupported."""
+        retrieve_params, kb_id = self._build_retrieve_params(query, collection_id, top_k, bedrock_agent_client)
+        logger.info(f"Semantic fallback for KB: kb_id={kb_id}, data_source={collection_id}, query={query[:50]}...")
+        response = self._call_retrieve_api(bedrock_agent_client, retrieve_params, kb_id)
+        return self._transform_retrieve_results(response, include_score)
+
+    def hybrid_retrieve(
+        self,
+        query: str,
+        collection_id: str,
+        top_k: int,
+        model_name: str,
+        include_score: bool = False,
+        bedrock_agent_client: Any | None = None,
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        """Retrieve documents using hybrid (semantic + lexical) search.
+
+        Falls back to semantic search if the KB does not support hybrid.
+
+        Returns:
+            Tuple of (docs, retrieval_metadata) where retrieval_metadata.actual_mode_used
+            is 'hybrid' on success or 'vector' on fallback.
+        """
+        retrieve_params, kb_id = self._build_retrieve_params(query, collection_id, top_k, bedrock_agent_client)
+
+        vector_config = retrieve_params["retrievalConfiguration"]["vectorSearchConfiguration"]
+        vector_config["overrideSearchType"] = "HYBRID"
+
+        logger.info(f"Hybrid retrieving from KB: kb_id={kb_id}, data_source={collection_id}, query={query[:50]}...")
+
+        try:
+            response = self._call_retrieve_api(bedrock_agent_client, retrieve_params, kb_id)
+            docs = self._transform_retrieve_results(response, include_score)
+            return docs, {"actual_mode_used": "hybrid", "hybrid_supported": True}
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code", "")
+            if error_code != "ValidationException":
+                raise
+
+            error_message = str(e).lower()
+            hybrid_keywords = ("hybrid", "overridesearchtype", "override search type", "search type")
+            if not any(keyword in error_message for keyword in hybrid_keywords):
+                raise
+
+            logger.warning(f"KB {kb_id} does not support hybrid search, falling back to semantic")
+            docs = self._semantic_fallback(query, collection_id, top_k, include_score, bedrock_agent_client)
+            return docs, {"actual_mode_used": "vector", "hybrid_supported": False}
 
     def validate_document_source(self, s3_path: str) -> str:
         """Validate document is from KB data source bucket."""

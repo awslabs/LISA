@@ -22,6 +22,7 @@ const ragOptions = {
     uploadRagDocs: 'Document upload from Chat',
     ragSelectionAvailable: 'RAG repository & collection selection',
     editNumOfRagDocument: 'Edit number of referenced documents',
+    hybridSearch: 'Hybrid search (vector + keyword)',
 };
 
 const libraryOptions = {

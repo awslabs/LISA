@@ -33,6 +33,8 @@ import { IConfiguration } from '@/shared/model/configuration.model';
 import { LisaChatMessage, LisaChatSession, ModelFeatures } from '@/components/types';
 import AwsCredentialsPanel from '@/components/settings/AwsCredentialsPanel';
 import { sessionHistoryHasPendingAssistantToolCalls } from '../utils/sessionPersist.utils';
+import { RagConfig } from './RagOptions';
+import { deriveRagSearchMode } from '@/shared/util/ragSearchMode';
 
 export type SessionConfigurationProps = {
     title?: string;
@@ -46,7 +48,7 @@ export type SessionConfigurationProps = {
     modelOnly?: boolean;
     session?: LisaChatSession;
     updateSession?: (session: LisaChatSession) => void;
-    ragConfig?: any;
+    ragConfig?: RagConfig;
 };
 
 export const SessionConfiguration = ({
@@ -111,6 +113,11 @@ export const SessionConfiguration = ({
     ];
     const isImageModel = selectedModel?.modelType === ModelType.imagegen;
     const isVideoModel = selectedModel?.modelType === ModelType.videogen;
+    const effectiveRagSearchMode = deriveRagSearchMode(
+        chatConfiguration.sessionConfiguration.ragSearchMode,
+        systemConfig?.configuration?.enabledComponents?.hybridSearch ?? false,
+        ragConfig?.supportsHybridSearch ?? false,
+    );
 
     return (
         <Modal
@@ -159,6 +166,22 @@ export const SessionConfiguration = ({
                                     }}
                                     onChange={({ detail }) => updateSessionConfiguration('ragTopK', parseInt(detail.selectedOption.value))}
                                     options={oneThroughTenOptions}
+                                />
+                            </FormField>
+                        ] : []),
+                        ...(systemConfig && systemConfig.configuration.enabledComponents.hybridSearch && ragConfig?.supportsHybridSearch && !isImageModel && !isVideoModel && !modelOnly ? [
+                            <FormField key='ragSearchMode' label='RAG Search Mode'>
+                                <Select
+                                    disabled={isRunning}
+                                    selectedOption={{
+                                        value: effectiveRagSearchMode,
+                                        label: effectiveRagSearchMode === 'hybrid' ? 'Hybrid' : 'Vector',
+                                    }}
+                                    onChange={({ detail }) => updateSessionConfiguration('ragSearchMode', detail.selectedOption.value)}
+                                    options={[
+                                        { value: 'vector', label: 'Vector', description: 'Semantic similarity search' },
+                                        { value: 'hybrid', label: 'Hybrid', description: 'Combined vector + keyword search' },
+                                    ]}
                                 />
                             </FormField>
                         ] : []),

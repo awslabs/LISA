@@ -178,3 +178,42 @@ class RepositoryService(ABC):
             Default collection configuration, or None if not applicable
         """
         pass
+
+    def supports_hybrid_search(self) -> bool:
+        """Check if repository supports hybrid (semantic + lexical) search.
+
+        Returns:
+            True if hybrid search is supported, False otherwise
+        """
+        return False
+
+    def hybrid_retrieve(
+        self,
+        query: str,
+        collection_id: str,
+        top_k: int,
+        model_name: str,
+        include_score: bool = False,
+        bedrock_agent_client: Any | None = None,
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        """Retrieve documents using hybrid (semantic + lexical) search.
+
+        Args:
+            query: Search query
+            collection_id: Collection to search
+            top_k: Number of results to return
+            model_name: Embedding model name to use for query embedding
+            include_score: Whether to include similarity scores in results
+            bedrock_agent_client: Bedrock agent client (for Bedrock KB only)
+
+        Returns:
+            Tuple of (docs, retrieval_metadata):
+              - docs: list of matching documents with page_content and metadata
+              - retrieval_metadata: dict with at least 'actual_mode_used' ('hybrid' or
+                'vector') and 'hybrid_supported' (bool). Reported even when docs is empty
+                so callers can distinguish "ran hybrid, found nothing" from "fell back".
+
+        Raises:
+            NotImplementedError: If the repository does not support hybrid search
+        """
+        raise NotImplementedError(f"{type(self).__name__} does not support hybrid search")

@@ -112,11 +112,13 @@ def list_all(event: dict, context: dict) -> list[dict[str, Any]]:
     """
     _, is_admin, groups = get_user_context(event)
     registered_repositories = vs_repo.get_registered_repositories()
-    return [
-        repo
-        for repo in registered_repositories
-        if is_admin or user_has_group_access(groups, repo.get("allowedGroups", []))
-    ]
+    result = []
+    for repo in registered_repositories:
+        if is_admin or user_has_group_access(groups, repo.get("allowedGroups", [])):
+            service = RepositoryServiceFactory.create_service(repo)
+            repo["supportsHybridSearch"] = service.supports_hybrid_search()
+            result.append(repo)
+    return result
 
 
 @api_wrapper
@@ -196,11 +198,14 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
             - queryStringParameters.repositoryType: Type of repository
             - queryStringParameters.topK (optional): Number of results to return (default: 3)
             - queryStringParameters.score (optional): Include similarity scores (default: false)
+            - queryStringParameters.searchMode (optional): 'vector' (default) or 'hybrid'
         context (dict): The Lambda context object
 
     Returns:
         Dict[str, Any]: A dictionary containing:
             - docs: List of matching documents with their content and metadata
+            - metadata: Search metadata including search_mode,
+              actual_mode_used, backend, and hybrid_supported
 
     Raises:
         ValidationError: If required parameters are missing or invalid
@@ -212,6 +217,10 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
     include_score = query_string_params.get("score", "false").lower() == "true"
     repository_id = path_params.get("repositoryId")
     collection_id = query_string_params.get("collectionId")
+    search_mode = query_string_params.get("searchMode", "vector")
+
+    if search_mode not in ("vector", "hybrid"):
+        raise ValidationError("Invalid searchMode. Must be 'vector' or 'hybrid'")
 
     if not isinstance(repository_id, str) or not repository_id:
         raise ValidationError("repositoryId is required")
@@ -249,15 +258,39 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
     search_collection_id = str(collection_id or model_name)
     logger.info(f"Searching in collection: {search_collection_id} with embedding model: {model_name}")
 
-    # Delegate to service for retrieval - service handles repository-specific logic
-    docs = service.retrieve_documents(
-        query=query,
-        collection_id=search_collection_id,
-        top_k=top_k,
-        model_name=model_name,
-        include_score=include_score,
-        bedrock_agent_client=bedrock_client,
-    )
+    # Route based on search mode
+    repo_type = repository.get("type", "")
+    use_hybrid = search_mode == "hybrid" and service.supports_hybrid_search()
+
+    if use_hybrid:
+        docs, retrieval_metadata = service.hybrid_retrieve(
+            query=query,
+            collection_id=search_collection_id,
+            top_k=top_k,
+            model_name=model_name,
+            include_score=include_score,
+            bedrock_agent_client=bedrock_client,
+        )
+        actual_mode = retrieval_metadata.get("actual_mode_used", "hybrid")
+        hybrid_supported = retrieval_metadata.get("hybrid_supported", True)
+    else:
+        docs = service.retrieve_documents(
+            query=query,
+            collection_id=search_collection_id,
+            top_k=top_k,
+            model_name=model_name,
+            include_score=include_score,
+            bedrock_agent_client=bedrock_client,
+        )
+        actual_mode = "vector"
+        hybrid_supported = service.supports_hybrid_search()
+
+    response_metadata = {
+        "search_mode": search_mode,
+        "actual_mode_used": actual_mode,
+        "backend": repo_type,
+        "hybrid_supported": hybrid_supported,
+    }
 
     # Enrich metadata with documentId for documents that don't have it
     # Pass the actual search_collection_id (not the metadata's collectionId which may be "default")
@@ -273,7 +306,7 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
         for doc in docs
     ]
 
-    doc_return = {"docs": doc_content}
+    doc_return: dict[str, Any] = {"docs": doc_content, "metadata": response_metadata}
     logger.info(f"Returning: {doc_return}")
     return doc_return
 

@@ -101,6 +101,7 @@ import { selectCurrentUsername } from '@/shared/reducers/user.reducer';
 import { isWorkbenchMcpServer } from '../utils';
 import DocumentSidePanel from './components/DocumentSidePanel';
 import { useDocumentSidePanel } from '@/shared/hooks/useDocumentSidePanel';
+import { deriveRagSearchMode } from '@/shared/util/ragSearchMode';
 
 const EMPTY_STACK_MCP_SERVERS: McpServer[] = [];
 
@@ -109,6 +110,7 @@ export default function Chat ({ sessionId, initialStack }) {
     const navigate = useNavigate();
     const config: IConfiguration = useContext(ConfigurationContext);
     const ragSelectionAvailable = config?.configuration?.enabledComponents?.ragSelectionAvailable ?? true;
+    const hybridSearchEnabled = config?.configuration?.enabledComponents?.hybridSearch ?? false;
     const notificationService = useNotificationService(dispatch);
     const modelSelectRef = useRef<HTMLInputElement>(null);
     const bottomRef = useRef(null);
@@ -174,6 +176,12 @@ export default function Chat ({ sessionId, initialStack }) {
         skip: !chatAssistantId || !!initialStack,
     });
     const effectiveStack = initialStack ?? (chatAssistantId && resumedStack ? resumedStack : undefined);
+
+    const effectiveRagSearchMode = deriveRagSearchMode(
+        chatConfiguration.sessionConfiguration.ragSearchMode,
+        hybridSearchEnabled,
+        ragConfig?.supportsHybridSearch ?? false,
+    );
 
     // When using an assistant stack, restrict model dropdown to stack's modelIds; empty/null => no options
     const modelsForDropdown = useMemo(() => {
@@ -772,8 +780,9 @@ export default function Chat ({ sessionId, initialStack }) {
             collectionId: ragConfig.collection?.collectionId,
             topK: ragTopK,
             modelName: !ragConfig.collection?.collectionId ? ragConfig.embeddingModel?.modelId : undefined,
+            searchMode: effectiveRagSearchMode,
         });
-    }, [getRelevantDocuments, chatConfiguration.sessionConfiguration, ragConfig.repositoryId, ragConfig.collection, ragConfig.embeddingModel]);
+    }, [getRelevantDocuments, chatConfiguration.sessionConfiguration, ragConfig.repositoryId, ragConfig.collection, ragConfig.embeddingModel, effectiveRagSearchMode]);
 
     const { isRunning, setIsRunning, isStreaming, generateResponse, stopGeneration, retryResponse, errorState } = useChatGeneration({
         chatConfiguration,
@@ -1296,6 +1305,15 @@ export default function Chat ({ sessionId, initialStack }) {
             ragDocs,
         });
 
+        if (messageMetadata.ragSearchMetadata?.searchMode === 'hybrid' &&
+            messageMetadata.ragSearchMetadata.actualModeUsed !== 'hybrid') {
+            notificationService.generateNotification(
+                'This repository does not support hybrid search. Results were returned using vector search. ' +
+                'You can change the search mode in session settings.',
+                'warning',
+            );
+        }
+
         messages.push(new LisaChatMessage({
             type: 'human',
             content: messageContent,
@@ -1732,6 +1750,12 @@ export default function Chat ({ sessionId, initialStack }) {
                                         selectionAvailable={ragSelectionAvailable}
                                         allowedRepositoryIds={effectiveStack ? (effectiveStack.repositoryIds ?? []) : undefined}
                                         allowedCollectionIds={effectiveStack ? (effectiveStack.collectionIds ?? []) : undefined}
+                                        onRepositoryChanged={() => {
+                                            setChatConfiguration((prev) => ({
+                                                ...prev,
+                                                sessionConfiguration: { ...prev.sessionConfiguration, ragSearchMode: undefined },
+                                            }));
+                                        }}
                                     />
                                 )}
                             </Grid>

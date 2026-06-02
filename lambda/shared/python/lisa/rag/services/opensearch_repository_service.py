@@ -86,6 +86,11 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
             embeddings=embeddings,
         )
 
+        if hasattr(vector_store, "client") and hasattr(vector_store.client, "indices"):
+            if not vector_store.client.indices.exists(index=collection_id):
+                logger.info(f"Collection {collection_id} does not exist. Returning empty docs.")
+                return [], {"actual_mode_used": "hybrid", "hybrid_supported": True}
+
         query_vector = embeddings.embed_query(query)
         body = self._build_hybrid_body(query=query, query_vector=query_vector, top_k=top_k)
 

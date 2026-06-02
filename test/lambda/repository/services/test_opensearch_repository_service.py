@@ -270,3 +270,30 @@ class TestOpenSearchRepositoryService:
         assert docs == []
         assert retrieval_metadata["actual_mode_used"] == "hybrid"
         assert retrieval_metadata["hybrid_supported"] is True
+
+    def test_hybrid_retrieve_returns_empty_when_index_missing(self, opensearch_service):
+        """hybrid_retrieve returns ([], metadata) when the target index does not exist.
+
+        Parity with retrieve_documents (lines 176-179): check index existence before
+        searching to avoid noisy 404s from OpenSearch. Reports hybrid_supported=True
+        (the cluster supports hybrid; the index just doesn't exist yet).
+        """
+        mock_vector_store = MagicMock()
+        mock_vector_store.client.indices.exists.return_value = False
+        mock_embeddings = MagicMock()
+        mock_embeddings.embed_query.return_value = [0.1, 0.2, 0.3]
+
+        with patch(
+            "lisa.rag.services.opensearch_repository_service.RagEmbeddings", return_value=mock_embeddings
+        ), patch.object(opensearch_service, "_get_vector_store_client", return_value=mock_vector_store):
+            docs, retrieval_metadata = opensearch_service.hybrid_retrieve(
+                query="test query",
+                collection_id="nonexistent-index",
+                top_k=5,
+                model_name="amazon.titan-embed-text-v1",
+            )
+
+        assert docs == []
+        assert retrieval_metadata["actual_mode_used"] == "hybrid"
+        assert retrieval_metadata["hybrid_supported"] is True
+        mock_vector_store.client.search.assert_not_called()

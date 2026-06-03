@@ -24,7 +24,9 @@ os.environ.setdefault("AWS_REGION", "us-east-1")
 os.environ.setdefault("RAG_DOCUMENT_TABLE", "test-doc-table")
 os.environ.setdefault("RAG_SUB_DOCUMENT_TABLE", "test-subdoc-table")
 
+from lisa.domain.domain_objects import RetrieveResult  # noqa: F401
 from lisa.rag.services.opensearch_repository_service import OpenSearchRepositoryService
+from opensearchpy.exceptions import RequestError, TransportError
 
 
 @pytest.fixture
@@ -165,7 +167,7 @@ class TestOpenSearchRepositoryService:
         assert norm["combination"]["parameters"]["weights"] == [0.3, 0.7]
 
     def test_hybrid_retrieve_returns_docs_and_hybrid_metadata(self, opensearch_service):
-        """hybrid_retrieve returns (docs, retrieval_metadata) with actual_mode_used='hybrid'.
+        """hybrid_retrieve returns RetrieveResult with actual_mode_used='hybrid'.
 
         With include_score=True, copies hit['_score'] into metadata['similarity_score']
         (already 0-1 from min_max normalization — no further normalization needed).
@@ -191,7 +193,7 @@ class TestOpenSearchRepositoryService:
         with patch(
             "lisa.rag.services.opensearch_repository_service.RagEmbeddings", return_value=mock_embeddings
         ), patch.object(opensearch_service, "_get_vector_store_client", return_value=mock_vector_store):
-            docs, retrieval_metadata = opensearch_service.hybrid_retrieve(
+            result = opensearch_service.hybrid_retrieve(
                 query="test",
                 collection_id="test-collection",
                 top_k=5,
@@ -199,12 +201,13 @@ class TestOpenSearchRepositoryService:
                 include_score=True,
             )
 
-        assert len(docs) == 1
-        assert docs[0]["page_content"] == "Hybrid result content"
-        assert docs[0]["metadata"]["source"] == "s3://bucket/doc.pdf"
-        assert docs[0]["metadata"]["similarity_score"] == 0.87
-        assert retrieval_metadata["actual_mode_used"] == "hybrid"
-        assert retrieval_metadata["hybrid_supported"] is True
+        assert isinstance(result, RetrieveResult)
+        assert len(result.documents) == 1
+        assert result.documents[0]["page_content"] == "Hybrid result content"
+        assert result.documents[0]["metadata"]["source"] == "s3://bucket/doc.pdf"
+        assert result.documents[0]["metadata"]["similarity_score"] == 0.87
+        assert result.actual_mode_used == "hybrid"
+        assert result.hybrid_supported is True
 
     def test_hybrid_retrieve_omits_similarity_score_by_default(self, opensearch_service):
         """include_score=False (default) MUST NOT leak hit scores into doc metadata.
@@ -234,23 +237,18 @@ class TestOpenSearchRepositoryService:
         with patch(
             "lisa.rag.services.opensearch_repository_service.RagEmbeddings", return_value=mock_embeddings
         ), patch.object(opensearch_service, "_get_vector_store_client", return_value=mock_vector_store):
-            docs, _ = opensearch_service.hybrid_retrieve(
+            result = opensearch_service.hybrid_retrieve(
                 query="test",
                 collection_id="test-collection",
                 top_k=5,
                 model_name="amazon.titan-embed-text-v1",
             )
 
-        assert len(docs) == 1
-        assert "similarity_score" not in docs[0]["metadata"]
+        assert len(result.documents) == 1
+        assert "similarity_score" not in result.documents[0]["metadata"]
 
     def test_hybrid_retrieve_returns_empty_docs_with_hybrid_metadata(self, opensearch_service):
-        """Empty hits still report actual_mode_used='hybrid' — metadata reports the mode that ran.
-
-        Mirrors BedrockKB's empty-fallback semantics: a caller distinguishing
-        "ran hybrid, found nothing" from "fell back to vector" needs the metadata
-        independent of whether docs is empty.
-        """
+        """Empty hits still report actual_mode_used='hybrid' — metadata reports the mode that ran."""
         mock_vector_store = MagicMock()
         mock_vector_store.client.indices.exists.return_value = True
         mock_vector_store.client.search.return_value = {"hits": {"hits": []}}
@@ -260,24 +258,19 @@ class TestOpenSearchRepositoryService:
         with patch(
             "lisa.rag.services.opensearch_repository_service.RagEmbeddings", return_value=mock_embeddings
         ), patch.object(opensearch_service, "_get_vector_store_client", return_value=mock_vector_store):
-            docs, retrieval_metadata = opensearch_service.hybrid_retrieve(
+            result = opensearch_service.hybrid_retrieve(
                 query="test",
                 collection_id="test-collection",
                 top_k=5,
                 model_name="amazon.titan-embed-text-v1",
             )
 
-        assert docs == []
-        assert retrieval_metadata["actual_mode_used"] == "hybrid"
-        assert retrieval_metadata["hybrid_supported"] is True
+        assert result.documents == []
+        assert result.actual_mode_used == "hybrid"
+        assert result.hybrid_supported is True
 
     def test_hybrid_retrieve_returns_empty_when_index_missing(self, opensearch_service):
-        """hybrid_retrieve returns ([], metadata) when the target index does not exist.
-
-        Parity with retrieve_documents (lines 176-179): check index existence before
-        searching to avoid noisy 404s from OpenSearch. Reports hybrid_supported=True
-        (the cluster supports hybrid; the index just doesn't exist yet).
-        """
+        """hybrid_retrieve returns empty RetrieveResult when the target index does not exist."""
         mock_vector_store = MagicMock()
         mock_vector_store.client.indices.exists.return_value = False
         mock_embeddings = MagicMock()
@@ -286,14 +279,71 @@ class TestOpenSearchRepositoryService:
         with patch(
             "lisa.rag.services.opensearch_repository_service.RagEmbeddings", return_value=mock_embeddings
         ), patch.object(opensearch_service, "_get_vector_store_client", return_value=mock_vector_store):
-            docs, retrieval_metadata = opensearch_service.hybrid_retrieve(
+            result = opensearch_service.hybrid_retrieve(
                 query="test query",
                 collection_id="nonexistent-index",
                 top_k=5,
                 model_name="amazon.titan-embed-text-v1",
             )
 
-        assert docs == []
-        assert retrieval_metadata["actual_mode_used"] == "hybrid"
-        assert retrieval_metadata["hybrid_supported"] is True
+        assert result.documents == []
+        assert result.actual_mode_used == "hybrid"
+        assert result.hybrid_supported is True
         mock_vector_store.client.search.assert_not_called()
+
+    def test_hybrid_retrieve_propagates_request_error(self, opensearch_service):
+        """hybrid_retrieve bubbles up RequestError — no silent swallowing.
+
+        OpenSearch errors (malformed query, auth, DSL validation) must propagate
+        to the caller so they surface as actionable failures, not silent degradation.
+        """
+        mock_vector_store = MagicMock()
+        mock_vector_store.client.indices.exists.return_value = True
+        mock_vector_store.client.search.side_effect = RequestError(
+            400,
+            "parsing_exception",
+            {"error": {"reason": "malformed query"}},
+        )
+
+        mock_embeddings = MagicMock()
+        mock_embeddings.embed_query.return_value = [0.1, 0.2, 0.3]
+
+        with patch(
+            "lisa.rag.services.opensearch_repository_service.RagEmbeddings", return_value=mock_embeddings
+        ), patch.object(opensearch_service, "_get_vector_store_client", return_value=mock_vector_store):
+            with pytest.raises(RequestError) as exc_info:
+                opensearch_service.hybrid_retrieve(
+                    query="bad query",
+                    collection_id="test-collection",
+                    top_k=5,
+                    model_name="amazon.titan-embed-text-v1",
+                )
+
+        assert exc_info.value.status_code == 400
+        assert exc_info.value.error == "parsing_exception"
+
+    def test_hybrid_retrieve_propagates_transport_error(self, opensearch_service):
+        """hybrid_retrieve bubbles up TransportError — infrastructure failures must surface."""
+        mock_vector_store = MagicMock()
+        mock_vector_store.client.indices.exists.return_value = True
+        mock_vector_store.client.search.side_effect = TransportError(
+            503,
+            "service_unavailable",
+            {"error": {"reason": "cluster overloaded"}},
+        )
+
+        mock_embeddings = MagicMock()
+        mock_embeddings.embed_query.return_value = [0.1, 0.2, 0.3]
+
+        with patch(
+            "lisa.rag.services.opensearch_repository_service.RagEmbeddings", return_value=mock_embeddings
+        ), patch.object(opensearch_service, "_get_vector_store_client", return_value=mock_vector_store):
+            with pytest.raises(TransportError) as exc_info:
+                opensearch_service.hybrid_retrieve(
+                    query="test",
+                    collection_id="test-collection",
+                    top_k=5,
+                    model_name="amazon.titan-embed-text-v1",
+                )
+
+        assert exc_info.value.status_code == 503

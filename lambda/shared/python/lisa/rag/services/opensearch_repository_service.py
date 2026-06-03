@@ -23,6 +23,7 @@ import boto3
 from langchain_community.vectorstores import OpenSearchVectorSearch
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
+from lisa.domain.domain_objects import RetrieveResult
 from lisa.rag.embeddings import RagEmbeddings
 from lisa.utilities.common_functions import retry_config
 from lisa.utilities.repository_types import RepositoryType
@@ -60,12 +61,11 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
         model_name: str,
         include_score: bool = False,
         bedrock_agent_client: Any = None,
-    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    ) -> RetrieveResult:
         """Retrieve documents using hybrid (BM25 + kNN) search via inline search pipeline.
 
         Sends the search pipeline definition inline in the request body — no persistent
-        pipeline, no admin state, one round-trip. Requires OpenSearch 2.13+; older
-        clusters trip the narrow-exception fallback to vector search (slice 2.2.4).
+        pipeline, no admin state, one round-trip. Requires OpenSearch 2.13+.
 
         Args:
             query: Search query text
@@ -77,8 +77,7 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
             bedrock_agent_client: Unused for OpenSearch (kept for base-class signature parity)
 
         Returns:
-            Tuple of (docs, retrieval_metadata) where retrieval_metadata reports
-            ``actual_mode_used='hybrid'`` and ``hybrid_supported=True`` on success.
+            RetrieveResult with actual_mode_used="hybrid" and hybrid_supported=True.
         """
         embeddings = RagEmbeddings(model_name=model_name)
         vector_store = self._get_vector_store_client(
@@ -89,7 +88,7 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
         if hasattr(vector_store, "client") and hasattr(vector_store.client, "indices"):
             if not vector_store.client.indices.exists(index=collection_id):
                 logger.info(f"Collection {collection_id} does not exist. Returning empty docs.")
-                return [], {"actual_mode_used": "hybrid", "hybrid_supported": True}
+                return RetrieveResult(documents=[], actual_mode_used="hybrid", hybrid_supported=True)
 
         query_vector = embeddings.embed_query(query)
         body = self._build_hybrid_body(query=query, query_vector=query_vector, top_k=top_k)
@@ -98,7 +97,7 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
         response = vector_store.client.search(index=collection_id, body=body)
 
         docs = self._extract_hits(response, include_score)
-        return docs, {"actual_mode_used": "hybrid", "hybrid_supported": True}
+        return RetrieveResult(documents=docs, actual_mode_used="hybrid", hybrid_supported=True)
 
     @staticmethod
     def _build_hybrid_body(query: str, query_vector: list[float], top_k: int) -> dict[str, Any]:
@@ -156,7 +155,7 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
         model_name: str,
         include_score: bool = False,
         bedrock_agent_client: Any = None,
-    ) -> list[dict[str, Any]]:
+    ) -> RetrieveResult:
         """Retrieve documents from OpenSearch with index existence check.
 
         Args:
@@ -168,22 +167,19 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
             bedrock_agent_client: Not used for OpenSearch
 
         Returns:
-            List of documents with page_content and metadata
+            RetrieveResult with actual_mode_used="vector" and hybrid_supported=True.
         """
-        # Create embeddings and vector store client once
         embeddings = RagEmbeddings(model_name=model_name)
         vector_store = self._get_vector_store_client(
             collection_id=collection_id,
             embeddings=embeddings,
         )
 
-        # Check if index exists before searching
         if hasattr(vector_store, "client") and hasattr(vector_store.client, "indices"):
             if not vector_store.client.indices.exists(index=collection_id):
                 logger.info(f"Collection {collection_id} does not exist. Returning empty docs.")
-                return []
+                return RetrieveResult(documents=[], actual_mode_used="vector", hybrid_supported=True)
 
-        # Perform similarity search
         results = vector_store.similarity_search_with_score(query, k=top_k)
 
         documents = []
@@ -194,7 +190,6 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
             }
 
             if include_score:
-                # OpenSearch scores are already normalized (0-1 range)
                 normalized_score = self._normalize_similarity_score(score)
                 doc_dict["metadata"]["similarity_score"] = normalized_score
 
@@ -206,7 +201,6 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
 
             documents.append(doc_dict)
 
-        # Warn if all scores are low (possible embedding model mismatch)
         if include_score and results:
             max_score = max(self._normalize_similarity_score(score) for _, score in results)
             if max_score < 0.3:
@@ -214,7 +208,7 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
                     f"All similarity scores < 0.3 for query '{query}' - " "possible embedding model mismatch"
                 )
 
-        return documents
+        return RetrieveResult(documents=documents, actual_mode_used="vector", hybrid_supported=True)
 
     def _drop_collection_index(self, collection_id: str) -> None:
         """Drop OpenSearch index for collection."""

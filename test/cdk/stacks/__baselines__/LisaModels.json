@@ -5117,7 +5117,7 @@
         ]
       }
     },
-    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler8ef5C72976C2": {
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler55f46C3990DF": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
@@ -5156,7 +5156,7 @@
         }
       }
     },
-    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler5139141A9A79": {
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler97bd3439D07B": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
@@ -5310,7 +5310,7 @@
         "RetentionInDays": 30
       }
     },
-    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler65402BF3BA05": {
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler4974D889C356": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
@@ -6198,7 +6198,7 @@
             "Arn"
           ]
         },
-        "timestamp": "2026-06-02T22:52:47.853Z"
+        "timestamp": "2026-06-02T22:40:38.976Z"
       },
       "UpdateReplacePolicy": "Delete",
       "DeletionPolicy": "Delete"

@@ -1575,3 +1575,16 @@ class InvokeBedrockAgentRequest(BaseModel):
         if has_fn and not (self.actionGroupId and str(self.actionGroupId).strip()):
             raise ValueError("actionGroupId is required when functionName is set")
         return self
+
+
+@dataclass
+class RetrieveResult:
+    """Unified return type for retrieve_documents() and hybrid_retrieve().
+
+    Both retrieval paths return this so the handler has one contract regardless
+    of mode. The fields self-report what actually happened at the service layer.
+    """
+
+    documents: list[dict[str, Any]]
+    actual_mode_used: str
+    hybrid_supported: bool

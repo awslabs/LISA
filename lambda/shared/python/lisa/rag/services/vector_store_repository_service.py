@@ -32,6 +32,7 @@ from lisa.domain.domain_objects import (
     IngestionJob,
     RagCollectionConfig,
     RagDocument,
+    RetrieveResult,
     VectorStoreStatus,
 )
 from lisa.rag.embeddings import RagEmbeddings
@@ -151,7 +152,7 @@ class VectorStoreRepositoryService(RepositoryService):
         model_name: str,
         include_score: bool = False,
         bedrock_agent_client: Any | None = None,
-    ) -> list[dict[str, Any]]:
+    ) -> RetrieveResult:
         """Retrieve documents from vector store using similarity search.
 
         Args:
@@ -163,7 +164,8 @@ class VectorStoreRepositoryService(RepositoryService):
             bedrock_agent_client: Not used for vector stores
 
         Returns:
-            List of documents with page_content and metadata
+            RetrieveResult with documents, actual_mode_used="vector",
+            and hybrid_supported reflecting this service's capability.
         """
         embeddings = RagEmbeddings(model_name=model_name)
         vector_store = self._get_vector_store_client(
@@ -201,7 +203,11 @@ class VectorStoreRepositoryService(RepositoryService):
                     f"All similarity scores < 0.3 for query '{query}' - " "possible embedding model mismatch"
                 )
 
-        return documents
+        return RetrieveResult(
+            documents=documents,
+            actual_mode_used="vector",
+            hybrid_supported=self.supports_hybrid_search(),
+        )
 
     def validate_document_source(self, s3_path: str) -> str:
         """Vector stores accept any valid S3 path."""

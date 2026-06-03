@@ -263,7 +263,7 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
     use_hybrid = search_mode == "hybrid" and service.supports_hybrid_search()
 
     if use_hybrid:
-        docs, retrieval_metadata = service.hybrid_retrieve(
+        result = service.hybrid_retrieve(
             query=query,
             collection_id=search_collection_id,
             top_k=top_k,
@@ -271,10 +271,8 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
             include_score=include_score,
             bedrock_agent_client=bedrock_client,
         )
-        actual_mode = retrieval_metadata.get("actual_mode_used", "hybrid")
-        hybrid_supported = retrieval_metadata.get("hybrid_supported", True)
     else:
-        docs = service.retrieve_documents(
+        result = service.retrieve_documents(
             query=query,
             collection_id=search_collection_id,
             top_k=top_k,
@@ -282,19 +280,15 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
             include_score=include_score,
             bedrock_agent_client=bedrock_client,
         )
-        actual_mode = "vector"
-        hybrid_supported = service.supports_hybrid_search()
 
     response_metadata = {
         "search_mode": search_mode,
-        "actual_mode_used": actual_mode,
+        "actual_mode_used": result.actual_mode_used,
         "backend": repo_type,
-        "hybrid_supported": hybrid_supported,
+        "hybrid_supported": result.hybrid_supported,
     }
 
-    # Enrich metadata with documentId for documents that don't have it
-    # Pass the actual search_collection_id (not the metadata's collectionId which may be "default")
-    docs = enrich_metadata_with_document_id(docs, repository_id, search_collection_id)
+    docs = enrich_metadata_with_document_id(result.documents, repository_id, search_collection_id)
 
     doc_content = [
         {

@@ -43,6 +43,7 @@ _s3_bucket_name = os.environ.get("GENERATED_IMAGES_S3_BUCKET_NAME", "")
 projects_table = dynamodb.Table(os.environ["PROJECTS_TABLE_NAME"])
 sessions_table = dynamodb.Table(os.environ["SESSIONS_TABLE_NAME"])
 config_table = dynamodb.Table(os.environ["CONFIG_TABLE_NAME"])
+messages_table = dynamodb.Table(os.environ["MESSAGES_TABLE_NAME"]) if os.environ.get("MESSAGES_TABLE_NAME") else None
 
 executor = ThreadPoolExecutor(max_workers=10)
 
@@ -267,7 +268,14 @@ def delete_project(event: dict, context: dict) -> DeleteResponse:
         list(
             executor.map(
                 lambda s: delete_user_session(
-                    sessions_table, _s3_resource, _s3_client, _s3_bucket_name, s["sessionId"], user_id
+                    sessions_table,
+                    _s3_resource,
+                    _s3_client,
+                    _s3_bucket_name,
+                    s["sessionId"],
+                    user_id,
+                    messages_table=messages_table,
+                    dynamodb_resource=dynamodb,
                 ),
                 project_sessions,
             )

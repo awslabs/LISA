@@ -15,7 +15,6 @@
         "numberOfImages": 1,
         "quality": "standard"
       },
-      "chatHistoryBufferSize": 7,
       "max_tokens": null,
       "markdownDisplay": true,
       "showMetadata": false,

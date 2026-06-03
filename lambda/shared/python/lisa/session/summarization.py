@@ -1,0 +1,76 @@
+#   Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License").
+#   You may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
+"""Pure helpers for building the summarization prompt fed to the LLM during
+session compaction. Kept side-effect-free so they can be unit-tested without
+DynamoDB or HTTP plumbing.
+"""
+
+import json
+from typing import Any
+
+_ROLE_LABELS = {
+    "human": "USER",
+    "ai": "ASSISTANT",
+    "system": "SYSTEM",
+    "tool": "TOOL_RESULT",
+    "summary": "PREVIOUS_SUMMARY",
+}
+
+
+def format_messages_for_summary(messages: list[dict[str, Any]]) -> str:
+    """Render a list of session messages as a readable transcript for the LLM."""
+    lines = []
+    for msg in messages:
+        msg_type = msg.get("type", "unknown")
+        content = msg.get("content", "")
+        if isinstance(content, list):
+            text_parts = [
+                item.get("text", "") for item in content if isinstance(item, dict) and item.get("type") == "text"
+            ]
+            content = "\n".join(text_parts)
+        if not isinstance(content, str):
+            content = str(content)
+
+        role_label = _ROLE_LABELS.get(msg_type, msg_type.upper())
+        lines.append(f"[{role_label}]: {content}")
+
+        if msg.get("toolCalls"):
+            for tc in msg["toolCalls"]:
+                tc_name = tc.get("name", "unknown") if isinstance(tc, dict) else "unknown"
+                tc_args = tc.get("args", {}) if isinstance(tc, dict) else {}
+                lines.append(f"  [TOOL_CALL]: {tc_name}({json.dumps(tc_args, default=str)})")
+
+    return "\n\n".join(lines)
+
+
+def build_summary_prompt(conversation_text: str) -> str:
+    """Build the user-side prompt for the summarizer."""
+    return (
+        "Summarize the following conversation into a concise but comprehensive summary.\n\n"
+        "CRITICAL REQUIREMENTS - You MUST preserve:\n"
+        "1. All factual conclusions and decisions made by the user\n"
+        "2. All tool call results and their outcomes (tool names, key arguments, return values)\n"
+        "3. All file paths, code snippets, configuration values, and structured data mentioned\n"
+        "4. All RAG/document search findings and their sources\n"
+        "5. The user's stated goals, preferences, and constraints\n"
+        "6. Any errors encountered and how they were resolved\n"
+        "7. Key context needed to continue the conversation\n\n"
+        "FORMAT: Structured narrative with sections for multiple topics. "
+        "Use bullet points for facts/decisions. "
+        "Preserve exact values (numbers, paths, names) rather than paraphrasing.\n\n"
+        "Do NOT include conversational pleasantries or redundant back-and-forth. "
+        "Focus on information density.\n\n"
+        f"CONVERSATION:\n{conversation_text}"
+    )

@@ -35,7 +35,6 @@ function buildProps (overrides: Partial<SessionConfigurationProps> = {}): Sessio
                 editKwargs: true,
                 editPromptTemplate: true,
                 editNumOfRagDocument: true,
-                editChatHistoryBuffer: true,
                 uploadRagDocs: true,
                 ragSelectionAvailable: true,
                 uploadContextDocs: true,

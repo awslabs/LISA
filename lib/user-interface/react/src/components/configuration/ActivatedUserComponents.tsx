@@ -41,7 +41,6 @@ const advancedOptions = {
     editPromptTemplate: 'Update Prompt Template',
     viewMetaData: 'View chat meta-data',
     deleteSessionHistory: 'Delete Session History',
-    editChatHistoryBuffer: 'Edit chat history buffer',
     enableModelComparisonUtility: 'Model Comparison Utility',
     encryptSession: 'Session Encryption',
     chatAssistantStacks: 'Chat Assistant Stacks',

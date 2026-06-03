@@ -210,7 +210,7 @@ export const SessionConfiguration = ({
                     ];
 
                     return (
-                        <Grid gridDefinition={items.map(() => ({ colspan: 6 }))}>
+                        <Grid gridDefinition={items.map(() => ({ colspan: 4 }))}>
                             {items}
                         </Grid>
                     );

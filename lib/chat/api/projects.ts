@@ -35,6 +35,7 @@ type ProjectsApiProps = {
     securityGroups: ISecurityGroup[];
     vpc: Vpc;
     sessionTable: dynamodb.Table;
+    messagesTable: dynamodb.Table;
     configTable: dynamodb.Table;
     projectsTable?: dynamodb.Table;
 } & BaseProps;
@@ -45,7 +46,7 @@ export class ProjectsApi extends Construct {
     constructor (scope: Construct, id: string, props: ProjectsApiProps) {
         super(scope, id);
 
-        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc, sessionTable, configTable } = props;
+        const { authorizer, config, restApiId, rootResourceId, securityGroups, vpc, sessionTable, messagesTable, configTable } = props;
 
         const lambdaLayers = getPythonLambdaLayers(this, config, ['common', 'fastapi'], 'Projects');
 
@@ -67,6 +68,7 @@ export class ProjectsApi extends Construct {
         const env = {
             PROJECTS_TABLE_NAME: this.projectsTable.tableName,
             SESSIONS_TABLE_NAME: sessionTable.tableName,
+            MESSAGES_TABLE_NAME: messagesTable.tableName,
             SESSIONS_BY_USER_ID_INDEX_NAME: 'byUserId',
             CONFIG_TABLE_NAME: configTable.tableName,
             ...getAuditLoggingEnv(config),
@@ -104,6 +106,20 @@ export class ProjectsApi extends Construct {
                 effect: Effect.ALLOW,
                 actions: ['dynamodb:GetItem', 'dynamodb:Query'],
                 resources: [configTable.tableArn],
+            })
+        );
+
+        // Messages table — needed by delete_project's cascade-delete to remove
+        // child message rows for v2.0 sessions.
+        lambdaRole.addToPrincipalPolicy(
+            new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: [
+                    'dynamodb:Query',
+                    'dynamodb:BatchWriteItem',
+                    'dynamodb:DeleteItem',
+                ],
+                resources: [messagesTable.tableArn],
             })
         );
 

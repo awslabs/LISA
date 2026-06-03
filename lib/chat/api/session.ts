@@ -56,6 +56,7 @@ type SessionApiProps = {
  */
 export class SessionApi extends Construct {
     public readonly sessionTable: dynamodb.Table;
+    public readonly messagesTable: dynamodb.Table;
 
     constructor (scope: Construct, id: string, props: SessionApiProps) {
         super(scope, id);
@@ -81,7 +82,7 @@ export class SessionApi extends Construct {
         });
 
         // Create DynamoDB table for individual session messages
-        const messagesTable = new dynamodb.Table(this, 'SessionMessagesTable', {
+        this.messagesTable = new dynamodb.Table(this, 'SessionMessagesTable', {
             partitionKey: {
                 name: 'sessionId',
                 type: dynamodb.AttributeType.STRING,
@@ -140,7 +141,7 @@ export class SessionApi extends Construct {
 
         const env = {
             SESSIONS_TABLE_NAME: this.sessionTable.tableName,
-            MESSAGES_TABLE_NAME: messagesTable.tableName,
+            MESSAGES_TABLE_NAME: this.messagesTable.tableName,
             SESSIONS_BY_USER_ID_INDEX_NAME: byUserIdIndex,
             GENERATED_IMAGES_S3_BUCKET_NAME: imagesBucketName,
             MODEL_TABLE_NAME: modelTableName,
@@ -229,7 +230,7 @@ export class SessionApi extends Construct {
                     'dynamodb:DeleteItem',
                     'dynamodb:GetItem',
                 ],
-                resources: [messagesTable.tableArn]
+                resources: [this.messagesTable.tableArn]
             })
         );
 

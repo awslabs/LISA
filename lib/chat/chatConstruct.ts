@@ -106,6 +106,7 @@ export class LisaChatApplicationConstruct extends Construct {
             securityGroups,
             vpc,
             sessionTable: sessionApi.sessionTable,
+            messagesTable: sessionApi.messagesTable,
             configTable: configurationApi.configTable,
             projectsTable,
         });

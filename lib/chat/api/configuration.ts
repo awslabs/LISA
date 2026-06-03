@@ -104,7 +104,6 @@ export class ConfigurationApi extends Construct {
                                         'viewMetaData': { 'BOOL': 'True' },
                                         'editKwargs': { 'BOOL': 'True' },
                                         'editPromptTemplate': { 'BOOL': 'True' },
-                                        'editChatHistoryBuffer': { 'BOOL': 'True' },
                                         'editNumOfRagDocument': { 'BOOL': 'True' },
                                         'uploadRagDocs': { 'BOOL': config.deployRag ? 'True' : 'False' },
                                         'ragSelectionAvailable': { 'BOOL': config.deployRag ? 'True' : 'False' },

@@ -303,3 +303,32 @@ def decrypt_session_fields(session_data: dict[str, Any], user_id: str, session_i
     except Exception as e:
         logger.error(f"Failed to decrypt session fields: {e}")
         raise SessionEncryptionError(f"Failed to decrypt session fields: {e}")
+
+
+def is_session_encryption_enabled(config_table: Any) -> bool:
+    """Return whether session encryption is enabled in the global configuration.
+
+    The caller passes the config table (a boto3 ``Table`` resource) so this
+    helper stays free of module-level singletons. Defaults to ``False`` on any
+    error or missing configuration.
+    """
+    try:
+        response = config_table.query(
+            KeyConditionExpression="configScope = :scope",
+            ExpressionAttributeValues={":scope": "global"},
+            ScanIndexForward=False,
+            Limit=1,
+        )
+        items = response.get("Items", [])
+        if not items:
+            logger.warning("No global configuration found, defaulting session encryption to disabled")
+            return False
+        configuration = items[0].get("configuration", {})
+        enabled_components = configuration.get("enabledComponents", {})
+        return bool(enabled_components.get("encryptSession", False))
+    except ClientError as error:
+        logger.error(f"Failed to query global configuration: {error}, defaulting to encryption disabled")
+        return False
+    except Exception as e:
+        logger.error(f"Error checking session encryption configuration: {e}, defaulting to disabled")
+        return False

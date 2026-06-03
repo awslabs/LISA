@@ -226,6 +226,9 @@ export const sessionApi = createApi({
             query: (sessionId) => ({
                 url: `/session/${sessionId}/context`
             }),
+            providesTags: (result, error, sessionId) => [
+                { type: 'session', id: sessionId }
+            ],
         }),
         compactSession: builder.mutation<
             { summaryMessageIndex: number; summaryContent: string; compactionMessageIndex: number; systemPrompt: string },

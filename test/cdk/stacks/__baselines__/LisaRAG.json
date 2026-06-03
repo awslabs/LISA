@@ -20,6 +20,10 @@
       "Type": "AWS::SSM::Parameter::Value<String>",
       "Default": "/dev/test-lisa/lisa/layerVersion/common"
     },
+    "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/layerVersion/lisa-shared"
+    },
     "SsmParameterValuedevtestlisalisalayerVersioncdkC96584B6F00A464EAD1953AFF4B05118Parameter": {
       "Type": "AWS::SSM::Parameter::Value<String>",
       "Default": "/dev/test-lisa/lisa/layerVersion/cdk"
@@ -1066,7 +1070,7 @@
         ],
         "Content": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "73a5cffbd3baddd54341aa134a6a53e9d05c78c646cf56ad23af3d9919b5cd9a.zip"
+          "S3Key": "f5ea97ecf947aeca04b2da3917b8cf707b9632bf789f76edc6fc1e82108ce793.zip"
         },
         "Description": "Lambda dependencies for RAG API"
       },
@@ -1616,7 +1620,7 @@
         "ContainerProperties": {
           "Command": [
             "-m",
-            "repository.pipeline_ingestion",
+            "lisa.rag.pipeline_ingestion",
             "Ref::ACTION",
             "Ref::DOCUMENT_ID"
           ],
@@ -1678,10 +1682,6 @@
               "Value": {
                 "Ref": "testlisaRagSubDocumentTable76E4AE52"
               }
-            },
-            {
-              "Name": "REGISTERED_MODELS_PS_NAME",
-              "Value": "/dev/test-lisa/lisa/registeredModels"
             },
             {
               "Name": "REGISTERED_REPOSITORIES_PS_PREFIX",
@@ -1771,6 +1771,10 @@
                   }
                 ]
               }
+            },
+            {
+              "Name": "PYTHONPATH",
+              "Value": "/workdir/shared/python"
             }
           ],
           "ExecutionRoleArn": {
@@ -1781,7 +1785,7 @@
           },
           "FargatePlatformConfiguration": {},
           "Image": {
-            "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:0e8c7e01e383d9f275426cde9a0d54850d7cce4fb4e77cd7ab4eca4891452aee"
+            "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:b510152a4f2d3e4fc1b063da83e4fdacbcf4ea3a24fc20239b416508922f9237"
           },
           "JobRoleArn": {
             "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -1846,7 +1850,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Environment": {
           "Variables": {
@@ -1934,7 +1938,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
@@ -1943,8 +1946,11 @@
           }
         },
         "FunctionName": "test-lisa-dev-ingestion-ingest-schedule",
-        "Handler": "repository.pipeline_ingest_handlers.handle_pipline_ingest_schedule",
+        "Handler": "pipeline_ingest_handlers.handle_pipline_ingest_schedule",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "RagLayerF72F34A6"
           },
@@ -1984,7 +1990,7 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E595eb16b6a9c72a89de2a11229f451adf": {
+    "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E54b704d49ce0cab6a052d5e9363416ddc": {
       "Type": "AWS::Lambda::Version",
       "Properties": {
         "FunctionName": {
@@ -2003,7 +2009,7 @@
         },
         "FunctionVersion": {
           "Fn::GetAtt": [
-            "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E595eb16b6a9c72a89de2a11229f451adf",
+            "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E54b704d49ce0cab6a052d5e9363416ddc",
             "Version"
           ]
         },
@@ -2051,7 +2057,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Environment": {
           "Variables": {
@@ -2139,7 +2145,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
@@ -2148,8 +2153,11 @@
           }
         },
         "FunctionName": "test-lisa-dev-ingestion-ingest-event",
-        "Handler": "repository.pipeline_ingest_handlers.handle_pipeline_ingest_event",
+        "Handler": "pipeline_ingest_handlers.handle_pipeline_ingest_event",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "RagLayerF72F34A6"
           },
@@ -2189,7 +2197,7 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBC5328cf9b80723780fea9912be252fc46": {
+    "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBC6176ba2e5ca615885f8c2b24523ca166": {
       "Type": "AWS::Lambda::Version",
       "Properties": {
         "FunctionName": {
@@ -2208,7 +2216,7 @@
         },
         "FunctionVersion": {
           "Fn::GetAtt": [
-            "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBC5328cf9b80723780fea9912be252fc46",
+            "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBC6176ba2e5ca615885f8c2b24523ca166",
             "Version"
           ]
         },
@@ -2256,7 +2264,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Environment": {
           "Variables": {
@@ -2344,7 +2352,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev",
@@ -2353,8 +2360,11 @@
           }
         },
         "FunctionName": "test-lisa-dev-ingestion-delete-event",
-        "Handler": "repository.pipeline_ingest_handlers.handle_pipeline_delete_event",
+        "Handler": "pipeline_ingest_handlers.handle_pipeline_delete_event",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "RagLayerF72F34A6"
           },
@@ -2394,7 +2404,7 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E9533aee949475e44bcbf7bf5aec0c72baa": {
+    "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E95421bea5cf2e54e6303c65267cc02c842": {
       "Type": "AWS::Lambda::Version",
       "Properties": {
         "FunctionName": {
@@ -2413,7 +2423,7 @@
         },
         "FunctionVersion": {
           "Fn::GetAtt": [
-            "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E9533aee949475e44bcbf7bf5aec0c72baa",
+            "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E95421bea5cf2e54e6303c65267cc02c842",
             "Version"
           ]
         },
@@ -2509,7 +2519,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "69aa0c61d54bff684723bc1ff9df739febd3ce77ab932b92c9a316cc3f2259b1.zip"
+          "S3Key": "b5ece4293fd407979f91f52eb46ee28ab489d28de00710086f6c1f8af19a0605.zip"
         },
         "Environment": {
           "Variables": {
@@ -2521,6 +2531,12 @@
         },
         "FunctionName": "test-lisa-dev-batch-job-metric",
         "Handler": "batch_job_metric.handler",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
             "IngestionStackConstructBatchJobMetricPublisherServiceRole73642CC3",
@@ -5677,7 +5693,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Description": "List all repositories",
         "Environment": {
@@ -5704,7 +5720,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
@@ -5775,10 +5790,13 @@
           }
         },
         "FunctionName": "LisaRAG-repository-list_all",
-        "Handler": "repository.lambda_functions.list_all",
+        "Handler": "lambda_functions.list_all",
         "Layers": [
           {
             "Ref": "RagLayerF72F34A6"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -5841,7 +5859,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Description": "List status for all repositories",
         "Environment": {
@@ -5868,7 +5886,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
@@ -5939,10 +5956,13 @@
           }
         },
         "FunctionName": "LisaRAG-repository-list_status",
-        "Handler": "repository.lambda_functions.list_status",
+        "Handler": "lambda_functions.list_status",
         "Layers": [
           {
             "Ref": "RagLayerF72F34A6"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -6005,7 +6025,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Description": "Generates a presigned url for uploading files to RAG",
         "Environment": {
@@ -6032,7 +6052,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
@@ -6103,10 +6122,13 @@
           }
         },
         "FunctionName": "LisaRAG-repository-presigned_url",
-        "Handler": "repository.lambda_functions.presigned_url",
+        "Handler": "lambda_functions.presigned_url",
         "Layers": [
           {
             "Ref": "RagLayerF72F34A6"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -6169,7 +6191,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Description": "Create a new repository",
         "Environment": {
@@ -6196,7 +6218,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
@@ -6267,10 +6288,13 @@
           }
         },
         "FunctionName": "LisaRAG-repository-create",
-        "Handler": "repository.lambda_functions.create",
+        "Handler": "lambda_functions.create",
         "Layers": [
           {
             "Ref": "RagLayerF72F34A6"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -6333,7 +6357,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Description": "Get a repository by ID",
         "Environment": {
@@ -6360,7 +6384,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
@@ -6431,10 +6454,13 @@
           }
         },
         "FunctionName": "LisaRAG-repository-get_repository_by_id",
-        "Handler": "repository.lambda_functions.get_repository_by_id",
+        "Handler": "lambda_functions.get_repository_by_id",
         "Layers": [
           {
             "Ref": "RagLayerF72F34A6"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -6497,7 +6523,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Description": "Update a repository",
         "Environment": {
@@ -6524,7 +6550,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
@@ -6595,10 +6620,13 @@
           }
         },
         "FunctionName": "LisaRAG-repository-update_repository",
-        "Handler": "repository.lambda_functions.update_repository",
+        "Handler": "lambda_functions.update_repository",
         "Layers": [
           {
             "Ref": "RagLayerF72F34A6"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -6661,7 +6689,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Description": "Delete a repository",
         "Environment": {
@@ -6688,7 +6716,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
@@ -6759,10 +6786,13 @@
           }
         },
         "FunctionName": "LisaRAG-repository-delete",
-        "Handler": "repository.lambda_functions.delete",
+        "Handler": "lambda_functions.delete",
         "Layers": [
           {
             "Ref": "RagLayerF72F34A6"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -6825,7 +6855,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Description": "Run a similarity search against the specified repository using the specified query",
         "Environment": {
@@ -6852,7 +6882,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
@@ -6923,10 +6952,13 @@
           }
         },
         "FunctionName": "LisaRAG-repository-similarity_search",
-        "Handler": "repository.lambda_functions.similarity_search",
+        "Handler": "lambda_functions.similarity_search",
         "Layers": [
           {
             "Ref": "RagLayerF72F34A6"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -6989,7 +7021,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Description": "Ingest a set of documents based on specified S3 path",
         "Environment": {
@@ -7016,7 +7048,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
@@ -7087,10 +7118,13 @@
           }
         },
         "FunctionName": "LisaRAG-repository-ingest_documents",
-        "Handler": "repository.lambda_functions.ingest_documents",
+        "Handler": "lambda_functions.ingest_documents",
         "Layers": [
           {
             "Ref": "RagLayerF72F34A6"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -7153,7 +7187,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Description": "List all docs for a repository",
         "Environment": {
@@ -7180,7 +7214,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
@@ -7251,10 +7284,13 @@
           }
         },
         "FunctionName": "LisaRAG-repository-list_docs",
-        "Handler": "repository.lambda_functions.list_docs",
+        "Handler": "lambda_functions.list_docs",
         "Layers": [
           {
             "Ref": "RagLayerF72F34A6"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -7317,7 +7353,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Description": "Get a document by ID",
         "Environment": {
@@ -7344,7 +7380,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
@@ -7415,10 +7450,13 @@
           }
         },
         "FunctionName": "LisaRAG-repository-get_document",
-        "Handler": "repository.lambda_functions.get_document",
+        "Handler": "lambda_functions.get_document",
         "Layers": [
           {
             "Ref": "RagLayerF72F34A6"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -7481,7 +7519,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Description": "Creates presigned url to download document within repository",
         "Environment": {
@@ -7508,7 +7546,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
@@ -7579,10 +7616,13 @@
           }
         },
         "FunctionName": "LisaRAG-repository-download_document",
-        "Handler": "repository.lambda_functions.download_document",
+        "Handler": "lambda_functions.download_document",
         "Layers": [
           {
             "Ref": "RagLayerF72F34A6"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -7645,7 +7685,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Description": "Deletes all records associated with documents from the repository",
         "Environment": {
@@ -7672,7 +7712,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
@@ -7743,10 +7782,13 @@
           }
         },
         "FunctionName": "LisaRAG-repository-delete_documents",
-        "Handler": "repository.lambda_functions.delete_documents",
+        "Handler": "lambda_functions.delete_documents",
         "Layers": [
           {
             "Ref": "RagLayerF72F34A6"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -7809,7 +7851,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Description": "List all ingestion jobs for a repository",
         "Environment": {
@@ -7836,7 +7878,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
@@ -7907,10 +7948,13 @@
           }
         },
         "FunctionName": "LisaRAG-repository-list_jobs",
-        "Handler": "repository.lambda_functions.list_jobs",
+        "Handler": "lambda_functions.list_jobs",
         "Layers": [
           {
             "Ref": "RagLayerF72F34A6"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -7973,7 +8017,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Description": "List all collections within a repository",
         "Environment": {
@@ -8000,7 +8044,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
@@ -8071,10 +8114,13 @@
           }
         },
         "FunctionName": "LisaRAG-repository-list_collections",
-        "Handler": "repository.lambda_functions.list_collections",
+        "Handler": "lambda_functions.list_collections",
         "Layers": [
           {
             "Ref": "RagLayerF72F34A6"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -8137,7 +8183,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Description": "List all collections user has access to across all repositories",
         "Environment": {
@@ -8164,7 +8210,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
@@ -8235,10 +8280,13 @@
           }
         },
         "FunctionName": "LisaRAG-repository-list_user_collections",
-        "Handler": "repository.lambda_functions.list_user_collections",
+        "Handler": "lambda_functions.list_user_collections",
         "Layers": [
           {
             "Ref": "RagLayerF72F34A6"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -8301,7 +8349,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Description": "Create a new collection within a repository",
         "Environment": {
@@ -8328,7 +8376,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
@@ -8399,10 +8446,13 @@
           }
         },
         "FunctionName": "LisaRAG-repository-create_collection",
-        "Handler": "repository.lambda_functions.create_collection",
+        "Handler": "lambda_functions.create_collection",
         "Layers": [
           {
             "Ref": "RagLayerF72F34A6"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -8465,7 +8515,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Description": "Get a collection by ID within a repository",
         "Environment": {
@@ -8492,7 +8542,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
@@ -8563,10 +8612,13 @@
           }
         },
         "FunctionName": "LisaRAG-repository-get_collection",
-        "Handler": "repository.lambda_functions.get_collection",
+        "Handler": "lambda_functions.get_collection",
         "Layers": [
           {
             "Ref": "RagLayerF72F34A6"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -8629,7 +8681,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Description": "Update a collection within a repository",
         "Environment": {
@@ -8656,7 +8708,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
@@ -8727,10 +8778,13 @@
           }
         },
         "FunctionName": "LisaRAG-repository-update_collection",
-        "Handler": "repository.lambda_functions.update_collection",
+        "Handler": "lambda_functions.update_collection",
         "Layers": [
           {
             "Ref": "RagLayerF72F34A6"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -8793,7 +8847,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Description": "Delete a collection within a repository",
         "Environment": {
@@ -8820,7 +8874,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
@@ -8891,10 +8944,13 @@
           }
         },
         "FunctionName": "LisaRAG-repository-delete_collection",
-        "Handler": "repository.lambda_functions.delete_collection",
+        "Handler": "lambda_functions.delete_collection",
         "Layers": [
           {
             "Ref": "RagLayerF72F34A6"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -8957,7 +9013,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Description": "List all ACTIVE Bedrock Knowledge Bases",
         "Environment": {
@@ -8984,7 +9040,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
@@ -9055,10 +9110,13 @@
           }
         },
         "FunctionName": "LisaRAG-repository-list_bedrock_knowledge_bases",
-        "Handler": "repository.lambda_functions.list_bedrock_knowledge_bases",
+        "Handler": "lambda_functions.list_bedrock_knowledge_bases",
         "Layers": [
           {
             "Ref": "RagLayerF72F34A6"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -9121,7 +9179,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Description": "List data sources for a Bedrock Knowledge Base",
         "Environment": {
@@ -9148,7 +9206,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
@@ -9219,10 +9276,13 @@
           }
         },
         "FunctionName": "LisaRAG-repository-list_bedrock_data_sources",
-        "Handler": "repository.lambda_functions.list_bedrock_data_sources",
+        "Handler": "lambda_functions.list_bedrock_data_sources",
         "Layers": [
           {
             "Ref": "RagLayerF72F34A6"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -10011,7 +10071,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "36da753b63b761f1395efaa515425d2a992bd71a7bef284d7891cfcb263999c1.zip"
+          "S3Key": "f278ea47726c4608b5a9921a7830176e9d91f9ce125825560c0a97d45e7aa49c.zip"
         },
         "Environment": {
           "Variables": {
@@ -10019,7 +10079,7 @@
               "Fn::Join": [
                 "",
                 [
-                  "{\"accountNumber\":\"012345678901\",\"appName\":\"lisa\",\"deploymentName\":\"test-lisa\",\"deploymentStage\":\"dev\",\"deploymentPrefix\":\"/dev/test-lisa/lisa\",\"iamRdsAuth\":true,\"partition\":\"aws\",\"region\":\"us-iso-east-1\",\"removalPolicy\":\"destroy\",\"profile\":\"\",\"vpcId\":\"",
+                  "{\"accountNumber\":\"012345678901\",\"appName\":\"lisa\",\"convertInlinePoliciesToManaged\":false,\"deploymentName\":\"test-lisa\",\"deploymentStage\":\"dev\",\"deploymentPrefix\":\"/dev/test-lisa/lisa\",\"iamRdsAuth\":true,\"partition\":\"aws\",\"region\":\"us-iso-east-1\",\"removalPolicy\":\"destroy\",\"profile\":\"\",\"vpcId\":\"",
                   {
                     "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPC8B8C4E4BB8544CDA"
                   },
@@ -10103,7 +10163,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Environment": {
           "Variables": {
@@ -10129,7 +10189,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
@@ -10200,10 +10259,13 @@
           }
         },
         "FunctionName": "test-lisa-dev-create_bedrock_collection",
-        "Handler": "repository.lambda_functions.create_bedrock_collection",
+        "Handler": "lambda_functions.create_bedrock_collection",
         "Layers": [
           {
             "Ref": "RagLayerF72F34A6"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -10243,7 +10305,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Environment": {
           "Variables": {
@@ -10269,7 +10331,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
@@ -10340,10 +10401,13 @@
           }
         },
         "FunctionName": "test-lisa-dev-create_default_collection",
-        "Handler": "repository.lambda_functions.create_default_collection",
+        "Handler": "lambda_functions.create_default_collection",
         "Layers": [
           {
             "Ref": "RagLayerF72F34A6"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -10608,7 +10672,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Environment": {
           "Variables": {
@@ -10634,7 +10698,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
@@ -10704,10 +10767,13 @@
             }
           }
         },
-        "Handler": "repository.state_machine.cleanup_repo_docs.lambda_handler",
+        "Handler": "state_machine.cleanup_repo_docs.lambda_handler",
         "Layers": [
           {
             "Ref": "RagLayerF72F34A6"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -10766,7 +10832,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "a14e515f6b8c93a772d77b419ae72462df60d4e1f3d016802127014245d92192.zip"
         },
         "Environment": {
           "Variables": {
@@ -10792,7 +10858,6 @@
             "RAG_SUB_DOCUMENT_TABLE": {
               "Ref": "testlisaRagSubDocumentTable76E4AE52"
             },
-            "REGISTERED_MODELS_PS_NAME": "/dev/test-lisa/lisa/registeredModels",
             "REGISTERED_REPOSITORIES_PS_PREFIX": "/dev/test-lisa/lisa/LisaServeRagConnectionInfo/",
             "REGISTERED_REPOSITORIES_PS": "/dev/test-lisa/lisa/registeredRepositories",
             "REST_API_VERSION": "v2",
@@ -10862,10 +10927,13 @@
             }
           }
         },
-        "Handler": "repository.state_machine.wait_for_collection_deletions.lambda_handler",
+        "Handler": "state_machine.wait_for_collection_deletions.lambda_handler",
         "Layers": [
           {
             "Ref": "RagLayerF72F34A6"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"

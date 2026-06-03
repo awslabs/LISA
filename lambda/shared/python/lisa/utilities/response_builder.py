@@ -45,9 +45,10 @@ class DecimalEncoder(json.JSONEncoder):
             return float(obj)
         if isinstance(obj, datetime):
             return obj.isoformat()
-        # Handle Pydantic models
+        # Handle Pydantic models — use mode="python" so Decimal/datetime stay as
+        # native types and get handled by the isinstance checks above.
         if hasattr(obj, "model_dump"):
-            return obj.model_dump(mode="json")
+            return obj.model_dump(mode="python")
         return super().default(obj)
 
 
@@ -66,7 +67,7 @@ def _serialize_pydantic(obj: Any) -> Any:
         Serialized object.
     """
     if hasattr(obj, "model_dump"):
-        return obj.model_dump(mode="json")
+        return obj.model_dump(mode="python")
     if isinstance(obj, list):
         return [_serialize_pydantic(item) for item in obj]
     if isinstance(obj, dict):

@@ -143,7 +143,8 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
                 # Already 0-1 from min_max normalization in the search pipeline.
                 # Intentionally overwrites any pre-existing similarity_score in source metadata
                 # so retrieval-time scoring is authoritative over ingest-time fields.
-                metadata["similarity_score"] = hit.get("_score")
+                raw_score = hit.get("_score")
+                metadata["similarity_score"] = float(raw_score) if raw_score is not None else None
             documents.append({"page_content": source.get("text", ""), "metadata": metadata})
         return documents
 

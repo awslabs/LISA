@@ -93,6 +93,43 @@ describe('structureRagDocuments', () => {
     it('returns empty array for non-array input', () => {
         expect(structureRagDocuments('not an array')).toEqual([]);
     });
+
+    it('coerces string similarity_score to number', () => {
+        const docs = [makeDoc({ similarity_score: '0.87' })];
+        const result = structureRagDocuments(docs);
+        expect(result[0].similarityScore).toBe(0.87);
+        expect(typeof result[0].similarityScore).toBe('number');
+    });
+
+    it('returns undefined for non-numeric similarity_score string', () => {
+        const docs = [makeDoc({ similarity_score: 'not-a-number' })];
+        const result = structureRagDocuments(docs);
+        expect(result[0].similarityScore).toBeUndefined();
+    });
+
+    it('returns undefined for NaN similarity_score', () => {
+        const docs = [makeDoc({ similarity_score: NaN })];
+        const result = structureRagDocuments(docs);
+        expect(result[0].similarityScore).toBeUndefined();
+    });
+
+    it('returns undefined for Infinity similarity_score', () => {
+        const docs = [makeDoc({ similarity_score: Infinity })];
+        const result = structureRagDocuments(docs);
+        expect(result[0].similarityScore).toBeUndefined();
+    });
+
+    it('returns undefined for null similarity_score', () => {
+        const docs = [makeDoc({ similarity_score: null })];
+        const result = structureRagDocuments(docs);
+        expect(result[0].similarityScore).toBeUndefined();
+    });
+
+    it('preserves zero as valid similarity_score', () => {
+        const docs = [makeDoc({ similarity_score: 0 })];
+        const result = structureRagDocuments(docs);
+        expect(result[0].similarityScore).toBe(0);
+    });
 });
 
 describe('buildMessageMetadata', () => {

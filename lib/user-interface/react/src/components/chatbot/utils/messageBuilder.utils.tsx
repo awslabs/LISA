@@ -75,12 +75,6 @@ export const buildMessageContent = async ({
  * Multiple chunks may come from the same document.
  * Includes all documents, even if they don't have document_id (for backward compatibility).
  */
-const parseSimilarityScore = (raw: unknown): number | undefined => {
-    if (raw == null) return undefined;
-    const num = Number(raw);
-    return Number.isFinite(num) ? num : undefined;
-};
-
 export const structureRagDocuments = (docs: any): RagDocumentCitation[] => {
     if (!docs || !Array.isArray(docs)) return [];
 
@@ -97,7 +91,7 @@ export const structureRagDocuments = (docs: any): RagDocumentCitation[] => {
                 source: source,
                 repositoryId: metadata.repositoryId,
                 collectionId: metadata.collectionId,
-                similarityScore: parseSimilarityScore(metadata.similarity_score),
+                similarityScore: metadata.similarity_score,
             });
         }
     });

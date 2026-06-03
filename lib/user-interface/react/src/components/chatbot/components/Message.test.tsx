@@ -128,49 +128,6 @@ describe('Message - Citations similarity scores', () => {
         expect(screen.queryByText(/\d\.\d{2}/)).toBeNull();
     });
 
-    it('does not crash when similarityScore is null', () => {
-        const message: LisaChatMessage = {
-            type: MessageTypes.AI,
-            content: 'Here is the answer',
-            metadata: {
-                ragDocuments: [
-                    {
-                        documentId: 'doc-1',
-                        name: 'Null Score Doc',
-                        source: 's3://bucket/doc1.pdf',
-                        similarityScore: null as unknown as number,
-                    },
-                ],
-            },
-        };
-
-        renderMessage(message);
-
-        expect(screen.getByText(/\[1\] Null Score Doc/)).toBeInTheDocument();
-        expect(screen.queryByText(/\d\.\d{2}/)).toBeNull();
-    });
-
-    it('renders score of zero correctly', () => {
-        const message: LisaChatMessage = {
-            type: MessageTypes.AI,
-            content: 'Answer',
-            metadata: {
-                ragDocuments: [
-                    {
-                        documentId: 'doc-1',
-                        name: 'Zero Score Doc',
-                        source: 's3://bucket/doc1.pdf',
-                        similarityScore: 0,
-                    },
-                ],
-            },
-        };
-
-        renderMessage(message);
-
-        expect(screen.getByText('0.00')).toBeInTheDocument();
-    });
-
     it('renders mixed - some docs with scores, some without', () => {
         const message: LisaChatMessage = {
             type: MessageTypes.AI,

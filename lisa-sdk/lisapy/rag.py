@@ -194,6 +194,8 @@ class RagMixin(BaseMixin):
         model_name: str | None = None,
         search_mode: str | None = None,
         include_score: bool = False,
+        vector_weight: float | None = None,
+        lexical_weight: float | None = None,
     ) -> dict:
         """Perform similarity search.
 
@@ -228,6 +230,12 @@ class RagMixin(BaseMixin):
 
         if include_score:
             params["score"] = "true"
+
+        if vector_weight is not None:
+            params["vectorWeight"] = vector_weight
+
+        if lexical_weight is not None:
+            params["lexicalWeight"] = lexical_weight
 
         response = self._session.get(url, params=params)
         if response.status_code == 200:

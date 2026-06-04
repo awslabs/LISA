@@ -25,6 +25,7 @@ import {
     Select,
     SpaceBetween,
 } from '@cloudscape-design/components';
+import HybridSearchControls from './HybridSearchControls';
 
 import Toggle from '@cloudscape-design/components/toggle';
 import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
@@ -169,36 +170,6 @@ export const SessionConfiguration = ({
                                 />
                             </FormField>
                         ] : []),
-                        ...(systemConfig && systemConfig.configuration.enabledComponents.editNumOfRagDocument && !isImageModel && !isVideoModel && !modelOnly ? [
-                            <FormField key='ragTopK' label='Matching RAG Excerpts'>
-                                <Select
-                                    disabled={isRunning}
-                                    filteringType='auto'
-                                    selectedOption={{
-                                        value: chatConfiguration.sessionConfiguration.ragTopK.toString(),
-                                        label: chatConfiguration.sessionConfiguration.ragTopK.toString(),
-                                    }}
-                                    onChange={({ detail }) => updateSessionConfiguration('ragTopK', parseInt(detail.selectedOption.value))}
-                                    options={oneThroughTenOptions}
-                                />
-                            </FormField>
-                        ] : []),
-                        ...(systemConfig && systemConfig.configuration.enabledComponents.hybridSearch && ragConfig?.supportsHybridSearch && !isImageModel && !isVideoModel && !modelOnly ? [
-                            <FormField key='ragSearchMode' label='RAG Search Mode'>
-                                <Select
-                                    disabled={isRunning}
-                                    selectedOption={{
-                                        value: effectiveRagSearchMode,
-                                        label: effectiveRagSearchMode === 'hybrid' ? 'Hybrid' : 'Vector',
-                                    }}
-                                    onChange={({ detail }) => updateSessionConfiguration('ragSearchMode', detail.selectedOption.value)}
-                                    options={[
-                                        { value: 'vector', label: 'Vector', description: 'Semantic similarity search' },
-                                        { value: 'hybrid', label: 'Hybrid', description: 'Combined vector + keyword search' },
-                                    ]}
-                                />
-                            </FormField>
-                        ] : []),
                         ...(selectedModel?.features?.find((feature) => feature.name === ModelFeatures.REASONING) ? [
                             <FormField key='reasoningEffort' label='Reasoning Effort'>
                                 <Select
@@ -229,6 +200,72 @@ export const SessionConfiguration = ({
                         </Grid>
                     );
                 })()}
+                {systemConfig && systemConfig.configuration.enabledComponents.editNumOfRagDocument && !isImageModel && !isVideoModel && !modelOnly && (
+                    <Container header={<Header variant='h2'>RAG Settings</Header>}>
+                        <SpaceBetween size='l'>
+                            <FormField label='Matching RAG Excerpts'>
+                                <Select
+                                    disabled={isRunning}
+                                    filteringType='auto'
+                                    selectedOption={{
+                                        value: chatConfiguration.sessionConfiguration.ragTopK.toString(),
+                                        label: chatConfiguration.sessionConfiguration.ragTopK.toString(),
+                                    }}
+                                    onChange={({ detail }) => updateSessionConfiguration('ragTopK', parseInt(detail.selectedOption.value))}
+                                    options={oneThroughTenOptions}
+                                />
+                            </FormField>
+                            {systemConfig.configuration.enabledComponents.hybridSearch && ragConfig?.supportsHybridSearch && (
+                                <FormField label='RAG Search Mode'>
+                                    <Select
+                                        disabled={isRunning}
+                                        selectedOption={{
+                                            value: effectiveRagSearchMode,
+                                            label: effectiveRagSearchMode === 'hybrid' ? 'Hybrid' : 'Vector',
+                                        }}
+                                        onChange={({ detail }) => updateSessionConfiguration('ragSearchMode', detail.selectedOption.value)}
+                                        options={[
+                                            { value: 'vector', label: 'Vector', description: 'Semantic similarity search' },
+                                            { value: 'hybrid', label: 'Hybrid', description: 'Combined vector + keyword search' },
+                                        ]}
+                                    />
+                                </FormField>
+                            )}
+                            {systemConfig.configuration.enabledComponents.hybridSearch && ragConfig?.supportsHybridSearch && effectiveRagSearchMode === 'hybrid' && (
+                                <HybridSearchControls
+                                    vectorWeight={chatConfiguration.sessionConfiguration.vectorWeight ?? 0.7}
+                                    lexicalWeight={chatConfiguration.sessionConfiguration.lexicalWeight ?? 0.3}
+                                    onChange={(weights) => {
+                                        const updatedConfiguration = {
+                                            ...chatConfiguration,
+                                            sessionConfiguration: {
+                                                ...chatConfiguration.sessionConfiguration,
+                                                ...weights,
+                                            },
+                                        };
+                                        setChatConfiguration(updatedConfiguration);
+                                        if (
+                                            session &&
+                                            updateSession &&
+                                            session.history.length > 0 &&
+                                            !sessionHistoryHasPendingAssistantToolCalls(session.history as LisaChatMessage[])
+                                        ) {
+                                            updateSession({
+                                                ...session,
+                                                configuration: {
+                                                    ...updatedConfiguration,
+                                                    selectedModel: selectedModel,
+                                                    ragConfig: ragConfig,
+                                                },
+                                            });
+                                        }
+                                    }}
+                                    disabled={isRunning}
+                                />
+                            )}
+                        </SpaceBetween>
+                    </Container>
+                )}
                 {systemConfig && systemConfig.configuration.enabledComponents.editKwargs && !isImageModel && !isVideoModel &&
                     <Container
                         header={

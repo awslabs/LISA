@@ -99,3 +99,87 @@ describe('SessionConfiguration — hybrid search', () => {
         expect(screen.queryByText('RAG Search Mode')).not.toBeInTheDocument();
     });
 });
+
+describe('SessionConfiguration — RAG Settings card', () => {
+    it('renders RAG Settings container when editNumOfRagDocument is enabled', () => {
+        const props = buildProps();
+        props.systemConfig.configuration.enabledComponents.editNumOfRagDocument = true;
+        render(<SessionConfiguration {...props} />);
+        expect(screen.getByText('RAG Settings')).toBeInTheDocument();
+    });
+
+    it('does not render RAG Settings container when editNumOfRagDocument is disabled', () => {
+        const props = buildProps();
+        props.systemConfig.configuration.enabledComponents.editNumOfRagDocument = false;
+        render(<SessionConfiguration {...props} />);
+        expect(screen.queryByText('RAG Settings')).not.toBeInTheDocument();
+    });
+
+    it('does not render RAG Settings container for image models', () => {
+        const props = buildProps({
+            selectedModel: { modelId: 'img-model', modelType: ModelType.imagegen } as any,
+        });
+        render(<SessionConfiguration {...props} />);
+        expect(screen.queryByText('RAG Settings')).not.toBeInTheDocument();
+    });
+
+    it('does not render RAG Settings container for video models', () => {
+        const props = buildProps({
+            selectedModel: { modelId: 'vid-model', modelType: ModelType.videogen } as any,
+        });
+        render(<SessionConfiguration {...props} />);
+        expect(screen.queryByText('RAG Settings')).not.toBeInTheDocument();
+    });
+
+    it('does not render RAG Settings container when modelOnly is true', () => {
+        const props = buildProps({ modelOnly: true });
+        render(<SessionConfiguration {...props} />);
+        expect(screen.queryByText('RAG Settings')).not.toBeInTheDocument();
+    });
+
+    it('renders Matching RAG Excerpts inside the RAG Settings card', () => {
+        const props = buildProps();
+        render(<SessionConfiguration {...props} />);
+        expect(screen.getByText('RAG Settings')).toBeInTheDocument();
+        expect(screen.getByText('Matching RAG Excerpts')).toBeInTheDocument();
+    });
+
+    it('renders HybridSearchControls when hybrid mode is active', () => {
+        const props = buildProps({
+            ragConfig: { repositoryId: 'repo-1', repositoryType: 'opensearch', supportsHybridSearch: true },
+            chatConfiguration: {
+                ...baseConfig,
+                sessionConfiguration: { ...baseConfig.sessionConfiguration, ragSearchMode: 'hybrid' },
+            },
+        });
+        props.systemConfig.configuration.enabledComponents.hybridSearch = true;
+        render(<SessionConfiguration {...props} />);
+        expect(screen.getByRole('slider', { name: /vector weight/i })).toBeInTheDocument();
+    });
+
+    it('does not render HybridSearchControls when search mode is vector', () => {
+        const props = buildProps({
+            ragConfig: { repositoryId: 'repo-1', repositoryType: 'opensearch', supportsHybridSearch: true },
+            chatConfiguration: {
+                ...baseConfig,
+                sessionConfiguration: { ...baseConfig.sessionConfiguration, ragSearchMode: 'vector' },
+            },
+        });
+        props.systemConfig.configuration.enabledComponents.hybridSearch = true;
+        render(<SessionConfiguration {...props} />);
+        expect(screen.queryByRole('slider', { name: /vector weight/i })).not.toBeInTheDocument();
+    });
+
+    it('does not render HybridSearchControls when repo does not support hybrid', () => {
+        const props = buildProps({
+            ragConfig: { repositoryId: 'repo-1', repositoryType: 'opensearch', supportsHybridSearch: false },
+            chatConfiguration: {
+                ...baseConfig,
+                sessionConfiguration: { ...baseConfig.sessionConfiguration, ragSearchMode: 'hybrid' },
+            },
+        });
+        props.systemConfig.configuration.enabledComponents.hybridSearch = true;
+        render(<SessionConfiguration {...props} />);
+        expect(screen.queryByRole('slider', { name: /vector weight/i })).not.toBeInTheDocument();
+    });
+});

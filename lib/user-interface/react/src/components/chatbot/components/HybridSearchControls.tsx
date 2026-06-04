@@ -62,7 +62,7 @@ export default function HybridSearchControls ({ vectorWeight, lexicalWeight, onC
 
     return (
         <SpaceBetween size='s'>
-            <FormField label='Vector weight' constraintText='0.0 to 1.0 — weights must sum to 1'>
+            <FormField label='Vector weight' constraintText='0.0 to 1.0 in 0.1 increments — weights must sum to 1'>
                 <Grid gridDefinition={[{ colspan: 9 }, { colspan: 3 }]}>
                     <Slider
                         ariaLabel='Vector weight'
@@ -70,6 +70,7 @@ export default function HybridSearchControls ({ vectorWeight, lexicalWeight, onC
                         min={0}
                         max={1}
                         step={0.1}
+                        tickMarks={true}
                         onChange={handleVectorSliderChange}
                         disabled={disabled}
                     />
@@ -85,7 +86,7 @@ export default function HybridSearchControls ({ vectorWeight, lexicalWeight, onC
                     />
                 </Grid>
             </FormField>
-            <FormField label='Lexical weight'>
+            <FormField label='Lexical weight' constraintText='Automatically adjusted to complement vector weight'>
                 <Grid gridDefinition={[{ colspan: 9 }, { colspan: 3 }]}>
                     <Slider
                         ariaLabel='Lexical weight'
@@ -93,6 +94,7 @@ export default function HybridSearchControls ({ vectorWeight, lexicalWeight, onC
                         min={0}
                         max={1}
                         step={0.1}
+                        tickMarks={true}
                         onChange={handleLexicalSliderChange}
                         disabled={disabled}
                     />

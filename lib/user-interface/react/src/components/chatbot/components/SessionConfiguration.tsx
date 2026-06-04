@@ -69,16 +69,7 @@ export const SessionConfiguration = ({
     // Defaults based on https://huggingface.co/docs/transformers/main_classes/text_generation#transformers.GenerationConfig
     // Default stop sequences based on User/Assistant instruction prompting for Falcon, Mistral, etc.
 
-    const updateSessionConfiguration = (property: string, value: any): void => {
-        const updatedConfiguration = {
-            ...chatConfiguration,
-            sessionConfiguration: { ...chatConfiguration.sessionConfiguration, [property]: value },
-        };
-
-        setChatConfiguration(updatedConfiguration);
-
-        // Immediately persist the configuration to the session if available (avoid PUT while assistant
-        // tool calls are still pending — same half-finished history issue as Chat auto-save)
+    const persistToSession = (updatedConfiguration: IChatConfiguration): void => {
         if (
             session &&
             updateSession &&
@@ -90,10 +81,19 @@ export const SessionConfiguration = ({
                 configuration: {
                     ...updatedConfiguration,
                     selectedModel: selectedModel,
-                    ragConfig: ragConfig
-                }
+                    ragConfig: ragConfig,
+                },
             });
         }
+    };
+
+    const updateSessionConfiguration = (property: string, value: any): void => {
+        const updatedConfiguration = {
+            ...chatConfiguration,
+            sessionConfiguration: { ...chatConfiguration.sessionConfiguration, [property]: value },
+        };
+        setChatConfiguration(updatedConfiguration);
+        persistToSession(updatedConfiguration);
     };
 
     const oneThroughTenOptions = [...Array(10).keys()].map((i) => {
@@ -244,21 +244,7 @@ export const SessionConfiguration = ({
                                             },
                                         };
                                         setChatConfiguration(updatedConfiguration);
-                                        if (
-                                            session &&
-                                            updateSession &&
-                                            session.history.length > 0 &&
-                                            !sessionHistoryHasPendingAssistantToolCalls(session.history as LisaChatMessage[])
-                                        ) {
-                                            updateSession({
-                                                ...session,
-                                                configuration: {
-                                                    ...updatedConfiguration,
-                                                    selectedModel: selectedModel,
-                                                    ragConfig: ragConfig,
-                                                },
-                                            });
-                                        }
+                                        persistToSession(updatedConfiguration);
                                     }}
                                     disabled={isRunning}
                                 />

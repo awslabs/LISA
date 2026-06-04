@@ -33,7 +33,7 @@
     "@reduxjs/toolkit": "^2.11.2",
     "@swc/core": "^1.15.30",
     "ace-builds": "^1.43.6",
-    "axios": "^1.15.2",
+    "axios": "^1.17.0",
     "dompurify": "^3.4.1",
     "fdir": "^6.5.0",
     "git-repo-info": "^2.1.1",

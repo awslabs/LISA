@@ -45,11 +45,10 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
     """
 
     def supports_hybrid_search(self) -> bool:
-        """OpenSearch repositories support hybrid search.
+        """OpenSearch >= 2.13 supports hybrid search via inline search pipelines.
 
-        Implementation: see ``OpenSearchRepositoryService.hybrid_retrieve()``,
-        which transparently falls back to vector search if the cluster does
-        not support hybrid (e.g., OpenSearch < 2.13).
+        If the cluster is older than 2.13, hybrid_retrieve() will propagate the
+        resulting RequestError — no silent fallback.
         """
         return True
 
@@ -163,11 +162,9 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
             source = hit.get("_source", {})
             metadata = dict(source.get("metadata", {}) or {})
             if include_score:
-                # Already 0-1 from min_max normalization in the search pipeline.
-                # Intentionally overwrites any pre-existing similarity_score in source metadata
-                # so retrieval-time scoring is authoritative over ingest-time fields.
                 raw_score = hit.get("_score")
-                metadata["similarity_score"] = float(raw_score) if raw_score is not None else None
+                if raw_score is not None:
+                    metadata["similarity_score"] = float(raw_score)
             documents.append({"page_content": source.get("text", ""), "metadata": metadata})
         return documents
 

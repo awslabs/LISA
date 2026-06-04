@@ -207,6 +207,8 @@ class RagMixin(BaseMixin):
             model_name: Optional model name (required if collection_id not provided)
             search_mode: Optional search mode ('vector' or 'hybrid')
             include_score: Include similarity scores in results
+            vector_weight: Weight for vector/semantic results (0-1, must sum to 1 with lexical_weight)
+            lexical_weight: Weight for lexical/keyword results (0-1, must sum to 1 with vector_weight)
 
         Returns:
             Dict with:

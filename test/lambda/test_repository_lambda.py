@@ -4726,6 +4726,31 @@ def test_hybrid_search_rejects_weights_not_summing_to_one(mock_auth):
         assert result["statusCode"] == 400
 
 
+def test_hybrid_search_rejects_partial_weights(mock_auth):
+    """Only vectorWeight without lexicalWeight → 400."""
+    from repository.lambda_functions import similarity_search
+
+    mock_auth.set_user("test-user", ["test-group"], is_rag_admin=True)
+
+    stack, setup = _hybrid_search_patches(is_rag_admin_val=True)
+    with stack:
+        p = setup()
+        p.vs_repo.find_repository_by_id.return_value = _opensearch_repo()
+        p.cs.get_collection_model.return_value = "test-model"
+        p.factory.create_service.return_value = _mock_service(supports_hybrid=True)
+
+        event = _similarity_search_event(
+            {
+                "searchMode": "hybrid",
+                "modelName": "test-model",
+                "vectorWeight": "0.8",
+            }
+        )
+        result = similarity_search(event, SimpleNamespace())
+
+        assert result["statusCode"] == 400
+
+
 def test_hybrid_search_rejects_out_of_range_weights(mock_auth):
     """vectorWeight > 1 → 400."""
     from repository.lambda_functions import similarity_search

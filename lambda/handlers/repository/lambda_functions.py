@@ -26,6 +26,7 @@ from boto3.dynamodb.types import TypeSerializer
 from botocore.config import Config
 from lisa.domain.domain_objects import (
     FilterParams,
+    HybridWeights,
     IngestDocumentRequest,
     IngestionJob,
     IngestionStatus,
@@ -222,21 +223,8 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
     if search_mode not in ("vector", "hybrid"):
         raise ValidationError("Invalid searchMode. Must be 'vector' or 'hybrid'")
 
-    vector_weight = 0.7
-    lexical_weight = 0.3
-    if search_mode == "hybrid":
-        raw_vector = query_string_params.get("vectorWeight")
-        raw_lexical = query_string_params.get("lexicalWeight")
-        if raw_vector is not None or raw_lexical is not None:
-            try:
-                vector_weight = float(raw_vector) if raw_vector is not None else 0.7
-                lexical_weight = float(raw_lexical) if raw_lexical is not None else 0.3
-            except (TypeError, ValueError):
-                raise ValidationError("vectorWeight and lexicalWeight must be numeric values between 0 and 1")
-            if not (0.0 <= vector_weight <= 1.0) or not (0.0 <= lexical_weight <= 1.0):
-                raise ValidationError("vectorWeight and lexicalWeight must be between 0 and 1")
-            if abs(vector_weight + lexical_weight - 1.0) > 1e-9:
-                raise ValidationError("vectorWeight and lexicalWeight must sum to 1")
+    weight_params = {k: v for k, v in query_string_params.items() if k in ("vectorWeight", "lexicalWeight")}
+    weights = HybridWeights(**weight_params)
 
     if not isinstance(repository_id, str) or not repository_id:
         raise ValidationError("repositoryId is required")
@@ -286,8 +274,8 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
             model_name=model_name,
             include_score=include_score,
             bedrock_agent_client=bedrock_client,
-            vector_weight=vector_weight,
-            lexical_weight=lexical_weight,
+            vector_weight=weights.vector_weight,
+            lexical_weight=weights.lexical_weight,
         )
     else:
         result = service.retrieve_documents(

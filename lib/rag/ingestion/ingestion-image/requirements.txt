@@ -8,7 +8,7 @@ numpy>=2.4.4
 # Standardized to boto3==1.42.94 for compatibility across all components
 boto3==1.42.94
 
-aiohttp==3.13.5
+aiohttp==3.14.0
 click==8.3.3
 cryptography==46.0.7
 fastapi_utils==0.8.0

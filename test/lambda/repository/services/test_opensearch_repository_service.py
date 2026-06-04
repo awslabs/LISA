@@ -128,7 +128,7 @@ class TestOpenSearchRepositoryService:
         Asserts the request body has:
           - query.hybrid.queries with both BM25 (match on `text`) and kNN (on `vector_field`)
           - search_pipeline.phase_results_processors with normalization-processor (min_max)
-          - combination weights [0.3, 0.7] (lexical, vector) — hardcoded in slice 2.2.2
+          - combination weights [0.3, 0.7] (lexical, vector) — defaults
           - top_k preserved as `size`
         """
         mock_vector_store = MagicMock()
@@ -164,6 +164,69 @@ class TestOpenSearchRepositoryService:
         norm = processors[0]["normalization-processor"]
         assert norm["normalization"]["technique"] == "min_max"
         assert norm["combination"]["technique"] == "arithmetic_mean"
+        assert norm["combination"]["parameters"]["weights"] == [0.3, 0.7]
+
+    @pytest.mark.parametrize(
+        "vector_weight,lexical_weight,expected_os_weights",
+        [
+            (0.8, 0.2, [0.2, 0.8]),  # OpenSearch order is [lexical, vector]
+            (0.5, 0.5, [0.5, 0.5]),
+            (1.0, 0.0, [0.0, 1.0]),
+            (0.0, 1.0, [1.0, 0.0]),
+        ],
+        ids=["semantic-heavy", "balanced", "vector-only", "lexical-only"],
+    )
+    def test_hybrid_retrieve_applies_custom_weights(
+        self, opensearch_service, vector_weight, lexical_weight, expected_os_weights
+    ):
+        """hybrid_retrieve passes caller-supplied weights to combination.parameters.weights.
+
+        OpenSearch weights order is [lexical, vector] — opposite of the caller's perspective.
+        """
+        mock_vector_store = MagicMock()
+        mock_vector_store.client.indices.exists.return_value = True
+        mock_vector_store.client.search.return_value = {"hits": {"hits": []}}
+
+        mock_embeddings = MagicMock()
+        mock_embeddings.embed_query.return_value = [0.1, 0.2, 0.3]
+
+        with patch(
+            "lisa.rag.services.opensearch_repository_service.RagEmbeddings", return_value=mock_embeddings
+        ), patch.object(opensearch_service, "_get_vector_store_client", return_value=mock_vector_store):
+            opensearch_service.hybrid_retrieve(
+                query="test query",
+                collection_id="test-collection",
+                top_k=5,
+                model_name="amazon.titan-embed-text-v1",
+                vector_weight=vector_weight,
+                lexical_weight=lexical_weight,
+            )
+
+        body = mock_vector_store.client.search.call_args.kwargs["body"]
+        norm = body["search_pipeline"]["phase_results_processors"][0]["normalization-processor"]
+        assert norm["combination"]["parameters"]["weights"] == expected_os_weights
+
+    def test_hybrid_retrieve_uses_defaults_when_no_weights_specified(self, opensearch_service):
+        """Without explicit weights, defaults to 0.7 vector / 0.3 lexical → [0.3, 0.7] in OpenSearch."""
+        mock_vector_store = MagicMock()
+        mock_vector_store.client.indices.exists.return_value = True
+        mock_vector_store.client.search.return_value = {"hits": {"hits": []}}
+
+        mock_embeddings = MagicMock()
+        mock_embeddings.embed_query.return_value = [0.1, 0.2, 0.3]
+
+        with patch(
+            "lisa.rag.services.opensearch_repository_service.RagEmbeddings", return_value=mock_embeddings
+        ), patch.object(opensearch_service, "_get_vector_store_client", return_value=mock_vector_store):
+            opensearch_service.hybrid_retrieve(
+                query="test query",
+                collection_id="test-collection",
+                top_k=5,
+                model_name="amazon.titan-embed-text-v1",
+            )
+
+        body = mock_vector_store.client.search.call_args.kwargs["body"]
+        norm = body["search_pipeline"]["phase_results_processors"][0]["normalization-processor"]
         assert norm["combination"]["parameters"]["weights"] == [0.3, 0.7]
 
     def test_hybrid_retrieve_returns_docs_and_hybrid_metadata(self, opensearch_service):
@@ -347,3 +410,27 @@ class TestOpenSearchRepositoryService:
                 )
 
         assert exc_info.value.status_code == 503
+
+    @pytest.mark.parametrize(
+        "vector_weight,lexical_weight",
+        [
+            (-0.1, 1.1),
+            (1.1, -0.1),
+            (0.5, 0.3),  # sum < 1
+            (0.7, 0.7),  # sum > 1
+            (float("inf"), 0.0),
+            (float("nan"), 0.3),
+        ],
+        ids=["negative-vector", "negative-lexical", "sum-lt-1", "sum-gt-1", "inf", "nan"],
+    )
+    def test_hybrid_retrieve_rejects_invalid_weights(self, opensearch_service, vector_weight, lexical_weight):
+        """hybrid_retrieve raises ValueError for out-of-range or non-summing weights."""
+        with pytest.raises(ValueError):
+            opensearch_service.hybrid_retrieve(
+                query="test",
+                collection_id="test-collection",
+                top_k=5,
+                model_name="amazon.titan-embed-text-v1",
+                vector_weight=vector_weight,
+                lexical_weight=lexical_weight,
+            )

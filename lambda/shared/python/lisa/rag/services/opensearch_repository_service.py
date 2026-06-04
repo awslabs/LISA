@@ -61,6 +61,8 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
         model_name: str,
         include_score: bool = False,
         bedrock_agent_client: Any = None,
+        vector_weight: float = 0.7,
+        lexical_weight: float = 0.3,
     ) -> RetrieveResult:
         """Retrieve documents using hybrid (BM25 + kNN) search via inline search pipeline.
 
@@ -75,10 +77,17 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
             include_score: When True, copies hit['_score'] (already 0-1 from min_max
                 normalization) to metadata['similarity_score']
             bedrock_agent_client: Unused for OpenSearch (kept for base-class signature parity)
+            vector_weight: Weight for vector (semantic) results (0-1)
+            lexical_weight: Weight for lexical (keyword) results (0-1)
 
         Returns:
             RetrieveResult with actual_mode_used="hybrid" and hybrid_supported=True.
         """
+        if not (0.0 <= vector_weight <= 1.0) or not (0.0 <= lexical_weight <= 1.0):
+            raise ValueError("vector_weight and lexical_weight must be between 0 and 1")
+        if abs(vector_weight + lexical_weight - 1.0) > 1e-9:
+            raise ValueError("vector_weight and lexical_weight must sum to 1")
+
         embeddings = RagEmbeddings(model_name=model_name)
         vector_store = self._get_vector_store_client(
             collection_id=collection_id,
@@ -91,21 +100,35 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
                 return RetrieveResult(documents=[], actual_mode_used="hybrid", hybrid_supported=True)
 
         query_vector = embeddings.embed_query(query)
-        body = self._build_hybrid_body(query=query, query_vector=query_vector, top_k=top_k)
+        body = self._build_hybrid_body(
+            query=query,
+            query_vector=query_vector,
+            top_k=top_k,
+            vector_weight=vector_weight,
+            lexical_weight=lexical_weight,
+        )
 
-        logger.info(f"Hybrid retrieving from OpenSearch: collection={collection_id}, query={query[:50]}...")
+        logger.info(
+            f"Hybrid retrieving from OpenSearch: collection={collection_id}, "
+            f"weights=[{lexical_weight},{vector_weight}], query={query[:50]}..."
+        )
         response = vector_store.client.search(index=collection_id, body=body)
 
         docs = self._extract_hits(response, include_score)
         return RetrieveResult(documents=docs, actual_mode_used="hybrid", hybrid_supported=True)
 
     @staticmethod
-    def _build_hybrid_body(query: str, query_vector: list[float], top_k: int) -> dict[str, Any]:
+    def _build_hybrid_body(
+        query: str,
+        query_vector: list[float],
+        top_k: int,
+        vector_weight: float = 0.7,
+        lexical_weight: float = 0.3,
+    ) -> dict[str, Any]:
         """Construct the OpenSearch hybrid query + inline search_pipeline body.
 
-        Built as a Python dict — no string interpolation — to prevent DSL injection
-        (OWASP A03). Weights ``[0.3, 0.7]`` are hardcoded in slice 2.2.2; phase 2.3
-        wires per-request weight overrides.
+        Built as a Python dict — no string interpolation — to prevent DSL injection (OWASP A03).
+        OpenSearch weights order is [lexical, vector] matching the queries array order.
         """
         return {
             "size": top_k,
@@ -124,7 +147,7 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
                             "normalization": {"technique": "min_max"},
                             "combination": {
                                 "technique": "arithmetic_mean",
-                                "parameters": {"weights": [0.3, 0.7]},
+                                "parameters": {"weights": [lexical_weight, vector_weight]},
                             },
                         }
                     }

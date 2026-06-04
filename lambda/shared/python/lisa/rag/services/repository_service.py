@@ -196,6 +196,8 @@ class RepositoryService(ABC):
         model_name: str,
         include_score: bool = False,
         bedrock_agent_client: Any | None = None,
+        vector_weight: float = 0.7,
+        lexical_weight: float = 0.3,
     ) -> RetrieveResult:
         """Retrieve documents using hybrid (semantic + lexical) search.
 
@@ -206,6 +208,8 @@ class RepositoryService(ABC):
             model_name: Embedding model name to use for query embedding
             include_score: Whether to include similarity scores in results
             bedrock_agent_client: Bedrock agent client (for Bedrock KB only)
+            vector_weight: Weight for vector (semantic) results (0-1, must sum to 1 with lexical_weight)
+            lexical_weight: Weight for lexical (keyword) results (0-1, must sum to 1 with vector_weight)
 
         Returns:
             RetrieveResult with documents, actual_mode_used, and hybrid_supported.

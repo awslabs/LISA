@@ -394,10 +394,13 @@ class BedrockKBRepositoryService(RepositoryService):
         model_name: str,
         include_score: bool = False,
         bedrock_agent_client: Any | None = None,
+        vector_weight: float = 0.7,
+        lexical_weight: float = 0.3,
     ) -> RetrieveResult:
         """Retrieve documents using hybrid (semantic + lexical) search.
 
         Falls back to semantic search if the KB does not support hybrid.
+        Bedrock KB does not support weight tuning — weights are ignored.
         """
         retrieve_params, kb_id = self._build_retrieve_params(query, collection_id, top_k, bedrock_agent_client)
 

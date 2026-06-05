@@ -219,7 +219,7 @@ class RagMixin(BaseMixin):
                 and 'hybrid_supported' fields describing the retrieval that was performed
         """
         url = f"{self.url}/repository/{repo_id}/similaritySearch"
-        params: dict[str, str | int] = {"query": query, "repositoryType": repo_id, "topK": k}
+        params: dict[str, str | int | float] = {"query": query, "repositoryType": repo_id, "topK": k}
 
         if collection_id:
             params["collectionId"] = collection_id

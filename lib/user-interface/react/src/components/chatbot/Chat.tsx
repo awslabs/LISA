@@ -754,7 +754,7 @@ export default function Chat ({ sessionId, initialStack }) {
     }, [userPreferences?.preferences?.bedrockAgents?.enabledAgents, bedrockFunctionToolIndex]);
 
     const fetchRelevantDocuments = useCallback(async (query: string) => {
-        const { ragTopK = 3 } = chatConfiguration.sessionConfiguration;
+        const { ragTopK = 3, vectorWeight, lexicalWeight } = chatConfiguration.sessionConfiguration;
 
         return getRelevantDocuments({
             query,
@@ -763,6 +763,8 @@ export default function Chat ({ sessionId, initialStack }) {
             topK: ragTopK,
             modelName: !ragConfig.collection?.collectionId ? ragConfig.embeddingModel?.modelId : undefined,
             searchMode: effectiveRagSearchMode,
+            ...(effectiveRagSearchMode === 'hybrid' && vectorWeight != null && { vectorWeight }),
+            ...(effectiveRagSearchMode === 'hybrid' && lexicalWeight != null && { lexicalWeight }),
         });
     }, [getRelevantDocuments, chatConfiguration.sessionConfiguration, ragConfig.repositoryId, ragConfig.collection, ragConfig.embeddingModel, effectiveRagSearchMode]);
 

@@ -223,9 +223,6 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
     if search_mode not in ("vector", "hybrid"):
         raise ValidationError("Invalid searchMode. Must be 'vector' or 'hybrid'")
 
-    weight_params = {k: v for k, v in query_string_params.items() if k in ("vectorWeight", "lexicalWeight")}
-    weights = HybridWeights(**weight_params)
-
     if not isinstance(repository_id, str) or not repository_id:
         raise ValidationError("repositoryId is required")
     repository = get_repository(event, repository_id=repository_id)
@@ -267,6 +264,8 @@ def similarity_search(event: dict, context: dict) -> dict[str, Any]:
     use_hybrid = search_mode == "hybrid" and service.supports_hybrid_search()
 
     if use_hybrid:
+        weight_params = {k: v for k, v in query_string_params.items() if k in ("vectorWeight", "lexicalWeight")}
+        weights = HybridWeights(**weight_params)
         result = service.hybrid_retrieve(
             query=query,
             collection_id=search_collection_id,

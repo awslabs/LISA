@@ -384,19 +384,17 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                     <SpaceBetween direction='vertical' size='xs'>
                                         {ragDocuments.map((doc, index) => (
                                             <Box key={doc.documentId || index}>
-                                                <SpaceBetween direction='horizontal' size='xs'>
-                                                    {doc.documentId && onOpenDocument ? (
-                                                        <Link
-                                                            onFollow={() => onOpenDocument(doc)}
-                                                        >
-                                                            [{index + 1}] {doc.name}
-                                                        </Link>
-                                                    ) : (
-                                                        <Box variant='span' color='text-status-inactive'>
-                                                            [{index + 1}] {doc.name} (preview unavailable)
-                                                        </Box>
-                                                    )}
-                                                </SpaceBetween>
+                                                {doc.documentId && onOpenDocument ? (
+                                                    <Link
+                                                        onFollow={() => onOpenDocument(doc)}
+                                                    >
+                                                        [{index + 1}] {doc.name}
+                                                    </Link>
+                                                ) : (
+                                                    <Box variant='span' color='text-status-inactive'>
+                                                        [{index + 1}] {doc.name} (preview unavailable)
+                                                    </Box>
+                                                )}
                                             </Box>
                                         ))}
                                     </SpaceBetween>

@@ -1589,9 +1589,9 @@ class HybridWeights(BaseModel):
     @classmethod
     def require_both_or_neither(cls, data: Any) -> Any:
         if isinstance(data, dict):
-            v = data.get("vectorWeight")
-            l = data.get("lexicalWeight")
-            if (v is not None) != (l is not None):
+            vec = data.get("vectorWeight")
+            lex = data.get("lexicalWeight")
+            if (vec is not None) != (lex is not None):
                 raise ValueError("Both vectorWeight and lexicalWeight must be provided together")
         return data
 

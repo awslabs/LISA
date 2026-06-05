@@ -410,27 +410,3 @@ class TestOpenSearchRepositoryService:
                 )
 
         assert exc_info.value.status_code == 503
-
-    @pytest.mark.parametrize(
-        "vector_weight,lexical_weight",
-        [
-            (-0.1, 1.1),
-            (1.1, -0.1),
-            (0.5, 0.3),  # sum < 1
-            (0.7, 0.7),  # sum > 1
-            (float("inf"), 0.0),
-            (float("nan"), 0.3),
-        ],
-        ids=["negative-vector", "negative-lexical", "sum-lt-1", "sum-gt-1", "inf", "nan"],
-    )
-    def test_hybrid_retrieve_rejects_invalid_weights(self, opensearch_service, vector_weight, lexical_weight):
-        """hybrid_retrieve raises ValueError for out-of-range or non-summing weights."""
-        with pytest.raises(ValueError):
-            opensearch_service.hybrid_retrieve(
-                query="test",
-                collection_id="test-collection",
-                top_k=5,
-                model_name="amazon.titan-embed-text-v1",
-                vector_weight=vector_weight,
-                lexical_weight=lexical_weight,
-            )

@@ -82,11 +82,6 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
         Returns:
             RetrieveResult with actual_mode_used="hybrid" and hybrid_supported=True.
         """
-        if not (0.0 <= vector_weight <= 1.0) or not (0.0 <= lexical_weight <= 1.0):
-            raise ValueError("vector_weight and lexical_weight must be between 0 and 1")
-        if abs(vector_weight + lexical_weight - 1.0) > 1e-9:
-            raise ValueError("vector_weight and lexical_weight must sum to 1")
-
         embeddings = RagEmbeddings(model_name=model_name)
         vector_store = self._get_vector_store_client(
             collection_id=collection_id,

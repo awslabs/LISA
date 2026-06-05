@@ -21,6 +21,7 @@ import { LisaChatMessageHistory } from '@/components/adapters/lisa-chat-history'
 import { LisaChatMessageMetadata, LisaChatSession } from '@/components/types';
 import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
 import { IModel } from '@/shared/model/model-management.model';
+import { extractImageDataUrlFromFileContext } from '../utils/fileContext.utils';
 
 export const useMemory = (
     session: LisaChatSession,
@@ -65,7 +66,7 @@ export const useMemory = (
     useEffect(() => {
         if (selectedModel &&
             selectedModel?.features?.filter((feature) => feature.name === 'imageInput')?.length === 0 &&
-            fileContext.startsWith('File context: data:image')) {
+            extractImageDataUrlFromFileContext(fileContext)) {
             notificationService.generateNotification(
                 'Removed file from context as new model doesn\'t support image input',
                 'info'

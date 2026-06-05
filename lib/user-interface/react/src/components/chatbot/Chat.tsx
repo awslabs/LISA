@@ -783,6 +783,7 @@ export default function Chat ({ sessionId, initialStack }) {
             : undefined,
         auth,
         fileContext,
+        fileContextFiles,
         notificationService
     });
 

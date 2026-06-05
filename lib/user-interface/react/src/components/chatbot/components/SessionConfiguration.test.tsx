@@ -71,39 +71,9 @@ function buildProps (overrides: Partial<SessionConfigurationProps> = {}): Sessio
     };
 }
 
-describe('SessionConfiguration — hybrid search', () => {
-    it('shows RAG Search Mode selector when hybridSearch enabled and repo supports it', () => {
-        const props = buildProps({
-            ragConfig: { repositoryId: 'repo-1', repositoryType: 'bedrock_knowledge_base', supportsHybridSearch: true },
-        });
-        props.systemConfig.configuration.enabledComponents.hybridSearch = true;
-        render(<SessionConfiguration {...props} />);
-        expect(screen.getByText('RAG Search Mode')).toBeInTheDocument();
-    });
-
-    it('hides RAG Search Mode selector when hybridSearch admin flag is disabled', () => {
-        const props = buildProps({
-            ragConfig: { repositoryId: 'repo-1', repositoryType: 'bedrock_knowledge_base', supportsHybridSearch: true },
-        });
-        props.systemConfig.configuration.enabledComponents.hybridSearch = false;
-        render(<SessionConfiguration {...props} />);
-        expect(screen.queryByText('RAG Search Mode')).not.toBeInTheDocument();
-    });
-
-    it('hides RAG Search Mode selector when repo does not support hybrid', () => {
-        const props = buildProps({
-            ragConfig: { repositoryId: 'repo-1', repositoryType: 'opensearch', supportsHybridSearch: false },
-        });
-        props.systemConfig.configuration.enabledComponents.hybridSearch = true;
-        render(<SessionConfiguration {...props} />);
-        expect(screen.queryByText('RAG Search Mode')).not.toBeInTheDocument();
-    });
-});
-
 describe('SessionConfiguration — RAG Settings card', () => {
     it('renders RAG Settings container when editNumOfRagDocument is enabled', () => {
         const props = buildProps();
-        props.systemConfig.configuration.enabledComponents.editNumOfRagDocument = true;
         render(<SessionConfiguration {...props} />);
         expect(screen.getByText('RAG Settings')).toBeInTheDocument();
     });
@@ -143,8 +113,52 @@ describe('SessionConfiguration — RAG Settings card', () => {
         expect(screen.getByText('RAG Settings')).toBeInTheDocument();
         expect(screen.getByText('Matching RAG Excerpts')).toBeInTheDocument();
     });
+});
 
-    it('renders HybridSearchControls when hybrid mode is active', () => {
+describe('SessionConfiguration — RAG Search Mode (disable-not-hide)', () => {
+    it('RAG Search Mode is always visible in RAG Settings card', () => {
+        const props = buildProps();
+        render(<SessionConfiguration {...props} />);
+        expect(screen.getByText('RAG Search Mode')).toBeInTheDocument();
+    });
+
+    it('RAG Search Mode is enabled when hybridSearch admin flag on and repo supports it', () => {
+        const props = buildProps({
+            ragConfig: { repositoryId: 'repo-1', repositoryType: 'opensearch', supportsHybridSearch: true },
+        });
+        props.systemConfig.configuration.enabledComponents.hybridSearch = true;
+        render(<SessionConfiguration {...props} />);
+        expect(screen.queryByText('Hybrid search is disabled by your administrator')).not.toBeInTheDocument();
+        expect(screen.queryByText('Selected repository does not support hybrid search')).not.toBeInTheDocument();
+    });
+
+    it('RAG Search Mode is disabled when hybridSearch admin flag is off', () => {
+        const props = buildProps({
+            ragConfig: { repositoryId: 'repo-1', repositoryType: 'opensearch', supportsHybridSearch: true },
+        });
+        props.systemConfig.configuration.enabledComponents.hybridSearch = false;
+        render(<SessionConfiguration {...props} />);
+        expect(screen.getByText('Hybrid search is disabled by your administrator')).toBeInTheDocument();
+    });
+
+    it('RAG Search Mode is disabled when repo does not support hybrid', () => {
+        const props = buildProps({
+            ragConfig: { repositoryId: 'repo-1', repositoryType: 'opensearch', supportsHybridSearch: false },
+        });
+        props.systemConfig.configuration.enabledComponents.hybridSearch = true;
+        render(<SessionConfiguration {...props} />);
+        expect(screen.getByText('Selected repository does not support hybrid search')).toBeInTheDocument();
+    });
+});
+
+describe('SessionConfiguration — HybridSearchControls (disable-not-hide)', () => {
+    it('weight sliders are always rendered in RAG Settings card', () => {
+        const props = buildProps();
+        render(<SessionConfiguration {...props} />);
+        expect(screen.getByRole('slider', { name: /vector weight/i })).toBeInTheDocument();
+    });
+
+    it('weight sliders are enabled when hybrid mode active on OpenSearch repo', () => {
         const props = buildProps({
             ragConfig: { repositoryId: 'repo-1', repositoryType: 'opensearch', supportsHybridSearch: true },
             chatConfiguration: {
@@ -154,10 +168,11 @@ describe('SessionConfiguration — RAG Settings card', () => {
         });
         props.systemConfig.configuration.enabledComponents.hybridSearch = true;
         render(<SessionConfiguration {...props} />);
-        expect(screen.getByRole('slider', { name: /vector weight/i })).toBeInTheDocument();
+        const slider = screen.getByRole('slider', { name: /vector weight/i });
+        expect(slider).not.toBeDisabled();
     });
 
-    it('does not render HybridSearchControls when search mode is vector', () => {
+    it('weight sliders are disabled when search mode is vector', () => {
         const props = buildProps({
             ragConfig: { repositoryId: 'repo-1', repositoryType: 'opensearch', supportsHybridSearch: true },
             chatConfiguration: {
@@ -167,12 +182,13 @@ describe('SessionConfiguration — RAG Settings card', () => {
         });
         props.systemConfig.configuration.enabledComponents.hybridSearch = true;
         render(<SessionConfiguration {...props} />);
-        expect(screen.queryByRole('slider', { name: /vector weight/i })).not.toBeInTheDocument();
+        const slider = screen.getByRole('slider', { name: /vector weight/i });
+        expect(slider).toBeDisabled();
     });
 
-    it('does not render HybridSearchControls when repo does not support hybrid', () => {
+    it('weight sliders are disabled for Bedrock KB repos even in hybrid mode', () => {
         const props = buildProps({
-            ragConfig: { repositoryId: 'repo-1', repositoryType: 'opensearch', supportsHybridSearch: false },
+            ragConfig: { repositoryId: 'repo-1', repositoryType: 'bedrock_knowledge_base', supportsHybridSearch: true },
             chatConfiguration: {
                 ...baseConfig,
                 sessionConfiguration: { ...baseConfig.sessionConfiguration, ragSearchMode: 'hybrid' },
@@ -180,6 +196,22 @@ describe('SessionConfiguration — RAG Settings card', () => {
         });
         props.systemConfig.configuration.enabledComponents.hybridSearch = true;
         render(<SessionConfiguration {...props} />);
-        expect(screen.queryByRole('slider', { name: /vector weight/i })).not.toBeInTheDocument();
+        const slider = screen.getByRole('slider', { name: /vector weight/i });
+        expect(slider).toBeDisabled();
+    });
+
+    it('weight sliders are disabled when isRunning', () => {
+        const props = buildProps({
+            isRunning: true,
+            ragConfig: { repositoryId: 'repo-1', repositoryType: 'opensearch', supportsHybridSearch: true },
+            chatConfiguration: {
+                ...baseConfig,
+                sessionConfiguration: { ...baseConfig.sessionConfiguration, ragSearchMode: 'hybrid' },
+            },
+        });
+        props.systemConfig.configuration.enabledComponents.hybridSearch = true;
+        render(<SessionConfiguration {...props} />);
+        const slider = screen.getByRole('slider', { name: /vector weight/i });
+        expect(slider).toBeDisabled();
     });
 });

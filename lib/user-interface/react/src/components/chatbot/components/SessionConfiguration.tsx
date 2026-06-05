@@ -36,6 +36,7 @@ import AwsCredentialsPanel from '@/components/settings/AwsCredentialsPanel';
 import { sessionHistoryHasPendingAssistantToolCalls } from '../utils/sessionPersist.utils';
 import { RagConfig } from './RagOptions';
 import { deriveRagSearchMode } from '@/shared/util/ragSearchMode';
+import { RagRepositoryType } from '#root/lib/schema';
 
 export type SessionConfigurationProps = {
     title?: string;
@@ -215,40 +216,43 @@ export const SessionConfiguration = ({
                                     options={oneThroughTenOptions}
                                 />
                             </FormField>
-                            {systemConfig.configuration.enabledComponents.hybridSearch && ragConfig?.supportsHybridSearch && (
-                                <FormField label='RAG Search Mode'>
-                                    <Select
-                                        disabled={isRunning}
-                                        selectedOption={{
-                                            value: effectiveRagSearchMode,
-                                            label: effectiveRagSearchMode === 'hybrid' ? 'Hybrid' : 'Vector',
-                                        }}
-                                        onChange={({ detail }) => updateSessionConfiguration('ragSearchMode', detail.selectedOption.value)}
-                                        options={[
-                                            { value: 'vector', label: 'Vector', description: 'Semantic similarity search' },
-                                            { value: 'hybrid', label: 'Hybrid', description: 'Combined vector + keyword search' },
-                                        ]}
-                                    />
-                                </FormField>
-                            )}
-                            {systemConfig.configuration.enabledComponents.hybridSearch && ragConfig?.supportsHybridSearch && effectiveRagSearchMode === 'hybrid' && (
-                                <HybridSearchControls
-                                    vectorWeight={chatConfiguration.sessionConfiguration.vectorWeight ?? 0.7}
-                                    lexicalWeight={chatConfiguration.sessionConfiguration.lexicalWeight ?? 0.3}
-                                    onChange={(weights) => {
-                                        const updatedConfiguration = {
-                                            ...chatConfiguration,
-                                            sessionConfiguration: {
-                                                ...chatConfiguration.sessionConfiguration,
-                                                ...weights,
-                                            },
-                                        };
-                                        setChatConfiguration(updatedConfiguration);
-                                        persistToSession(updatedConfiguration);
+                            <FormField
+                                label='RAG Search Mode'
+                                description={!systemConfig.configuration.enabledComponents.hybridSearch
+                                    ? 'Hybrid search is disabled by your administrator'
+                                    : !ragConfig?.supportsHybridSearch
+                                        ? 'Selected repository does not support hybrid search'
+                                        : undefined}
+                            >
+                                <Select
+                                    disabled={isRunning || !systemConfig.configuration.enabledComponents.hybridSearch || !ragConfig?.supportsHybridSearch}
+                                    selectedOption={{
+                                        value: effectiveRagSearchMode,
+                                        label: effectiveRagSearchMode === 'hybrid' ? 'Hybrid' : 'Vector',
                                     }}
-                                    disabled={isRunning}
+                                    onChange={({ detail }) => updateSessionConfiguration('ragSearchMode', detail.selectedOption.value)}
+                                    options={[
+                                        { value: 'vector', label: 'Vector', description: 'Semantic similarity search' },
+                                        { value: 'hybrid', label: 'Hybrid', description: 'Combined vector + keyword search' },
+                                    ]}
                                 />
-                            )}
+                            </FormField>
+                            <HybridSearchControls
+                                vectorWeight={chatConfiguration.sessionConfiguration.vectorWeight ?? 0.7}
+                                lexicalWeight={chatConfiguration.sessionConfiguration.lexicalWeight ?? 0.3}
+                                onChange={(weights) => {
+                                    const updatedConfiguration = {
+                                        ...chatConfiguration,
+                                        sessionConfiguration: {
+                                            ...chatConfiguration.sessionConfiguration,
+                                            ...weights,
+                                        },
+                                    };
+                                    setChatConfiguration(updatedConfiguration);
+                                    persistToSession(updatedConfiguration);
+                                }}
+                                disabled={isRunning || effectiveRagSearchMode !== 'hybrid' || ragConfig?.repositoryType === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE}
+                            />
                         </SpaceBetween>
                     </Container>
                 )}

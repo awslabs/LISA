@@ -396,11 +396,6 @@ export const Message = React.memo(({ message, isRunning, showMetadata, isStreami
                                                             [{index + 1}] {doc.name} (preview unavailable)
                                                         </Box>
                                                     )}
-                                                    {doc.similarityScore != null && (
-                                                        <span aria-label={`Similarity score: ${doc.similarityScore.toFixed(2)}`}>
-                                                            <Badge color='blue'>{doc.similarityScore.toFixed(2)}</Badge>
-                                                        </span>
-                                                    )}
                                                 </SpaceBetween>
                                             </Box>
                                         ))}

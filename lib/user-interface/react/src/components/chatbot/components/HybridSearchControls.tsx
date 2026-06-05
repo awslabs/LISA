@@ -114,7 +114,7 @@ export default function HybridSearchControls ({ vectorWeight, lexicalWeight, onC
                 {PRESETS.map((preset) => (
                     <Button
                         key={preset.label}
-                        variant='inline-link'
+                        variant='normal'
                         disabled={disabled}
                         onClick={() => onChange({ vectorWeight: preset.vectorWeight, lexicalWeight: preset.lexicalWeight })}
                     >

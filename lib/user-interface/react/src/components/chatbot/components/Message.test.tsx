@@ -79,7 +79,7 @@ describe('Message - Citations similarity scores', () => {
         });
     });
 
-    it('renders similarity score badge when similarityScore is present', () => {
+    it('does not render similarity score badge inline (scores shown only in metadata)', () => {
         const message: LisaChatMessage = {
             type: MessageTypes.AI,
             content: 'Here is the answer',
@@ -91,67 +91,12 @@ describe('Message - Citations similarity scores', () => {
                         source: 's3://bucket/doc1.pdf',
                         similarityScore: 0.87,
                     },
-                    {
-                        documentId: 'doc-2',
-                        name: 'Document Two',
-                        source: 's3://bucket/doc2.pdf',
-                        similarityScore: 0.65,
-                    },
                 ],
             },
         };
 
         renderMessage(message);
 
-        expect(screen.getByText('0.87')).toBeInTheDocument();
-        expect(screen.getByText('0.65')).toBeInTheDocument();
-    });
-
-    it('does not render score when similarityScore is undefined', () => {
-        const message: LisaChatMessage = {
-            type: MessageTypes.AI,
-            content: 'Here is the answer',
-            metadata: {
-                ragDocuments: [
-                    {
-                        documentId: 'doc-1',
-                        name: 'Document One',
-                        source: 's3://bucket/doc1.pdf',
-                    },
-                ],
-            },
-        };
-
-        renderMessage(message);
-
-        expect(screen.getByText(/\[1\] Document One/)).toBeInTheDocument();
-        expect(screen.queryByText(/\d\.\d{2}/)).toBeNull();
-    });
-
-    it('renders mixed - some docs with scores, some without', () => {
-        const message: LisaChatMessage = {
-            type: MessageTypes.AI,
-            content: 'Answer text',
-            metadata: {
-                ragDocuments: [
-                    {
-                        documentId: 'doc-1',
-                        name: 'Doc With Score',
-                        source: 's3://bucket/doc1.pdf',
-                        similarityScore: 0.92,
-                    },
-                    {
-                        documentId: 'doc-2',
-                        name: 'Doc Without Score',
-                        source: 's3://bucket/doc2.pdf',
-                    },
-                ],
-            },
-        };
-
-        renderMessage(message);
-
-        expect(screen.getByText('0.92')).toBeInTheDocument();
-        expect(screen.getByText(/\[2\] Doc Without Score/)).toBeInTheDocument();
+        expect(screen.queryByText('0.87')).not.toBeInTheDocument();
     });
 });

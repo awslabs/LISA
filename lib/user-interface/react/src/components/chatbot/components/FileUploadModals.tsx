@@ -27,7 +27,8 @@ import {
     TextContent,
 } from '@cloudscape-design/components';
 import { FileTypes, StatusTypes } from '@/components/types';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { extractImageDataUrlFromFileContext } from '../utils/fileContext.utils';
 import { RagConfig } from './RagOptions';
 import { useAppDispatch } from '@/config/store';
 import { useNotificationService } from '@/shared/util/hooks';
@@ -182,12 +183,24 @@ export const ContextUploadModal = ({
     const dispatch = useAppDispatch();
     const notificationService = useNotificationService(dispatch);
     const modelSupportsImages = !!(selectedModel?.features?.filter((feature) => feature.name === 'imageInput')?.length) || selectedModel?.modelType === ModelType.videogen || selectedModel?.modelType === ModelType.imagegen;
+    const isReferenceImageMode = selectedModel?.modelType === ModelType.imagegen || selectedModel?.modelType === ModelType.videogen;
+    const fileContentsAccumulatorRef = useRef<{ contents: string[]; files: File[] }>({ contents: [], files: [] });
+
+    // Start with a clean file picker each time the modal opens so a new upload
+    // replaces the previous context instead of accumulating stale selections.
+    useEffect(() => {
+        if (showContextUploadModal) {
+            setSelectedFiles([]);
+            fileContentsAccumulatorRef.current = { contents: [], files: [] };
+        }
+    }, [showContextUploadModal]);
 
     // Clear selectedFiles when fileContext is cleared externally (e.g., via badge dismissal)
     useEffect(() => {
         if (!fileContext) {
             queueMicrotask(() => setSelectedFiles([]));
             setFileContextFiles([]);
+            fileContentsAccumulatorRef.current = { contents: [], files: [] };
         }
     }, [fileContext, setFileContextFiles]);
 
@@ -213,13 +226,8 @@ export const ContextUploadModal = ({
         return fullText;
     }
 
-    // Store accumulated content in a ref-like object to avoid async state issues
-    const fileContentsAccumulator: { contents: string[], files: File[] } = {
-        contents: [],
-        files: []
-    };
-
     async function processFile (file: File): Promise<boolean> {
+        const fileContentsAccumulator = fileContentsAccumulatorRef.current;
         // Process file and return its contents to be accumulated
         let fileContents: string;
 
@@ -261,6 +269,7 @@ export const ContextUploadModal = ({
                     <SpaceBetween direction='horizontal' size='xs'>
                         <Button
                             onClick={async () => {
+                                fileContentsAccumulatorRef.current = { contents: [], files: [] };
                                 const files = selectedFiles.map((f) => renameFile(f));
                                 const successfulUploads = await handleUpload(
                                     files,
@@ -271,20 +280,32 @@ export const ContextUploadModal = ({
                                 );
 
                                 if (successfulUploads.length > 0) {
-                                    // Combine all accumulated file contents
-                                    const combinedContext = fileContentsAccumulator.contents.join('\n\n');
-                                    setFileContext(`File context:\n${combinedContext}`);
-                                    setFileContextName(successfulUploads.join(', '));
-                                    setSelectedFiles(fileContentsAccumulator.files);
+                                    const fileContentsAccumulator = fileContentsAccumulatorRef.current;
 
                                     // Set the array of file objects for individual badge rendering
-                                    const fileObjects = fileContentsAccumulator.contents.map((content, idx) => ({
+                                    let fileObjects = fileContentsAccumulator.contents.map((content, idx) => ({
                                         name: successfulUploads[idx],
                                         content: content
                                     }));
-                                    setFileContextFiles(fileObjects);
 
-                                    notificationService.generateNotification(`Successfully added ${successfulUploads.length} file(s) to context: ${successfulUploads.join(', ')}`, StatusTypes.SUCCESS);
+                                    // Image/video reference modes use a single attached image
+                                    if (isReferenceImageMode) {
+                                        fileObjects = fileObjects.filter((fileObject) => (
+                                            extractImageDataUrlFromFileContext(fileObject.content) !== null
+                                        ));
+                                        if (fileObjects.length > 1) {
+                                            fileObjects = [fileObjects[fileObjects.length - 1]];
+                                        }
+                                    }
+
+                                    const combinedContext = fileObjects.map((fileObject) => fileObject.content).join('\n\n');
+                                    const fileNames = fileObjects.map((fileObject) => fileObject.name).join(', ');
+                                    setFileContext(`File context:\n${combinedContext}`);
+                                    setFileContextName(fileNames);
+                                    setFileContextFiles(fileObjects);
+                                    setSelectedFiles([]);
+
+                                    notificationService.generateNotification(`Successfully added ${fileObjects.length} file(s) to context: ${fileNames}`, StatusTypes.SUCCESS);
                                     setShowContextUploadModal(false);
                                 }
                             }}
@@ -329,10 +350,12 @@ export const ContextUploadModal = ({
                         limitShowMore: 'Show more files',
                         errorIconAriaLabel: 'Error',
                     }}
-                    multiple
+                    multiple={!isReferenceImageMode}
                     showFileSize
-                    tokenLimit={3}
-                    constraintText={`Allowed file types are ${modelSupportsImages ? 'txt, png, jpg, jpeg, gif, webp' : 'txt, pdf, md, py, js, java, and other code files'}. File size limit is 20 MB.`}
+                    tokenLimit={isReferenceImageMode ? 1 : 3}
+                    constraintText={isReferenceImageMode
+                        ? 'Upload a single reference image (png, jpg, jpeg, gif, webp). A new upload replaces the previous image. File size limit is 20 MB.'
+                        : `Allowed file types are ${modelSupportsImages ? 'txt, png, jpg, jpeg, gif, webp' : 'txt, pdf, md, py, js, java, and other code files'}. File size limit is 20 MB.`}
                 />
             </SpaceBetween>
         </Modal>

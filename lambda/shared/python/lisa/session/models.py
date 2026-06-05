@@ -72,6 +72,8 @@ class SessionConfiguration(BaseModel):
     chatHistoryBufferSize: int = 7
     ragTopK: int = 3
     ragSearchMode: Literal["vector", "hybrid"] | None = None
+    vectorWeight: float | None = None
+    lexicalWeight: float | None = None
     modelArgs: ModelArgs = Field(default_factory=ModelArgs)
     imageGenerationArgs: ImageGenerationArgs = Field(default_factory=ImageGenerationArgs)
     videoGenerationArgs: VideoGenerationArgs = Field(default_factory=VideoGenerationArgs)

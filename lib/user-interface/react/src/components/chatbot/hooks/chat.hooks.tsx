@@ -28,6 +28,7 @@ import { GenerateLLMRequestParams, IChatConfiguration } from '@/shared/model/cha
 import { ChatMemory } from '@/shared/util/chat-memory';
 import { useAppDispatch } from '@/config/store';
 import { sessionApi } from '@/shared/reducers/session.reducer';
+import { extractImageBlobFromFileContext, FileContextFile } from '../utils/fileContext.utils';
 
 /**
  * Parses <thinking>...</thinking> blocks from content and extracts them.
@@ -184,7 +185,8 @@ export const useChatGeneration = ({
     openAiTools,
     auth,
     notificationService,
-    fileContext
+    fileContext,
+    fileContextFiles,
 }: {
     chatConfiguration: IChatConfiguration;
     selectedModel: IModel;
@@ -198,6 +200,7 @@ export const useChatGeneration = ({
     auth: any;
     notificationService: any;
     fileContext?: string;
+    fileContextFiles?: FileContextFile[];
 }) => {
     const dispatch = useAppDispatch();
     const [isRunning, setIsRunning] = useState(false);
@@ -266,25 +269,9 @@ export const useChatGeneration = ({
                     let imageBlob: Blob | null = null;
 
                     if (fileContext) {
-                        // Check if it's an image context (base64 data URL)
-                        if (fileContext.startsWith('File context: data:image')) {
-                            const imageData = fileContext.replace('File context: ', '');
-                            // Extract mime type and base64 data
-                            const matches = imageData.match(/^data:(image\/[^;]+);base64,(.+)$/);
-                            if (matches) {
-                                const mimeType = matches[1];
-                                const base64Data = matches[2];
-
-                                // Convert base64 to Blob for multipart/form-data upload
-                                // OpenAI requires input_reference as a file, not base64 string
-                                const binaryString = atob(base64Data);
-                                const bytes = new Uint8Array(binaryString.length);
-                                for (let i = 0; i < binaryString.length; i++) {
-                                    bytes[i] = binaryString.charCodeAt(i);
-                                }
-                                imageBlob = new Blob([bytes], { type: mimeType });
-                                hasImageReference = true;
-                            }
+                        imageBlob = extractImageBlobFromFileContext(fileContext, fileContextFiles);
+                        if (imageBlob) {
+                            hasImageReference = true;
                         } else {
                             // Text file context - prepend to prompt
                             videoGenParams.prompt = `${fileContext}\n\n${videoGenParams.prompt}`;
@@ -530,32 +517,10 @@ export const useChatGeneration = ({
                         })],
                     }));
 
-                    // Check if there's a reference photo
-                    let hasImageReference = false;
-                    let imageBlob: Blob | null = null;
-
-                    if (fileContext) {
-                        // Check if it's an image context (base64 data URL)
-                        if (fileContext.startsWith('File context: data:image')) {
-                            const imageData = fileContext.replace('File context: ', '');
-                            // Extract mime type and base64 data
-                            const matches = imageData.match(/^data:(image\/[^;]+);base64,(.+)$/);
-                            if (matches) {
-                                const mimeType = matches[1];
-                                const base64Data = matches[2];
-
-                                // Convert base64 to Blob for multipart/form-data upload
-                                // LiteLLM requires the image as a file object for image edits
-                                const binaryString = atob(base64Data);
-                                const bytes = new Uint8Array(binaryString.length);
-                                for (let i = 0; i < binaryString.length; i++) {
-                                    bytes[i] = binaryString.charCodeAt(i);
-                                }
-                                imageBlob = new Blob([bytes], { type: mimeType });
-                                hasImageReference = true;
-                            }
-                        }
-                    }
+                    const imageBlob = fileContext
+                        ? extractImageBlobFromFileContext(fileContext, fileContextFiles)
+                        : null;
+                    const hasImageReference = imageBlob !== null;
 
                     // Choose endpoint based on whether we have a reference image
                     const imageEndpoint = hasImageReference

@@ -16,6 +16,7 @@
 
 import { formatDocumentsAsString } from '@/components/utils';
 import { RagDocumentCitation } from '@/components/types';
+import { extractImageDataUrlFromFileContext } from './fileContext.utils';
 
 export type MessageContentParams = {
     isImageGenerationMode: boolean;
@@ -36,8 +37,9 @@ export const buildMessageContent = async ({
         return userPrompt;
     }
 
-    if (fileContext?.startsWith('File context: data:image')) {
-        const imageData = fileContext.replace('File context: ', '');
+    const imageDataUrl = extractImageDataUrlFromFileContext(fileContext);
+    if (imageDataUrl) {
+        const imageData = imageDataUrl;
         const content: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
             { type: 'image_url', image_url: { url: imageData } },
         ];

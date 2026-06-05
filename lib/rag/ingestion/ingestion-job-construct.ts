@@ -186,11 +186,11 @@ export class IngestionJobConstruct extends Construct {
             // Keep the name static so pipeline-ingest events reference latest
             jobDefinitionName: `${config.deploymentName}-${config.deploymentStage}-ingestion-job-def`,
             container: new batch.EcsFargateContainerDefinition(this, 'IngestionJobContainer', {
-                environment: baseEnvironment,
+                environment: { ...baseEnvironment, PYTHONPATH: '/workdir/shared/python' },
                 image,
                 memory: Size.mebibytes(4096),
                 cpu: 2,
-                command: ['-m', 'repository.pipeline_ingestion', 'Ref::ACTION', 'Ref::DOCUMENT_ID'],
+                command: ['-m', 'lisa.rag.pipeline_ingestion', 'Ref::ACTION', 'Ref::DOCUMENT_ID'],
                 jobRole: lambdaRole,
                 executionRole: executionRole,
                 logging: new ecs.AwsLogDriver({

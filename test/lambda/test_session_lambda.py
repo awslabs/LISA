@@ -424,13 +424,12 @@ def test_list_sessions_empty(dynamodb_table, lambda_context):
 # Import the configuration functions for testing
 from session.lambda_functions import (
     _delete_user_session,
+    _encryption_cache,
     _find_first_human_message,
     _generate_presigned_image_url,
     _get_all_user_sessions,
-    _get_current_model_config,
     _is_session_encryption_enabled,
     _process_image,
-    _update_session_with_current_model_config,
     attach_image_to_session,
     rename_session,
 )
@@ -449,10 +448,7 @@ def test_is_session_encryption_enabled_true(config_table, lambda_context):
         }
     )
 
-    # Clear cache to ensure fresh result
-    from session.lambda_functions import cache
-
-    cache.clear()
+    _encryption_cache.clear()
 
     result = _is_session_encryption_enabled()
     assert result is True
@@ -471,10 +467,7 @@ def test_is_session_encryption_enabled_false(config_table, lambda_context):
         }
     )
 
-    # Clear cache to ensure fresh result
-    from session.lambda_functions import cache
-
-    cache.clear()
+    _encryption_cache.clear()
 
     result = _is_session_encryption_enabled()
     assert result is False
@@ -484,10 +477,7 @@ def test_is_session_encryption_enabled_default_fallback(config_table, lambda_con
     """Test session encryption defaults to disabled when configuration is missing."""
 
     # Don't add any configuration entry
-    # Clear cache to ensure fresh result
-    from session.lambda_functions import cache
-
-    cache.clear()
+    _encryption_cache.clear()
 
     result = _is_session_encryption_enabled()
     assert result is False  # Should default to disabled
@@ -499,10 +489,7 @@ def test_is_session_encryption_enabled_error_fallback(mock_config_table, lambda_
     # Mock the config table to raise an exception
     mock_config_table.query.side_effect = Exception("Database error")
 
-    # Clear cache to ensure fresh result
-    from session.lambda_functions import cache
-
-    cache.clear()
+    _encryption_cache.clear()
 
     result = _is_session_encryption_enabled()
     assert result is False  # Should default to disabled on error
@@ -518,10 +505,7 @@ def test_is_session_encryption_enabled_client_error(mock_config_table, lambda_co
         error_response={"Error": {"Code": "ResourceNotFoundException"}}, operation_name="Query"
     )
 
-    # Clear cache to ensure fresh result
-    from session.lambda_functions import cache
-
-    cache.clear()
+    _encryption_cache.clear()
 
     result = _is_session_encryption_enabled()
     assert result is False  # Should default to False on ClientError
@@ -534,117 +518,14 @@ def test_is_session_encryption_enabled_general_exception(mock_config_table, lamb
     # Mock config table to raise general exception
     mock_config_table.query.side_effect = Exception("General database error")
 
-    # Clear cache to ensure fresh result
-    from session.lambda_functions import cache
-
-    cache.clear()
+    _encryption_cache.clear()
 
     result = _is_session_encryption_enabled()
     assert result is False  # Should default to False on general exception
 
 
-# Model Configuration Tests
-@pytest.fixture(scope="function")
-def model_table(dynamodb):
-    """Create a mock model DynamoDB table."""
-    table = dynamodb.create_table(
-        TableName="model-table",
-        KeySchema=[{"AttributeName": "model_id", "KeyType": "HASH"}],
-        AttributeDefinitions=[{"AttributeName": "model_id", "AttributeType": "S"}],
-        BillingMode="PAY_PER_REQUEST",
-    )
-    table.wait_until_exists()
-    return table
-
-
-def test_get_current_model_config_missing_table():
-    """Test _get_current_model_config with missing model_table."""
-    with patch("session.lambda_functions.model_table", None):
-        result = _get_current_model_config("test-model")
-        assert result == {}
-
-
-def test_get_current_model_config_missing_model_id():
-    """Test _get_current_model_config with missing model_id."""
-    with patch("session.lambda_functions.model_table") as mock_table:
-        result = _get_current_model_config("")
-        assert result == {}
-        mock_table.get_item.assert_not_called()
-
-
-@patch("session.lambda_functions.model_table")
-def test_get_current_model_config_client_error(mock_model_table):
-    """Test _get_current_model_config with ClientError."""
-    from botocore.exceptions import ClientError
-
-    mock_model_table.get_item.side_effect = ClientError(
-        error_response={"Error": {"Code": "ResourceNotFoundException"}}, operation_name="GetItem"
-    )
-
-    result = _get_current_model_config("test-model")
-    assert result == {}
-
-
-def test_get_current_model_config_success(model_table):
-    """Test _get_current_model_config with successful retrieval."""
-    # Add a model to the table
-    model_table.put_item(Item={"model_id": "test-model", "model_config": {"features": ["feature1"], "streaming": True}})
-
-    with patch("session.lambda_functions.model_table", model_table):
-        result = _get_current_model_config("test-model")
-        assert result == {"features": ["feature1"], "streaming": True}
-
-
-def test_update_session_with_current_model_config_empty_config():
-    """Test _update_session_with_current_model_config with empty config."""
-    result = _update_session_with_current_model_config(SessionConfigurationModel())
-    assert result.selectedModel is None
-
-
-def test_update_session_with_current_model_config_no_model_id():
-    """Test _update_session_with_current_model_config with no modelId."""
-    session_config = SessionConfigurationModel(selectedModel=SelectedModel(modelName="test-model"))  # No modelId
-
-    result = _update_session_with_current_model_config(session_config)
-    assert result.selectedModel.modelName == "test-model"
-
-
-def test_update_session_with_current_model_config_model_not_found():
-    """Test _update_session_with_current_model_config when model not found."""
-    session_config = SessionConfigurationModel(selectedModel=SelectedModel(modelId="non-existent-model"))
-
-    with patch("session.lambda_functions._get_current_model_config") as mock_get_config:
-        mock_get_config.return_value = {}
-
-        result = _update_session_with_current_model_config(session_config)
-        assert result.selectedModel.modelId == "non-existent-model"
-
-
-def test_update_session_with_current_model_config_success():
-    """Test _update_session_with_current_model_config with successful update."""
-    session_config = SessionConfigurationModel(selectedModel=SelectedModel(modelId="test-model"))
-
-    current_model_config = {
-        "features": [{"name": "new-feature", "overview": ""}],
-        "streaming": False,
-        "modelType": "updated-type",
-        "modelDescription": "Updated description",
-        "allowedGroups": ["group1", "group2"],
-    }
-
-    with patch("session.lambda_functions._get_current_model_config") as mock_get_config:
-        mock_get_config.return_value = current_model_config
-
-        result = _update_session_with_current_model_config(session_config)
-
-        # Verify the selectedModel was updated with current config
-        assert result.selectedModel is not None
-        assert len(result.selectedModel.features) == 1
-        assert result.selectedModel.features[0].name == "new-feature"
-        assert result.selectedModel.streaming is False
-        assert result.selectedModel.modelType == "updated-type"
-        assert result.selectedModel.modelDescription == "Updated description"
-        assert result.selectedModel.allowedGroups == ["group1", "group2"]
+# Model-config wrapper tests live in test_model_config.py — they exercise the
+# shared helper directly, which is what production now calls.
 
 
 def test_rag_config_preserves_supports_hybrid_search():
@@ -1051,7 +932,7 @@ def test_get_session_encrypted_decryption_error(mock_decrypt, dynamodb_table, sa
     assert "Failed to decrypt session data" in body["error"]
 
 
-@patch("session.lambda_functions._update_session_with_current_model_config")
+@patch("session.lambda_functions.update_session_with_current_model_config")
 def test_get_session_model_config_update(mock_update_config, dynamodb_table, sample_session, lambda_context):
     """Test get_session with model configuration update."""
     # Create session with configuration
@@ -1345,7 +1226,7 @@ def test_put_session_sqs_metrics_error(
         assert response["statusCode"] == 200  # Should still succeed despite SQS error
 
 
-@patch("session.lambda_functions._update_session_with_current_model_config")
+@patch("session.lambda_functions.update_session_with_current_model_config")
 def test_put_session_model_config_update(
     mock_update_config, dynamodb_table, config_table, sample_session, lambda_context
 ):

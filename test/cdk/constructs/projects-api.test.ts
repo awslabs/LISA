@@ -44,6 +44,11 @@ describe('ProjectsApi Construct', () => {
             sortKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
         });
 
+        const messagesTable = new dynamodb.Table(stack, 'MessagesTable', {
+            partitionKey: { name: 'sessionId', type: dynamodb.AttributeType.STRING },
+            sortKey: { name: 'messageId', type: dynamodb.AttributeType.STRING },
+        });
+
         const configTable = new dynamodb.Table(stack, 'ConfigTable', {
             partitionKey: { name: 'configScope', type: dynamodb.AttributeType.STRING },
             sortKey: { name: 'versionId', type: dynamodb.AttributeType.NUMBER },
@@ -77,6 +82,7 @@ describe('ProjectsApi Construct', () => {
             securityGroups: [vpc.securityGroups.lambdaSg],
             vpc,
             sessionTable,
+            messagesTable,
             configTable,
         });
 

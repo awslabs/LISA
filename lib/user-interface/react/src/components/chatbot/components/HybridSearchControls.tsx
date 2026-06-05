@@ -14,13 +14,14 @@
   limitations under the License.
 */
 
-import { Button, FormField, Grid, Input, Slider, SpaceBetween } from '@cloudscape-design/components';
+import { Box, Button, FormField, Grid, Icon, Input, Popover, Slider, SpaceBetween } from '@cloudscape-design/components';
 
 export type HybridSearchControlsProps = {
     vectorWeight: number;
     lexicalWeight: number;
     onChange: (weights: { vectorWeight: number; lexicalWeight: number }) => void;
     disabled?: boolean;
+    disabledReason?: string;
 };
 
 const PRESETS = [
@@ -33,7 +34,7 @@ function roundTo1 (value: number): number {
     return Math.round(value * 10) / 10;
 }
 
-export default function HybridSearchControls ({ vectorWeight, lexicalWeight, onChange, disabled }: HybridSearchControlsProps) {
+export default function HybridSearchControls ({ vectorWeight, lexicalWeight, onChange, disabled, disabledReason }: HybridSearchControlsProps) {
     const handleVectorSliderChange = ({ detail }: { detail: { value: number } }) => {
         const clamped = Math.min(1, Math.max(0, roundTo1(detail.value)));
         onChange({ vectorWeight: clamped, lexicalWeight: roundTo1(1 - clamped) });
@@ -60,9 +61,23 @@ export default function HybridSearchControls ({ vectorWeight, lexicalWeight, onC
         }
     };
 
+    const disabledInfo = disabled && disabledReason ? (
+        <Popover
+            dismissButton={false}
+            position='top'
+            size='small'
+            triggerType='custom'
+            content={<Box color='text-body-secondary'>{disabledReason}</Box>}
+        >
+            <Box display='inline-block' margin={{ left: 'xs' }}>
+                <Icon name='status-info' variant='link' />
+            </Box>
+        </Popover>
+    ) : null;
+
     return (
         <SpaceBetween size='s'>
-            <FormField label='Vector weight' constraintText='0.0 to 1.0 in 0.1 increments — weights must sum to 1'>
+            <FormField label={<span>Vector weight{disabledInfo}</span>} constraintText='0.0 to 1.0 in 0.1 increments — weights must sum to 1'>
                 <Grid gridDefinition={[{ colspan: 9 }, { colspan: 3 }]}>
                     <Slider
                         ariaLabel='Vector weight'
@@ -86,7 +101,7 @@ export default function HybridSearchControls ({ vectorWeight, lexicalWeight, onC
                     />
                 </Grid>
             </FormField>
-            <FormField label='Lexical weight' constraintText='Automatically adjusted to complement vector weight'>
+            <FormField label={<span>Lexical weight{disabledInfo}</span>} constraintText='Automatically adjusted to complement vector weight'>
                 <Grid gridDefinition={[{ colspan: 9 }, { colspan: 3 }]}>
                     <Slider
                         ariaLabel='Lexical weight'

@@ -24,7 +24,7 @@ os.environ.setdefault("AWS_REGION", "us-east-1")
 os.environ.setdefault("RAG_DOCUMENT_TABLE", "test-doc-table")
 os.environ.setdefault("RAG_SUB_DOCUMENT_TABLE", "test-subdoc-table")
 
-from lisa.domain.domain_objects import IngestionJob, RagCollectionConfig, RagDocument, RetrieveResult  # noqa: F401
+from lisa.domain.domain_objects import IngestionJob, RagCollectionConfig, RagDocument, RetrieveResult
 from lisa.rag.services.repository_service import RepositoryService
 
 

@@ -252,6 +252,13 @@ export const SessionConfiguration = ({
                                     persistToSession(updatedConfiguration);
                                 }}
                                 disabled={isRunning || effectiveRagSearchMode !== 'hybrid' || ragConfig?.repositoryType === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE}
+                                disabledReason={
+                                    ragConfig?.repositoryType === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE
+                                        ? 'Custom weights are ignored for Bedrock Knowledge Bases'
+                                        : effectiveRagSearchMode !== 'hybrid'
+                                            ? 'Weights only apply when search mode is set to Hybrid'
+                                            : undefined
+                                }
                             />
                         </SpaceBetween>
                     </Container>

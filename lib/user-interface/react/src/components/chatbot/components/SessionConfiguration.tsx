@@ -157,36 +157,6 @@ export const SessionConfiguration = ({
                                 Show Message Metadata
                             </Toggle>
                         ] : []),
-                        ...(systemConfig && systemConfig.configuration.enabledComponents.editNumOfRagDocument && !isImageModel && !isVideoModel && !modelOnly ? [
-                            <FormField key='ragTopK' label='Matching RAG Excerpts'>
-                                <Select
-                                    disabled={isRunning}
-                                    filteringType='auto'
-                                    selectedOption={{
-                                        value: chatConfiguration.sessionConfiguration.ragTopK.toString(),
-                                        label: chatConfiguration.sessionConfiguration.ragTopK.toString(),
-                                    }}
-                                    onChange={({ detail }) => updateSessionConfiguration('ragTopK', parseInt(detail.selectedOption.value))}
-                                    options={oneThroughTenOptions}
-                                />
-                            </FormField>
-                        ] : []),
-                        ...(systemConfig && systemConfig.configuration.enabledComponents.hybridSearch && ragConfig?.supportsHybridSearch && !isImageModel && !isVideoModel && !modelOnly ? [
-                            <FormField key='ragSearchMode' label='RAG Search Mode'>
-                                <Select
-                                    disabled={isRunning}
-                                    selectedOption={{
-                                        value: effectiveRagSearchMode,
-                                        label: effectiveRagSearchMode === 'hybrid' ? 'Hybrid' : 'Vector',
-                                    }}
-                                    onChange={({ detail }) => updateSessionConfiguration('ragSearchMode', detail.selectedOption.value)}
-                                    options={[
-                                        { value: 'vector', label: 'Vector', description: 'Semantic similarity search' },
-                                        { value: 'hybrid', label: 'Hybrid', description: 'Combined vector + keyword search' },
-                                    ]}
-                                />
-                            </FormField>
-                        ] : []),
                         ...(selectedModel?.features?.find((feature) => feature.name === ModelFeatures.REASONING) ? [
                             <FormField key='reasoningEffort' label='Reasoning Effort'>
                                 <Select

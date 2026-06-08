@@ -93,6 +93,7 @@ describe('structureRagDocuments', () => {
     it('returns empty array for non-array input', () => {
         expect(structureRagDocuments('not an array')).toEqual([]);
     });
+
 });
 
 describe('buildMessageMetadata', () => {

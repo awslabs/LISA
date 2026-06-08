@@ -61,6 +61,8 @@ type RelevantDocRequest = {
     topK: number,
     modelName?: string,
     searchMode?: 'vector' | 'hybrid',
+    vectorWeight?: number,
+    lexicalWeight?: number,
 };
 
 export type RelevantDocumentsResponse = {
@@ -253,6 +255,13 @@ export const ragApi = createApi({
 
                 if (request.searchMode && request.searchMode !== 'vector') {
                     params.searchMode = request.searchMode;
+                }
+
+                if (request.vectorWeight != null) {
+                    params.vectorWeight = request.vectorWeight.toString();
+                }
+                if (request.lexicalWeight != null) {
+                    params.lexicalWeight = request.lexicalWeight.toString();
                 }
 
                 const queryString = new URLSearchParams(params).toString();

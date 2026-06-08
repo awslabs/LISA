@@ -70,6 +70,7 @@
     "test": "jest && npm run test --workspaces",
     "test:coverage": "jest --coverage && npm run test:coverage --workspaces --if-present && npm run test:python:coverage",
     "test:python:coverage": "bash scripts/run-pytest.sh test/lambda test/mcp-workbench test/sdk test/rest-api --verbose --cov=lambda --cov=lib/serve/mcp-workbench/src --cov=lisa-sdk/lisapy --cov=lib/serve/rest-api/src --cov-report=term-missing --cov-fail-under=80 --cov-config=lib/serve/rest-api/.coveragerc",
+    "test:unit": "jest && bash scripts/run-pytest.sh test/lambda test/sdk test/rest-api test/mcp-workbench --verbose && npm run test --prefix lib/user-interface/react",
     "test:lambda": "bash scripts/run-pytest.sh test/lambda --verbose",
     "test:mcp-workbench": "bash scripts/run-pytest.sh test/mcp-workbench --verbose",
     "test:sdk": "bash scripts/run-pytest.sh test/sdk --verbose",

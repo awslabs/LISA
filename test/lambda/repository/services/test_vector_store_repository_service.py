@@ -157,12 +157,13 @@ class TestVectorStoreRepositoryService:
 
         with patch("lisa.rag.services.opensearch_repository_service.RagEmbeddings"):
             with patch.object(vector_store_service, "_get_vector_store_client", return_value=mock_vector_store):
-                results = vector_store_service.retrieve_documents("test query", "test-collection", 5, "test-model")
+                result = vector_store_service.retrieve_documents("test query", "test-collection", 5, "test-model")
 
-                assert len(results) == 2
-                assert results[0]["page_content"] == "Content 1"
-                assert results[0]["metadata"]["source"] == "doc1.pdf"
-                assert results[1]["page_content"] == "Content 2"
+                assert len(result.documents) == 2
+                assert result.documents[0]["page_content"] == "Content 1"
+                assert result.documents[0]["metadata"]["source"] == "doc1.pdf"
+                assert result.documents[1]["page_content"] == "Content 2"
+                assert result.actual_mode_used == "vector"
 
     def test_validate_document_source_valid(self, vector_store_service):
         """Test validating valid S3 path."""

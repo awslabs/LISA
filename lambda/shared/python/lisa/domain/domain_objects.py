@@ -1575,3 +1575,41 @@ class InvokeBedrockAgentRequest(BaseModel):
         if has_fn and not (self.actionGroupId and str(self.actionGroupId).strip()):
             raise ValueError("actionGroupId is required when functionName is set")
         return self
+
+
+class HybridWeights(BaseModel):
+    """Validated hybrid search weight pair parsed from query string params."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    vector_weight: float = Field(default=0.7, ge=0.0, le=1.0, alias="vectorWeight")
+    lexical_weight: float = Field(default=0.3, ge=0.0, le=1.0, alias="lexicalWeight")
+
+    @model_validator(mode="before")
+    @classmethod
+    def require_both_or_neither(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            vec = data.get("vectorWeight")
+            lex = data.get("lexicalWeight")
+            if (vec is not None) != (lex is not None):
+                raise ValueError("Both vectorWeight and lexicalWeight must be provided together")
+        return data
+
+    @model_validator(mode="after")
+    def weights_sum_to_one(self) -> Self:
+        if abs(self.vector_weight + self.lexical_weight - 1.0) > 1e-9:
+            raise ValueError("vectorWeight and lexicalWeight must sum to 1")
+        return self
+
+
+@dataclass
+class RetrieveResult:
+    """Unified return type for retrieve_documents() and hybrid_retrieve().
+
+    Both retrieval paths return this so the handler has one contract regardless
+    of mode. The fields self-report what actually happened at the service layer.
+    """
+
+    documents: list[dict[str, Any]]
+    actual_mode_used: str
+    hybrid_supported: bool

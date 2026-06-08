@@ -23,6 +23,7 @@ import boto3
 from langchain_community.vectorstores import OpenSearchVectorSearch
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
+from lisa.domain.domain_objects import RetrieveResult
 from lisa.rag.embeddings import RagEmbeddings
 from lisa.utilities.common_functions import retry_config
 from lisa.utilities.repository_types import RepositoryType
@@ -43,6 +44,125 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
     Only implements OpenSearch-specific index management.
     """
 
+    def supports_hybrid_search(self) -> bool:
+        """OpenSearch >= 2.13 supports hybrid search via inline search pipelines.
+
+        If the cluster is older than 2.13, hybrid_retrieve() will propagate the
+        resulting RequestError — no silent fallback.
+        """
+        return True
+
+    def hybrid_retrieve(
+        self,
+        query: str,
+        collection_id: str,
+        top_k: int,
+        model_name: str,
+        include_score: bool = False,
+        bedrock_agent_client: Any = None,
+        vector_weight: float = 0.7,
+        lexical_weight: float = 0.3,
+    ) -> RetrieveResult:
+        """Retrieve documents using hybrid (BM25 + kNN) search via inline search pipeline.
+
+        Sends the search pipeline definition inline in the request body — no persistent
+        pipeline, no admin state, one round-trip. Requires OpenSearch 2.13+.
+
+        Args:
+            query: Search query text
+            collection_id: Index/collection to search
+            top_k: Number of results to return
+            model_name: Embedding model name (used for query vector)
+            include_score: When True, copies hit['_score'] (already 0-1 from min_max
+                normalization) to metadata['similarity_score']
+            bedrock_agent_client: Unused for OpenSearch (kept for base-class signature parity)
+            vector_weight: Weight for vector (semantic) results (0-1)
+            lexical_weight: Weight for lexical (keyword) results (0-1)
+
+        Returns:
+            RetrieveResult with actual_mode_used="hybrid" and hybrid_supported=True.
+        """
+        embeddings = RagEmbeddings(model_name=model_name)
+        vector_store = self._get_vector_store_client(
+            collection_id=collection_id,
+            embeddings=embeddings,
+        )
+
+        if hasattr(vector_store, "client") and hasattr(vector_store.client, "indices"):
+            if not vector_store.client.indices.exists(index=collection_id):
+                logger.info(f"Collection {collection_id} does not exist. Returning empty docs.")
+                return RetrieveResult(documents=[], actual_mode_used="hybrid", hybrid_supported=True)
+
+        query_vector = embeddings.embed_query(query)
+        body = self._build_hybrid_body(
+            query=query,
+            query_vector=query_vector,
+            top_k=top_k,
+            vector_weight=vector_weight,
+            lexical_weight=lexical_weight,
+        )
+
+        logger.info(
+            f"Hybrid retrieving from OpenSearch: collection={collection_id}, "
+            f"weights=[{lexical_weight},{vector_weight}], query={query[:50]}..."
+        )
+        response = vector_store.client.search(index=collection_id, body=body)
+
+        docs = self._extract_hits(response, include_score)
+        return RetrieveResult(documents=docs, actual_mode_used="hybrid", hybrid_supported=True)
+
+    @staticmethod
+    def _build_hybrid_body(
+        query: str,
+        query_vector: list[float],
+        top_k: int,
+        vector_weight: float = 0.7,
+        lexical_weight: float = 0.3,
+    ) -> dict[str, Any]:
+        """Construct the OpenSearch hybrid query + inline search_pipeline body.
+
+        Built as a Python dict — no string interpolation — to prevent DSL injection (OWASP A03).
+        OpenSearch weights order is [lexical, vector] matching the queries array order.
+        """
+        return {
+            "size": top_k,
+            "query": {
+                "hybrid": {
+                    "queries": [
+                        {"match": {"text": {"query": query}}},
+                        {"knn": {"vector_field": {"vector": query_vector, "k": top_k}}},
+                    ]
+                }
+            },
+            "search_pipeline": {
+                "phase_results_processors": [
+                    {
+                        "normalization-processor": {
+                            "normalization": {"technique": "min_max"},
+                            "combination": {
+                                "technique": "arithmetic_mean",
+                                "parameters": {"weights": [lexical_weight, vector_weight]},
+                            },
+                        }
+                    }
+                ]
+            },
+        }
+
+    @staticmethod
+    def _extract_hits(response: dict[str, Any], include_score: bool) -> list[dict[str, Any]]:
+        """Transform OpenSearch hits into the {page_content, metadata} doc shape."""
+        documents: list[dict[str, Any]] = []
+        for hit in response.get("hits", {}).get("hits", []):
+            source = hit.get("_source", {})
+            metadata = dict(source.get("metadata", {}) or {})
+            if include_score:
+                raw_score = hit.get("_score")
+                if raw_score is not None:
+                    metadata["similarity_score"] = float(raw_score)
+            documents.append({"page_content": source.get("text", ""), "metadata": metadata})
+        return documents
+
     def retrieve_documents(
         self,
         query: str,
@@ -51,7 +171,7 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
         model_name: str,
         include_score: bool = False,
         bedrock_agent_client: Any = None,
-    ) -> list[dict[str, Any]]:
+    ) -> RetrieveResult:
         """Retrieve documents from OpenSearch with index existence check.
 
         Args:
@@ -63,22 +183,19 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
             bedrock_agent_client: Not used for OpenSearch
 
         Returns:
-            List of documents with page_content and metadata
+            RetrieveResult with actual_mode_used="vector" and hybrid_supported=True.
         """
-        # Create embeddings and vector store client once
         embeddings = RagEmbeddings(model_name=model_name)
         vector_store = self._get_vector_store_client(
             collection_id=collection_id,
             embeddings=embeddings,
         )
 
-        # Check if index exists before searching
         if hasattr(vector_store, "client") and hasattr(vector_store.client, "indices"):
             if not vector_store.client.indices.exists(index=collection_id):
                 logger.info(f"Collection {collection_id} does not exist. Returning empty docs.")
-                return []
+                return RetrieveResult(documents=[], actual_mode_used="vector", hybrid_supported=True)
 
-        # Perform similarity search
         results = vector_store.similarity_search_with_score(query, k=top_k)
 
         documents = []
@@ -89,7 +206,6 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
             }
 
             if include_score:
-                # OpenSearch scores are already normalized (0-1 range)
                 normalized_score = self._normalize_similarity_score(score)
                 doc_dict["metadata"]["similarity_score"] = normalized_score
 
@@ -101,7 +217,6 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
 
             documents.append(doc_dict)
 
-        # Warn if all scores are low (possible embedding model mismatch)
         if include_score and results:
             max_score = max(self._normalize_similarity_score(score) for _, score in results)
             if max_score < 0.3:
@@ -109,7 +224,7 @@ class OpenSearchRepositoryService(VectorStoreRepositoryService):
                     f"All similarity scores < 0.3 for query '{query}' - " "possible embedding model mismatch"
                 )
 
-        return documents
+        return RetrieveResult(documents=documents, actual_mode_used="vector", hybrid_supported=True)
 
     def _drop_collection_index(self, collection_id: str) -> None:
         """Drop OpenSearch index for collection."""

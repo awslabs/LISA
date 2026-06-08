@@ -25,6 +25,7 @@ import {
     Select,
     SpaceBetween,
 } from '@cloudscape-design/components';
+import HybridSearchControls from './HybridSearchControls';
 
 import Toggle from '@cloudscape-design/components/toggle';
 import { IChatConfiguration } from '@/shared/model/chat.configurations.model';
@@ -35,6 +36,7 @@ import AwsCredentialsPanel from '@/components/settings/AwsCredentialsPanel';
 import { sessionHistoryHasPendingAssistantToolCalls } from '../utils/sessionPersist.utils';
 import { RagConfig } from './RagOptions';
 import { deriveRagSearchMode } from '@/shared/util/ragSearchMode';
+import { RagRepositoryType } from '#root/lib/schema';
 
 export type SessionConfigurationProps = {
     title?: string;
@@ -68,16 +70,7 @@ export const SessionConfiguration = ({
     // Defaults based on https://huggingface.co/docs/transformers/main_classes/text_generation#transformers.GenerationConfig
     // Default stop sequences based on User/Assistant instruction prompting for Falcon, Mistral, etc.
 
-    const updateSessionConfiguration = (property: string, value: any): void => {
-        const updatedConfiguration = {
-            ...chatConfiguration,
-            sessionConfiguration: { ...chatConfiguration.sessionConfiguration, [property]: value },
-        };
-
-        setChatConfiguration(updatedConfiguration);
-
-        // Immediately persist the configuration to the session if available (avoid PUT while assistant
-        // tool calls are still pending — same half-finished history issue as Chat auto-save)
+    const persistToSession = (updatedConfiguration: IChatConfiguration): void => {
         if (
             session &&
             updateSession &&
@@ -89,10 +82,19 @@ export const SessionConfiguration = ({
                 configuration: {
                     ...updatedConfiguration,
                     selectedModel: selectedModel,
-                    ragConfig: ragConfig
-                }
+                    ragConfig: ragConfig,
+                },
             });
         }
+    };
+
+    const updateSessionConfiguration = (property: string, value: any): void => {
+        const updatedConfiguration = {
+            ...chatConfiguration,
+            sessionConfiguration: { ...chatConfiguration.sessionConfiguration, [property]: value },
+        };
+        setChatConfiguration(updatedConfiguration);
+        persistToSession(updatedConfiguration);
     };
 
     const oneThroughTenOptions = [...Array(10).keys()].map((i) => {
@@ -215,6 +217,68 @@ export const SessionConfiguration = ({
                         </Grid>
                     );
                 })()}
+                {systemConfig && systemConfig.configuration.enabledComponents.editNumOfRagDocument && !isImageModel && !isVideoModel && !modelOnly && (
+                    <Container header={<Header variant='h2'>RAG Settings</Header>}>
+                        <SpaceBetween size='l'>
+                            <FormField label='Matching RAG Excerpts'>
+                                <Select
+                                    disabled={isRunning}
+                                    filteringType='auto'
+                                    selectedOption={{
+                                        value: chatConfiguration.sessionConfiguration.ragTopK.toString(),
+                                        label: chatConfiguration.sessionConfiguration.ragTopK.toString(),
+                                    }}
+                                    onChange={({ detail }) => updateSessionConfiguration('ragTopK', parseInt(detail.selectedOption.value))}
+                                    options={oneThroughTenOptions}
+                                />
+                            </FormField>
+                            <FormField
+                                label='RAG Search Mode'
+                                description={!systemConfig.configuration.enabledComponents.hybridSearch
+                                    ? 'Hybrid search is disabled by your administrator'
+                                    : !ragConfig?.supportsHybridSearch
+                                        ? 'Selected repository does not support hybrid search'
+                                        : undefined}
+                            >
+                                <Select
+                                    disabled={isRunning || !systemConfig.configuration.enabledComponents.hybridSearch || !ragConfig?.supportsHybridSearch}
+                                    selectedOption={{
+                                        value: effectiveRagSearchMode,
+                                        label: effectiveRagSearchMode === 'hybrid' ? 'Hybrid' : 'Vector',
+                                    }}
+                                    onChange={({ detail }) => updateSessionConfiguration('ragSearchMode', detail.selectedOption.value)}
+                                    options={[
+                                        { value: 'vector', label: 'Vector', description: 'Semantic similarity search' },
+                                        { value: 'hybrid', label: 'Hybrid', description: 'Combined vector + keyword search' },
+                                    ]}
+                                />
+                            </FormField>
+                            <HybridSearchControls
+                                vectorWeight={chatConfiguration.sessionConfiguration.vectorWeight ?? 0.7}
+                                lexicalWeight={chatConfiguration.sessionConfiguration.lexicalWeight ?? 0.3}
+                                onChange={(weights) => {
+                                    const updatedConfiguration = {
+                                        ...chatConfiguration,
+                                        sessionConfiguration: {
+                                            ...chatConfiguration.sessionConfiguration,
+                                            ...weights,
+                                        },
+                                    };
+                                    setChatConfiguration(updatedConfiguration);
+                                    persistToSession(updatedConfiguration);
+                                }}
+                                disabled={isRunning || effectiveRagSearchMode !== 'hybrid' || ragConfig?.repositoryType === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE}
+                                disabledReason={
+                                    ragConfig?.repositoryType === RagRepositoryType.BEDROCK_KNOWLEDGE_BASE
+                                        ? 'Custom weights are ignored for Bedrock Knowledge Bases'
+                                        : effectiveRagSearchMode !== 'hybrid'
+                                            ? 'Weights only apply when search mode is set to Hybrid'
+                                            : undefined
+                                }
+                            />
+                        </SpaceBetween>
+                    </Container>
+                )}
                 {systemConfig && systemConfig.configuration.enabledComponents.editKwargs && !isImageModel && !isVideoModel &&
                     <Container
                         header={

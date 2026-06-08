@@ -62,6 +62,8 @@ export type ISessionConfiguration = {
     },
     remixVideoId?: string;
     ragSearchMode?: 'vector' | 'hybrid';
+    vectorWeight?: number;
+    lexicalWeight?: number;
 };
 
 export type GenerateLLMRequestParams = {

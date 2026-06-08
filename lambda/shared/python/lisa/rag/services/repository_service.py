@@ -17,7 +17,7 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from lisa.domain.domain_objects import IngestionJob, RagCollectionConfig, RagDocument
+from lisa.domain.domain_objects import IngestionJob, RagCollectionConfig, RagDocument, RetrieveResult
 
 
 class RepositoryService(ABC):
@@ -126,7 +126,7 @@ class RepositoryService(ABC):
         model_name: str,
         include_score: bool = False,
         bedrock_agent_client: Any | None = None,
-    ) -> list[dict[str, Any]]:
+    ) -> RetrieveResult:
         """Retrieve documents matching a query.
 
         Args:
@@ -138,7 +138,8 @@ class RepositoryService(ABC):
             bedrock_agent_client: Bedrock agent client (for Bedrock KB only)
 
         Returns:
-            List of matching documents with page_content and metadata
+            RetrieveResult with documents, actual_mode_used="vector",
+            and hybrid_supported reflecting this service's capability.
         """
         pass
 
@@ -195,7 +196,9 @@ class RepositoryService(ABC):
         model_name: str,
         include_score: bool = False,
         bedrock_agent_client: Any | None = None,
-    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        vector_weight: float = 0.7,
+        lexical_weight: float = 0.3,
+    ) -> RetrieveResult:
         """Retrieve documents using hybrid (semantic + lexical) search.
 
         Args:
@@ -205,13 +208,11 @@ class RepositoryService(ABC):
             model_name: Embedding model name to use for query embedding
             include_score: Whether to include similarity scores in results
             bedrock_agent_client: Bedrock agent client (for Bedrock KB only)
+            vector_weight: Weight for vector (semantic) results (0-1, must sum to 1 with lexical_weight)
+            lexical_weight: Weight for lexical (keyword) results (0-1, must sum to 1 with vector_weight)
 
         Returns:
-            Tuple of (docs, retrieval_metadata):
-              - docs: list of matching documents with page_content and metadata
-              - retrieval_metadata: dict with at least 'actual_mode_used' ('hybrid' or
-                'vector') and 'hybrid_supported' (bool). Reported even when docs is empty
-                so callers can distinguish "ran hybrid, found nothing" from "fell back".
+            RetrieveResult with documents, actual_mode_used, and hybrid_supported.
 
         Raises:
             NotImplementedError: If the repository does not support hybrid search

@@ -194,6 +194,8 @@ class RagMixin(BaseMixin):
         model_name: str | None = None,
         search_mode: str | None = None,
         include_score: bool = False,
+        vector_weight: float | None = None,
+        lexical_weight: float | None = None,
     ) -> dict:
         """Perform similarity search.
 
@@ -205,6 +207,8 @@ class RagMixin(BaseMixin):
             model_name: Optional model name (required if collection_id not provided)
             search_mode: Optional search mode ('vector' or 'hybrid')
             include_score: Include similarity scores in results
+            vector_weight: Weight for vector/semantic results (0-1, must sum to 1 with lexical_weight)
+            lexical_weight: Weight for lexical/keyword results (0-1, must sum to 1 with vector_weight)
 
         Returns:
             Dict with:
@@ -215,7 +219,7 @@ class RagMixin(BaseMixin):
                 and 'hybrid_supported' fields describing the retrieval that was performed
         """
         url = f"{self.url}/repository/{repo_id}/similaritySearch"
-        params: dict[str, str | int] = {"query": query, "repositoryType": repo_id, "topK": k}
+        params: dict[str, str | int | float] = {"query": query, "repositoryType": repo_id, "topK": k}
 
         if collection_id:
             params["collectionId"] = collection_id
@@ -228,6 +232,12 @@ class RagMixin(BaseMixin):
 
         if include_score:
             params["score"] = "true"
+
+        if vector_weight is not None:
+            params["vectorWeight"] = vector_weight
+
+        if lexical_weight is not None:
+            params["lexicalWeight"] = lexical_weight
 
         response = self._session.get(url, params=params)
         if response.status_code == 200:

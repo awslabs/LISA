@@ -24,7 +24,7 @@ os.environ.setdefault("AWS_REGION", "us-east-1")
 os.environ.setdefault("RAG_DOCUMENT_TABLE", "test-doc-table")
 os.environ.setdefault("RAG_SUB_DOCUMENT_TABLE", "test-subdoc-table")
 
-from lisa.domain.domain_objects import IngestionJob, RagCollectionConfig, RagDocument
+from lisa.domain.domain_objects import IngestionJob, RagCollectionConfig, RagDocument, RetrieveResult
 from lisa.rag.services.repository_service import RepositoryService
 
 
@@ -78,9 +78,11 @@ class ConcreteRepositoryService(RepositoryService):
         query: str,
         collection_id: str,
         top_k: int,
+        model_name: str = "",
+        include_score: bool = False,
         bedrock_agent_client: Any | None = None,
-    ) -> list[dict[str, Any]]:
-        return []
+    ) -> RetrieveResult:
+        return RetrieveResult(documents=[], actual_mode_used="vector", hybrid_supported=False)
 
     def validate_document_source(self, s3_path: str) -> str:
         return s3_path
@@ -131,7 +133,7 @@ class TestRepositoryService:
         assert service.validate_document_source("s3://bucket/file") == "s3://bucket/file"
         assert service.get_vector_store_client("col", None) is None
         assert service.create_default_collection() is None
-        assert service.retrieve_documents("query", "col", 5) == []
+        assert service.retrieve_documents("query", "col", 5).documents == []
 
     def test_supports_hybrid_search_returns_false_by_default(self):
         """Base implementation returns False for hybrid search support."""

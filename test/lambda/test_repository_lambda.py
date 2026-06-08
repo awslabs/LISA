@@ -1416,7 +1416,7 @@ def test_list_all_includes_supports_hybrid_search():
         os_repo = next(r for r in body if r["repositoryId"] == "os-repo")
         kb_repo = next(r for r in body if r["repositoryId"] == "kb-repo")
 
-        assert os_repo["supportsHybridSearch"] is False
+        assert os_repo["supportsHybridSearch"] is True
         assert kb_repo["supportsHybridSearch"] is True
 
 
@@ -1523,10 +1523,14 @@ def test_real_similarity_search_function():
         mock_RagEmbeddings.return_value = mock_embeddings
 
         # Mock the service layer
+        from lisa.domain.domain_objects import RetrieveResult
+
         mock_service = MagicMock()
-        mock_service.retrieve_documents.return_value = [
-            {"page_content": "Test content", "metadata": {"source": "test-source"}}
-        ]
+        mock_service.retrieve_documents.return_value = RetrieveResult(
+            documents=[{"page_content": "Test content", "metadata": {"source": "test-source"}}],
+            actual_mode_used="vector",
+            hybrid_supported=False,
+        )
 
         with patch("repository.lambda_functions.RepositoryServiceFactory") as mock_factory:
             mock_factory.create_service.return_value = mock_service
@@ -2820,8 +2824,8 @@ def test_similarity_search_with_score():
         with patch.object(service, "_get_vector_store_client", return_value=mock_vs):
             result = service.retrieve_documents("query", "test-collection", 3, "test-model", include_score=True)
 
-    assert len(result) == 1
-    assert "similarity_score" in result[0]["metadata"]
+    assert len(result.documents) == 1
+    assert "similarity_score" in result.documents[0]["metadata"]
 
 
 def test_similarity_search_without_score():
@@ -2842,8 +2846,8 @@ def test_similarity_search_without_score():
         with patch.object(service, "_get_vector_store_client", return_value=mock_vs):
             result = service.retrieve_documents("query", "test-collection", 3, "test-model", include_score=False)
 
-    assert len(result) == 1
-    assert result[0]["page_content"] == "test content"
+    assert len(result.documents) == 1
+    assert result.documents[0]["page_content"] == "test content"
 
 
 def test_ensure_document_ownership_admin():
@@ -3319,10 +3323,10 @@ def test_similarity_search_helpers():
 
         with patch("lisa.rag.services.opensearch_repository_service.RagEmbeddings"):
             with patch.object(service, "_get_vector_store_client", return_value=mock_vs):
-                results = service.retrieve_documents("query", "test-collection", 3, "test-model", include_score=False)
+                result = service.retrieve_documents("query", "test-collection", 3, "test-model", include_score=False)
 
-        assert len(results) == 1
-        assert results[0]["page_content"] == "test content"
+        assert len(result.documents) == 1
+        assert result.documents[0]["page_content"] == "test content"
 
 
 # Tests for list_user_collections endpoint
@@ -3944,8 +3948,14 @@ def test_similarity_search_bedrock_kb():
             "allowedGroups": ["users"],
         }
         mock_collection_service.get_collection_model.return_value = "amazon.titan-embed-text-v1"
+        from lisa.domain.domain_objects import RetrieveResult
+
         mock_service = MagicMock()
-        mock_service.retrieve_documents.return_value = [{"page_content": "test content", "metadata": {}}]
+        mock_service.retrieve_documents.return_value = RetrieveResult(
+            documents=[{"page_content": "test content", "metadata": {}}],
+            actual_mode_used="vector",
+            hybrid_supported=True,
+        )
         mock_factory.create_service.return_value = mock_service
 
         result = similarity_search(event, {})
@@ -4352,14 +4362,19 @@ def _similarity_search_event(extra_query_params=None):
 
 def _mock_service(supports_hybrid=True):
     """Create a mock RepositoryService with configurable hybrid support."""
+    from lisa.domain.domain_objects import RetrieveResult
+
     service = MagicMock()
     service.supports_hybrid_search.return_value = supports_hybrid
-    service.retrieve_documents.return_value = [
-        {"page_content": "semantic result", "metadata": {"source": "s3://bucket/doc1.pdf"}}
-    ]
-    service.hybrid_retrieve.return_value = (
-        [{"page_content": "hybrid result", "metadata": {"source": "s3://bucket/doc1.pdf"}}],
-        {"actual_mode_used": "hybrid", "hybrid_supported": True},
+    service.retrieve_documents.return_value = RetrieveResult(
+        documents=[{"page_content": "semantic result", "metadata": {"source": "s3://bucket/doc1.pdf"}}],
+        actual_mode_used="vector",
+        hybrid_supported=supports_hybrid,
+    )
+    service.hybrid_retrieve.return_value = RetrieveResult(
+        documents=[{"page_content": "hybrid result", "metadata": {"source": "s3://bucket/doc1.pdf"}}],
+        actual_mode_used="hybrid",
+        hybrid_supported=True,
     )
     return service
 
@@ -4548,9 +4563,12 @@ def test_hybrid_fallback_with_empty_docs_reports_vector_metadata(mock_auth):
         p.cs.get_collection_model.return_value = "test-model"
         service = _mock_service(supports_hybrid=True)
         # Hybrid call falls back to vector internally and returns zero matches.
-        service.hybrid_retrieve.return_value = (
-            [],
-            {"actual_mode_used": "vector", "hybrid_supported": False},
+        from lisa.domain.domain_objects import RetrieveResult
+
+        service.hybrid_retrieve.return_value = RetrieveResult(
+            documents=[],
+            actual_mode_used="vector",
+            hybrid_supported=False,
         )
         p.factory.create_service.return_value = service
 
@@ -4589,3 +4607,200 @@ def test_backward_compatible_response(mock_auth):
         assert body["metadata"]["search_mode"] == "vector"
         assert body["metadata"]["actual_mode_used"] == "vector"
         assert body.keys() == {"docs", "metadata"}
+
+
+# ---------------------------------------------------------------------------
+# Phase 2.3: Weight params end-to-end
+# ---------------------------------------------------------------------------
+
+
+def test_hybrid_search_passes_custom_weights(mock_auth):
+    """vectorWeight/lexicalWeight query params flow through to hybrid_retrieve()."""
+    from repository.lambda_functions import similarity_search
+
+    mock_auth.set_user("test-user", ["test-group"], is_rag_admin=True)
+
+    stack, setup = _hybrid_search_patches(is_rag_admin_val=True)
+    with stack:
+        p = setup()
+        p.vs_repo.find_repository_by_id.return_value = _opensearch_repo()
+        p.cs.get_collection_model.return_value = "test-model"
+        service = _mock_service(supports_hybrid=True)
+        p.factory.create_service.return_value = service
+
+        event = _similarity_search_event(
+            {
+                "searchMode": "hybrid",
+                "modelName": "test-model",
+                "vectorWeight": "0.8",
+                "lexicalWeight": "0.2",
+            }
+        )
+        result = similarity_search(event, SimpleNamespace())
+
+        assert result["statusCode"] == 200
+        service.hybrid_retrieve.assert_called_once()
+        call_kwargs = service.hybrid_retrieve.call_args.kwargs
+        assert call_kwargs["vector_weight"] == 0.8
+        assert call_kwargs["lexical_weight"] == 0.2
+
+
+def test_hybrid_search_uses_defaults_when_no_weights(mock_auth):
+    """No vectorWeight/lexicalWeight → uses defaults (0.7/0.3)."""
+    from repository.lambda_functions import similarity_search
+
+    mock_auth.set_user("test-user", ["test-group"], is_rag_admin=True)
+
+    stack, setup = _hybrid_search_patches(is_rag_admin_val=True)
+    with stack:
+        p = setup()
+        p.vs_repo.find_repository_by_id.return_value = _opensearch_repo()
+        p.cs.get_collection_model.return_value = "test-model"
+        service = _mock_service(supports_hybrid=True)
+        p.factory.create_service.return_value = service
+
+        event = _similarity_search_event(
+            {
+                "searchMode": "hybrid",
+                "modelName": "test-model",
+            }
+        )
+        result = similarity_search(event, SimpleNamespace())
+
+        assert result["statusCode"] == 200
+        service.hybrid_retrieve.assert_called_once()
+        call_kwargs = service.hybrid_retrieve.call_args.kwargs
+        assert call_kwargs["vector_weight"] == 0.7
+        assert call_kwargs["lexical_weight"] == 0.3
+
+
+def test_hybrid_search_rejects_non_numeric_weights(mock_auth):
+    """Non-numeric vectorWeight → 400."""
+    from repository.lambda_functions import similarity_search
+
+    mock_auth.set_user("test-user", ["test-group"], is_rag_admin=True)
+
+    stack, setup = _hybrid_search_patches(is_rag_admin_val=True)
+    with stack:
+        p = setup()
+        p.vs_repo.find_repository_by_id.return_value = _opensearch_repo()
+        p.cs.get_collection_model.return_value = "test-model"
+        p.factory.create_service.return_value = _mock_service(supports_hybrid=True)
+
+        event = _similarity_search_event(
+            {
+                "searchMode": "hybrid",
+                "modelName": "test-model",
+                "vectorWeight": "abc",
+                "lexicalWeight": "0.3",
+            }
+        )
+        result = similarity_search(event, SimpleNamespace())
+
+        assert result["statusCode"] == 400
+
+
+def test_hybrid_search_rejects_weights_not_summing_to_one(mock_auth):
+    """vectorWeight + lexicalWeight != 1 → 400."""
+    from repository.lambda_functions import similarity_search
+
+    mock_auth.set_user("test-user", ["test-group"], is_rag_admin=True)
+
+    stack, setup = _hybrid_search_patches(is_rag_admin_val=True)
+    with stack:
+        p = setup()
+        p.vs_repo.find_repository_by_id.return_value = _opensearch_repo()
+        p.cs.get_collection_model.return_value = "test-model"
+        p.factory.create_service.return_value = _mock_service(supports_hybrid=True)
+
+        event = _similarity_search_event(
+            {
+                "searchMode": "hybrid",
+                "modelName": "test-model",
+                "vectorWeight": "0.7",
+                "lexicalWeight": "0.7",
+            }
+        )
+        result = similarity_search(event, SimpleNamespace())
+
+        assert result["statusCode"] == 400
+
+
+def test_hybrid_search_rejects_partial_weights(mock_auth):
+    """Only vectorWeight without lexicalWeight → 400."""
+    from repository.lambda_functions import similarity_search
+
+    mock_auth.set_user("test-user", ["test-group"], is_rag_admin=True)
+
+    stack, setup = _hybrid_search_patches(is_rag_admin_val=True)
+    with stack:
+        p = setup()
+        p.vs_repo.find_repository_by_id.return_value = _opensearch_repo()
+        p.cs.get_collection_model.return_value = "test-model"
+        p.factory.create_service.return_value = _mock_service(supports_hybrid=True)
+
+        event = _similarity_search_event(
+            {
+                "searchMode": "hybrid",
+                "modelName": "test-model",
+                "vectorWeight": "0.8",
+            }
+        )
+        result = similarity_search(event, SimpleNamespace())
+
+        assert result["statusCode"] == 400
+
+
+def test_hybrid_search_rejects_out_of_range_weights(mock_auth):
+    """vectorWeight > 1 → 400."""
+    from repository.lambda_functions import similarity_search
+
+    mock_auth.set_user("test-user", ["test-group"], is_rag_admin=True)
+
+    stack, setup = _hybrid_search_patches(is_rag_admin_val=True)
+    with stack:
+        p = setup()
+        p.vs_repo.find_repository_by_id.return_value = _opensearch_repo()
+        p.cs.get_collection_model.return_value = "test-model"
+        p.factory.create_service.return_value = _mock_service(supports_hybrid=True)
+
+        event = _similarity_search_event(
+            {
+                "searchMode": "hybrid",
+                "modelName": "test-model",
+                "vectorWeight": "1.5",
+                "lexicalWeight": "-0.5",
+            }
+        )
+        result = similarity_search(event, SimpleNamespace())
+
+        assert result["statusCode"] == 400
+
+
+def test_vector_mode_ignores_weight_params(mock_auth):
+    """searchMode=vector ignores vectorWeight/lexicalWeight — no error, no passthrough."""
+    from repository.lambda_functions import similarity_search
+
+    mock_auth.set_user("test-user", ["test-group"], is_admin=True)
+
+    stack, setup = _hybrid_search_patches(is_admin_val=True)
+    with stack:
+        p = setup()
+        p.vs_repo.find_repository_by_id.return_value = _opensearch_repo()
+        p.cs.get_collection_model.return_value = "test-model"
+        service = _mock_service(supports_hybrid=True)
+        p.factory.create_service.return_value = service
+
+        event = _similarity_search_event(
+            {
+                "searchMode": "vector",
+                "modelName": "test-model",
+                "vectorWeight": "0.9",
+                "lexicalWeight": "0.1",
+            }
+        )
+        result = similarity_search(event, SimpleNamespace())
+
+        assert result["statusCode"] == 200
+        service.retrieve_documents.assert_called_once()
+        service.hybrid_retrieve.assert_not_called()

@@ -29,6 +29,7 @@ from lisa.domain.domain_objects import (
     NoneChunkingStrategy,
     RagCollectionConfig,
     RagDocument,
+    RetrieveResult,
 )
 from lisa.rag.rag_document_repo import RagDocumentRepository
 from lisa.utilities.bedrock_kb import bulk_delete_documents_from_kb, delete_document_from_kb
@@ -361,14 +362,15 @@ class BedrockKBRepositoryService(RepositoryService):
         model_name: str,
         include_score: bool = False,
         bedrock_agent_client: Any | None = None,
-    ) -> list[dict[str, Any]]:
+    ) -> RetrieveResult:
         """Retrieve documents from Bedrock KB using retrieve API."""
         retrieve_params, kb_id = self._build_retrieve_params(query, collection_id, top_k, bedrock_agent_client)
 
         logger.info(f"Retrieving from KB: kb_id={kb_id}, data_source={collection_id}, query={query[:50]}...")
 
         response = self._call_retrieve_api(bedrock_agent_client, retrieve_params, kb_id)
-        return self._transform_retrieve_results(response, include_score)
+        docs = self._transform_retrieve_results(response, include_score)
+        return RetrieveResult(documents=docs, actual_mode_used="vector", hybrid_supported=True)
 
     def _semantic_fallback(
         self,
@@ -392,14 +394,13 @@ class BedrockKBRepositoryService(RepositoryService):
         model_name: str,
         include_score: bool = False,
         bedrock_agent_client: Any | None = None,
-    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        vector_weight: float = 0.7,
+        lexical_weight: float = 0.3,
+    ) -> RetrieveResult:
         """Retrieve documents using hybrid (semantic + lexical) search.
 
         Falls back to semantic search if the KB does not support hybrid.
-
-        Returns:
-            Tuple of (docs, retrieval_metadata) where retrieval_metadata.actual_mode_used
-            is 'hybrid' on success or 'vector' on fallback.
+        Bedrock KB does not support weight tuning — weights are ignored.
         """
         retrieve_params, kb_id = self._build_retrieve_params(query, collection_id, top_k, bedrock_agent_client)
 
@@ -411,7 +412,7 @@ class BedrockKBRepositoryService(RepositoryService):
         try:
             response = self._call_retrieve_api(bedrock_agent_client, retrieve_params, kb_id)
             docs = self._transform_retrieve_results(response, include_score)
-            return docs, {"actual_mode_used": "hybrid", "hybrid_supported": True}
+            return RetrieveResult(documents=docs, actual_mode_used="hybrid", hybrid_supported=True)
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "")
             if error_code != "ValidationException":
@@ -424,7 +425,7 @@ class BedrockKBRepositoryService(RepositoryService):
 
             logger.warning(f"KB {kb_id} does not support hybrid search, falling back to semantic")
             docs = self._semantic_fallback(query, collection_id, top_k, include_score, bedrock_agent_client)
-            return docs, {"actual_mode_used": "vector", "hybrid_supported": False}
+            return RetrieveResult(documents=docs, actual_mode_used="vector", hybrid_supported=False)
 
     def validate_document_source(self, s3_path: str) -> str:
         """Validate document is from KB data source bucket."""

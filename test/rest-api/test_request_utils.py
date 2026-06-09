@@ -24,7 +24,7 @@ import pytest
 rest_api_src = Path(__file__).parent.parent.parent / "lib" / "serve" / "rest-api" / "src"
 sys.path.insert(0, str(rest_api_src))
 
-from utils.request_utils import get_lisa_end_user_id, handle_stream_exceptions
+from utils.request_utils import get_lisa_end_user_id, handle_stream_exceptions, strip_unsupported_model_params
 
 
 class TestHandleStreamExceptions:
@@ -133,3 +133,49 @@ class TestGetLisaEndUserId:
             "sub": ["not-a-string"],
         }
         assert get_lisa_end_user_id(jwt_data=jwt_data, state_username="state_user") == "state_user"
+
+
+class TestStripUnsupportedModelParams:
+    """Test suite for strip_unsupported_model_params."""
+
+    def test_strips_top_p_for_claude_opus_4_7(self):
+        params = {"top_p": 0.9, "temperature": 0.7}
+        removed = strip_unsupported_model_params(params, "bedrock/us.anthropic.claude-opus-4-7-20260101-v1:0")
+        assert removed == ["top_p"]
+        assert params == {"temperature": 0.7}
+
+    def test_strips_top_p_for_claude_opus_4_8(self):
+        params = {"top_p": 0.9, "temperature": 0.7}
+        removed = strip_unsupported_model_params(params, "bedrock/us.anthropic.claude-opus-4-8-20260601-v1:0")
+        assert removed == ["top_p"]
+        assert params == {"temperature": 0.7}
+
+    def test_strips_top_p_for_claude_fable(self):
+        params = {"top_p": 0.9, "temperature": 0.7}
+        removed = strip_unsupported_model_params(params, "bedrock/us.anthropic.claude-fable-5-20260301-v1:0")
+        assert removed == ["top_p"]
+        assert params == {"temperature": 0.7}
+
+    def test_strips_top_p_for_claude_fable_direct_anthropic(self):
+        params = {"top_p": 0.9}
+        removed = strip_unsupported_model_params(params, "anthropic/claude-fable-5")
+        assert removed == ["top_p"]
+        assert params == {}
+
+    def test_leaves_params_for_non_matching_model(self):
+        params = {"top_p": 0.9, "temperature": 0.7}
+        removed = strip_unsupported_model_params(params, "bedrock/us.anthropic.claude-sonnet-4-6-20251001-v1:0")
+        assert removed == []
+        assert params == {"top_p": 0.9, "temperature": 0.7}
+
+    def test_noop_when_model_name_missing(self):
+        params = {"top_p": 0.9}
+        assert strip_unsupported_model_params(params, None) == []
+        assert strip_unsupported_model_params(params, "") == []
+        assert params == {"top_p": 0.9}
+
+    def test_noop_when_param_absent(self):
+        params = {"temperature": 0.7}
+        removed = strip_unsupported_model_params(params, "anthropic/claude-fable-5")
+        assert removed == []
+        assert params == {"temperature": 0.7}

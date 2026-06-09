@@ -156,6 +156,10 @@ _MODEL_UNSUPPORTED_PARAMS: list[tuple[re.Pattern[str], tuple[str, ...]]] = [
     # landed in this family; see BerriAI/litellm#25867 for the LiteLLM fix that
     # handled the ``thinking.type`` shape.
     (re.compile(r"claude-opus-4-7", re.IGNORECASE), ("top_p",)),
+    (re.compile(r"claude-opus-4-8", re.IGNORECASE), ("top_p",)),
+    # The Claude Fable family rejects ``top_p`` the same way Opus 4.7 does;
+    # Anthropic dropped the parameter for the whole family going forward.
+    (re.compile(r"claude-fable", re.IGNORECASE), ("top_p",)),
 ]
 
 

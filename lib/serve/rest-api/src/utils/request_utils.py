@@ -151,11 +151,15 @@ def get_lisa_end_user_id(
 # ``"bedrock/us.anthropic.claude-opus-4-7-20260101-v1:0"``). Extend this list as
 # providers deprecate additional parameters.
 _MODEL_UNSUPPORTED_PARAMS: list[tuple[re.Pattern[str], tuple[str, ...]]] = [
-    # Anthropic Claude Opus 4.7 on Bedrock rejects ``top_p`` with
+    # Anthropic Claude Opus 4.7 and 4.8 on Bedrock reject ``top_p`` with
     # "`top_p` is deprecated for this model." The adaptive-thinking rework also
     # landed in this family; see BerriAI/litellm#25867 for the LiteLLM fix that
     # handled the ``thinking.type`` shape.
     (re.compile(r"claude-opus-4-7", re.IGNORECASE), ("top_p",)),
+    (re.compile(r"claude-opus-4-8", re.IGNORECASE), ("top_p",)),
+    # The Claude Fable family rejects ``top_p`` the same way Opus 4.7/4.8 do;
+    # Anthropic dropped the parameter for the whole family going forward.
+    (re.compile(r"claude-fable", re.IGNORECASE), ("top_p",)),
 ]
 
 

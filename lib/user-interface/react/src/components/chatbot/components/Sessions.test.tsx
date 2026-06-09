@@ -63,6 +63,10 @@ vi.mock('@/shared/reducers/session.reducer', () => ({
         vi.fn(),
         { isSuccess: false, isError: false, error: null, isLoading: false },
     ]),
+    usePostMessagesMutation: vi.fn(() => [
+        vi.fn(() => ({ unwrap: vi.fn().mockResolvedValue({}) })),
+        { isSuccess: false, isError: false, error: null, isLoading: false },
+    ]),
 }));
 
 vi.mock('@/config/store', () => ({

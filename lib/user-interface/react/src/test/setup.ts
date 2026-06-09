@@ -17,6 +17,37 @@
 import '@testing-library/jest-dom';
 import { cleanup } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
+git 
+// Node 25 ships an experimental built-in `localStorage` global that is just
+// an empty object (it expects `--localstorage-file=<path>`). jsdom can't
+// install its own Storage on the opaque-origin window we get under vitest,
+// so Node's stub wins and `localStorage.getItem` ends up undefined. Install
+// a real in-memory Storage shim on both `window` and `globalThis` so code
+// under test sees a working API.
+const createStorageShim = (): Storage => {
+    const store = new Map<string, string>();
+    return {
+        get length () { return store.size; },
+        clear: () => store.clear(),
+        getItem: (key) => (store.has(key) ? store.get(key)! : null),
+        setItem: (key, value) => { store.set(String(key), String(value)); },
+        removeItem: (key) => { store.delete(key); },
+        key: (index) => Array.from(store.keys())[index] ?? null,
+    };
+};
+
+for (const target of [globalThis, globalThis.window]) {
+    Object.defineProperty(target, 'localStorage', {
+        configurable: true,
+        writable: true,
+        value: createStorageShim(),
+    });
+    Object.defineProperty(target, 'sessionStorage', {
+        configurable: true,
+        writable: true,
+        value: createStorageShim(),
+    });
+}
 
 // Mock Axios to prevent real HTTP requests during tests
 vi.mock('axios', async (importOriginal) => {

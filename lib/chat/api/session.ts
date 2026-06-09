@@ -327,14 +327,6 @@ export class SessionApi extends Construct {
                 environment: env,
             },
             {
-                name: 'get_session_context',
-                resource: 'session',
-                description: 'Gets the LLM-ready message context for a session',
-                path: 'session/{sessionId}/context',
-                method: 'GET',
-                environment: env,
-            },
-            {
                 name: 'compact_session',
                 resource: 'session',
                 description: 'Compacts session by summarizing older messages',

@@ -205,10 +205,7 @@ export const sessionApi = createApi({
                 name: 'Post Messages Error',
                 message: extractErrorMessage(baseQueryReturnValue)
             }),
-            invalidatesTags: (result, error, { sessionId }) => [
-                'sessions',
-                { type: 'session', id: sessionId }
-            ],
+            invalidatesTags: ['sessions'],
         }),
         getMessages: builder.query<{ messages: any[]; nextCursor: string | null; hasMore: boolean }, { sessionId: string; limit?: number; order?: string; cursor?: string }>({
             query: ({ sessionId, limit = 50, order = 'desc', cursor }) => {
@@ -219,14 +216,6 @@ export const sessionApi = createApi({
                 };
             },
             providesTags: (result, error, { sessionId }) => [
-                { type: 'session', id: sessionId }
-            ],
-        }),
-        getSessionContext: builder.query<{ messages: any[] }, string>({
-            query: (sessionId) => ({
-                url: `/session/${sessionId}/context`
-            }),
-            providesTags: (result, error, sessionId) => [
                 { type: 'session', id: sessionId }
             ],
         }),
@@ -263,6 +252,5 @@ export const {
     useAssignSessionProjectMutation,
     usePostMessagesMutation,
     useLazyGetMessagesQuery,
-    useLazyGetSessionContextQuery,
     useCompactSessionMutation,
 } = sessionApi;

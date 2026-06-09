@@ -119,8 +119,12 @@ def test_build_summary_prompt_contains_required_directives():
     prompt = build_summary_prompt("USER: hi\n\nASSISTANT: hello")
     # Spot-check the critical-requirements scaffold the LLM must see
     assert "Summarize the following conversation" in prompt
-    assert "tool call results" in prompt
-    assert "RAG/document search findings" in prompt
+    # Tool calls remain a required preservation target, but the wording softened
+    # to "summarize results, do not paste them" — the bare phrase "tool call" still appears.
+    assert "Tool calls" in prompt
+    # RAG/document blocks are now in the DO-NOT-INCLUDE list, not the preserve list
+    assert "DO NOT INCLUDE" in prompt
+    assert "Context from document search" in prompt
     assert prompt.endswith("USER: hi\n\nASSISTANT: hello")
 
 

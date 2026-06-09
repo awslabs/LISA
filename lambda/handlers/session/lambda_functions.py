@@ -1220,7 +1220,8 @@ def compact_session(event: dict, context: dict) -> CompactSessionResponse | dict
             elif isinstance(content, list):
                 system_prompt = " ".join(item.get("text", "") for item in content if isinstance(item, dict))
 
-        # Build the compacted system prompt (persisted for reuse by get_session_context)
+        # Build the compacted system prompt — persisted on the session item so other
+        # consumers (and the client, which mirrors this format) can reconstruct it.
         compacted_system_prompt = f"{system_prompt}\n\n--- Conversation Summary (prior context) ---\n{summary_content}"
 
         # 9. Update sessions table
@@ -1263,46 +1264,3 @@ def compact_session(event: dict, context: dict) -> CompactSessionResponse | dict
     except Exception as e:
         logger.error(f"Compaction failed for session: {e}", exc_info=True)
         return {"statusCode": 500, "body": json.dumps({"error": f"Compaction failed: {str(e)}"})}
-
-
-@api_wrapper
-def get_session_context(event: dict, context: dict) -> dict:
-    """Return the LLM-ready message array for a session.
-
-    Non-compacted sessions: returns all messages in ascending order.
-    Compacted sessions: returns compactedSystemPrompt as the system message
-    followed by all messages after compactionMessageIndex.
-    """
-    try:
-        if not messages_table:
-            return {"statusCode": 500, "body": json.dumps({"error": "Messages table not configured"})}
-
-        user_id = get_username(event)
-        session_id = get_session_id(event)
-
-        # Get session metadata
-        session_response = table.get_item(Key={"sessionId": session_id, "userId": user_id})
-        session_item = session_response.get("Item", {})
-        if not session_item:
-            return {"statusCode": 404, "body": json.dumps({"error": "Session not found"})}
-
-        compaction_index = session_item.get("compactionMessageIndex")
-        compacted_system_prompt = session_item.get("compactedSystemPrompt")
-
-        if compaction_index is not None and compacted_system_prompt:
-            # Compacted: fetch only post-summary messages
-            post_compaction_msgs = query_session_messages(
-                messages_table, session_id, user_id, int(compaction_index) + 1
-            )
-            # Prepend the persisted compacted system prompt as a system message
-            context_messages = [{"type": "system", "content": compacted_system_prompt}] + post_compaction_msgs
-        else:
-            # Non-compacted: fetch ALL messages
-            context_messages = query_session_messages(messages_table, session_id, user_id)
-
-        # Replace S3 keys with presigned URLs so the LLM can actually fetch images/videos
-        _attach_presigned_urls(context_messages)
-
-        return {"messages": context_messages}
-    except ValueError as e:
-        return {"statusCode": 400, "body": json.dumps({"error": str(e)})}

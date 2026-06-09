@@ -47,7 +47,6 @@ import {
     useGetSessionHealthQuery,
     useLazyGetMessagesQuery,
     useLazyGetSessionByIdQuery,
-    useLazyGetSessionContextQuery,
     useListSessionsQuery,
     usePostMessagesMutation,
     useUpdateSessionMutation,
@@ -126,7 +125,6 @@ export default function Chat ({ sessionId, initialStack }) {
     const [postMessages] = usePostMessagesMutation();
     const [attachImageToSession] = useAttachImageToSessionMutation();
     const [compactSession] = useCompactSessionMutation();
-    const [getSessionContext] = useLazyGetSessionContextQuery();
 
     // Track how many messages have been persisted to the messages table
     const lastSavedIndexRef = useRef(-1);
@@ -985,7 +983,7 @@ export default function Chat ({ sessionId, initialStack }) {
                                     const text = typeof firstHuman.content === 'string'
                                         ? firstHuman.content
                                         : Array.isArray(firstHuman.content)
-                                            ? (firstHuman.content.find((c) => c?.text)?.text || '')
+                                            ? (firstHuman.content.filter((c) => c?.text).pop()?.text || '')
                                             : '';
                                     sessionName = text.slice(0, 50) || 'New Chat';
                                     setSession((prev) => ({ ...prev, name: sessionName }));
@@ -1330,9 +1328,26 @@ export default function Chat ({ sessionId, initialStack }) {
 
         setUserPrompt('');
 
-        // Fetch the full context from the backend
-        const contextResult = await getSessionContext(session.sessionId);
-        const contextMessages = contextResult.data?.messages || [];
+        // Build the LLM-ready context array from in-memory session state:
+        //   non-compacted -> entire persisted history
+        //   compacted     -> rebuilt compactedSystemPrompt + messages after the SUMMARY
+        let contextMessages: any[] = session.history;
+        if (typeof (session as any).compactionMessageIndex === 'number') {
+            // Locate the most recent SUMMARY by type — robust to messageIndex/array drift.
+            const lastSummaryIdx = session.history
+                .map((m: any) => m?.type)
+                .lastIndexOf(MessageTypes.SUMMARY);
+            if (lastSummaryIdx >= 0) {
+                const summaryMsg: any = session.history[lastSummaryIdx];
+                const summaryContent = typeof summaryMsg?.content === 'string' ? summaryMsg.content : '';
+                const originalSystemPrompt = summaryMsg?.metadata?.systemPrompt || '';
+                const compactedSystemPrompt = `${originalSystemPrompt}\n\n--- Conversation Summary (prior context) ---\n${summaryContent}`;
+                contextMessages = [
+                    { type: 'system', content: compactedSystemPrompt },
+                    ...session.history.slice(lastSummaryIdx + 1),
+                ];
+            }
+        }
 
         const params: GenerateLLMRequestParams = {
             input: userPrompt,
@@ -1346,7 +1361,7 @@ export default function Chat ({ sessionId, initialStack }) {
 
         setDirtySession(true);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [userPrompt, useRag, fileContext, chatConfiguration, generateResponse, isImageGenerationMode, isVideoGenerationMode, fetchRelevantDocuments, notificationService, compactSession, getSessionContext]);
+    }, [userPrompt, useRag, fileContext, chatConfiguration, generateResponse, isImageGenerationMode, isVideoGenerationMode, fetchRelevantDocuments, notificationService, compactSession]);
 
     // Ref to track if we're processing a keyboard event
     const isKeyboardEventRef = useRef(false);

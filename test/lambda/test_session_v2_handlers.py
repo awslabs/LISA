@@ -55,7 +55,6 @@ from session.lambda_functions import (  # noqa: E402
     compact_session,
     get_messages,
     get_session,
-    get_session_context,
     post_messages,
     put_session,
 )
@@ -663,58 +662,3 @@ def test_compact_session_auto_migrates_legacy_session(aws, lambda_context):
     ):
         resp = compact_session(_claim_event(body=body), lambda_context)
     assert resp["statusCode"] == 200, resp["body"]
-
-
-# --- get_session_context ---
-
-
-def test_get_session_context_returns_404_when_missing(aws, lambda_context):
-    resp = get_session_context(_claim_event(), lambda_context)
-    assert resp["statusCode"] == 404
-
-
-def test_get_session_context_returns_500_when_no_messages_table(aws, lambda_context):
-    with patch.object(lambda_functions, "messages_table", None):
-        resp = get_session_context(_claim_event(), lambda_context)
-    assert resp["statusCode"] == 500
-
-
-def test_get_session_context_non_compacted_returns_all_messages(aws, lambda_context):
-    aws.sessions.put_item(Item={"sessionId": "test-session", "userId": "test-user", "storageVersion": "2.0"})
-    for i in range(3):
-        aws.messages.put_item(
-            Item={"sessionId": "test-session", "messageIndex": i, "type": "human", "content": f"m{i}"}
-        )
-
-    resp = get_session_context(_claim_event(), lambda_context)
-    assert resp["statusCode"] == 200, resp["body"]
-    body = json.loads(resp["body"])
-    assert len(body["messages"]) == 3
-    assert [m["content"] for m in body["messages"]] == ["m0", "m1", "m2"]
-
-
-def test_get_session_context_compacted_prepends_summary(aws, lambda_context):
-    aws.sessions.put_item(
-        Item={
-            "sessionId": "test-session",
-            "userId": "test-user",
-            "storageVersion": "2.0",
-            "compactionMessageIndex": 2,
-            "compactedSystemPrompt": "system + summary blob",
-        }
-    )
-    aws.messages.put_item(Item={"sessionId": "test-session", "messageIndex": 0, "type": "system", "content": "sys"})
-    aws.messages.put_item(Item={"sessionId": "test-session", "messageIndex": 1, "type": "human", "content": "old q"})
-    aws.messages.put_item(
-        Item={"sessionId": "test-session", "messageIndex": 2, "type": "summary", "content": "summary"}
-    )
-    aws.messages.put_item(Item={"sessionId": "test-session", "messageIndex": 3, "type": "human", "content": "new q"})
-
-    resp = get_session_context(_claim_event(), lambda_context)
-    body = json.loads(resp["body"])
-    # First message is the synthetic system prompt with the compacted blob
-    assert body["messages"][0]["type"] == "system"
-    assert body["messages"][0]["content"] == "system + summary blob"
-    # Followed by post-summary messages only
-    assert len(body["messages"]) == 2
-    assert body["messages"][1]["content"] == "new q"

@@ -65,6 +65,40 @@ describe('parseSessionImport', () => {
         expect(parsed.messages[0]).not.toHaveProperty('additional_kwargs');
     });
 
+    it('drops non-object metadata and malformed usage fields', () => {
+        const data = {
+            ...validExport,
+            history: [{
+                type: 'ai',
+                content: 'hi',
+                metadata: 'not-an-object',
+                usage: { responseTime: '1.5', promptTokens: 3, completionTokens: Infinity, totalTokens: null },
+            }],
+        };
+        const parsed = parseSessionImport(JSON.stringify(data));
+        expect(parsed.messages[0].metadata).toEqual({});
+        expect(parsed.messages[0].usage).toEqual({ promptTokens: 3 });
+    });
+
+    it('drops usage entirely when nothing valid remains', () => {
+        const data = {
+            ...validExport,
+            history: [
+                { type: 'ai', content: 'a', usage: { responseTime: 'fast' } },
+                { type: 'ai', content: 'b', usage: ['not', 'an', 'object'] },
+            ],
+        };
+        const parsed = parseSessionImport(JSON.stringify(data));
+        expect(parsed.messages[0].usage).toBeUndefined();
+        expect(parsed.messages[1].usage).toBeUndefined();
+    });
+
+    it('drops array configuration', () => {
+        const data = { ...validExport, configuration: [{ selectedModel: 'x' }] };
+        const parsed = parseSessionImport(JSON.stringify(data));
+        expect(parsed.configuration).toBeUndefined();
+    });
+
     it('rejects invalid JSON', () => {
         expect(() => parseSessionImport('not json {')).toThrow('File is not valid JSON');
     });
@@ -116,6 +150,19 @@ describe('batchMessages', () => {
             [messages[1]],
             [messages[2]],
         ]);
+    });
+
+    it('measures UTF-8 bytes rather than string length', () => {
+        // '😀' is 1 emoji = 2 UTF-16 code units but 4 UTF-8 bytes.
+        const emojiMessage = message('😀😀😀😀');
+        const perMessageBytes = new TextEncoder().encode(JSON.stringify(emojiMessage)).length;
+        const perMessageCodeUnits = JSON.stringify(emojiMessage).length;
+        expect(perMessageBytes).toBeGreaterThan(perMessageCodeUnits);
+
+        // A budget that fits one message by byte count but two by code-unit
+        // count must split into two batches.
+        const batches = batchMessages([emojiMessage, emojiMessage], perMessageBytes + 1);
+        expect(batches).toEqual([[emojiMessage], [emojiMessage]]);
     });
 
     it('returns no batches for empty input', () => {

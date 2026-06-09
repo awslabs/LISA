@@ -144,6 +144,12 @@ class TestStripUnsupportedModelParams:
         assert removed == ["top_p"]
         assert params == {"temperature": 0.7}
 
+    def test_strips_top_p_for_claude_opus_4_8(self):
+        params = {"top_p": 0.9, "temperature": 0.7}
+        removed = strip_unsupported_model_params(params, "bedrock/us.anthropic.claude-opus-4-8-20260601-v1:0")
+        assert removed == ["top_p"]
+        assert params == {"temperature": 0.7}
+
     def test_strips_top_p_for_claude_fable(self):
         params = {"top_p": 0.9, "temperature": 0.7}
         removed = strip_unsupported_model_params(params, "bedrock/us.anthropic.claude-fable-5-20260301-v1:0")

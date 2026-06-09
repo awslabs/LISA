@@ -14,7 +14,7 @@
   limitations under the License.
 */
 
-import { LisaChatMessageFields, MessageTypes } from '@/components/types';
+import { LisaChatMessageFields, MessageTypes, UsageInfo } from '@/components/types';
 
 export type ParsedSessionImport = {
     messages: LisaChatMessageFields[];
@@ -23,6 +23,30 @@ export type ParsedSessionImport = {
 };
 
 const VALID_MESSAGE_TYPES = new Set<string>(Object.values(MessageTypes));
+
+const isPlainObject = (value: unknown): value is Record<string, any> =>
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+
+const USAGE_FIELDS: (keyof UsageInfo)[] = ['completionTokens', 'responseTime', 'promptTokens', 'totalTokens', 'outputTokens'];
+
+/**
+ * Rebuild usage from untrusted input, keeping only the known numeric fields.
+ * Downstream UI does arithmetic/formatting (e.g. responseTime.toFixed) on
+ * these values, so anything non-numeric must be dropped.
+ */
+const sanitizeUsage = (usage: unknown): UsageInfo | undefined => {
+    if (!isPlainObject(usage)) {
+        return undefined;
+    }
+    const sanitized: UsageInfo = {};
+    for (const field of USAGE_FIELDS) {
+        const value = usage[field];
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            sanitized[field] = value;
+        }
+    }
+    return Object.keys(sanitized).length > 0 ? sanitized : undefined;
+};
 
 /** Default per-request byte budget for imported message batches. The backend
  * accepts up to 10 MB but API Gateway/Lambda proxy limits are lower, so stay
@@ -88,9 +112,9 @@ export const parseSessionImport = (fileContents: string): ParsedSessionImport =>
         const sanitized: LisaChatMessageFields = {
             type: msg.type,
             content: msg.content,
-            metadata: msg.metadata ?? {},
+            metadata: isPlainObject(msg.metadata) ? msg.metadata : {},
             toolCalls: Array.isArray(msg.toolCalls) ? msg.toolCalls : [],
-            usage: msg.usage,
+            usage: sanitizeUsage(msg.usage),
             guardrailTriggered: msg.guardrailTriggered,
             reasoningContent: msg.reasoningContent,
             reasoningSignature: msg.reasoningSignature,
@@ -101,7 +125,7 @@ export const parseSessionImport = (fileContents: string): ParsedSessionImport =>
     return {
         messages,
         name: `${deriveSessionName(data.name, messages)} (imported)`,
-        configuration: data.configuration && typeof data.configuration === 'object' ? data.configuration : undefined,
+        configuration: isPlainObject(data.configuration) ? data.configuration : undefined,
     };
 };
 
@@ -110,6 +134,8 @@ export const parseSessionImport = (fileContents: string): ParsedSessionImport =>
  * limit. A single oversized message still gets its own batch and is left for
  * the backend to accept or reject.
  */
+const utf8Encoder = new TextEncoder();
+
 export const batchMessages = (
     messages: LisaChatMessageFields[],
     maxBatchBytes: number = DEFAULT_MAX_BATCH_BYTES,
@@ -119,7 +145,9 @@ export const batchMessages = (
     let currentBytes = 0;
 
     for (const message of messages) {
-        const messageBytes = JSON.stringify(message).length;
+        // Measure UTF-8 bytes, not string length: code-unit counts undercount
+        // multi-byte characters and could overflow the request-size limit.
+        const messageBytes = utf8Encoder.encode(JSON.stringify(message)).length;
         if (current.length > 0 && currentBytes + messageBytes > maxBatchBytes) {
             batches.push(current);
             current = [];

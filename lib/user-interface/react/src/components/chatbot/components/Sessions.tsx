@@ -228,7 +228,9 @@ export function Sessions ({ newSession }) {
             notificationService.generateNotification('Successfully imported session', 'success');
             navigate(`/ai-assistant/${newSessionId}`);
         } catch (error: any) {
-            const errorMessage = error && 'message' in error ? error.message : 'Unknown error';
+            // Optional chaining keeps this safe for thrown primitives, which
+            // would make the `'message' in error` pattern throw.
+            const errorMessage = typeof error === 'string' ? error : error?.message ?? 'Unknown error';
             notificationService.generateNotification(`Error importing session: ${errorMessage}`, 'error');
         } finally {
             setIsImporting(false);

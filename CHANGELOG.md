@@ -1,3 +1,365 @@
+# v6.7.0
+
+## Key Features
+
+### Session Refactor: Dedicated Messages Table with Context Compaction
+A major architectural refactor of the LISA sessions system introduces a dedicated DynamoDB Messages table, separating message storage from session metadata storage. Previously, all chat messages were stored directly within the Sessions DynamoDB table; messages are now stored as individual records in a separate Messages table, while the Sessions table is reserved exclusively for session-level metadata.
+
+**Key capabilities:**
+- **Message Storage**: Each message exists as its own independent record in the new Messages DynamoDB table, improving scalability and query flexibility
+- **Context Window Compaction**: As a user approaches  utilization of a model's context window, sessions are automatically compacted and summarized to prevent context overflow
+- **Summary Visibility**: Compaction summaries are visible directly in the UI and are appended to the end of the system prompt, giving users full transparency into context management
+- **Session Metadata**: The Sessions table continues to serve as the authoritative store for session-level metadata, providing a clean separation of concerns between messages and sessions
+
+---
+
+### OpenSearch Hybrid RAG
+Introduces hybrid search support for OpenSearch-backed RAG (Retrieval-Augmented Generation) pipelines, combining vector similarity search with keyword-based search to improve retrieval quality and relevance across a broader range of query types.
+
+---
+
+### Hybrid Search Support for Bedrock Knowledge Bases
+Extends hybrid search capabilities to Amazon Bedrock Knowledge Base repositories, enabling both vector and keyword search to work in tandem when querying Bedrock KB-backed repositories.
+
+**Key behaviors:**
+- **Admin Gate**: The admin toggle acts as a hard gate — disabling hybrid search forces all sessions to use vector-only search, regardless of individual user selection
+- **Conditional UI**: The search mode selector is displayed in the UI only when the repository supports hybrid search, keeping the interface clean for non-hybrid configurations
+- **Automatic Fallback**: Unsupported knowledge bases automatically fall back to vector-only search, ensuring compatibility across all Bedrock KB configurations
+- **Citation Display**: Citations are rendered correctly under both hybrid and vector-only search modes
+
+---
+
+### Image Generation with Context Fix
+Resolves two related issues with image generation in the chat interface when contextual references are present:
+- **Image Reference During Generation**: Fixed an issue where the chat was not correctly referencing an attached image during the image generation workflow
+- **Reference Cleanup**: Fixed an issue where removing an image reference was not properly clearing other associated references, causing stale context to persist in subsequent interactions
+
+---
+
+### React Compiler Enabled
+The React compiler has been enabled for the LISA frontend, providing automatic memoization and optimization of React component rendering without requiring manual , , or  annotations.
+
+**Supporting changes:**
+- **Linting Updates**: Updated linting configuration to align with React compiler requirements and enforce compatible coding patterns
+- **LiteLLM Config Passthrough**: Updated the LiteLLM configuration passthrough logic to resolve compatibility issues surfaced during the compiler migration
+
+---
+
+### Lambda Refactor and Cleanup
+A comprehensive cleanup and refactoring of the Lambda function implementation improves code organization, maintainability, and module resolution across the serverless backend.
+
+**Component updates:**
+- **Module Path Fix (Batch Ingestion)**: Updated the Batch ingestion job container command from  to  to align with the new module layout established by the lambda refactor
+- **Python Path Resolution**: Added  to the Batch ingestion container environment so the shared  package is correctly importable at runtime
+- **CDK Snapshots**: Updated CDK snapshot baselines for , , and  stacks to reflect the refactored module structure
+
+---
+
+### DynamoDB Decimal Serialization Fix
+Resolves a bug in the session API where DynamoDB  values were being incorrectly serialized as strings in API responses instead of JSON numbers.
+
+**Root cause and fix:**
+- **Problem**: All numbers stored in DynamoDB are returned by boto3 as Python  objects. When Pydantic models with -typed fields (e.g., ) were serialized using , the  method would convert  values to strings
+- **Fix**: Changed  to  at two call sites in , ensuring  values are properly represented as JSON numbers in all API responses
+
+---
+
+### MCP Server Deployment Fixes
+Resolved multiple deployment and runtime issues affecting the MCP (Model Context Protocol) server:
+
+- **CORS Allowed Origins**: Fixed the  configuration for MCP server deployments to ensure cross-origin requests are correctly permitted
+- **MCP Workbench Error**: Fixed an error introduced during the MCP Workbench upgrade that was causing runtime failures
+- **Client Issues**: Resolved various client-side issues identified during MCP integration testing and deployment validation
+
+---
+
+### AWS Credentials and Environment Variable Improvements
+Enhancements to AWS credential parsing and environment configuration improve compatibility and flexibility for diverse deployment scenarios:
+
+- **Export Block Credential Parsing**: Added support for parsing AWS credentials provided in declare -x ACCEPT_EULA="Y"
+declare -x ACTIONS_ID_TOKEN_REQUEST_TOKEN="eyJhbGciOiJSUzI1NiIsImtpZCI6IjM4ODI2YjE3LTZhMzAtNWY5Yi1iMTY5LThiZWI4MjAyZjcyMyIsInR5cCI6IkpXVCIsIng1dCI6InlrTmFZNHFNX3RhNGsyVGdaT0NFWUxrY1lsQSJ9.eyJJZGVudGl0eVR5cGVDbGFpbSI6IlN5c3RlbTpTZXJ2aWNlSWRlbnRpdHkiLCJhYyI6Ilt7XCJTY29wZVwiOlwicmVmcy9oZWFkcy9kZXZlbG9wXCIsXCJQZXJtaXNzaW9uXCI6M30se1wiU2NvcGVcIjpcInJlZnMvaGVhZHMvbWFpblwiLFwiUGVybWlzc2lvblwiOjF9XSIsImFjc2wiOiIxMCIsImF1ZCI6InZzbzo2YjYxMzhiZi0wYjRhLTQ0NDgtYWUzMy0yMzFiY2Y3NDc5NTMiLCJiaWxsaW5nX293bmVyX2lkIjoiRV9rZ0ROQlFvIiwiZXhwIjoxNzgxMTQ1MjE2LCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3ByaW1hcnlzaWQiOiJkZGRkZGRkZC1kZGRkLWRkZGQtZGRkZC1kZGRkZGRkZGRkZGQiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9zaWQiOiJkZGRkZGRkZC1kZGRkLWRkZGQtZGRkZC1kZGRkZGRkZGRkZGQiLCJpYXQiOjE3ODExMjMwMTYsImlzcyI6Imh0dHBzOi8vdG9rZW4uYWN0aW9ucy5naXRodWJ1c2VyY29udGVudC5jb20iLCJqb2JfaWQiOiJkNzBiOGRhYy0zMjlhLTUzYTUtYmQwZi0zZjE4NjZhZWU1Y2QiLCJuYW1laWQiOiJkZGRkZGRkZC1kZGRkLWRkZGQtZGRkZC1kZGRkZGRkZGRkZGQiLCJuYmYiOjE3ODExMjI3MTYsIm9pZGNfZXh0cmEiOiJ7XCJhY3RvclwiOlwiZXN0b2hsbWFublwiLFwiYWN0b3JfaWRcIjpcIjE0MTAwOTcyXCIsXCJiYXNlX3JlZlwiOlwiXCIsXCJjaGVja19ydW5faWRcIjpcIjgwNjU2NzUwMTkxXCIsXCJlbnZpcm9ubWVudFwiOlwiZGV2XCIsXCJlbnZpcm9ubWVudF9ub2RlX2lkXCI6XCJFTl9rd0RPTDdrUUVzOEFBQUFCQ092SGxRXCIsXCJldmVudF9uYW1lXCI6XCJ3b3JrZmxvd19kaXNwYXRjaFwiLFwiaGVhZF9yZWZcIjpcIlwiLFwiam9iX3dvcmtmbG93X3JlZlwiOlwiYXdzbGFicy9MSVNBLy5naXRodWIvd29ya2Zsb3dzL2NvZGUucmVsZWFzZS5icmFuY2gueW1sQHJlZnMvaGVhZHMvZGV2ZWxvcFwiLFwiam9iX3dvcmtmbG93X3NoYVwiOlwiZDNlYzgyODI2NmNmZmY3ZmJkODk0Y2VlNmQ5OTE0YjUzZDBkYmJjY1wiLFwicmVmXCI6XCJyZWZzL2hlYWRzL2RldmVsb3BcIixcInJlZl9wcm90ZWN0ZWRcIjpcInRydWVcIixcInJlZl90eXBlXCI6XCJicmFuY2hcIixcInJlcG9zaXRvcnlcIjpcImF3c2xhYnMvTElTQVwiLFwicmVwb3NpdG9yeV9pZFwiOlwiODAwNjU3NDI2XCIsXCJyZXBvc2l0b3J5X293bmVyXCI6XCJhd3NsYWJzXCIsXCJyZXBvc2l0b3J5X293bmVyX2lkXCI6XCIzMjk5MTQ4XCIsXCJyZXBvc2l0b3J5X3Zpc2liaWxpdHlcIjpcInB1YmxpY1wiLFwicnVuX2F0dGVtcHRcIjpcIjJcIixcInJ1bl9pZFwiOlwiMjczMDM4MTE2NzNcIixcInJ1bl9udW1iZXJcIjpcIjY1XCIsXCJydW5uZXJfZW52aXJvbm1lbnRcIjpcImdpdGh1Yi1ob3N0ZWRcIixcInNoYVwiOlwiZDNlYzgyODI2NmNmZmY3ZmJkODk0Y2VlNmQ5OTE0YjUzZDBkYmJjY1wiLFwid29ya2Zsb3dcIjpcIk1ha2UgUmVsZWFzZSBCcmFuY2hcIixcIndvcmtmbG93X3JlZlwiOlwiYXdzbGFicy9MSVNBLy5naXRodWIvd29ya2Zsb3dzL2NvZGUucmVsZWFzZS5icmFuY2gueW1sQHJlZnMvaGVhZHMvZGV2ZWxvcFwiLFwid29ya2Zsb3dfc2hhXCI6XCJkM2VjODI4MjY2Y2ZmZjdmYmQ4OTRjZWU2ZDk5MTRiNTNkMGRiYmNjXCJ9Iiwib2lkY19zdWIiOiJyZXBvOmF3c2xhYnMvTElTQTplbnZpcm9ubWVudDpkZXYiLCJvcmNoX2lkIjoiZGU0ZGYwNzEtYmVmYS00ODJjLWI0M2MtYjhiYzZmYzVhNGIzLk1ha2VOZXdSZWxlYXNlQnJhbmNoLl9fZGVmYXVsdCIsIm93bmVyX2lkIjoiRV9rZ0ROQlFvIiwicGxhbl9pZCI6ImRlNGRmMDcxLWJlZmEtNDgyYy1iNDNjLWI4YmM2ZmM1YTRiMyIsInJlcG9zaXRvcnlfaWQiOiI4MDA2NTc0MjYiLCJyZXBvc2l0b3J5X293bmVyX2lkIjoiMzI5OTE0OCIsInJlcG9zaXRvcnlfdmlzaWJpbGl0eSI6InB1YmxpYyIsInJ1bl9pZCI6IjI3MzAzODExNjczIiwicnVuX251bWJlciI6IjY1IiwicnVuX3R5cGUiOiJmdWxsIiwicnVubmVyX2lkIjoiMTAyMDYxNzAyNSIsInJ1bm5lcl90eXBlIjoiaG9zdGVkIiwic2NwIjoiQWN0aW9ucy5SZXN1bHRzOmRlNGRmMDcxLWJlZmEtNDgyYy1iNDNjLWI4YmM2ZmM1YTRiMzpkNzBiOGRhYy0zMjlhLTUzYTUtYmQwZi0zZjE4NjZhZWU1Y2QgQWN0aW9ucy5SdW5uZXI6ZGU0ZGYwNzEtYmVmYS00ODJjLWI0M2MtYjhiYzZmYzVhNGIzOmQ3MGI4ZGFjLTMyOWEtNTNhNS1iZDBmLTNmMTg2NmFlZTVjZCBBY3Rpb25zLlVwbG9hZEFydGlmYWN0czpkZTRkZjA3MS1iZWZhLTQ4MmMtYjQzYy1iOGJjNmZjNWE0YjM6ZDcwYjhkYWMtMzI5YS01M2E1LWJkMGYtM2YxODY2YWVlNWNkIGdlbmVyYXRlX2lkX3Rva2VuOmRlNGRmMDcxLWJlZmEtNDgyYy1iNDNjLWI4YmM2ZmM1YTRiMzpkNzBiOGRhYy0zMjlhLTUzYTUtYmQwZi0zZjE4NjZhZWU1Y2QgQWN0aW9ucy5HZW5lcmljUmVhZDowMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDAiLCJzaGEiOiJkM2VjODI4MjY2Y2ZmZjdmYmQ4OTRjZWU2ZDk5MTRiNTNkMGRiYmNjIiwidHJ1c3RfdGllciI6IjEifQ.DlkT7ndCVBVVrFs9BEsl_r_b6V7HxL6bhY-TmYVW4wW9kDTZcAf-amdDueUBWp4sVTf5vM7Plmb2NxW9h3wxSbTZ-T6sH3rDW9LfbexZMBbM_OpZUQgsC2Pvex9QpNB0P82f34YxLS9ML2-_15_tXi9Qb3HIsoB6yXVM2_GaRGQ5eWko-AKUxS-_eXmGW-Lpa4uo0p4w_22n8o1dRt2VKby3XDhOk86IyQgxohZ4CVZ7pylvoT3T3idWVU3K3OeRgZk-_wPMojmvYgzxAwrENZ6GOSmtdFziIPOKwo6CzQVnI9J6e19DbZP8E5U7BvMFibPNiHLWRiZe6IwAIKL53w"
+declare -x ACTIONS_ID_TOKEN_REQUEST_URL="https://run-actions-3-azure-eastus.actions.githubusercontent.com/213//idtoken/de4df071-befa-482c-b43c-b8bc6fc5a4b3/d70b8dac-329a-53a5-bd0f-3f1866aee5cd?api-version=2.0"
+declare -x ACTIONS_ORCHESTRATION_ID="de4df071-befa-482c-b43c-b8bc6fc5a4b3.MakeNewReleaseBranch.__default"
+declare -x ACTIONS_RUNNER_ACTION_ARCHIVE_CACHE="/opt/actionarchivecache"
+declare -x ACTIONS_RUNNER_RETURN_JOB_RESULT_FOR_HOSTED="1"
+declare -x AGENT_TOOLSDIRECTORY="/opt/hostedtoolcache"
+declare -x ANDROID_HOME="/usr/local/lib/android/sdk"
+declare -x ANDROID_NDK="/usr/local/lib/android/sdk/ndk/27.3.13750724"
+declare -x ANDROID_NDK_HOME="/usr/local/lib/android/sdk/ndk/27.3.13750724"
+declare -x ANDROID_NDK_LATEST_HOME="/usr/local/lib/android/sdk/ndk/29.0.14206865"
+declare -x ANDROID_NDK_ROOT="/usr/local/lib/android/sdk/ndk/27.3.13750724"
+declare -x ANDROID_SDK_ROOT="/usr/local/lib/android/sdk"
+declare -x ANT_HOME="/usr/share/ant"
+declare -x AWS_ACCESS_KEY_ID="ASIA3LET5VD6RMXUBWYS"
+declare -x AWS_DEFAULT_REGION="us-east-1"
+declare -x AWS_REGION="us-east-1"
+declare -x AWS_SECRET_ACCESS_KEY="xK4BmRqLBDmtOD1JnF5CI3XeRO0N4bnmqWJbhBSq"
+declare -x AWS_SESSION_TOKEN="IQoJb3JpZ2luX2VjECUaCXVzLWVhc3QtMSJIMEYCIQDGc46bgvhZYFO2P9w2PeZactS0+g6pX4YVSOZGZfeBJgIhAItB6XTlNt0IDbSK+5z8Bi05EvSKkezi217tZ9kaKx4yKvADCO7//////////wEQABoMNzc5ODQ2Nzg5MzczIgw/FBHlGFAASgksATkqxAPNTV9vi3va2fM1owbhlwBEM3E55O6yiGKL8z0iV3SdmO66i9NsCeMrsEB/N5Bf61XqAOY3CAWx1y7LWt/gCQrSUjv/e6uE+fdWridmAPEUgY2SS1tgRr0MRoiGwgLnK9WyC6EaPbO2+FMkIBQkJpk0woaOTM1uCW2mpNHiUkInloegrOAz4iMny3vkGkMdvjS5+w58hzXaJmQxe8MhAwXyLj4ec6KstiMuVZRZuguYOjgelD4zFEDYzPm3FueQ6IM553t8tlYBzvA/ELauUvFnFr+eG4TtXHr4bjPRTpIDMXwoHb1tw+5Zr02ghn/3TdXvTdButD00Pr0Kel9Q2pgHUg4Q0TyYCGZMLjVuypdAxdPhcjkTMNluTkfCn/UGWixfYfgmOUhb9s6YNnrNjrTlWsABZ52tJcx74NKY331zx4FOXbUrmGgiNoYRFIR23umPK4Ula9wFwRalg9rUfjuUxArch1oseCmoi/lhRcXLUDFEGswtjiLFGdA1VXirz9hsK9vo96d4EgGxXDhskl3rpoyqxQOdjKnLRXY5f9QUO7e4n3gxobbbqso+22w8qx290pyRnuGZYQghgUwtjhA5al6h3TDNj6fRBjqRAYaVAEWfkrjdPMTNpoB4ts2WCb6GifdhpmiqRKxPrBAHyPPDn+a6tlAGf4nRs11wSYWsgy/M9QKCY2sWe4UiZmrQX59hj8FjNsOlb1TtzroktMMa3qfXlKtg5/Fc4hAI2ictxRHJHTepH0ni3vMUeK/2tqIvDYKIJvMB6zgkOHLN/X4HfCWnGfzhMS8LnITAKGM="
+declare -x AZURE_EXTENSION_DIR="/opt/az/azcliextensions"
+declare -x BOOTSTRAP_HASKELL_NONINTERACTIVE="1"
+declare -x CHROMEWEBDRIVER="/usr/local/share/chromedriver-linux64"
+declare -x CHROME_BIN="/usr/bin/google-chrome"
+declare -x CI="true"
+declare -x CONDA="/usr/share/miniconda"
+declare -x DEBIAN_FRONTEND="noninteractive"
+declare -x DOTNET_MULTILEVEL_LOOKUP="0"
+declare -x DOTNET_NOLOGO="1"
+declare -x DOTNET_SKIP_FIRST_TIME_EXPERIENCE="1"
+declare -x EDGEWEBDRIVER="/usr/local/share/edge_driver"
+declare -x ENABLE_RUNNER_TRACING="true"
+declare -x GECKOWEBDRIVER="/usr/local/share/gecko_driver"
+declare -x GHCUP_INSTALL_BASE_PREFIX="/usr/local"
+declare -x GITHUB_ACTION="__run_2"
+declare -x GITHUB_ACTIONS="true"
+declare -x GITHUB_ACTION_REF=""
+declare -x GITHUB_ACTION_REPOSITORY=""
+declare -x GITHUB_ACTOR="estohlmann"
+declare -x GITHUB_ACTOR_ID="14100972"
+declare -x GITHUB_API_URL="https://api.github.com"
+declare -x GITHUB_BASE_REF=""
+declare -x GITHUB_ENV="/home/runner/work/_temp/_runner_file_commands/set_env_8e4d49b9-2d66-4477-bb5e-8cfe9c66bdca"
+declare -x GITHUB_EVENT_NAME="workflow_dispatch"
+declare -x GITHUB_EVENT_PATH="/home/runner/work/_temp/_github_workflow/event.json"
+declare -x GITHUB_GRAPHQL_URL="https://api.github.com/graphql"
+declare -x GITHUB_HEAD_REF=""
+declare -x GITHUB_JOB="MakeNewReleaseBranch"
+declare -x GITHUB_OUTPUT="/home/runner/work/_temp/_runner_file_commands/set_output_8e4d49b9-2d66-4477-bb5e-8cfe9c66bdca"
+declare -x GITHUB_PATH="/home/runner/work/_temp/_runner_file_commands/add_path_8e4d49b9-2d66-4477-bb5e-8cfe9c66bdca"
+declare -x GITHUB_REF="refs/heads/develop"
+declare -x GITHUB_REF_NAME="develop"
+declare -x GITHUB_REF_PROTECTED="true"
+declare -x GITHUB_REF_TYPE="branch"
+declare -x GITHUB_REPOSITORY="awslabs/LISA"
+declare -x GITHUB_REPOSITORY_ID="800657426"
+declare -x GITHUB_REPOSITORY_OWNER="awslabs"
+declare -x GITHUB_REPOSITORY_OWNER_ID="3299148"
+declare -x GITHUB_RETENTION_DAYS="90"
+declare -x GITHUB_RUN_ATTEMPT="2"
+declare -x GITHUB_RUN_ID="27303811673"
+declare -x GITHUB_RUN_NUMBER="65"
+declare -x GITHUB_SERVER_URL="https://github.com"
+declare -x GITHUB_SHA="d3ec828266cfff7fbd894cee6d9914b53d0dbbcc"
+declare -x GITHUB_STATE="/home/runner/work/_temp/_runner_file_commands/save_state_8e4d49b9-2d66-4477-bb5e-8cfe9c66bdca"
+declare -x GITHUB_STEP_SUMMARY="/home/runner/work/_temp/_runner_file_commands/step_summary_8e4d49b9-2d66-4477-bb5e-8cfe9c66bdca"
+declare -x GITHUB_TRIGGERING_ACTOR="estohlmann"
+declare -x GITHUB_WORKFLOW="Make Release Branch"
+declare -x GITHUB_WORKFLOW_REF="awslabs/LISA/.github/workflows/code.release.branch.yml@refs/heads/develop"
+declare -x GITHUB_WORKFLOW_SHA="d3ec828266cfff7fbd894cee6d9914b53d0dbbcc"
+declare -x GITHUB_WORKSPACE="/home/runner/work/LISA/LISA"
+declare -x GOROOT_1_22_X64="/opt/hostedtoolcache/go/1.22.12/x64"
+declare -x GOROOT_1_23_X64="/opt/hostedtoolcache/go/1.23.12/x64"
+declare -x GOROOT_1_24_X64="/opt/hostedtoolcache/go/1.24.13/x64"
+declare -x GOROOT_1_25_X64="/opt/hostedtoolcache/go/1.25.10/x64"
+declare -x GRADLE_HOME="/usr/share/gradle-9.5.1"
+declare -x HOME="/home/runner"
+declare -x HOMEBREW_CLEANUP_PERIODIC_FULL_DAYS="3650"
+declare -x HOMEBREW_NO_AUTO_UPDATE="1"
+declare -x INVOCATION_ID="a62f0c9147f3428ea44c407352e6435a"
+declare -x ImageOS="ubuntu24"
+declare -x ImageVersion="20260525.161.1"
+declare -x JAVA_HOME="/usr/lib/jvm/temurin-17-jdk-amd64"
+declare -x JAVA_HOME_11_X64="/usr/lib/jvm/temurin-11-jdk-amd64"
+declare -x JAVA_HOME_17_X64="/usr/lib/jvm/temurin-17-jdk-amd64"
+declare -x JAVA_HOME_21_X64="/usr/lib/jvm/temurin-21-jdk-amd64"
+declare -x JAVA_HOME_25_X64="/usr/lib/jvm/temurin-25-jdk-amd64"
+declare -x JAVA_HOME_8_X64="/usr/lib/jvm/temurin-8-jdk-amd64"
+declare -x JOURNAL_STREAM="9:13712"
+declare -x LANG="C.UTF-8"
+declare -x LOGNAME="runner"
+declare -x MEMORY_PRESSURE_WATCH="/sys/fs/cgroup/system.slice/hosted-compute-agent.service/memory.pressure"
+declare -x MEMORY_PRESSURE_WRITE="c29tZSAyMDAwMDAgMjAwMDAwMAA="
+declare -x NVM_DIR="/home/runner/.nvm"
+declare -x OLDPWD
+declare -x PATH="/snap/bin:/home/runner/.local/bin:/opt/pipx_bin:/home/runner/.cargo/bin:/home/runner/.config/composer/vendor/bin:/usr/local/.ghcup/bin:/home/runner/.dotnet/tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin"
+declare -x PIPX_BIN_DIR="/opt/pipx_bin"
+declare -x PIPX_HOME="/opt/pipx"
+declare -x POWERSHELL_DISTRIBUTION_CHANNEL="GitHub-Actions-Linux"
+declare -x PSModulePath="/root/.local/share/powershell/Modules:/usr/local/share/powershell/Modules:/opt/microsoft/powershell/7/Modules:/usr/share/az_14.6.0"
+declare -x PWD="/home/runner/work/LISA/LISA"
+declare -x RUNNER_ARCH="X64"
+declare -x RUNNER_ENVIRONMENT="github-hosted"
+declare -x RUNNER_NAME="GitHub Actions 1020617025"
+declare -x RUNNER_OS="Linux"
+declare -x RUNNER_TEMP="/home/runner/work/_temp"
+declare -x RUNNER_TOOL_CACHE="/opt/hostedtoolcache"
+declare -x RUNNER_TRACKING_ID="github_d1c4cd78-6dc5-4007-8936-0e352760b785"
+declare -x RUNNER_WORKSPACE="/home/runner/work/LISA"
+declare -x SELENIUM_JAR_PATH="/usr/share/java/selenium-server.jar"
+declare -x SGX_AESM_ADDR="1"
+declare -x SHELL="/bin/bash"
+declare -x SHLVL="1"
+declare -x SWIFT_PATH="/usr/share/swift/usr/bin"
+declare -x SYSTEMD_EXEC_PID="2092"
+declare -x USER="runner"
+declare -x USE_BAZEL_FALLBACK_VERSION="silent:"
+declare -x VCPKG_INSTALLATION_ROOT="/usr/local/share/vcpkg"
+declare -x XDG_CONFIG_HOME="/home/runner/.config"
+declare -x XDG_RUNTIME_DIR="/run/user/1001" block format, broadening the range of credential input styles that LISA can process
+- **ENV_VAR Helper Indentation Fix**: Corrected an indentation issue in the  ENV_VAR helper that was causing formatting and parsing inconsistencies
+- **Default AWS Session Region**: Fixed the default AWS session region parameter to ensure correct region resolution when no explicit region is provided
+
+---
+
+### Default Hosted Instance Type Update
+Updated the default hosted instance type to a more appropriate default, ensuring new deployments use an optimized instance configuration out of the box without requiring manual override.
+
+---
+
+### Automated PR Description Script Updates
+Iterative improvements to the automated pull request description generation script, refining the tooling used to produce consistent and comprehensive release notes across LISA releases.
+
+---
+
+## Key Changes
+- **Architecture**: Migrated chat message storage from the Sessions DynamoDB table to a dedicated Messages DynamoDB table, with the Sessions table now serving exclusively as a metadata store
+- **Context Management**: Implemented automatic session compaction and summarization at  context window utilization, with summary visibility in the UI and system prompt
+- **RAG**: Added hybrid search (vector + keyword) support for OpenSearch-backed RAG pipelines
+- **RAG**: Added hybrid search support for Bedrock Knowledge Base repositories with admin-controlled gating, automatic fallback, and conditional UI rendering
+- **Bug Fix**: Resolved image generation issue where attached images were not correctly referenced during generation and where removing image references left stale context
+- **Bug Fix**: Fixed DynamoDB  values being serialized as strings in session API responses by switching from  to  in 
+- **Bug Fix**: Updated Batch ingestion container module path from  to  following lambda refactor
+- **Bug Fix**: Added  to Batch ingestion container environment to resolve shared package import failures
+- **Bug Fix**: Fixed  configuration for MCP server deployments
+- **Bug Fix**: Fixed MCP Workbench error introduced during upgrade
+- **Bug Fix**: Corrected ENV_VAR helper indentation in 
+- **Bug Fix**: Fixed default AWS session region parameter resolution
+- **Frontend**: Enabled the React compiler for automatic component optimization and memoization
+- **Frontend**: Updated linting rules to align with React compiler compatibility requirements
+- **Frontend**: Fixed LiteLLM config passthrough behavior
+- **Infrastructure**: Updated default hosted instance type for new deployments
+- **Infrastructure**: Refactored and cleaned up Lambda function implementation for improved maintainability
+- **Infrastructure**: Updated CDK snapshot baselines for , , and  stacks
+- **Credentials**: Added support for parsing AWS credentials in declare -x ACCEPT_EULA="Y"
+declare -x ACTIONS_ID_TOKEN_REQUEST_TOKEN="eyJhbGciOiJSUzI1NiIsImtpZCI6IjM4ODI2YjE3LTZhMzAtNWY5Yi1iMTY5LThiZWI4MjAyZjcyMyIsInR5cCI6IkpXVCIsIng1dCI6InlrTmFZNHFNX3RhNGsyVGdaT0NFWUxrY1lsQSJ9.eyJJZGVudGl0eVR5cGVDbGFpbSI6IlN5c3RlbTpTZXJ2aWNlSWRlbnRpdHkiLCJhYyI6Ilt7XCJTY29wZVwiOlwicmVmcy9oZWFkcy9kZXZlbG9wXCIsXCJQZXJtaXNzaW9uXCI6M30se1wiU2NvcGVcIjpcInJlZnMvaGVhZHMvbWFpblwiLFwiUGVybWlzc2lvblwiOjF9XSIsImFjc2wiOiIxMCIsImF1ZCI6InZzbzo2YjYxMzhiZi0wYjRhLTQ0NDgtYWUzMy0yMzFiY2Y3NDc5NTMiLCJiaWxsaW5nX293bmVyX2lkIjoiRV9rZ0ROQlFvIiwiZXhwIjoxNzgxMTQ1MjE2LCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3ByaW1hcnlzaWQiOiJkZGRkZGRkZC1kZGRkLWRkZGQtZGRkZC1kZGRkZGRkZGRkZGQiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9zaWQiOiJkZGRkZGRkZC1kZGRkLWRkZGQtZGRkZC1kZGRkZGRkZGRkZGQiLCJpYXQiOjE3ODExMjMwMTYsImlzcyI6Imh0dHBzOi8vdG9rZW4uYWN0aW9ucy5naXRodWJ1c2VyY29udGVudC5jb20iLCJqb2JfaWQiOiJkNzBiOGRhYy0zMjlhLTUzYTUtYmQwZi0zZjE4NjZhZWU1Y2QiLCJuYW1laWQiOiJkZGRkZGRkZC1kZGRkLWRkZGQtZGRkZC1kZGRkZGRkZGRkZGQiLCJuYmYiOjE3ODExMjI3MTYsIm9pZGNfZXh0cmEiOiJ7XCJhY3RvclwiOlwiZXN0b2hsbWFublwiLFwiYWN0b3JfaWRcIjpcIjE0MTAwOTcyXCIsXCJiYXNlX3JlZlwiOlwiXCIsXCJjaGVja19ydW5faWRcIjpcIjgwNjU2NzUwMTkxXCIsXCJlbnZpcm9ubWVudFwiOlwiZGV2XCIsXCJlbnZpcm9ubWVudF9ub2RlX2lkXCI6XCJFTl9rd0RPTDdrUUVzOEFBQUFCQ092SGxRXCIsXCJldmVudF9uYW1lXCI6XCJ3b3JrZmxvd19kaXNwYXRjaFwiLFwiaGVhZF9yZWZcIjpcIlwiLFwiam9iX3dvcmtmbG93X3JlZlwiOlwiYXdzbGFicy9MSVNBLy5naXRodWIvd29ya2Zsb3dzL2NvZGUucmVsZWFzZS5icmFuY2gueW1sQHJlZnMvaGVhZHMvZGV2ZWxvcFwiLFwiam9iX3dvcmtmbG93X3NoYVwiOlwiZDNlYzgyODI2NmNmZmY3ZmJkODk0Y2VlNmQ5OTE0YjUzZDBkYmJjY1wiLFwicmVmXCI6XCJyZWZzL2hlYWRzL2RldmVsb3BcIixcInJlZl9wcm90ZWN0ZWRcIjpcInRydWVcIixcInJlZl90eXBlXCI6XCJicmFuY2hcIixcInJlcG9zaXRvcnlcIjpcImF3c2xhYnMvTElTQVwiLFwicmVwb3NpdG9yeV9pZFwiOlwiODAwNjU3NDI2XCIsXCJyZXBvc2l0b3J5X293bmVyXCI6XCJhd3NsYWJzXCIsXCJyZXBvc2l0b3J5X293bmVyX2lkXCI6XCIzMjk5MTQ4XCIsXCJyZXBvc2l0b3J5X3Zpc2liaWxpdHlcIjpcInB1YmxpY1wiLFwicnVuX2F0dGVtcHRcIjpcIjJcIixcInJ1bl9pZFwiOlwiMjczMDM4MTE2NzNcIixcInJ1bl9udW1iZXJcIjpcIjY1XCIsXCJydW5uZXJfZW52aXJvbm1lbnRcIjpcImdpdGh1Yi1ob3N0ZWRcIixcInNoYVwiOlwiZDNlYzgyODI2NmNmZmY3ZmJkODk0Y2VlNmQ5OTE0YjUzZDBkYmJjY1wiLFwid29ya2Zsb3dcIjpcIk1ha2UgUmVsZWFzZSBCcmFuY2hcIixcIndvcmtmbG93X3JlZlwiOlwiYXdzbGFicy9MSVNBLy5naXRodWIvd29ya2Zsb3dzL2NvZGUucmVsZWFzZS5icmFuY2gueW1sQHJlZnMvaGVhZHMvZGV2ZWxvcFwiLFwid29ya2Zsb3dfc2hhXCI6XCJkM2VjODI4MjY2Y2ZmZjdmYmQ4OTRjZWU2ZDk5MTRiNTNkMGRiYmNjXCJ9Iiwib2lkY19zdWIiOiJyZXBvOmF3c2xhYnMvTElTQTplbnZpcm9ubWVudDpkZXYiLCJvcmNoX2lkIjoiZGU0ZGYwNzEtYmVmYS00ODJjLWI0M2MtYjhiYzZmYzVhNGIzLk1ha2VOZXdSZWxlYXNlQnJhbmNoLl9fZGVmYXVsdCIsIm93bmVyX2lkIjoiRV9rZ0ROQlFvIiwicGxhbl9pZCI6ImRlNGRmMDcxLWJlZmEtNDgyYy1iNDNjLWI4YmM2ZmM1YTRiMyIsInJlcG9zaXRvcnlfaWQiOiI4MDA2NTc0MjYiLCJyZXBvc2l0b3J5X293bmVyX2lkIjoiMzI5OTE0OCIsInJlcG9zaXRvcnlfdmlzaWJpbGl0eSI6InB1YmxpYyIsInJ1bl9pZCI6IjI3MzAzODExNjczIiwicnVuX251bWJlciI6IjY1IiwicnVuX3R5cGUiOiJmdWxsIiwicnVubmVyX2lkIjoiMTAyMDYxNzAyNSIsInJ1bm5lcl90eXBlIjoiaG9zdGVkIiwic2NwIjoiQWN0aW9ucy5SZXN1bHRzOmRlNGRmMDcxLWJlZmEtNDgyYy1iNDNjLWI4YmM2ZmM1YTRiMzpkNzBiOGRhYy0zMjlhLTUzYTUtYmQwZi0zZjE4NjZhZWU1Y2QgQWN0aW9ucy5SdW5uZXI6ZGU0ZGYwNzEtYmVmYS00ODJjLWI0M2MtYjhiYzZmYzVhNGIzOmQ3MGI4ZGFjLTMyOWEtNTNhNS1iZDBmLTNmMTg2NmFlZTVjZCBBY3Rpb25zLlVwbG9hZEFydGlmYWN0czpkZTRkZjA3MS1iZWZhLTQ4MmMtYjQzYy1iOGJjNmZjNWE0YjM6ZDcwYjhkYWMtMzI5YS01M2E1LWJkMGYtM2YxODY2YWVlNWNkIGdlbmVyYXRlX2lkX3Rva2VuOmRlNGRmMDcxLWJlZmEtNDgyYy1iNDNjLWI4YmM2ZmM1YTRiMzpkNzBiOGRhYy0zMjlhLTUzYTUtYmQwZi0zZjE4NjZhZWU1Y2QgQWN0aW9ucy5HZW5lcmljUmVhZDowMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDAiLCJzaGEiOiJkM2VjODI4MjY2Y2ZmZjdmYmQ4OTRjZWU2ZDk5MTRiNTNkMGRiYmNjIiwidHJ1c3RfdGllciI6IjEifQ.DlkT7ndCVBVVrFs9BEsl_r_b6V7HxL6bhY-TmYVW4wW9kDTZcAf-amdDueUBWp4sVTf5vM7Plmb2NxW9h3wxSbTZ-T6sH3rDW9LfbexZMBbM_OpZUQgsC2Pvex9QpNB0P82f34YxLS9ML2-_15_tXi9Qb3HIsoB6yXVM2_GaRGQ5eWko-AKUxS-_eXmGW-Lpa4uo0p4w_22n8o1dRt2VKby3XDhOk86IyQgxohZ4CVZ7pylvoT3T3idWVU3K3OeRgZk-_wPMojmvYgzxAwrENZ6GOSmtdFziIPOKwo6CzQVnI9J6e19DbZP8E5U7BvMFibPNiHLWRiZe6IwAIKL53w"
+declare -x ACTIONS_ID_TOKEN_REQUEST_URL="https://run-actions-3-azure-eastus.actions.githubusercontent.com/213//idtoken/de4df071-befa-482c-b43c-b8bc6fc5a4b3/d70b8dac-329a-53a5-bd0f-3f1866aee5cd?api-version=2.0"
+declare -x ACTIONS_ORCHESTRATION_ID="de4df071-befa-482c-b43c-b8bc6fc5a4b3.MakeNewReleaseBranch.__default"
+declare -x ACTIONS_RUNNER_ACTION_ARCHIVE_CACHE="/opt/actionarchivecache"
+declare -x ACTIONS_RUNNER_RETURN_JOB_RESULT_FOR_HOSTED="1"
+declare -x AGENT_TOOLSDIRECTORY="/opt/hostedtoolcache"
+declare -x ANDROID_HOME="/usr/local/lib/android/sdk"
+declare -x ANDROID_NDK="/usr/local/lib/android/sdk/ndk/27.3.13750724"
+declare -x ANDROID_NDK_HOME="/usr/local/lib/android/sdk/ndk/27.3.13750724"
+declare -x ANDROID_NDK_LATEST_HOME="/usr/local/lib/android/sdk/ndk/29.0.14206865"
+declare -x ANDROID_NDK_ROOT="/usr/local/lib/android/sdk/ndk/27.3.13750724"
+declare -x ANDROID_SDK_ROOT="/usr/local/lib/android/sdk"
+declare -x ANT_HOME="/usr/share/ant"
+declare -x AWS_ACCESS_KEY_ID="ASIA3LET5VD6RMXUBWYS"
+declare -x AWS_DEFAULT_REGION="us-east-1"
+declare -x AWS_REGION="us-east-1"
+declare -x AWS_SECRET_ACCESS_KEY="xK4BmRqLBDmtOD1JnF5CI3XeRO0N4bnmqWJbhBSq"
+declare -x AWS_SESSION_TOKEN="IQoJb3JpZ2luX2VjECUaCXVzLWVhc3QtMSJIMEYCIQDGc46bgvhZYFO2P9w2PeZactS0+g6pX4YVSOZGZfeBJgIhAItB6XTlNt0IDbSK+5z8Bi05EvSKkezi217tZ9kaKx4yKvADCO7//////////wEQABoMNzc5ODQ2Nzg5MzczIgw/FBHlGFAASgksATkqxAPNTV9vi3va2fM1owbhlwBEM3E55O6yiGKL8z0iV3SdmO66i9NsCeMrsEB/N5Bf61XqAOY3CAWx1y7LWt/gCQrSUjv/e6uE+fdWridmAPEUgY2SS1tgRr0MRoiGwgLnK9WyC6EaPbO2+FMkIBQkJpk0woaOTM1uCW2mpNHiUkInloegrOAz4iMny3vkGkMdvjS5+w58hzXaJmQxe8MhAwXyLj4ec6KstiMuVZRZuguYOjgelD4zFEDYzPm3FueQ6IM553t8tlYBzvA/ELauUvFnFr+eG4TtXHr4bjPRTpIDMXwoHb1tw+5Zr02ghn/3TdXvTdButD00Pr0Kel9Q2pgHUg4Q0TyYCGZMLjVuypdAxdPhcjkTMNluTkfCn/UGWixfYfgmOUhb9s6YNnrNjrTlWsABZ52tJcx74NKY331zx4FOXbUrmGgiNoYRFIR23umPK4Ula9wFwRalg9rUfjuUxArch1oseCmoi/lhRcXLUDFEGswtjiLFGdA1VXirz9hsK9vo96d4EgGxXDhskl3rpoyqxQOdjKnLRXY5f9QUO7e4n3gxobbbqso+22w8qx290pyRnuGZYQghgUwtjhA5al6h3TDNj6fRBjqRAYaVAEWfkrjdPMTNpoB4ts2WCb6GifdhpmiqRKxPrBAHyPPDn+a6tlAGf4nRs11wSYWsgy/M9QKCY2sWe4UiZmrQX59hj8FjNsOlb1TtzroktMMa3qfXlKtg5/Fc4hAI2ictxRHJHTepH0ni3vMUeK/2tqIvDYKIJvMB6zgkOHLN/X4HfCWnGfzhMS8LnITAKGM="
+declare -x AZURE_EXTENSION_DIR="/opt/az/azcliextensions"
+declare -x BOOTSTRAP_HASKELL_NONINTERACTIVE="1"
+declare -x CHROMEWEBDRIVER="/usr/local/share/chromedriver-linux64"
+declare -x CHROME_BIN="/usr/bin/google-chrome"
+declare -x CI="true"
+declare -x CONDA="/usr/share/miniconda"
+declare -x DEBIAN_FRONTEND="noninteractive"
+declare -x DOTNET_MULTILEVEL_LOOKUP="0"
+declare -x DOTNET_NOLOGO="1"
+declare -x DOTNET_SKIP_FIRST_TIME_EXPERIENCE="1"
+declare -x EDGEWEBDRIVER="/usr/local/share/edge_driver"
+declare -x ENABLE_RUNNER_TRACING="true"
+declare -x GECKOWEBDRIVER="/usr/local/share/gecko_driver"
+declare -x GHCUP_INSTALL_BASE_PREFIX="/usr/local"
+declare -x GITHUB_ACTION="__run_2"
+declare -x GITHUB_ACTIONS="true"
+declare -x GITHUB_ACTION_REF=""
+declare -x GITHUB_ACTION_REPOSITORY=""
+declare -x GITHUB_ACTOR="estohlmann"
+declare -x GITHUB_ACTOR_ID="14100972"
+declare -x GITHUB_API_URL="https://api.github.com"
+declare -x GITHUB_BASE_REF=""
+declare -x GITHUB_ENV="/home/runner/work/_temp/_runner_file_commands/set_env_8e4d49b9-2d66-4477-bb5e-8cfe9c66bdca"
+declare -x GITHUB_EVENT_NAME="workflow_dispatch"
+declare -x GITHUB_EVENT_PATH="/home/runner/work/_temp/_github_workflow/event.json"
+declare -x GITHUB_GRAPHQL_URL="https://api.github.com/graphql"
+declare -x GITHUB_HEAD_REF=""
+declare -x GITHUB_JOB="MakeNewReleaseBranch"
+declare -x GITHUB_OUTPUT="/home/runner/work/_temp/_runner_file_commands/set_output_8e4d49b9-2d66-4477-bb5e-8cfe9c66bdca"
+declare -x GITHUB_PATH="/home/runner/work/_temp/_runner_file_commands/add_path_8e4d49b9-2d66-4477-bb5e-8cfe9c66bdca"
+declare -x GITHUB_REF="refs/heads/develop"
+declare -x GITHUB_REF_NAME="develop"
+declare -x GITHUB_REF_PROTECTED="true"
+declare -x GITHUB_REF_TYPE="branch"
+declare -x GITHUB_REPOSITORY="awslabs/LISA"
+declare -x GITHUB_REPOSITORY_ID="800657426"
+declare -x GITHUB_REPOSITORY_OWNER="awslabs"
+declare -x GITHUB_REPOSITORY_OWNER_ID="3299148"
+declare -x GITHUB_RETENTION_DAYS="90"
+declare -x GITHUB_RUN_ATTEMPT="2"
+declare -x GITHUB_RUN_ID="27303811673"
+declare -x GITHUB_RUN_NUMBER="65"
+declare -x GITHUB_SERVER_URL="https://github.com"
+declare -x GITHUB_SHA="d3ec828266cfff7fbd894cee6d9914b53d0dbbcc"
+declare -x GITHUB_STATE="/home/runner/work/_temp/_runner_file_commands/save_state_8e4d49b9-2d66-4477-bb5e-8cfe9c66bdca"
+declare -x GITHUB_STEP_SUMMARY="/home/runner/work/_temp/_runner_file_commands/step_summary_8e4d49b9-2d66-4477-bb5e-8cfe9c66bdca"
+declare -x GITHUB_TRIGGERING_ACTOR="estohlmann"
+declare -x GITHUB_WORKFLOW="Make Release Branch"
+declare -x GITHUB_WORKFLOW_REF="awslabs/LISA/.github/workflows/code.release.branch.yml@refs/heads/develop"
+declare -x GITHUB_WORKFLOW_SHA="d3ec828266cfff7fbd894cee6d9914b53d0dbbcc"
+declare -x GITHUB_WORKSPACE="/home/runner/work/LISA/LISA"
+declare -x GOROOT_1_22_X64="/opt/hostedtoolcache/go/1.22.12/x64"
+declare -x GOROOT_1_23_X64="/opt/hostedtoolcache/go/1.23.12/x64"
+declare -x GOROOT_1_24_X64="/opt/hostedtoolcache/go/1.24.13/x64"
+declare -x GOROOT_1_25_X64="/opt/hostedtoolcache/go/1.25.10/x64"
+declare -x GRADLE_HOME="/usr/share/gradle-9.5.1"
+declare -x HOME="/home/runner"
+declare -x HOMEBREW_CLEANUP_PERIODIC_FULL_DAYS="3650"
+declare -x HOMEBREW_NO_AUTO_UPDATE="1"
+declare -x INVOCATION_ID="a62f0c9147f3428ea44c407352e6435a"
+declare -x ImageOS="ubuntu24"
+declare -x ImageVersion="20260525.161.1"
+declare -x JAVA_HOME="/usr/lib/jvm/temurin-17-jdk-amd64"
+declare -x JAVA_HOME_11_X64="/usr/lib/jvm/temurin-11-jdk-amd64"
+declare -x JAVA_HOME_17_X64="/usr/lib/jvm/temurin-17-jdk-amd64"
+declare -x JAVA_HOME_21_X64="/usr/lib/jvm/temurin-21-jdk-amd64"
+declare -x JAVA_HOME_25_X64="/usr/lib/jvm/temurin-25-jdk-amd64"
+declare -x JAVA_HOME_8_X64="/usr/lib/jvm/temurin-8-jdk-amd64"
+declare -x JOURNAL_STREAM="9:13712"
+declare -x LANG="C.UTF-8"
+declare -x LOGNAME="runner"
+declare -x MEMORY_PRESSURE_WATCH="/sys/fs/cgroup/system.slice/hosted-compute-agent.service/memory.pressure"
+declare -x MEMORY_PRESSURE_WRITE="c29tZSAyMDAwMDAgMjAwMDAwMAA="
+declare -x NVM_DIR="/home/runner/.nvm"
+declare -x OLDPWD
+declare -x PATH="/snap/bin:/home/runner/.local/bin:/opt/pipx_bin:/home/runner/.cargo/bin:/home/runner/.config/composer/vendor/bin:/usr/local/.ghcup/bin:/home/runner/.dotnet/tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin"
+declare -x PIPX_BIN_DIR="/opt/pipx_bin"
+declare -x PIPX_HOME="/opt/pipx"
+declare -x POWERSHELL_DISTRIBUTION_CHANNEL="GitHub-Actions-Linux"
+declare -x PSModulePath="/root/.local/share/powershell/Modules:/usr/local/share/powershell/Modules:/opt/microsoft/powershell/7/Modules:/usr/share/az_14.6.0"
+declare -x PWD="/home/runner/work/LISA/LISA"
+declare -x RUNNER_ARCH="X64"
+declare -x RUNNER_ENVIRONMENT="github-hosted"
+declare -x RUNNER_NAME="GitHub Actions 1020617025"
+declare -x RUNNER_OS="Linux"
+declare -x RUNNER_TEMP="/home/runner/work/_temp"
+declare -x RUNNER_TOOL_CACHE="/opt/hostedtoolcache"
+declare -x RUNNER_TRACKING_ID="github_d1c4cd78-6dc5-4007-8936-0e352760b785"
+declare -x RUNNER_WORKSPACE="/home/runner/work/LISA"
+declare -x SELENIUM_JAR_PATH="/usr/share/java/selenium-server.jar"
+declare -x SGX_AESM_ADDR="1"
+declare -x SHELL="/bin/bash"
+declare -x SHLVL="1"
+declare -x SWIFT_PATH="/usr/share/swift/usr/bin"
+declare -x SYSTEMD_EXEC_PID="2092"
+declare -x USER="runner"
+declare -x USE_BAZEL_FALLBACK_VERSION="silent:"
+declare -x VCPKG_INSTALLATION_ROOT="/usr/local/share/vcpkg"
+declare -x XDG_CONFIG_HOME="/home/runner/.config"
+declare -x XDG_RUNTIME_DIR="/run/user/1001" block format
+- **Tooling**: Updated automated PR description generation script
+
+## Acknowledgements
+* @121983012+jmharold
+* @32586639+gingerknight
+* @bedanley
+* @drduhe
+* @estohlmann
+* @evmann
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v6.6.0..v6.7.0
+
 # v6.6.0
 
 ## Key Features

@@ -257,6 +257,21 @@
       "UpdateReplacePolicy": "Delete",
       "DeletionPolicy": "Delete"
     },
+    "LisaSharedLayer77E20FF2": {
+      "Type": "AWS::Lambda::LayerVersion",
+      "Properties": {
+        "CompatibleRuntimes": [
+          "python3.13"
+        ],
+        "Content": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "c8b2cb0f18d549331e7bd30d920404cfce1bec714a1b48aed150abfee482fb9d.zip"
+        },
+        "Description": "LISA shared Python source modules (lisa.*)"
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
     "CdkLayer83325AB8": {
       "Type": "AWS::Lambda::LayerVersion",
       "Properties": {
@@ -313,6 +328,17 @@
         "Type": "String",
         "Value": {
           "Ref": "CdkLayer83325AB8"
+        }
+      }
+    },
+    "LisaSharedLambdaLayerStringParameter9378D8A5": {
+      "Type": "AWS::SSM::Parameter",
+      "Properties": {
+        "Description": "Layer Version ARN for LISA first-party shared Python source layer",
+        "Name": "/dev/test-lisa/lisa/layerVersion/lisa-shared",
+        "Type": "String",
+        "Value": {
+          "Ref": "LisaSharedLayer77E20FF2"
         }
       }
     }

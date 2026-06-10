@@ -892,7 +892,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "c4e3ab80872af11514ffac476067b5f3e95d8a57ca6dbc62b1caeb2d7f58d36d.zip"
         },
         "Description": "Lists available MCP Workbench tools",
         "Environment": {
@@ -904,8 +904,11 @@
           }
         },
         "FunctionName": "LisaMcpWorkbench-mcp_workbench-list",
-        "Handler": "mcp_workbench.lambda_functions.list",
+        "Handler": "lambda_functions.list",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -974,7 +977,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "c4e3ab80872af11514ffac476067b5f3e95d8a57ca6dbc62b1caeb2d7f58d36d.zip"
         },
         "Description": "Create MCP Workbench tools",
         "Environment": {
@@ -986,8 +989,11 @@
           }
         },
         "FunctionName": "LisaMcpWorkbench-mcp_workbench-create",
-        "Handler": "mcp_workbench.lambda_functions.create",
+        "Handler": "lambda_functions.create",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -1056,7 +1062,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "c4e3ab80872af11514ffac476067b5f3e95d8a57ca6dbc62b1caeb2d7f58d36d.zip"
         },
         "Description": "Get MCP Workbench tool",
         "Environment": {
@@ -1068,8 +1074,11 @@
           }
         },
         "FunctionName": "LisaMcpWorkbench-mcp_workbench-read",
-        "Handler": "mcp_workbench.lambda_functions.read",
+        "Handler": "lambda_functions.read",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -1138,7 +1147,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "c4e3ab80872af11514ffac476067b5f3e95d8a57ca6dbc62b1caeb2d7f58d36d.zip"
         },
         "Description": "Update MCP Workbench tool",
         "Environment": {
@@ -1150,8 +1159,11 @@
           }
         },
         "FunctionName": "LisaMcpWorkbench-mcp_workbench-update",
-        "Handler": "mcp_workbench.lambda_functions.update",
+        "Handler": "lambda_functions.update",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -1220,7 +1232,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "c4e3ab80872af11514ffac476067b5f3e95d8a57ca6dbc62b1caeb2d7f58d36d.zip"
         },
         "Description": "Delete MCP Workbench tool",
         "Environment": {
@@ -1232,8 +1244,11 @@
           }
         },
         "FunctionName": "LisaMcpWorkbench-mcp_workbench-delete",
-        "Handler": "mcp_workbench.lambda_functions.delete",
+        "Handler": "lambda_functions.delete",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -1302,7 +1317,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "c4e3ab80872af11514ffac476067b5f3e95d8a57ca6dbc62b1caeb2d7f58d36d.zip"
         },
         "Description": "Validate Python code syntax",
         "Environment": {
@@ -1314,8 +1329,11 @@
           }
         },
         "FunctionName": "LisaMcpWorkbench-mcp_workbench-validate_syntax",
-        "Handler": "mcp_workbench.lambda_functions.validate_syntax",
+        "Handler": "lambda_functions.validate_syntax",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -1587,7 +1605,7 @@
           "Ref": "SsmParameterValueawsserviceecsoptimizedamiamazonlinux2recommendedimageidC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
         "InstanceMonitoring": true,
-        "InstanceType": "m5.xlarge",
+        "InstanceType": "m6id.xlarge",
         "SecurityGroups": [
           {
             "Fn::GetAtt": [
@@ -1836,7 +1854,15 @@
         "TargetGroupAttributes": [
           {
             "Key": "stickiness.enabled",
-            "Value": "false"
+            "Value": "true"
+          },
+          {
+            "Key": "stickiness.type",
+            "Value": "lb_cookie"
+          },
+          {
+            "Key": "stickiness.lb_cookie.duration_seconds",
+            "Value": "86400"
           }
         ],
         "TargetType": "instance",
@@ -2104,7 +2130,7 @@
                 "Value": "*"
               },
               {
-                "Name": "RCLONE_CONFIG_S3_REGION",
+                "Name": "RCLONE_S3_REGION",
                 "Value": "us-iso-east-1"
               },
               {
@@ -2124,7 +2150,7 @@
               "Timeout": 5
             },
             "Image": {
-              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:dfd62ac1328fb8518b674f748ff6df2f0dcf56016b3866e13944e7726ef0e6da"
+              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:804f2c626f3e739ceaf6dcea969aa3104cb883ddd09f4af00429a0dd3041c3ae"
             },
             "LogConfiguration": {
               "LogDriver": "awslogs",
@@ -2427,7 +2453,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "1168f99fcbb47580048d30d01fade537ef4c6786fe3cc572fba4f1441f013735.zip"
+          "S3Key": "c4e3ab80872af11514ffac476067b5f3e95d8a57ca6dbc62b1caeb2d7f58d36d.zip"
         },
         "Environment": {
           "Variables": {
@@ -2452,12 +2478,16 @@
             }
           }
         },
-        "Handler": "mcp_workbench.s3_event_handler.handler",
+        "Handler": "s3_event_handler.handler",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
             "McpWorkbenchS3EventHandlerRole545174C5",
@@ -2955,6 +2985,10 @@
     "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter": {
       "Type": "AWS::SSM::Parameter::Value<String>",
       "Default": "/dev/test-lisa/lisa/layerVersion/fastapi"
+    },
+    "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/layerVersion/lisa-shared"
     },
     "SsmParameterValuedevtestlisalisaappManagementKeySecretNameC96584B6F00A464EAD1953AFF4B05118Parameter": {
       "Type": "AWS::SSM::Parameter::Value<String>",

@@ -307,7 +307,7 @@
           "Ref": "SsmParameterValueawsserviceecsoptimizedamiamazonlinux2recommendedimageidC96584B6F00A464EAD1953AFF4B05118Parameter"
         },
         "InstanceMonitoring": true,
-        "InstanceType": "m5.xlarge",
+        "InstanceType": "m6id.xlarge",
         "SecurityGroups": [
           {
             "Fn::GetAtt": [
@@ -1061,7 +1061,7 @@
               "Timeout": 5
             },
             "Image": {
-              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:644d776ce6ba98bbdfb39215daa662b762e4b21c9d2ebbaba0d428bb700249ca"
+              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:2bd37b560cbe774402cd685ccdc2e2367c1c16d9bea88d97a4b0df95c1d7d91a"
             },
             "LogConfiguration": {
               "LogDriver": "awslogs",
@@ -1640,7 +1640,7 @@
                   }
                 ]
               },
-              "\\\",\\\"timestamp\\\":\\\"2026-04-23T21:40:13.034Z\\\"}\"}}"
+              "\\\",\\\"timestamp\\\":\\\"2026-06-10T20:25:21.697Z\\\"}\"}}"
             ]
           ]
         },
@@ -1687,7 +1687,7 @@
                   }
                 ]
               },
-              "\\\",\\\"timestamp\\\":\\\"2026-04-23T21:40:13.034Z\\\"}\"}}"
+              "\\\",\\\"timestamp\\\":\\\"2026-06-10T20:25:21.697Z\\\"}\"}}"
             ]
           ]
         },

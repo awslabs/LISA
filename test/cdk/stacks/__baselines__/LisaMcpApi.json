@@ -686,7 +686,7 @@
             "LISA_SECURITY_GROUP_ID": {
               "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcEcsModelAlbSg5FC4C18EGroupId3AE6D77A"
             },
-            "LISA_CONFIG": "{\"appName\":\"lisa\",\"deploymentName\":\"test-lisa\",\"deploymentPrefix\":\"/dev/test-lisa/lisa\",\"region\":\"us-iso-east-1\",\"deploymentStage\":\"dev\",\"removalPolicy\":\"destroy\",\"certificateAuthorityBundle\":\"\",\"pypiConfig\":{\"indexUrl\":\"localhost:8080\",\"trustedHost\":\"localhost\"},\"corsAllowedOrigins\":[\"*\"],\"convertInlinePoliciesToManaged\":false}",
+            "LISA_CONFIG": "{\"appName\":\"lisa\",\"deploymentName\":\"test-lisa\",\"deploymentPrefix\":\"/dev/test-lisa/lisa\",\"region\":\"us-iso-east-1\",\"deploymentStage\":\"dev\",\"removalPolicy\":\"destroy\",\"certificateAuthorityBundle\":\"\",\"pypiConfig\":{\"indexUrl\":\"localhost:8080\",\"trustedHost\":\"localhost\"},\"corsAllowedOrigins\":\"*\",\"convertInlinePoliciesToManaged\":false}",
             "LISA_REST_API_ID": {
               "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
             },
@@ -915,7 +915,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Environment": {
           "Variables": {
@@ -935,8 +935,11 @@
             "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
           }
         },
-        "Handler": "mcp_server.state_machine.create_mcp_server.handle_set_server_to_creating",
+        "Handler": "state_machine.create_mcp_server.handle_set_server_to_creating",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -981,7 +984,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Environment": {
           "Variables": {
@@ -1001,8 +1004,11 @@
             "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
           }
         },
-        "Handler": "mcp_server.state_machine.create_mcp_server.handle_deploy_server",
+        "Handler": "state_machine.create_mcp_server.handle_deploy_server",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -1047,7 +1053,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Environment": {
           "Variables": {
@@ -1067,8 +1073,11 @@
             "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
           }
         },
-        "Handler": "mcp_server.state_machine.create_mcp_server.handle_poll_deployment",
+        "Handler": "state_machine.create_mcp_server.handle_poll_deployment",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -1113,7 +1122,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Environment": {
           "Variables": {
@@ -1133,8 +1142,11 @@
             "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
           }
         },
-        "Handler": "mcp_server.state_machine.create_mcp_server.handle_add_server_to_active",
+        "Handler": "state_machine.create_mcp_server.handle_add_server_to_active",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -1179,7 +1191,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Environment": {
           "Variables": {
@@ -1199,8 +1211,11 @@
             "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
           }
         },
-        "Handler": "mcp_server.state_machine.create_mcp_server.handle_failure",
+        "Handler": "state_machine.create_mcp_server.handle_failure",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -1488,7 +1503,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Environment": {
           "Variables": {
@@ -1498,8 +1513,11 @@
             "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
           }
         },
-        "Handler": "mcp_server.state_machine.delete_mcp_server.handle_set_server_to_deleting",
+        "Handler": "state_machine.delete_mcp_server.handle_set_server_to_deleting",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -1544,7 +1562,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Environment": {
           "Variables": {
@@ -1554,8 +1572,11 @@
             "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
           }
         },
-        "Handler": "mcp_server.state_machine.delete_mcp_server.handle_delete_stack",
+        "Handler": "state_machine.delete_mcp_server.handle_delete_stack",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -1600,7 +1621,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Environment": {
           "Variables": {
@@ -1610,8 +1631,11 @@
             "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
           }
         },
-        "Handler": "mcp_server.state_machine.delete_mcp_server.handle_monitor_delete_stack",
+        "Handler": "state_machine.delete_mcp_server.handle_monitor_delete_stack",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -1656,7 +1680,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Environment": {
           "Variables": {
@@ -1666,8 +1690,11 @@
             "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
           }
         },
-        "Handler": "mcp_server.state_machine.delete_mcp_server.handle_delete_from_ddb",
+        "Handler": "state_machine.delete_mcp_server.handle_delete_from_ddb",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -1918,7 +1945,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Environment": {
           "Variables": {
@@ -1928,13 +1955,16 @@
             "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
           }
         },
-        "Handler": "mcp_server.state_machine.update_mcp_server.handle_job_intake",
+        "Handler": "state_machine.update_mcp_server.handle_job_intake",
         "Layers": [
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
         "MemorySize": 128,
@@ -1974,7 +2004,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Environment": {
           "Variables": {
@@ -1984,13 +2014,16 @@
             "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
           }
         },
-        "Handler": "mcp_server.state_machine.update_mcp_server.handle_poll_capacity",
+        "Handler": "state_machine.update_mcp_server.handle_poll_capacity",
         "Layers": [
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
         "MemorySize": 128,
@@ -2030,7 +2063,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Environment": {
           "Variables": {
@@ -2040,13 +2073,16 @@
             "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
           }
         },
-        "Handler": "mcp_server.state_machine.update_mcp_server.handle_ecs_update",
+        "Handler": "state_machine.update_mcp_server.handle_ecs_update",
         "Layers": [
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
         "MemorySize": 128,
@@ -2086,7 +2122,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Environment": {
           "Variables": {
@@ -2096,13 +2132,16 @@
             "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
           }
         },
-        "Handler": "mcp_server.state_machine.update_mcp_server.handle_poll_ecs_deployment",
+        "Handler": "state_machine.update_mcp_server.handle_poll_ecs_deployment",
         "Layers": [
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
         "MemorySize": 128,
@@ -2142,7 +2181,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Environment": {
           "Variables": {
@@ -2152,13 +2191,16 @@
             "DEPLOYMENT_PREFIX": "/dev/test-lisa/lisa"
           }
         },
-        "Handler": "mcp_server.state_machine.update_mcp_server.handle_finish_update",
+        "Handler": "state_machine.update_mcp_server.handle_finish_update",
         "Layers": [
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
         "MemorySize": 128,
@@ -2523,7 +2565,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Description": "Create LISA MCP hosted server",
         "Environment": {
@@ -2549,8 +2591,11 @@
           }
         },
         "FunctionName": "LisaMcpApi-mcp_server-create_hosted_mcp_server",
-        "Handler": "mcp_server.lambda_functions.create_hosted_mcp_server",
+        "Handler": "lambda_functions.create_hosted_mcp_server",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -2618,7 +2663,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Description": "List LISA MCP hosted servers",
         "Environment": {
@@ -2644,8 +2689,11 @@
           }
         },
         "FunctionName": "LisaMcpApi-mcp_server-list_hosted_mcp_servers",
-        "Handler": "mcp_server.lambda_functions.list_hosted_mcp_servers",
+        "Handler": "lambda_functions.list_hosted_mcp_servers",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -2713,7 +2761,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Description": "Get LISA MCP hosted server by ID",
         "Environment": {
@@ -2739,8 +2787,11 @@
           }
         },
         "FunctionName": "LisaMcpApi-mcp_server-get_hosted_mcp_server",
-        "Handler": "mcp_server.lambda_functions.get_hosted_mcp_server",
+        "Handler": "lambda_functions.get_hosted_mcp_server",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -2808,7 +2859,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Description": "Delete LISA MCP hosted server by ID",
         "Environment": {
@@ -2834,8 +2885,11 @@
           }
         },
         "FunctionName": "LisaMcpApi-mcp_server-delete_hosted_mcp_server",
-        "Handler": "mcp_server.lambda_functions.delete_hosted_mcp_server",
+        "Handler": "lambda_functions.delete_hosted_mcp_server",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -2903,7 +2957,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Description": "Update LISA MCP hosted server by ID",
         "Environment": {
@@ -2929,8 +2983,11 @@
           }
         },
         "FunctionName": "LisaMcpApi-mcp_server-update_hosted_mcp_server",
-        "Handler": "mcp_server.lambda_functions.update_hosted_mcp_server",
+        "Handler": "lambda_functions.update_hosted_mcp_server",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -3364,6 +3421,10 @@
     "SsmParameterValuedevtestlisalisalayerVersioncdkC96584B6F00A464EAD1953AFF4B05118Parameter": {
       "Type": "AWS::SSM::Parameter::Value<String>",
       "Default": "/dev/test-lisa/lisa/layerVersion/cdk"
+    },
+    "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/layerVersion/lisa-shared"
     },
     "BootstrapVersion": {
       "Type": "AWS::SSM::Parameter::Value<String>",

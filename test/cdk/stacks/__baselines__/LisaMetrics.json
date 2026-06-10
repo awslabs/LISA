@@ -687,7 +687,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "2dff0542585f05b11815683783e7057bf311a66ae38587d9ab4740276159bffb.zip"
         },
         "Description": "Gets metrics for a specific user",
         "Environment": {
@@ -703,8 +703,11 @@
           }
         },
         "FunctionName": "LisaMetrics-metrics-get_user_metrics",
-        "Handler": "metrics.lambda_functions.get_user_metrics",
+        "Handler": "lambda_functions.get_user_metrics",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
@@ -770,7 +773,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "2dff0542585f05b11815683783e7057bf311a66ae38587d9ab4740276159bffb.zip"
         },
         "Description": "Gets aggregated metrics across all users",
         "Environment": {
@@ -786,8 +789,11 @@
           }
         },
         "FunctionName": "LisaMetrics-metrics-get_user_metrics_all",
-        "Handler": "metrics.lambda_functions.get_user_metrics_all",
+        "Handler": "lambda_functions.get_user_metrics_all",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
@@ -853,7 +859,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "2dff0542585f05b11815683783e7057bf311a66ae38587d9ab4740276159bffb.zip"
         },
         "Environment": {
           "Variables": {
@@ -867,12 +873,16 @@
             "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
-        "Handler": "metrics/lambda_functions.daily_metrics_handler",
+        "Handler": "lambda_functions.daily_metrics_handler",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
             "LisaMetricsLisaLisaMetricsApiLambdaExecutionRoleLambdaExecutionRoleB2BF8012",
@@ -947,7 +957,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "2dff0542585f05b11815683783e7057bf311a66ae38587d9ab4740276159bffb.zip"
         },
         "Environment": {
           "Variables": {
@@ -961,12 +971,16 @@
             "LISA_AUDIT_INCLUDE_JSON_BODY": "false"
           }
         },
-        "Handler": "metrics.lambda_functions.process_metrics_sqs_event",
+        "Handler": "lambda_functions.process_metrics_sqs_event",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
+        "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
             "LisaMetricsLisaLisaMetricsApiLambdaExecutionRoleLambdaExecutionRoleB2BF8012",
@@ -1310,6 +1324,10 @@
     "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter": {
       "Type": "AWS::SSM::Parameter::Value<String>",
       "Default": "/dev/test-lisa/lisa/layerVersion/common"
+    },
+    "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/layerVersion/lisa-shared"
     },
     "BootstrapVersion": {
       "Type": "AWS::SSM::Parameter::Value<String>",

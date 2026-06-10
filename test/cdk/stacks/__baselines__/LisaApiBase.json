@@ -450,7 +450,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "419beb06646b3161c2148473a0c63ad167526a006b071d795eeaa14ac6773124.zip"
         },
         "Environment": {
           "Variables": {
@@ -459,7 +459,13 @@
             }
           }
         },
-        "Handler": "management_key.handler",
+        "Handler": "handler.handler",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
         "Role": {
           "Fn::GetAtt": [
             "LisaApiBasemanagementKeyRotationRole5AABDC6F",
@@ -671,13 +677,16 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "5f05c258e2541006e6a911645a78a26a3c0c644d5671f9d4eeafd77af8b5dfc5.zip"
         },
         "FunctionName": "test-lisa-dev-iam_auth_setup",
-        "Handler": "utilities.db_setup_iam_auth.handler",
+        "Handler": "lambda_functions.handler",
         "Layers": [
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
         "MemorySize": 256,
@@ -931,7 +940,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "670ab64bfc1dc7ba6fd9ccc81e946857905c1734808e541b59ac1433d86132fd.zip"
         },
         "Description": "REST API and UI Authorization Lambda",
         "Environment": {
@@ -954,8 +963,11 @@
           }
         },
         "FunctionName": "LisaApiBase-lambda-authorizer",
-        "Handler": "authorizer.lambda_functions.lambda_handler",
+        "Handler": "lambda_functions.lambda_handler",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionauthorizerC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -1250,6 +1262,10 @@
     }
   },
   "Parameters": {
+    "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/layerVersion/lisa-shared"
+    },
     "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter": {
       "Type": "AWS::SSM::Parameter::Value<String>",
       "Default": "/dev/test-lisa/lisa/layerVersion/common"

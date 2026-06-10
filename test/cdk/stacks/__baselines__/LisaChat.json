@@ -1990,7 +1990,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Description": "Lists available mcp servers for user",
         "Environment": {
@@ -2011,8 +2011,11 @@
           }
         },
         "FunctionName": "LisaChat-mcp_server-list_mcp_servers",
-        "Handler": "mcp_server.lambda_functions.list_mcp_servers",
+        "Handler": "lambda_functions.list_mcp_servers",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -2083,7 +2086,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Description": "Returns the selected mcp server",
         "Environment": {
@@ -2104,8 +2107,11 @@
           }
         },
         "FunctionName": "LisaChat-mcp_server-get",
-        "Handler": "mcp_server.lambda_functions.get",
+        "Handler": "lambda_functions.get",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -2176,7 +2182,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Description": "Creates the mcp server",
         "Environment": {
@@ -2197,8 +2203,11 @@
           }
         },
         "FunctionName": "LisaChat-mcp_server-create",
-        "Handler": "mcp_server.lambda_functions.create",
+        "Handler": "lambda_functions.create",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -2269,7 +2278,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Description": "Deletes selected mcp server",
         "Environment": {
@@ -2290,8 +2299,11 @@
           }
         },
         "FunctionName": "LisaChat-mcp_server-delete",
-        "Handler": "mcp_server.lambda_functions.delete",
+        "Handler": "lambda_functions.delete",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -2362,7 +2374,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Description": "Creates or updates selected mcp server",
         "Environment": {
@@ -2383,8 +2395,11 @@
           }
         },
         "FunctionName": "LisaChat-mcp_server-update",
-        "Handler": "mcp_server.lambda_functions.update",
+        "Handler": "lambda_functions.update",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -2455,7 +2470,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Description": "Admin: upsert Bedrock agent catalog entry",
         "Environment": {
@@ -2476,8 +2491,11 @@
           }
         },
         "FunctionName": "LisaChat-mcp_server-put_bedrock_agent_approval",
-        "Handler": "mcp_server.lambda_functions.put_bedrock_agent_approval",
+        "Handler": "lambda_functions.put_bedrock_agent_approval",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -2548,7 +2566,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Description": "Admin: remove Bedrock agent from catalog",
         "Environment": {
@@ -2569,8 +2587,11 @@
           }
         },
         "FunctionName": "LisaChat-mcp_server-delete_bedrock_agent_approval",
-        "Handler": "mcp_server.lambda_functions.delete_bedrock_agent_approval",
+        "Handler": "lambda_functions.delete_bedrock_agent_approval",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -2641,7 +2662,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Description": "Admin: list all Bedrock agent catalog entries",
         "Environment": {
@@ -2662,8 +2683,11 @@
           }
         },
         "FunctionName": "LisaChat-mcp_server-list_bedrock_agent_approvals",
-        "Handler": "mcp_server.lambda_functions.list_bedrock_agent_approvals",
+        "Handler": "lambda_functions.list_bedrock_agent_approvals",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -2734,7 +2758,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Description": "Admin: full Bedrock agent account scan",
         "Environment": {
@@ -2755,8 +2779,11 @@
           }
         },
         "FunctionName": "LisaChat-mcp_server-list_bedrock_agents_discovery",
-        "Handler": "mcp_server.lambda_functions.list_bedrock_agents_discovery",
+        "Handler": "lambda_functions.list_bedrock_agents_discovery",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -2827,7 +2854,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Description": "Invoke a Bedrock Agent and return aggregated text",
         "Environment": {
@@ -2848,8 +2875,11 @@
           }
         },
         "FunctionName": "LisaChat-mcp_server-invoke_bedrock_agent",
-        "Handler": "mcp_server.lambda_functions.invoke_bedrock_agent",
+        "Handler": "lambda_functions.invoke_bedrock_agent",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -2920,7 +2950,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "086c3a18ef5b42d08d624bc1cb475734d3ffa937597d658659b3528ab480e460.zip"
         },
         "Description": "List approved Bedrock agents for the current user",
         "Environment": {
@@ -2941,8 +2971,11 @@
           }
         },
         "FunctionName": "LisaChat-mcp_server-list_bedrock_agents",
-        "Handler": "mcp_server.lambda_functions.list_bedrock_agents",
+        "Handler": "lambda_functions.list_bedrock_agents",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -3346,7 +3379,7 @@
               {
                 "Ref": "ConfigurationApiConfigurationTable4B2B7EE1"
               },
-              "\",\"Item\":{\"versionId\":{\"N\":\"0\"},\"changedBy\":{\"S\":\"System\"},\"configScope\":{\"S\":\"global\"},\"changeReason\":{\"S\":\"Initial deployment default config\"},\"createdAt\":{\"S\":\"1776980413\"},\"configuration\":{\"M\":{\"enabledComponents\":{\"M\":{\"deleteSessionHistory\":{\"BOOL\":\"True\"},\"viewMetaData\":{\"BOOL\":\"True\"},\"editKwargs\":{\"BOOL\":\"True\"},\"editPromptTemplate\":{\"BOOL\":\"True\"},\"editChatHistoryBuffer\":{\"BOOL\":\"True\"},\"editNumOfRagDocument\":{\"BOOL\":\"True\"},\"uploadRagDocs\":{\"BOOL\":\"True\"},\"ragSelectionAvailable\":{\"BOOL\":\"True\"},\"uploadContextDocs\":{\"BOOL\":\"True\"},\"documentSummarization\":{\"BOOL\":\"True\"},\"showRagLibrary\":{\"BOOL\":\"True\"},\"showMcpWorkbench\":{\"BOOL\":\"True\"},\"showPromptTemplateLibrary\":{\"BOOL\":\"True\"},\"mcpConnections\":{\"BOOL\":\"True\"},\"bedrockAgents\":{\"BOOL\":\"True\"},\"awsSessions\":{\"BOOL\":\"False\"},\"modelLibrary\":{\"BOOL\":\"True\"},\"encryptSession\":{\"BOOL\":\"False\"},\"chatAssistantStacks\":{\"BOOL\":\"False\"},\"projectOrganization\":{\"BOOL\":\"False\"}}},\"maxProjectsPerUser\":{\"N\":\"50\"},\"systemBanner\":{\"M\":{\"isEnabled\":{\"BOOL\":\"False\"},\"text\":{\"S\":\"\"},\"textColor\":{\"S\":\"\"},\"backgroundColor\":{\"S\":\"\"}}}}}}}}"
+              "\",\"Item\":{\"versionId\":{\"N\":\"0\"},\"changedBy\":{\"S\":\"System\"},\"configScope\":{\"S\":\"global\"},\"changeReason\":{\"S\":\"Initial deployment default config\"},\"createdAt\":{\"S\":\"1781123122\"},\"configuration\":{\"M\":{\"enabledComponents\":{\"M\":{\"deleteSessionHistory\":{\"BOOL\":\"True\"},\"viewMetaData\":{\"BOOL\":\"True\"},\"editKwargs\":{\"BOOL\":\"True\"},\"editPromptTemplate\":{\"BOOL\":\"True\"},\"editNumOfRagDocument\":{\"BOOL\":\"True\"},\"uploadRagDocs\":{\"BOOL\":\"True\"},\"ragSelectionAvailable\":{\"BOOL\":\"True\"},\"uploadContextDocs\":{\"BOOL\":\"True\"},\"documentSummarization\":{\"BOOL\":\"True\"},\"showRagLibrary\":{\"BOOL\":\"True\"},\"showMcpWorkbench\":{\"BOOL\":\"True\"},\"showPromptTemplateLibrary\":{\"BOOL\":\"True\"},\"mcpConnections\":{\"BOOL\":\"True\"},\"bedrockAgents\":{\"BOOL\":\"True\"},\"awsSessions\":{\"BOOL\":\"False\"},\"modelLibrary\":{\"BOOL\":\"True\"},\"encryptSession\":{\"BOOL\":\"False\"},\"chatAssistantStacks\":{\"BOOL\":\"False\"},\"projectOrganization\":{\"BOOL\":\"False\"},\"hybridSearch\":{\"BOOL\":\"True\"}}},\"maxProjectsPerUser\":{\"N\":\"50\"},\"systemBanner\":{\"M\":{\"isEnabled\":{\"BOOL\":\"False\"},\"text\":{\"S\":\"\"},\"textColor\":{\"S\":\"\"},\"backgroundColor\":{\"S\":\"\"}}}}}}}}"
             ]
           ]
         },
@@ -3658,7 +3691,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "a3fe1751eb7418f9eb916a846cfb6f106065b252e37e474ce3d6b108b3679e7a.zip"
         },
         "Description": "Get configuration",
         "Environment": {
@@ -3687,13 +3720,16 @@
           }
         },
         "FunctionName": "LisaChat-configuration-get_configuration",
-        "Handler": "configuration.lambda_functions.get_configuration",
+        "Handler": "lambda_functions.get_configuration",
         "Layers": [
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
         "MemorySize": 512,
@@ -3757,7 +3793,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "a3fe1751eb7418f9eb916a846cfb6f106065b252e37e474ce3d6b108b3679e7a.zip"
         },
         "Description": "Updates config data",
         "Environment": {
@@ -3786,13 +3822,16 @@
           }
         },
         "FunctionName": "LisaChat-configuration-update_configuration",
-        "Handler": "configuration.lambda_functions.update_configuration",
+        "Handler": "lambda_functions.update_configuration",
         "Layers": [
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
         "MemorySize": 512,
@@ -3961,6 +4000,38 @@
           },
           {
             "AttributeName": "userId",
+            "KeyType": "RANGE"
+          }
+        ],
+        "SSESpecification": {
+          "SSEEnabled": true
+        }
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete"
+    },
+    "SessionApiSessionMessagesTable9164319A": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "sessionId",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "messageIndex",
+            "AttributeType": "N"
+          }
+        ],
+        "BillingMode": "PAY_PER_REQUEST",
+        "DeletionProtectionEnabled": false,
+        "KeySchema": [
+          {
+            "AttributeName": "sessionId",
+            "KeyType": "HASH"
+          },
+          {
+            "AttributeName": "messageIndex",
             "KeyType": "RANGE"
           }
         ],
@@ -4807,6 +4878,401 @@
         }
       }
     },
+    "SessionApiRestApisessionsessionIdmessages5B8CE9AB": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Ref": "SessionApiRestApisessionsessionId2D6ACCD9"
+        },
+        "PathPart": "messages",
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdmessagesOPTIONS5935333A": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "Integration": {
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+              },
+              "StatusCode": "204"
+            }
+          ],
+          "RequestTemplates": {
+            "application/json": "{ statusCode: 200 }"
+          },
+          "Type": "MOCK"
+        },
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "StatusCode": "204"
+          }
+        ],
+        "ResourceId": {
+          "Ref": "SessionApiRestApisessionsessionIdmessages5B8CE9AB"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdmessagesPOSTApiPermissionLisaChatSessionApiRestApiDD07298DPOSTsessionsessionIdmessages28CC42BF": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "SessionApiLisaChatsessionpostmessagesE4A9ACEE",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/POST/session/*/messages"
+            ]
+          ]
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdmessagesPOSTApiPermissionTestLisaChatSessionApiRestApiDD07298DPOSTsessionsessionIdmessagesF7F4B8ED": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "SessionApiLisaChatsessionpostmessagesE4A9ACEE",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/POST/session/*/messages"
+            ]
+          ]
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdmessagesPOST18229000": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "POST",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "SessionApiLisaChatsessionpostmessagesE4A9ACEE",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "SessionApiRestApisessionsessionIdmessages5B8CE9AB"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdmessagesGETApiPermissionLisaChatSessionApiRestApiDD07298DGETsessionsessionIdmessages347DDCB2": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "SessionApiLisaChatsessiongetmessages7DA9E7B8",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/GET/session/*/messages"
+            ]
+          ]
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdmessagesGETApiPermissionTestLisaChatSessionApiRestApiDD07298DGETsessionsessionIdmessages75077384": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "SessionApiLisaChatsessiongetmessages7DA9E7B8",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/GET/session/*/messages"
+            ]
+          ]
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdmessagesGETB6D30698": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "GET",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "SessionApiLisaChatsessiongetmessages7DA9E7B8",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "SessionApiRestApisessionsessionIdmessages5B8CE9AB"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdcompact259BF3E3": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Ref": "SessionApiRestApisessionsessionId2D6ACCD9"
+        },
+        "PathPart": "compact",
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdcompactOPTIONSDABCADB0": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "Integration": {
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+              },
+              "StatusCode": "204"
+            }
+          ],
+          "RequestTemplates": {
+            "application/json": "{ statusCode: 200 }"
+          },
+          "Type": "MOCK"
+        },
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Methods": true
+            },
+            "StatusCode": "204"
+          }
+        ],
+        "ResourceId": {
+          "Ref": "SessionApiRestApisessionsessionIdcompact259BF3E3"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdcompactPOSTApiPermissionLisaChatSessionApiRestApiDD07298DPOSTsessionsessionIdcompact5C7ECC37": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "SessionApiLisaChatsessioncompactsessionBDBFDA3A",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/*/POST/session/*/compact"
+            ]
+          ]
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdcompactPOSTApiPermissionTestLisaChatSessionApiRestApiDD07298DPOSTsessionsessionIdcompact912B8734": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "SessionApiLisaChatsessioncompactsessionBDBFDA3A",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:us-iso-east-1:012345678901:",
+              {
+                "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+              },
+              "/test-invoke-stage/POST/session/*/compact"
+            ]
+          ]
+        }
+      }
+    },
+    "SessionApiRestApisessionsessionIdcompactPOST9EF95D76": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiAuthorizerAPIGWAuthorizerE7001880E41EC3EB"
+        },
+        "HttpMethod": "POST",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:us-iso-east-1:lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "SessionApiLisaChatsessioncompactsessionBDBFDA3A",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "ResourceId": {
+          "Ref": "SessionApiRestApisessionsessionIdcompact259BF3E3"
+        },
+        "RestApiId": {
+          "Fn::ImportValue": "LisaApiBase:ExportsOutputRefLisaApiBaseRestApiBD7EFE4112A65F2C"
+        }
+      }
+    },
     "SessionApiRestApisessionDELETEApiPermissionLisaChatSessionApiRestApiDD07298DDELETEsession8799785A": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
@@ -5020,7 +5486,7 @@
               }
             },
             {
-              "Action": "dynamodb:BatchGetItem",
+              "Action": "dynamodb:GetItem",
               "Effect": "Allow",
               "Resource": {
                 "Fn::Join": [
@@ -5062,6 +5528,32 @@
                   "Arn"
                 ]
               }
+            },
+            {
+              "Action": [
+                "dynamodb:Query",
+                "dynamodb:PutItem",
+                "dynamodb:BatchWriteItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:GetItem"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "SessionApiSessionMessagesTable9164319A",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": "ssm:GetParameter",
+              "Effect": "Allow",
+              "Resource": "arn:aws:ssm:us-iso-east-1:012345678901:parameter/dev/test-lisa/lisa/*"
+            },
+            {
+              "Action": "iam:GetServerCertificate",
+              "Effect": "Allow",
+              "Resource": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev"
             },
             {
               "Action": [
@@ -5276,13 +5768,16 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "fb2195919babff02a060dd6a40c1f7c79cd6d1c4c681a301ff41f03b2cd9eb1e.zip"
         },
         "Description": "Lists available sessions for user",
         "Environment": {
           "Variables": {
             "SESSIONS_TABLE_NAME": {
               "Ref": "SessionApiSessionsTableDA695141"
+            },
+            "MESSAGES_TABLE_NAME": {
+              "Ref": "SessionApiSessionMessagesTable9164319A"
             },
             "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
             "GENERATED_IMAGES_S3_BUCKET_NAME": {
@@ -5314,8 +5809,11 @@
           }
         },
         "FunctionName": "LisaChat-session-list_sessions",
-        "Handler": "session.lambda_functions.list_sessions",
+        "Handler": "lambda_functions.list_sessions",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -5384,13 +5882,16 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "fb2195919babff02a060dd6a40c1f7c79cd6d1c4c681a301ff41f03b2cd9eb1e.zip"
         },
         "Description": "Returns the selected session",
         "Environment": {
           "Variables": {
             "SESSIONS_TABLE_NAME": {
               "Ref": "SessionApiSessionsTableDA695141"
+            },
+            "MESSAGES_TABLE_NAME": {
+              "Ref": "SessionApiSessionMessagesTable9164319A"
             },
             "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
             "GENERATED_IMAGES_S3_BUCKET_NAME": {
@@ -5422,8 +5923,11 @@
           }
         },
         "FunctionName": "LisaChat-session-get_session",
-        "Handler": "session.lambda_functions.get_session",
+        "Handler": "lambda_functions.get_session",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -5492,13 +5996,16 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "fb2195919babff02a060dd6a40c1f7c79cd6d1c4c681a301ff41f03b2cd9eb1e.zip"
         },
         "Description": "Deletes selected session",
         "Environment": {
           "Variables": {
             "SESSIONS_TABLE_NAME": {
               "Ref": "SessionApiSessionsTableDA695141"
+            },
+            "MESSAGES_TABLE_NAME": {
+              "Ref": "SessionApiSessionMessagesTable9164319A"
             },
             "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
             "GENERATED_IMAGES_S3_BUCKET_NAME": {
@@ -5530,8 +6037,11 @@
           }
         },
         "FunctionName": "LisaChat-session-delete_session",
-        "Handler": "session.lambda_functions.delete_session",
+        "Handler": "lambda_functions.delete_session",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -5600,13 +6110,16 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "fb2195919babff02a060dd6a40c1f7c79cd6d1c4c681a301ff41f03b2cd9eb1e.zip"
         },
         "Description": "Deletes all sessions for selected user",
         "Environment": {
           "Variables": {
             "SESSIONS_TABLE_NAME": {
               "Ref": "SessionApiSessionsTableDA695141"
+            },
+            "MESSAGES_TABLE_NAME": {
+              "Ref": "SessionApiSessionMessagesTable9164319A"
             },
             "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
             "GENERATED_IMAGES_S3_BUCKET_NAME": {
@@ -5638,8 +6151,11 @@
           }
         },
         "FunctionName": "LisaChat-session-delete_user_sessions",
-        "Handler": "session.lambda_functions.delete_user_sessions",
+        "Handler": "lambda_functions.delete_user_sessions",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -5708,13 +6224,16 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "fb2195919babff02a060dd6a40c1f7c79cd6d1c4c681a301ff41f03b2cd9eb1e.zip"
         },
         "Description": "Creates or updates selected session",
         "Environment": {
           "Variables": {
             "SESSIONS_TABLE_NAME": {
               "Ref": "SessionApiSessionsTableDA695141"
+            },
+            "MESSAGES_TABLE_NAME": {
+              "Ref": "SessionApiSessionMessagesTable9164319A"
             },
             "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
             "GENERATED_IMAGES_S3_BUCKET_NAME": {
@@ -5746,8 +6265,11 @@
           }
         },
         "FunctionName": "LisaChat-session-put_session",
-        "Handler": "session.lambda_functions.put_session",
+        "Handler": "lambda_functions.put_session",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -5816,13 +6338,16 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "fb2195919babff02a060dd6a40c1f7c79cd6d1c4c681a301ff41f03b2cd9eb1e.zip"
         },
         "Description": "Updates session name",
         "Environment": {
           "Variables": {
             "SESSIONS_TABLE_NAME": {
               "Ref": "SessionApiSessionsTableDA695141"
+            },
+            "MESSAGES_TABLE_NAME": {
+              "Ref": "SessionApiSessionMessagesTable9164319A"
             },
             "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
             "GENERATED_IMAGES_S3_BUCKET_NAME": {
@@ -5854,8 +6379,11 @@
           }
         },
         "FunctionName": "LisaChat-session-rename_session",
-        "Handler": "session.lambda_functions.rename_session",
+        "Handler": "lambda_functions.rename_session",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -5924,13 +6452,16 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "fb2195919babff02a060dd6a40c1f7c79cd6d1c4c681a301ff41f03b2cd9eb1e.zip"
         },
         "Description": "Attaches image to session",
         "Environment": {
           "Variables": {
             "SESSIONS_TABLE_NAME": {
               "Ref": "SessionApiSessionsTableDA695141"
+            },
+            "MESSAGES_TABLE_NAME": {
+              "Ref": "SessionApiSessionMessagesTable9164319A"
             },
             "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
             "GENERATED_IMAGES_S3_BUCKET_NAME": {
@@ -5962,8 +6493,11 @@
           }
         },
         "FunctionName": "LisaChat-session-attach_image_to_session",
-        "Handler": "session.lambda_functions.attach_image_to_session",
+        "Handler": "lambda_functions.attach_image_to_session",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -6020,6 +6554,351 @@
               "/aws/lambda/",
               {
                 "Ref": "SessionApiLisaChatsessionattachimagetosessionA482E30C"
+              }
+            ]
+          ]
+        },
+        "RetentionInDays": 30
+      }
+    },
+    "SessionApiLisaChatsessionpostmessagesE4A9ACEE": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "fb2195919babff02a060dd6a40c1f7c79cd6d1c4c681a301ff41f03b2cd9eb1e.zip"
+        },
+        "Description": "Appends messages to a session",
+        "Environment": {
+          "Variables": {
+            "SESSIONS_TABLE_NAME": {
+              "Ref": "SessionApiSessionsTableDA695141"
+            },
+            "MESSAGES_TABLE_NAME": {
+              "Ref": "SessionApiSessionMessagesTable9164319A"
+            },
+            "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
+            "GENERATED_IMAGES_S3_BUCKET_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisageneratedImagesBucketNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "MODEL_TABLE_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisamodelTableNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "CONFIG_TABLE_NAME": {
+              "Ref": "ConfigurationApiConfigurationTable4B2B7EE1"
+            },
+            "SESSION_ENCRYPTION_KEY_ARN": {
+              "Fn::GetAtt": [
+                "SessionApiSessionEncryptionKeyA03622E8",
+                "Arn"
+              ]
+            },
+            "PROJECTS_TABLE_NAME": {
+              "Ref": "ProjectsTableAA0A2089"
+            },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
+            "USAGE_METRICS_QUEUE_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaqueuenameusagemetricsC96584B6F00A464EAD1953AFF4B05118Parameter"
+            }
+          }
+        },
+        "FunctionName": "LisaChat-session-post_messages",
+        "Handler": "lambda_functions.post_messages",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "SessionApiLisaSessionApiLambdaExecutionRoleDefaultPolicy8918DE87",
+        "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B"
+      ]
+    },
+    "SessionApiLisaChatsessionpostmessagesLogRetention000835EA": {
+      "Type": "Custom::LogRetention",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "SessionApiLisaChatsessionpostmessagesE4A9ACEE"
+              }
+            ]
+          ]
+        },
+        "RetentionInDays": 30
+      }
+    },
+    "SessionApiLisaChatsessiongetmessages7DA9E7B8": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "fb2195919babff02a060dd6a40c1f7c79cd6d1c4c681a301ff41f03b2cd9eb1e.zip"
+        },
+        "Description": "Gets paginated messages for a session",
+        "Environment": {
+          "Variables": {
+            "SESSIONS_TABLE_NAME": {
+              "Ref": "SessionApiSessionsTableDA695141"
+            },
+            "MESSAGES_TABLE_NAME": {
+              "Ref": "SessionApiSessionMessagesTable9164319A"
+            },
+            "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
+            "GENERATED_IMAGES_S3_BUCKET_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisageneratedImagesBucketNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "MODEL_TABLE_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisamodelTableNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "CONFIG_TABLE_NAME": {
+              "Ref": "ConfigurationApiConfigurationTable4B2B7EE1"
+            },
+            "SESSION_ENCRYPTION_KEY_ARN": {
+              "Fn::GetAtt": [
+                "SessionApiSessionEncryptionKeyA03622E8",
+                "Arn"
+              ]
+            },
+            "PROJECTS_TABLE_NAME": {
+              "Ref": "ProjectsTableAA0A2089"
+            },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
+            "USAGE_METRICS_QUEUE_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaqueuenameusagemetricsC96584B6F00A464EAD1953AFF4B05118Parameter"
+            }
+          }
+        },
+        "FunctionName": "LisaChat-session-get_messages",
+        "Handler": "lambda_functions.get_messages",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "SessionApiLisaSessionApiLambdaExecutionRoleDefaultPolicy8918DE87",
+        "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B"
+      ]
+    },
+    "SessionApiLisaChatsessiongetmessagesLogRetention6FAA0BFF": {
+      "Type": "Custom::LogRetention",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "SessionApiLisaChatsessiongetmessages7DA9E7B8"
+              }
+            ]
+          ]
+        },
+        "RetentionInDays": 30
+      }
+    },
+    "SessionApiLisaChatsessioncompactsessionBDBFDA3A": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
+          "S3Key": "fb2195919babff02a060dd6a40c1f7c79cd6d1c4c681a301ff41f03b2cd9eb1e.zip"
+        },
+        "Description": "Compacts session by summarizing older messages",
+        "Environment": {
+          "Variables": {
+            "SESSIONS_TABLE_NAME": {
+              "Ref": "SessionApiSessionsTableDA695141"
+            },
+            "MESSAGES_TABLE_NAME": {
+              "Ref": "SessionApiSessionMessagesTable9164319A"
+            },
+            "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
+            "GENERATED_IMAGES_S3_BUCKET_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisageneratedImagesBucketNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "MODEL_TABLE_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisamodelTableNameC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "CONFIG_TABLE_NAME": {
+              "Ref": "ConfigurationApiConfigurationTable4B2B7EE1"
+            },
+            "SESSION_ENCRYPTION_KEY_ARN": {
+              "Fn::GetAtt": [
+                "SessionApiSessionEncryptionKeyA03622E8",
+                "Arn"
+              ]
+            },
+            "PROJECTS_TABLE_NAME": {
+              "Ref": "ProjectsTableAA0A2089"
+            },
+            "LISA_AUDIT_ENABLED": "false",
+            "LISA_AUDIT_AUDIT_ALL": "false",
+            "LISA_AUDIT_ENABLED_PATH_PREFIXES": "",
+            "LISA_AUDIT_MAX_BODY_BYTES": "20000",
+            "LISA_AUDIT_INCLUDE_JSON_BODY": "false",
+            "USAGE_METRICS_QUEUE_NAME": {
+              "Ref": "SsmParameterValuedevtestlisalisaqueuenameusagemetricsC96584B6F00A464EAD1953AFF4B05118Parameter"
+            },
+            "LISA_API_URL_PS_NAME": "/dev/test-lisa/lisa/lisaServeRestApiUri",
+            "REST_API_VERSION": "v2",
+            "RESTAPI_SSL_CERT_ARN": "arn:aws:iam::012345678901:server-certificate/lisa-self-signed-dev"
+          }
+        },
+        "FunctionName": "LisaChat-session-compact_session",
+        "Handler": "lambda_functions.compact_session",
+        "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.13",
+        "Timeout": 180,
+        "VpcConfig": {
+          "SecurityGroupIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputFnGetAttVpcLambdaSecurityGroup184B54BDGroupIdB1374FFB"
+            }
+          ],
+          "SubnetIds": [
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet1Subnet29B9FADC0739E75F"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet2Subnet63498DC142E639BD"
+            },
+            {
+              "Fn::ImportValue": "LisaNetworking:ExportsOutputRefVpcVPCprivateSubnet3SubnetFB0F8C06F5E5A469"
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "SessionApiLisaSessionApiLambdaExecutionRoleDefaultPolicy8918DE87",
+        "SessionApiLisaSessionApiLambdaExecutionRoleC453EA6B"
+      ]
+    },
+    "SessionApiLisaChatsessioncompactsessionLogRetentionC5710488": {
+      "Type": "Custom::LogRetention",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "SessionApiLisaChatsessioncompactsessionBDBFDA3A"
               }
             ]
           ]
@@ -6864,6 +7743,20 @@
             },
             {
               "Action": [
+                "dynamodb:Query",
+                "dynamodb:BatchWriteItem",
+                "dynamodb:DeleteItem"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "SessionApiSessionMessagesTable9164319A",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": [
                 "dynamodb:BatchGetItem",
                 "dynamodb:Query",
                 "dynamodb:GetItem",
@@ -6935,7 +7828,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "e1ac839fa5764e215b0cd0070d19041b0d1f7d73824460bc8414a6d742bfaf84.zip"
         },
         "Description": "List all projects for the calling user",
         "Environment": {
@@ -6945,6 +7838,9 @@
             },
             "SESSIONS_TABLE_NAME": {
               "Ref": "SessionApiSessionsTableDA695141"
+            },
+            "MESSAGES_TABLE_NAME": {
+              "Ref": "SessionApiSessionMessagesTable9164319A"
             },
             "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
             "CONFIG_TABLE_NAME": {
@@ -6958,8 +7854,11 @@
           }
         },
         "FunctionName": "LisaChat-projects-list_projects",
-        "Handler": "projects.lambda_functions.list_projects",
+        "Handler": "lambda_functions.list_projects",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -7028,7 +7927,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "e1ac839fa5764e215b0cd0070d19041b0d1f7d73824460bc8414a6d742bfaf84.zip"
         },
         "Description": "Create a new project",
         "Environment": {
@@ -7038,6 +7937,9 @@
             },
             "SESSIONS_TABLE_NAME": {
               "Ref": "SessionApiSessionsTableDA695141"
+            },
+            "MESSAGES_TABLE_NAME": {
+              "Ref": "SessionApiSessionMessagesTable9164319A"
             },
             "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
             "CONFIG_TABLE_NAME": {
@@ -7051,8 +7953,11 @@
           }
         },
         "FunctionName": "LisaChat-projects-create_project",
-        "Handler": "projects.lambda_functions.create_project",
+        "Handler": "lambda_functions.create_project",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -7121,7 +8026,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "e1ac839fa5764e215b0cd0070d19041b0d1f7d73824460bc8414a6d742bfaf84.zip"
         },
         "Description": "Rename a project",
         "Environment": {
@@ -7131,6 +8036,9 @@
             },
             "SESSIONS_TABLE_NAME": {
               "Ref": "SessionApiSessionsTableDA695141"
+            },
+            "MESSAGES_TABLE_NAME": {
+              "Ref": "SessionApiSessionMessagesTable9164319A"
             },
             "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
             "CONFIG_TABLE_NAME": {
@@ -7144,8 +8052,11 @@
           }
         },
         "FunctionName": "LisaChat-projects-rename_project",
-        "Handler": "projects.lambda_functions.rename_project",
+        "Handler": "lambda_functions.rename_project",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -7214,7 +8125,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "e1ac839fa5764e215b0cd0070d19041b0d1f7d73824460bc8414a6d742bfaf84.zip"
         },
         "Description": "Delete a project",
         "Environment": {
@@ -7224,6 +8135,9 @@
             },
             "SESSIONS_TABLE_NAME": {
               "Ref": "SessionApiSessionsTableDA695141"
+            },
+            "MESSAGES_TABLE_NAME": {
+              "Ref": "SessionApiSessionMessagesTable9164319A"
             },
             "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
             "CONFIG_TABLE_NAME": {
@@ -7237,8 +8151,11 @@
           }
         },
         "FunctionName": "LisaChat-projects-delete_project",
-        "Handler": "projects.lambda_functions.delete_project",
+        "Handler": "lambda_functions.delete_project",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -7307,7 +8224,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "e1ac839fa5764e215b0cd0070d19041b0d1f7d73824460bc8414a6d742bfaf84.zip"
         },
         "Description": "Assign or unassign a session to/from a project",
         "Environment": {
@@ -7317,6 +8234,9 @@
             },
             "SESSIONS_TABLE_NAME": {
               "Ref": "SessionApiSessionsTableDA695141"
+            },
+            "MESSAGES_TABLE_NAME": {
+              "Ref": "SessionApiSessionMessagesTable9164319A"
             },
             "SESSIONS_BY_USER_ID_INDEX_NAME": "byUserId",
             "CONFIG_TABLE_NAME": {
@@ -7330,8 +8250,11 @@
           }
         },
         "FunctionName": "LisaChat-projects-assign_session_project",
-        "Handler": "projects.lambda_functions.assign_session_project",
+        "Handler": "lambda_functions.assign_session_project",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -8285,7 +9208,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "a54f305b8ea6446dde8068e18484a7f5201fac6f3597e542449a24ba7588cc52.zip"
         },
         "Description": "Creates prompt template",
         "Environment": {
@@ -8303,13 +9226,16 @@
           }
         },
         "FunctionName": "LisaChat-prompt_templates-create",
-        "Handler": "prompt_templates.lambda_functions.create",
+        "Handler": "lambda_functions.create",
         "Layers": [
           {
-            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
         "MemorySize": 512,
@@ -8373,7 +9299,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "a54f305b8ea6446dde8068e18484a7f5201fac6f3597e542449a24ba7588cc52.zip"
         },
         "Description": "Retrieves specific prompt template by ID",
         "Environment": {
@@ -8391,13 +9317,16 @@
           }
         },
         "FunctionName": "LisaChat-prompt_templates-get",
-        "Handler": "prompt_templates.lambda_functions.get",
+        "Handler": "lambda_functions.get",
         "Layers": [
           {
-            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
         "MemorySize": 512,
@@ -8461,7 +9390,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "a54f305b8ea6446dde8068e18484a7f5201fac6f3597e542449a24ba7588cc52.zip"
         },
         "Description": "Lists all available prompt templates",
         "Environment": {
@@ -8479,13 +9408,16 @@
           }
         },
         "FunctionName": "LisaChat-prompt_templates-list_prompt",
-        "Handler": "prompt_templates.lambda_functions.list_prompt",
+        "Handler": "lambda_functions.list_prompt",
         "Layers": [
           {
-            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
         "MemorySize": 512,
@@ -8549,7 +9481,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "a54f305b8ea6446dde8068e18484a7f5201fac6f3597e542449a24ba7588cc52.zip"
         },
         "Description": "Updates an existing prompt template",
         "Environment": {
@@ -8567,13 +9499,16 @@
           }
         },
         "FunctionName": "LisaChat-prompt_templates-update",
-        "Handler": "prompt_templates.lambda_functions.update",
+        "Handler": "lambda_functions.update",
         "Layers": [
           {
-            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
         "MemorySize": 512,
@@ -8637,7 +9572,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "a54f305b8ea6446dde8068e18484a7f5201fac6f3597e542449a24ba7588cc52.zip"
         },
         "Description": "Deletes a specific prompt template by ID",
         "Environment": {
@@ -8655,13 +9590,16 @@
           }
         },
         "FunctionName": "LisaChat-prompt_templates-delete",
-        "Handler": "prompt_templates.lambda_functions.delete",
+        "Handler": "lambda_functions.delete",
         "Layers": [
           {
-            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
         "MemorySize": 512,
@@ -9145,7 +10083,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "522d19e15e21e441697bcaf2292b2725c77b996f84b2ce4d0dfa2936e1ddb626.zip"
         },
         "Description": "Returns the preferences for the calling user",
         "Environment": {
@@ -9161,8 +10099,11 @@
           }
         },
         "FunctionName": "LisaChat-user_preferences-get",
-        "Handler": "user_preferences.lambda_functions.get",
+        "Handler": "lambda_functions.get",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -9231,7 +10172,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "522d19e15e21e441697bcaf2292b2725c77b996f84b2ce4d0dfa2936e1ddb626.zip"
         },
         "Description": "Creates or updates user preferences for user",
         "Environment": {
@@ -9247,8 +10188,11 @@
           }
         },
         "FunctionName": "LisaChat-user_preferences-update",
-        "Handler": "user_preferences.lambda_functions.update",
+        "Handler": "lambda_functions.update",
         "Layers": [
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
@@ -10249,7 +11193,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "d1d472447b8a4bd055f13f507b6180898eea752328f3bda0ef61ac527ba25849.zip"
         },
         "Description": "List stacks (all for admin, active+accessible for non-admin)",
         "Environment": {
@@ -10266,13 +11210,16 @@
           }
         },
         "FunctionName": "LisaChat-chat_assistant_stacks-list_stacks",
-        "Handler": "chat_assistant_stacks.lambda_functions.list_stacks",
+        "Handler": "lambda_functions.list_stacks",
         "Layers": [
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
         "MemorySize": 512,
@@ -10336,7 +11283,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "d1d472447b8a4bd055f13f507b6180898eea752328f3bda0ef61ac527ba25849.zip"
         },
         "Description": "Create Chat Assistant Stack",
         "Environment": {
@@ -10353,13 +11300,16 @@
           }
         },
         "FunctionName": "LisaChat-chat_assistant_stacks-create",
-        "Handler": "chat_assistant_stacks.lambda_functions.create",
+        "Handler": "lambda_functions.create",
         "Layers": [
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
         "MemorySize": 512,
@@ -10423,7 +11373,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "d1d472447b8a4bd055f13f507b6180898eea752328f3bda0ef61ac527ba25849.zip"
         },
         "Description": "Get Chat Assistant Stack by id",
         "Environment": {
@@ -10440,13 +11390,16 @@
           }
         },
         "FunctionName": "LisaChat-chat_assistant_stacks-get_stack",
-        "Handler": "chat_assistant_stacks.lambda_functions.get_stack",
+        "Handler": "lambda_functions.get_stack",
         "Layers": [
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
         "MemorySize": 512,
@@ -10510,7 +11463,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "d1d472447b8a4bd055f13f507b6180898eea752328f3bda0ef61ac527ba25849.zip"
         },
         "Description": "Update Chat Assistant Stack",
         "Environment": {
@@ -10527,13 +11480,16 @@
           }
         },
         "FunctionName": "LisaChat-chat_assistant_stacks-update",
-        "Handler": "chat_assistant_stacks.lambda_functions.update",
+        "Handler": "lambda_functions.update",
         "Layers": [
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
         "MemorySize": 512,
@@ -10597,7 +11553,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "d1d472447b8a4bd055f13f507b6180898eea752328f3bda0ef61ac527ba25849.zip"
         },
         "Description": "Delete Chat Assistant Stack",
         "Environment": {
@@ -10614,13 +11570,16 @@
           }
         },
         "FunctionName": "LisaChat-chat_assistant_stacks-delete",
-        "Handler": "chat_assistant_stacks.lambda_functions.delete",
+        "Handler": "lambda_functions.delete",
         "Layers": [
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
         "MemorySize": 512,
@@ -10684,7 +11643,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "300c036544f999b0cc8e750854d68b0b2a5d0df06568fb42ffed3b46865bada1.zip"
+          "S3Key": "d1d472447b8a4bd055f13f507b6180898eea752328f3bda0ef61ac527ba25849.zip"
         },
         "Description": "Update stack active status",
         "Environment": {
@@ -10701,13 +11660,16 @@
           }
         },
         "FunctionName": "LisaChat-chat_assistant_stacks-update_status",
-        "Handler": "chat_assistant_stacks.lambda_functions.update_status",
+        "Handler": "lambda_functions.update_status",
         "Layers": [
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersioncommonC96584B6F00A464EAD1953AFF4B05118Parameter"
           },
           {
             "Ref": "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          {
+            "Ref": "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter"
           }
         ],
         "MemorySize": 512,
@@ -10775,6 +11737,10 @@
     "SsmParameterValuedevtestlisalisalayerVersionfastapiC96584B6F00A464EAD1953AFF4B05118Parameter": {
       "Type": "AWS::SSM::Parameter::Value<String>",
       "Default": "/dev/test-lisa/lisa/layerVersion/fastapi"
+    },
+    "SsmParameterValuedevtestlisalisalayerVersionlisasharedC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/dev/test-lisa/lisa/layerVersion/lisa-shared"
     },
     "SsmParameterValuedevtestlisalisaserveendpointC96584B6F00A464EAD1953AFF4B05118Parameter": {
       "Type": "AWS::SSM::Parameter::Value<String>",

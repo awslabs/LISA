@@ -28,15 +28,15 @@ const createStorageShim = (): Storage => {
     const store = new Map<string, string>();
     return {
         get length () {
-            return store.size; 
+            return store.size;
         },
         clear: () => store.clear(),
         getItem: (key) => (store.has(key) ? store.get(key)! : null),
         setItem: (key, value) => {
-            store.set(String(key), String(value)); 
+            store.set(String(key), String(value));
         },
         removeItem: (key) => {
-            store.delete(key); 
+            store.delete(key);
         },
         key: (index) => Array.from(store.keys())[index] ?? null,
     };

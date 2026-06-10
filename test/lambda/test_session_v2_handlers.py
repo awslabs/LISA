@@ -411,21 +411,21 @@ def test_get_messages_invalid_cursor_returns_400(aws, lambda_context):
 @pytest.mark.parametrize("bad_limit", ["-1", "0", "foo", ""])
 def test_get_messages_rejects_invalid_limit(aws, lambda_context, bad_limit):
     """Negative/zero limits must be clamped to 1 (handler succeeds), and non-numeric
-    limits must return a 400 inner-status — DynamoDB would otherwise surface a
+    limits must return a 400 — DynamoDB would otherwise surface a
     ParamValidationError as a 500."""
     aws.sessions.put_item(Item={"sessionId": "test-session", "userId": "test-user", "storageVersion": "2.0"})
     aws.messages.put_item(Item={"sessionId": "test-session", "messageIndex": 0, "type": "human", "content": "m"})
     resp = get_messages(_claim_event(query={"limit": bad_limit}), lambda_context)
-    body = json.loads(resp["body"])
     if bad_limit in ("-1", "0"):
         # Clamped up to 1 — handler should succeed. We treat negative/zero as "use
         # the smallest valid limit" rather than reject; they're benign, not malicious.
-        assert "messages" in body, body
+        assert resp["statusCode"] == 200, resp
     else:
-        # api_wrapper rewraps the handler's {"statusCode": 400, "body": "..."}
-        # dict as a 200 response with the inner dict serialized into `body`.
-        assert body.get("statusCode") == 400, body
-        assert "Invalid limit" in body.get("body", "")
+        # The conftest's mock_api_wrapper passes through dicts with a statusCode key
+        # unchanged, so we can assert on the top-level statusCode directly.
+        assert resp["statusCode"] == 400, resp
+        body = json.loads(resp["body"])
+        assert "Invalid limit" in body.get("error", ""), body
 
 
 def test_get_messages_emits_next_cursor_when_more_pages(aws, lambda_context):

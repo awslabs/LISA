@@ -17,7 +17,7 @@
 import '@testing-library/jest-dom';
 import { cleanup } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
-git 
+
 // Node 25 ships an experimental built-in `localStorage` global that is just
 // an empty object (it expects `--localstorage-file=<path>`). jsdom can't
 // install its own Storage on the opaque-origin window we get under vitest,
@@ -27,11 +27,17 @@ git
 const createStorageShim = (): Storage => {
     const store = new Map<string, string>();
     return {
-        get length () { return store.size; },
+        get length () {
+            return store.size; 
+        },
         clear: () => store.clear(),
         getItem: (key) => (store.has(key) ? store.get(key)! : null),
-        setItem: (key, value) => { store.set(String(key), String(value)); },
-        removeItem: (key) => { store.delete(key); },
+        setItem: (key, value) => {
+            store.set(String(key), String(value)); 
+        },
+        removeItem: (key) => {
+            store.delete(key); 
+        },
         key: (index) => Array.from(store.keys())[index] ?? null,
     };
 };

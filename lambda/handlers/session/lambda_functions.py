@@ -821,9 +821,10 @@ def post_messages(event: dict, context: dict) -> SuccessResponse | dict:
         if not request.messages:
             return {"statusCode": 400, "body": json.dumps({"error": "No messages provided"})}
 
-        # Get configuration if provided
-        configuration = request.configuration or SessionConfigurationModel()
-        if configuration and configuration.selectedModel:
+        # Get configuration if provided. Keep `None` when the caller didn't send one
+        # so we leave the existing stored configuration untouched
+        configuration = request.configuration
+        if configuration is not None and configuration.selectedModel:
             configuration = _update_session_with_current_model_config(configuration)
 
         timestamp = iso_string()
@@ -905,29 +906,32 @@ def post_messages(event: dict, context: dict) -> SuccessResponse | dict:
             ":deltaMessages": delta_messages,
         }
 
-        # Handle configuration storage — encrypt if encryption is enabled
-        # Also track attributes to REMOVE (cleanup stale plaintext/encrypted fields)
+        # Handle configuration storage — encrypt if encryption is enabled.
+        # When the caller did NOT send a configuration block, skip the configuration
+        # update entirely so an append-only request doesn't clobber existing config.
+        # Also track attributes to REMOVE (cleanup stale plaintext/encrypted fields).
         remove_parts = []
-        if encryption_enabled:
-            encrypted_config = encrypt_session_data(configuration.model_dump_for_storage(), user_id, session_id)
-            set_parts.append("#encrypted_configuration = :encrypted_configuration")
-            set_parts.append("#encryption_version = :encryption_version")
-            expression_attr_names["#encrypted_configuration"] = "encrypted_configuration"
-            expression_attr_names["#encryption_version"] = "encryption_version"
-            expression_attr_values[":encrypted_configuration"] = encrypted_config
-            expression_attr_values[":encryption_version"] = "1.0"
-            # Remove stale plaintext configuration attribute
-            remove_parts.append("#configuration")
-            expression_attr_names["#configuration"] = "configuration"
-        else:
-            set_parts.append("#configuration = :configuration")
-            expression_attr_names["#configuration"] = "configuration"
-            expression_attr_values[":configuration"] = configuration.model_dump_for_storage()
-            # Remove stale encrypted configuration attribute if transitioning from encrypted to unencrypted
-            remove_parts.append("#encrypted_configuration")
-            remove_parts.append("#encryption_version")
-            expression_attr_names["#encrypted_configuration"] = "encrypted_configuration"
-            expression_attr_names["#encryption_version"] = "encryption_version"
+        if configuration is not None:
+            if encryption_enabled:
+                encrypted_config = encrypt_session_data(configuration.model_dump_for_storage(), user_id, session_id)
+                set_parts.append("#encrypted_configuration = :encrypted_configuration")
+                set_parts.append("#encryption_version = :encryption_version")
+                expression_attr_names["#encrypted_configuration"] = "encrypted_configuration"
+                expression_attr_names["#encryption_version"] = "encryption_version"
+                expression_attr_values[":encrypted_configuration"] = encrypted_config
+                expression_attr_values[":encryption_version"] = "1.0"
+                # Remove stale plaintext configuration attribute
+                remove_parts.append("#configuration")
+                expression_attr_names["#configuration"] = "configuration"
+            else:
+                set_parts.append("#configuration = :configuration")
+                expression_attr_names["#configuration"] = "configuration"
+                expression_attr_values[":configuration"] = configuration.model_dump_for_storage()
+                # Remove stale encrypted configuration attribute if transitioning from encrypted to unencrypted
+                remove_parts.append("#encrypted_configuration")
+                remove_parts.append("#encryption_version")
+                expression_attr_names["#encrypted_configuration"] = "encrypted_configuration"
+                expression_attr_names["#encryption_version"] = "encryption_version"
 
         # Add name if provided
         if request.name:
@@ -1007,9 +1011,15 @@ def get_messages(event: dict, context: dict) -> PaginatedMessagesResponse | dict
         if not session_response.get("Item"):
             return {"statusCode": 404, "body": json.dumps({"error": "Session not found"})}
 
-        # Parse query parameters
+        # Parse query parameters. Clamp `limit` into [1, 200] — DynamoDB rejects
+        # zero/negative values with a ParamValidationError that would otherwise
+        # surface as a 500. Reject non-numeric input with 400.
         query_params = event.get("queryStringParameters") or {}
-        limit = min(int(query_params.get("limit", "50")), 200)
+        try:
+            requested_limit = int(query_params.get("limit", "50"))
+        except (TypeError, ValueError):
+            return {"statusCode": 400, "body": json.dumps({"error": "Invalid limit"})}
+        limit = max(1, min(requested_limit, 200))
         order = query_params.get("order", "desc")
         cursor = query_params.get("cursor")
 

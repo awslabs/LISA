@@ -205,6 +205,33 @@ export const sessionApi = createApi({
                 name: 'Post Messages Error',
                 message: extractErrorMessage(baseQueryReturnValue)
             }),
+            // Patch the per-session cache in place once the server confirms the write,
+            // instead of invalidating its tag. This avoids the GET /session/{id} that
+            // would otherwise fire after every send. Same pattern as assignSessionProject
+            // above. The sidebar list is invalidated below so it picks up name/lastUpdated.
+            async onQueryStarted ({ sessionId, messages, name }, { dispatch, queryFulfilled }) {
+                try {
+                    await queryFulfilled;
+                    dispatch(
+                        sessionApi.util.updateQueryData('getSessionById', sessionId, (draft) => {
+                            if (!draft) return;
+                            // Append (rather than replace) so any messages that arrived via
+                            // pagination or compaction stay intact.
+                            draft.history = [
+                                ...(draft.history ?? []),
+                                ...(messages as any[]),
+                            ];
+                            if (name !== undefined) {
+                                draft.name = name;
+                            }
+                            draft.lastUpdated = new Date().toISOString();
+                        }),
+                    );
+                } catch {
+                    // Mutation failed — leave the cache untouched. The caller (Chat.tsx)
+                    // surfaces the failure and re-marks the session dirty for retry.
+                }
+            },
             invalidatesTags: ['sessions'],
         }),
         getMessages: builder.query<{ messages: any[]; nextCursor: string | null; hasMore: boolean }, { sessionId: string; limit?: number; order?: string; cursor?: string }>({

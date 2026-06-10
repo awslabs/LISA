@@ -21,6 +21,7 @@ regardless of which environment variables are present.
 
 import logging
 import os
+import time
 from typing import Any
 
 from botocore.exceptions import ClientError
@@ -128,17 +129,35 @@ def delete_session_messages(
             response = messages_table.query(**query_params)
             items = response.get("Items", [])
 
-            # Delete in batches of 25
+            # Delete in batches of 25. batch_write_item can return UnprocessedItems
+            # (without raising) under throttling/partial failures, so loop on the
+            # remaining items with exponential backoff.
             for batch_start in range(0, len(items), 25):
                 batch_chunk = items[batch_start : batch_start + 25]
-                delete_requests = [
+                pending_requests = [
                     {"DeleteRequest": {"Key": {"sessionId": item["sessionId"], "messageIndex": item["messageIndex"]}}}
                     for item in batch_chunk
                 ]
-                try:
-                    dynamodb_resource.meta.client.batch_write_item(RequestItems={messages_table.name: delete_requests})
-                except ClientError as e:
-                    logger.warning(f"Failed to delete message batch for session {session_id}: {e}")
+                backoff_s = 0.1
+                for attempt in range(5):
+                    try:
+                        resp = dynamodb_resource.meta.client.batch_write_item(
+                            RequestItems={messages_table.name: pending_requests}
+                        )
+                    except ClientError as e:
+                        logger.warning(f"Failed to delete message batch for session {session_id}: {e}")
+                        break
+                    pending_requests = (resp.get("UnprocessedItems") or {}).get(messages_table.name) or []
+                    if not pending_requests:
+                        break
+                    if attempt < 4:
+                        time.sleep(backoff_s)
+                        backoff_s *= 2
+                if pending_requests:
+                    logger.error(
+                        f"Gave up deleting {len(pending_requests)} message(s) for session {session_id} "
+                        "after retries; orphan rows will remain."
+                    )
 
             exclusive_start_key = response.get("LastEvaluatedKey")
             if not exclusive_start_key:

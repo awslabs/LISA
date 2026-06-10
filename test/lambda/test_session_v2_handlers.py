@@ -153,10 +153,25 @@ def aws():
             )
 
 
-def _claim_event(session_id="test-session", body=None, query=None):
+def _claim_event(session_id="test-session", body=None, query=None, method=None):
+    # api_wrapper validates `httpMethod`. Default to POST when a body is provided
+    # (post_messages, compact_session, put_session) and GET otherwise (get_session,
+    # get_messages). Callers can pass `method=` explicitly to override.
+    if method is None:
+        method = "POST" if body is not None else "GET"
     event = {
-        "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
+        # `get_username` reads `authorizer.username` directly (not the nested claims),
+        # so we set both: the legacy `claims` for any helper that expects it, and the
+        # top-level `username` so the actual handler sees `test-user`.
+        "requestContext": {
+            "authorizer": {
+                "username": "test-user",
+                "claims": {"username": "test-user"},
+            }
+        },
         "pathParameters": {"sessionId": session_id},
+        "httpMethod": method,
+        "path": f"/session/{session_id}",
     }
     if body is not None:
         event["body"] = body
@@ -277,6 +292,34 @@ def test_post_messages_increments_token_count_and_message_count(aws, lambda_cont
     assert int(item["messageCount"]) == 1
 
 
+def test_post_messages_omitted_configuration_does_not_overwrite_existing(aws, lambda_context):
+    """When the request omits `configuration`, the stored configuration on a v2 session
+    must remain untouched. Otherwise an append-only follow-up would erase the user's
+    selected model / RAG config."""
+    existing_config = {
+        "selectedModel": {"modelId": "kept-model", "modelName": "Kept", "streaming": True},
+        "ragConfig": {"foo": "bar"},
+    }
+    aws.sessions.put_item(
+        Item={
+            "sessionId": "test-session",
+            "userId": "test-user",
+            "storageVersion": "2.0",
+            "messageCount": 1,
+            "configuration": existing_config,
+        }
+    )
+    aws.messages.put_item(Item={"sessionId": "test-session", "messageIndex": 0, "type": "human", "content": "first"})
+
+    body = json.dumps({"messages": [{"type": "ai", "content": "follow-up"}]})  # no `configuration` key
+    resp = post_messages(_claim_event(body=body), lambda_context)
+    assert resp["statusCode"] == 200, resp["body"]
+
+    item = aws.sessions.get_item(Key={"sessionId": "test-session", "userId": "test-user"})["Item"]
+    # Configuration must be unchanged — the bug was that it would be replaced by an empty default.
+    assert item["configuration"] == existing_config
+
+
 def test_post_messages_lazy_migrates_legacy_session(aws, lambda_context):
     """A v1.0 session with `history` should migrate when post_messages first runs."""
     aws.sessions.put_item(
@@ -363,6 +406,26 @@ def test_get_messages_invalid_cursor_returns_400(aws, lambda_context):
     aws.sessions.put_item(Item={"sessionId": "test-session", "userId": "test-user", "storageVersion": "2.0"})
     resp = get_messages(_claim_event(query={"cursor": "not-base64!!!"}), lambda_context)
     assert resp["statusCode"] == 400
+
+
+@pytest.mark.parametrize("bad_limit", ["-1", "0", "foo", ""])
+def test_get_messages_rejects_invalid_limit(aws, lambda_context, bad_limit):
+    """Negative/zero limits must be clamped to 1 (handler succeeds), and non-numeric
+    limits must return a 400 inner-status — DynamoDB would otherwise surface a
+    ParamValidationError as a 500."""
+    aws.sessions.put_item(Item={"sessionId": "test-session", "userId": "test-user", "storageVersion": "2.0"})
+    aws.messages.put_item(Item={"sessionId": "test-session", "messageIndex": 0, "type": "human", "content": "m"})
+    resp = get_messages(_claim_event(query={"limit": bad_limit}), lambda_context)
+    body = json.loads(resp["body"])
+    if bad_limit in ("-1", "0"):
+        # Clamped up to 1 — handler should succeed. We treat negative/zero as "use
+        # the smallest valid limit" rather than reject; they're benign, not malicious.
+        assert "messages" in body, body
+    else:
+        # api_wrapper rewraps the handler's {"statusCode": 400, "body": "..."}
+        # dict as a 200 response with the inner dict serialized into `body`.
+        assert body.get("statusCode") == 400, body
+        assert "Invalid limit" in body.get("body", "")
 
 
 def test_get_messages_emits_next_cursor_when_more_pages(aws, lambda_context):

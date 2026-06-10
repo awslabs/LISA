@@ -231,6 +231,55 @@ def test_delete_session_messages_handles_batch_write_failure(messages_table):
     delete_session_messages(table, failing, "s1")
 
 
+def test_delete_session_messages_retries_unprocessed_items(messages_table):
+    """When batch_write_item returns UnprocessedItems (no exception), the helper must
+    retry until they're all processed. Without retry, throttled deletes silently
+    leave orphan rows."""
+    table, _ = messages_table
+    for i in range(3):
+        table.put_item(Item={"sessionId": "s1", "messageIndex": i, "content": f"m{i}"})
+
+    fake_dynamodb = MagicMock()
+    table_name = table.name
+    # First call returns one of the three back as UnprocessedItems; second clears.
+    fake_dynamodb.meta.client.batch_write_item.side_effect = [
+        {
+            "UnprocessedItems": {
+                table_name: [
+                    {"DeleteRequest": {"Key": {"sessionId": "s1", "messageIndex": 1}}},
+                ]
+            }
+        },
+        {"UnprocessedItems": {}},
+    ]
+    # Speed the test up by suppressing real sleeps
+    with patch("lisa.session.repository.time.sleep"):
+        delete_session_messages(table, fake_dynamodb, "s1")
+    # Two calls because the first response had unprocessed items
+    assert fake_dynamodb.meta.client.batch_write_item.call_count == 2
+
+
+def test_delete_session_messages_gives_up_after_max_unprocessed_retries(messages_table):
+    """Persistent UnprocessedItems should not cause an infinite loop or a raise."""
+    table, _ = messages_table
+    table.put_item(Item={"sessionId": "s1", "messageIndex": 0, "content": "m0"})
+
+    fake_dynamodb = MagicMock()
+    table_name = table.name
+    # Always return the same unprocessed item — should give up after 5 attempts
+    fake_dynamodb.meta.client.batch_write_item.return_value = {
+        "UnprocessedItems": {
+            table_name: [
+                {"DeleteRequest": {"Key": {"sessionId": "s1", "messageIndex": 0}}},
+            ]
+        }
+    }
+    with patch("lisa.session.repository.time.sleep"):
+        # Must not raise
+        delete_session_messages(table, fake_dynamodb, "s1")
+    assert fake_dynamodb.meta.client.batch_write_item.call_count == 5
+
+
 # --- delete_user_session ---
 
 

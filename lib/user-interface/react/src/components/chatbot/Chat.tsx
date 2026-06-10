@@ -990,29 +990,39 @@ export default function Chat ({ sessionId, initialStack }) {
                                 }
                             }
 
-                            // Use the new postMessages endpoint for incremental writes
-                            postMessages({
-                                sessionId: session.sessionId,
-                                messages: newMessages.map((msg) => ({
-                                    type: msg.type,
-                                    content: msg.content,
-                                    metadata: msg.metadata,
-                                    toolCalls: msg.toolCalls,
-                                    usage: msg.usage,
-                                    guardrailTriggered: msg.guardrailTriggered,
-                                    reasoningContent: msg.reasoningContent,
-                                    reasoningSignature: msg.reasoningSignature,
-                                })),
-                                configuration: {
-                                    ...chatConfiguration,
-                                    selectedModel: selectedModel,
-                                    ragConfig: ragConfig,
-                                    ...(assistantId ? { chatAssistantId: assistantId } : {}),
-                                },
-                                name: sessionName,
-                            });
-                            // Update the saved index to the end of the current history
-                            lastSavedIndexRef.current = session.history.length - 1;
+                            // Use the new postMessages endpoint for incremental writes.
+                            // Await + advance lastSavedIndex only on success
+                            try {
+                                await postMessages({
+                                    sessionId: session.sessionId,
+                                    messages: newMessages.map((msg) => ({
+                                        type: msg.type,
+                                        content: msg.content,
+                                        metadata: msg.metadata,
+                                        toolCalls: msg.toolCalls,
+                                        usage: msg.usage,
+                                        guardrailTriggered: msg.guardrailTriggered,
+                                        reasoningContent: msg.reasoningContent,
+                                        reasoningSignature: msg.reasoningSignature,
+                                    })),
+                                    configuration: {
+                                        ...chatConfiguration,
+                                        selectedModel: selectedModel,
+                                        ragConfig: ragConfig,
+                                        ...(assistantId ? { chatAssistantId: assistantId } : {}),
+                                    },
+                                    name: sessionName,
+                                }).unwrap();
+                                // Advance to the current end of history (which may have grown
+                                // during the await) so we don't re-persist anything we've already saved.
+                                lastSavedIndexRef.current = session.history.length - 1;
+                            } catch {
+                                notificationService.generateNotification(
+                                    'Failed to save messages. Will retry on next send.',
+                                    'warning',
+                                );
+                                setDirtySession(true);
+                            }
                         }
                     }
                 }

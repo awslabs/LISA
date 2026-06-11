@@ -12,6 +12,7 @@ The Chat Features section contains toggles that control which capabilities are a
 |--------|-------------|
 | Document upload from Chat | Allows users to upload documents directly from the chat interface for RAG queries. See [RAG Repository](/config/repositories) for collection setup. |
 | Edit number of referenced documents | Lets users adjust how many RAG documents are referenced during inference. |
+| Hybrid search (vector + keyword) | Lets users run RAG retrieval in hybrid mode, combining vector and keyword search. When enabled, the chat RAG settings expose a search mode selector and, for OpenSearch repositories, weight controls. See [Hybrid Search](/config/repositories#hybrid-search). On new deployments with RAG enabled this is on by default; deployments upgraded from a version before hybrid search was added keep it off until enabled here. |
 
 ### Library
 

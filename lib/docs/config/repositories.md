@@ -131,6 +131,58 @@ Collection access is controlled through user groups:
 - **RAG Admin Access**: RAG Admins can create, update, and delete collections on repositories they have group access to. They cannot modify repository-level settings or `allowedGroups`. This role is especially useful in multi-tenant environments.
 - **User Collection Creation**: Repositories can be configured to allow or restrict user-created collections via the `allowUserCollections` flag
 
+## Hybrid Search
+
+By default, RAG retrieval uses vector (semantic) search: the query is embedded and matched against document embeddings by similarity. Hybrid search combines vector search with lexical (keyword) search so that exact terms, identifiers, and rare words are matched alongside semantic meaning. This improves recall for queries containing product codes, acronyms, names, or other tokens that semantic embeddings tend to under-weight.
+
+Hybrid search is a query-time option. It is not stored on the repository. A query runs in hybrid mode only when all of the following are true:
+
+1. The administrator has enabled the **Hybrid search (vector + keyword)** feature in the Configuration UI. On new deployments with RAG enabled, this feature is enabled by default. On deployments upgraded from a version before hybrid search was added, it remains disabled until an administrator enables it.
+2. The repository's vector store supports hybrid search.
+3. The request specifies `searchMode=hybrid` (or the user selects Hybrid in the chat RAG settings).
+
+When any condition is not met, retrieval falls back to vector search and returns results normally. No request fails because hybrid was requested.
+
+### Supported Vector Stores
+
+| Vector Store | Hybrid Search | Weight Tuning |
+|--------------|---------------|---------------|
+| OpenSearch | Supported (requires OpenSearch 2.13 or later) | Supported |
+| Bedrock Knowledge Base | Supported | Not supported (Bedrock manages the blend internally) |
+| PGVector | Not supported | Not applicable |
+
+For OpenSearch, hybrid search runs as an inline search pipeline on each request. It combines a BM25 lexical match with a k-NN vector match, normalizes both score sets with the `min_max` technique, and combines them with a weighted `arithmetic_mean`. No persistent search pipeline is created, so no additional cluster configuration is required beyond running OpenSearch 2.13 or later.
+
+For Bedrock Knowledge Base, hybrid search sets the Bedrock `overrideSearchType` to `HYBRID`. If a specific Knowledge Base or its underlying store cannot run hybrid, LISA retries the request as semantic search and reports the mode that actually ran in the response metadata.
+
+### Weight Tuning (OpenSearch)
+
+For OpenSearch repositories, the relative influence of vector and lexical scores is tunable per request with `vectorWeight` and `lexicalWeight`:
+
+- Each weight is a float between `0.0` and `1.0`.
+- The two weights must sum to `1.0`.
+- Supply both or neither. Supplying only one is rejected.
+- When neither is supplied, the defaults are `vectorWeight=0.7` and `lexicalWeight=0.3`.
+
+Higher `vectorWeight` favors semantic matches; higher `lexicalWeight` favors exact keyword matches. Bedrock Knowledge Base repositories ignore these parameters.
+
+### Selecting Search Mode in Chat
+
+When hybrid search is enabled and the selected repository supports it, the chat **RAG Settings** panel exposes a **RAG Search Mode** control with two options:
+
+- **Vector**: semantic similarity search (default)
+- **Hybrid**: combined vector and keyword search
+
+Selecting Hybrid reveals weight controls for OpenSearch repositories: a **Vector weight** and **Lexical weight** slider (0.0 to 1.0 in 0.1 increments, always summing to 1). Three presets are available:
+
+| Preset | Vector | Lexical |
+|--------|--------|---------|
+| Balanced | 0.5 | 0.5 |
+| Semantic-heavy | 0.8 | 0.2 |
+| Lexical-heavy | 0.3 | 0.7 |
+
+The weight controls are disabled for Bedrock Knowledge Base repositories, which do not support custom weights. They are also disabled when the search mode is set to Vector. The control is hidden entirely when the administrator has disabled hybrid search or the selected repository does not support it.
+
 ## Configuration Examples
 
 RAG repositories and collections are configurable through the chat assistant web UI or programmatically via the API, allowing customers to tailor the ingestion process to their specific needs.
@@ -246,6 +298,38 @@ curl -s -H 'Authorization: Bearer <your_token>' \
 - `filter`: Filter by name or description (optional)
 - `sortBy`: Sort field - `name`, `createdAt`, or `updatedAt` (default: `createdAt`)
 - `sortOrder`: Sort order - `asc` or `desc` (default: `desc`)
+
+### Running a Similarity Search
+
+Retrieve documents from a repository by query text. Use `searchMode=hybrid` to run hybrid search, and the weight parameters to tune the vector-to-lexical balance on OpenSearch repositories.
+
+#### Similarity Search Request Example
+
+```bash
+curl -s -H 'Authorization: Bearer <your_token>' \
+  'https://<apigw_endpoint>/repository/my-rag-repository/similaritySearch?query=quarterly+revenue+for+ACME-42&topK=5&searchMode=hybrid&vectorWeight=0.6&lexicalWeight=0.4&score=true'
+```
+
+#### Query Parameters
+
+- `query`: Search query text (required)
+- `topK`: Number of results to return (default: 3)
+- `searchMode`: `vector` (default) or `hybrid`
+- `vectorWeight`: Vector score weight, 0.0 to 1.0 (OpenSearch only; defaults to 0.7 when omitted)
+- `lexicalWeight`: Lexical score weight, 0.0 to 1.0 (OpenSearch only; defaults to 0.3 when omitted)
+- `score`: Include similarity scores in each document's metadata (default: false)
+- `collectionId`: Collection to search within (optional; searches the default collection if omitted)
+
+#### Similarity Search Response Fields
+
+- `docs`: List of matching documents with their content and metadata. When `score=true`, each document's metadata includes a `similarity_score`.
+- `metadata`: Search metadata describing how the query ran:
+  - `search_mode`: The mode requested (`vector` or `hybrid`)
+  - `actual_mode_used`: The mode that actually ran. This differs from `search_mode` when hybrid was requested but the repository fell back to vector search.
+  - `backend`: The repository's vector store type
+  - `hybrid_supported`: Whether the repository supports hybrid search
+
+> **_NOTE:_**  When `searchMode=hybrid` is requested but `actual_mode_used` returns `vector`, the repository could not run hybrid search and returned semantic results instead. The chat UI surfaces this as a notification.
 
 ## UI Components
 

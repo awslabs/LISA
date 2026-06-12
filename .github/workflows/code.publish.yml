@@ -40,9 +40,9 @@ jobs:
           sudo rm -rf /usr/share/swift
           sudo docker image prune --all --force
           df -h
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v4
       # Setup .npmrc file to publish to NpmJs Packages
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v4
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v4
         with:
           node-version: '24.x'
           registry-url: 'https://registry.npmjs.org'
@@ -88,7 +88,7 @@ jobs:
       # Upload binary assets to GitHub Release
       - name: Upload Release Assets
         if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.test_mode == false)
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.version }}
           files: |
@@ -115,7 +115,7 @@ jobs:
       contents: read
     steps:
       - name: Send Notification that package has published
-        uses: rtCamp/action-slack-notify@e31e87e03dd19038e411e38ae27cbad084a90661 # v2
+        uses: rtCamp/action-slack-notify@33ca3be66c6f378fe1610fd1d5258632dbed5e58 # v2
         env:
           SLACK_WEBHOOK: ${{ secrets.INTERNAL_DEV_SLACK_WEBHOOK_URL }}
           SLACK_COLOR: ${{ contains(join(needs.*.result, ' '), 'failure') && 'failure' || 'success' }}

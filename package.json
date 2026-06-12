@@ -125,8 +125,8 @@
     "husky": "^9.1.7",
     "jest": "^30.3.0",
     "lightningcss": "^1.32.0",
-    "lint-staged": "^16.4.0",
-    "npm-check-updates": "^21.0.3",
+    "lint-staged": "^17.0.7",
+    "npm-check-updates": "^22.2.3",
     "patch-package": "^8.0.1",
     "readline-sync": "^1.4.10",
     "ts-jest": "^29.4.9",
@@ -140,7 +140,7 @@
     "@aws-sdk/util-dynamodb": "^3.996.2",
     "aws-cdk-lib": "^2.258.1",
     "cdk-ecr-deployment": "^4.2.0",
-    "cdk-nag": "^2.38.1",
+    "cdk-nag": "^3.0.0",
     "constructs": "^10.6.0",
     "js-yaml": "^4.1.1",
     "lodash": "^4.18.1",
@@ -149,8 +149,8 @@
     "zod": "^4.3.6"
   },
   "optionalDependencies": {
-    "@rollup/rollup-linux-x64-gnu": "4.60.2",
-    "@tailwindcss/oxide-linux-x64-gnu": "4.2.4"
+    "@rollup/rollup-linux-x64-gnu": "4.61.1",
+    "@tailwindcss/oxide-linux-x64-gnu": "4.3.0"
   },
   "peerDependencies": {
     "@cfworker/json-schema": "^4.1.0",

@@ -99,7 +99,7 @@
     "eslint-plugin-react-refresh": "^0.5.2",
     "jsdom": "^29.0.2",
     "linkify-it": "^5.0.0",
-    "markdown-it": "^14.1.1",
+    "markdown-it": "^14.2.0",
     "patch-package": "^8.0.1",
     "playwright": "^1.59.0",
     "postinstall-postinstall": "^2.1.0",

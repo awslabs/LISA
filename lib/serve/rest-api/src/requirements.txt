@@ -4,15 +4,15 @@
 boto3>=1.43.1,<1.44.0
 
 # OpenTelemetry - Optional for LiteLLM Weave integration, silences import warnings
-opentelemetry-api>=1.41.0
-opentelemetry-sdk>=1.41.0
+opentelemetry-api>=1.41.1
+opentelemetry-sdk>=1.41.1
 
-aiohttp>=3.13.3,<4.0.0
+aiohttp>=3.13.5,<4.0.0
 backoff>=2.2.1,<3.0.0
 cachetools>=7.0.2,<8.0.0
 click>=8.1.8,<9.0.0
-cryptography>=46.0.5,<47.0.0
-fastapi==0.124.4
+cryptography>=49.0.0,<50.0.0
+fastapi==0.128.8
 gunicorn>=23.0.0,<24.0.0
 
 # LiteLLM — pinned by policy (orchestration / proxy compatibility).
@@ -20,10 +20,10 @@ gunicorn>=23.0.0,<24.0.0
 litellm[proxy]==1.86.2; python_version < "3.14"
 
 loguru>=0.7.3,<0.8.0
-pydantic>=2.5.0,<3.0.0
-PyJWT>=2.10.1,<3.0.0
+pydantic>=2.13.4,<3.0.0
+PyJWT>=2.13.0,<3.0.0
 prisma>=0.15.0,<0.16.0
-starlette>=0.40.0,<0.51.0
+starlette>=0.49.3,<0.51.0
 
-# ASGI Server — litellm[proxy] extra requires uvicorn>=0.32.1,<1.0.0
-uvicorn>=0.32.1,<1.0.0
+# ASGI Server — litellm[proxy] extra requires uvicorn>=0.39.0,<1.0.0
+uvicorn>=0.39.0,<1.0.0

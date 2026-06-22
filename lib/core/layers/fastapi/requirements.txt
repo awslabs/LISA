@@ -3,5 +3,5 @@
 fastapi==0.136.1
 mangum==0.21.0
 pydantic==2.12.5
-cryptography==46.0.7
-starlette==1.0.1
+cryptography==48.0.1
+starlette==1.3.1

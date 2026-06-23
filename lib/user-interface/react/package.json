@@ -19,11 +19,11 @@
     "test:smoke:build": "npm run build && node ./scripts/smoke-test.mjs"
   },
   "dependencies": {
-    "@cloudscape-design/chat-components": "^1.0.142",
-    "@cloudscape-design/collection-hooks": "^1.0.98",
+    "@cloudscape-design/chat-components": "^1.0.143",
+    "@cloudscape-design/collection-hooks": "^1.0.99",
     "@cloudscape-design/component-toolkit": "^1.0.0-beta.167",
-    "@cloudscape-design/components": "^3.0.1314",
-    "@cloudscape-design/global-styles": "^1.0.60",
+    "@cloudscape-design/components": "^3.0.1315",
+    "@cloudscape-design/global-styles": "^1.0.61",
     "@fortawesome/fontawesome-svg-core": "^7.2.0",
     "@fortawesome/free-regular-svg-icons": "^7.2.0",
     "@fortawesome/free-solid-svg-icons": "^7.2.0",
@@ -87,7 +87,7 @@
     "@types/redux-mock-store": "^1.5.0",
     "@typescript-eslint/eslint-plugin": "^8.62.0",
     "@typescript-eslint/parser": "^8.62.0",
-    "@vitejs/plugin-react": "^6.0.2",
+    "@vitejs/plugin-react": "^6.0.3",
     "@vitest/coverage-v8": "^4.1.9",
     "@vitest/ui": "^4.1.9",
     "babel-plugin-react-compiler": "^1.0.0",
@@ -106,7 +106,7 @@
     "prettier": "^3.8.4",
     "redux-mock-store": "^1.5.5",
     "uuid": "^14.0.1",
-    "vite": "^8.0.16",
+    "vite": "^8.1.0",
     "vitest": "^4.1.9"
   }
 }

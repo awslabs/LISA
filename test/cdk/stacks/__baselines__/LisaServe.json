@@ -1061,7 +1061,7 @@
               "Timeout": 5
             },
             "Image": {
-              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:2bd37b560cbe774402cd685ccdc2e2367c1c16d9bea88d97a4b0df95c1d7d91a"
+              "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:3886baf8b4a54624e283e1fb9209c50196df145b5e103fcc5620f102e1bb4a8e"
             },
             "LogConfiguration": {
               "LogDriver": "awslogs",
@@ -1640,7 +1640,7 @@
                   }
                 ]
               },
-              "\\\",\\\"timestamp\\\":\\\"2026-06-10T20:25:21.697Z\\\"}\"}}"
+              "\\\",\\\"timestamp\\\":\\\"2026-06-22T21:05:58.989Z\\\"}\"}}"
             ]
           ]
         },
@@ -1687,7 +1687,7 @@
                   }
                 ]
               },
-              "\\\",\\\"timestamp\\\":\\\"2026-06-10T20:25:21.697Z\\\"}\"}}"
+              "\\\",\\\"timestamp\\\":\\\"2026-06-22T21:05:58.989Z\\\"}\"}}"
             ]
           ]
         },
@@ -1770,7 +1770,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "56f7467bbde8a5efebcf57ae9e460027607099bab9f844669dcf5d800172ee5a.zip"
+          "S3Key": "8b1c21efe0e24332f92ed71e98107d8a27ee1544c62b7b191805e0913fcfdf0f.zip"
         },
         "Handler": "index.handler",
         "Role": {

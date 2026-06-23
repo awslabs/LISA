@@ -2738,6 +2738,32 @@
       "UpdateReplacePolicy": "Delete",
       "DeletionPolicy": "Delete"
     },
+    "LISAMCPWorkbenchtestlisadevNotificationsHandlerPolicyD7653C2E": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "s3:PutBucketNotification",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "LISAMCPWorkbenchtestlisadevC221720C",
+                  "Arn"
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "LISAMCPWorkbenchtestlisadevNotificationsHandlerPolicyD7653C2E",
+        "Roles": [
+          {
+            "Ref": "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleB6FB88EC"
+          }
+        ]
+      }
+    },
     "LISAMCPWorkbenchtestlisadevNotificationsE32DE7AA": {
       "Type": "Custom::S3BucketNotifications",
       "Properties": {
@@ -2757,6 +2783,7 @@
         "SkipDestinationValidation": false
       },
       "DependsOn": [
+        "LISAMCPWorkbenchtestlisadevNotificationsHandlerPolicyD7653C2E",
         "LISAMCPWorkbenchtestlisadevPolicyF855EEF1"
       ]
     },
@@ -2847,32 +2874,6 @@
         ]
       }
     },
-    "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleDefaultPolicy2CF63D36": {
-      "Type": "AWS::IAM::Policy",
-      "Properties": {
-        "PolicyDocument": {
-          "Statement": [
-            {
-              "Action": "s3:PutBucketNotification",
-              "Effect": "Allow",
-              "Resource": {
-                "Fn::GetAtt": [
-                  "LISAMCPWorkbenchtestlisadevC221720C",
-                  "Arn"
-                ]
-              }
-            }
-          ],
-          "Version": "2012-10-17"
-        },
-        "PolicyName": "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleDefaultPolicy2CF63D36",
-        "Roles": [
-          {
-            "Ref": "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleB6FB88EC"
-          }
-        ]
-      }
-    },
     "BucketNotificationsHandler050a0587b7544547bf325f094a3db8347ECC3691": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
@@ -2891,7 +2892,6 @@
         "Timeout": 300
       },
       "DependsOn": [
-        "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleDefaultPolicy2CF63D36",
         "BucketNotificationsHandler050a0587b7544547bf325f094a3db834RoleB6FB88EC"
       ]
     },

@@ -1070,7 +1070,7 @@
         ],
         "Content": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "f5ea97ecf947aeca04b2da3917b8cf707b9632bf789f76edc6fc1e82108ce793.zip"
+          "S3Key": "f2a090c41566efc790afbeecfc93ec170fdfed0ebb1933b41d43e3ccf4bad5d9.zip"
         },
         "Description": "Lambda dependencies for RAG API"
       },
@@ -1785,7 +1785,7 @@
           },
           "FargatePlatformConfiguration": {},
           "Image": {
-            "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:7acdb6b34244c9e3d0fdd0a9c2216201828e1fe6fcf1589a66764235a17cb695"
+            "Fn::Sub": "012345678901.dkr.ecr.us-iso-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-012345678901-us-iso-east-1:91010c0e9f314df4644c451157b65518c14a28afe0b53c972779da589382e4eb"
           },
           "JobRoleArn": {
             "Ref": "SsmParameterValuedevtestlisalisarolestestlisaLisaRagLambdaExecutionRoleC96584B6F00A464EAD1953AFF4B05118Parameter"
@@ -1990,7 +1990,7 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E5595a1403a9bde81aa47248427893eb55": {
+    "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E56e03b5fd91a58be55ee4a44af8c3d762": {
       "Type": "AWS::Lambda::Version",
       "Properties": {
         "FunctionName": {
@@ -2009,7 +2009,7 @@
         },
         "FunctionVersion": {
           "Fn::GetAtt": [
-            "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E5595a1403a9bde81aa47248427893eb55",
+            "IngestionStackConstructhandlePipelineIngestScheduleCurrentVersion094270E56e03b5fd91a58be55ee4a44af8c3d762",
             "Version"
           ]
         },
@@ -2197,7 +2197,7 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBCfcaed6c92ccf59a8835efa7e9bbebf03": {
+    "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBC5099017c1632f486fa03610591d1fb48": {
       "Type": "AWS::Lambda::Version",
       "Properties": {
         "FunctionName": {
@@ -2216,7 +2216,7 @@
         },
         "FunctionVersion": {
           "Fn::GetAtt": [
-            "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBCfcaed6c92ccf59a8835efa7e9bbebf03",
+            "IngestionStackConstructhandlePipelineIngestEventCurrentVersion5A33ADBC5099017c1632f486fa03610591d1fb48",
             "Version"
           ]
         },
@@ -2404,7 +2404,7 @@
         "LisaRAGResourcesLisaRagLambdaExecutionRolePolicy1F0EBC60"
       ]
     },
-    "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E953b7257d7fe1b4e63f9bb2ec33d5b45a9": {
+    "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E956454ced32e9f6d53597d29626d17cc2b": {
       "Type": "AWS::Lambda::Version",
       "Properties": {
         "FunctionName": {
@@ -2423,7 +2423,7 @@
         },
         "FunctionVersion": {
           "Fn::GetAtt": [
-            "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E953b7257d7fe1b4e63f9bb2ec33d5b45a9",
+            "IngestionStackConstructhandlePipelineDeleteEventCurrentVersion74AC0E956454ced32e9f6d53597d29626d17cc2b",
             "Version"
           ]
         },
@@ -2706,7 +2706,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "56f7467bbde8a5efebcf57ae9e460027607099bab9f844669dcf5d800172ee5a.zip"
+          "S3Key": "8b1c21efe0e24332f92ed71e98107d8a27ee1544c62b7b191805e0913fcfdf0f.zip"
         },
         "Handler": "index.handler",
         "Role": {

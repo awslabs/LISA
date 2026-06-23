@@ -1027,7 +1027,7 @@
       "Properties": {
         "Content": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "e2659170a0721541efa761a8d5d04d5e36cbbf691c4b15a9053002b7c825055d.zip"
+          "S3Key": "a72522445441e9b66c2f16956c54d4786af8c61c156b80c48a6e7c32fcc49023.zip"
         },
         "Description": "/opt/awscli/aws"
       }
@@ -5117,7 +5117,7 @@
         ]
       }
     },
-    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandlerde5e6D4B26CD": {
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler963a4472CEED": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
@@ -5156,7 +5156,7 @@
         }
       }
     },
-    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler4748E1202FE8": {
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandlerb4a12BC04EF0": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
@@ -5310,7 +5310,7 @@
         "RetentionInDays": 30
       }
     },
-    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler6c85E0FA8DB9": {
+    "ModelsApiLambdaInvokeAccessRemoteLisaModelsmodelshandler2e1cD0DE567F": {
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
@@ -5671,7 +5671,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "07a90cc3efdfc34da22208dcd9d211f06f5b0e01b21e778edc7c3966b1f61d57.zip"
+          "S3Key": "e16ffb3b34af185b8b30c88fdb19faa13b6c42bb38580485c4e84b384ee48b63.zip"
         },
         "Description": "AWS CDK resource provider framework - onEvent (LisaModels/ModelsApi/ModelApiKeyCleanupProvider)",
         "Environment": {
@@ -5871,7 +5871,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "07a90cc3efdfc34da22208dcd9d211f06f5b0e01b21e778edc7c3966b1f61d57.zip"
+          "S3Key": "e16ffb3b34af185b8b30c88fdb19faa13b6c42bb38580485c4e84b384ee48b63.zip"
         },
         "Description": "AWS CDK resource provider framework - onEvent (LisaModels/ModelsApi/ContextWindowBackfillProvider)",
         "Environment": {
@@ -6157,7 +6157,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "07a90cc3efdfc34da22208dcd9d211f06f5b0e01b21e778edc7c3966b1f61d57.zip"
+          "S3Key": "e16ffb3b34af185b8b30c88fdb19faa13b6c42bb38580485c4e84b384ee48b63.zip"
         },
         "Description": "AWS CDK resource provider framework - onEvent (LisaModels/ModelsApi/LiteLLMSync/LiteLLMModelSyncProvider)",
         "Environment": {
@@ -6198,7 +6198,7 @@
             "Arn"
           ]
         },
-        "timestamp": "2026-06-10T20:25:21.834Z"
+        "timestamp": "2026-06-22T21:05:59.327Z"
       },
       "UpdateReplacePolicy": "Delete",
       "DeletionPolicy": "Delete"
@@ -6382,7 +6382,7 @@
       "Properties": {
         "Code": {
           "S3Bucket": "cdk-hnb659fds-assets-012345678901-us-iso-east-1",
-          "S3Key": "3423a042b818e31c1e34a19d6689ab2e5f9b70fcbe9e71df66f241b20a200bd9.zip"
+          "S3Key": "97e9ebf0b174a5c8f7faa505739022b7f509edddffcab9211dcd08b759944c4f.zip"
         },
         "Environment": {
           "Variables": {

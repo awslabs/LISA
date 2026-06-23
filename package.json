@@ -1,6 +1,6 @@
 {
   "name": "awslabs-lisa",
-  "version": "6.7.0",
+  "version": "6.7.1",
   "description": "A scalable infrastructure-as-code solution for self-hosting and orchestrating LLM inference with RAG capabilities, providing low-latency access to generative AI and embedding models across multiple providers.",
   "keywords": [
     "aws",
@@ -100,9 +100,9 @@
     "update:py": "find . \\( -name 'requirements*.txt' -o -name 'pyproject.toml' \\) -not -path '*/node_modules/*' -not -path '*/.venv/*' -not -path '*/cdk.out/*' -not -path '*/build/*' -not -path '*/lisa-sdk/requirements.txt' -exec sh -c 'echo \"Updating: {}\" && pcu {} -u' \\; && cd lisa-sdk && poetry lock"
   },
   "devDependencies": {
-    "@aws-cdk/aws-lambda-python-alpha": "^2.250.0-alpha.0",
-    "@aws-sdk/client-iam": "^3.1034.0",
-    "@aws-sdk/client-ssm": "^3.1034.0",
+    "@aws-cdk/aws-lambda-python-alpha": "^2.260.0-alpha.0",
+    "@aws-sdk/client-iam": "^3.1074.0",
+    "@aws-sdk/client-ssm": "^3.1074.0",
     "@cdklabs/cdk-enterprise-iac": "^0.1.0",
     "@eslint/js": "10.0.1",
     "@stylistic/eslint-plugin": "^5.10.0",
@@ -110,47 +110,47 @@
     "@types/js-yaml": "^4.0.9",
     "@types/linkify-it": "^5.0.0",
     "@types/lodash": "^4.17.24",
-    "@types/node": "^25.6.0",
+    "@types/node": "^26.0.0",
     "@types/readline-sync": "^1.4.8",
-    "@typescript-eslint/eslint-plugin": "^8.59.0",
-    "@typescript-eslint/parser": "^8.59.0",
-    "aws-cdk": "^2.1126.0",
+    "@typescript-eslint/eslint-plugin": "^8.62.0",
+    "@typescript-eslint/parser": "^8.62.0",
+    "aws-cdk": "^2.1128.1",
     "depcheck": "^1.4.7",
     "esbuild": "^0.28.1",
-    "eslint": "^10.2.1",
+    "eslint": "^10.5.0",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-react-hooks": "^7.1.1",
-    "eslint-plugin-react-refresh": "^0.5.2",
-    "globals": "^17.5.0",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "globals": "^17.7.0",
     "husky": "^9.1.7",
-    "jest": "^30.3.0",
+    "jest": "^30.4.2",
     "lightningcss": "^1.32.0",
-    "lint-staged": "^16.4.0",
-    "npm-check-updates": "^21.0.3",
+    "lint-staged": "^17.0.8",
+    "npm-check-updates": "^22.2.7",
     "patch-package": "^8.0.1",
     "readline-sync": "^1.4.10",
-    "ts-jest": "^29.4.9",
+    "ts-jest": "^29.4.11",
     "ts-node": "^10.9.2",
-    "tsx": "^4.21.0",
+    "tsx": "^4.22.4",
     "typescript": "~6.0.3",
-    "wait-on": "^9.0.5",
+    "wait-on": "^9.0.10",
     "zod2md": "^0.3.3"
   },
   "dependencies": {
-    "@aws-sdk/util-dynamodb": "^3.996.2",
-    "aws-cdk-lib": "^2.258.1",
-    "cdk-ecr-deployment": "^4.2.0",
-    "cdk-nag": "^2.38.1",
+    "@aws-sdk/util-dynamodb": "^3.996.5",
+    "aws-cdk-lib": "^2.260.0",
+    "cdk-ecr-deployment": "^4.2.19",
+    "cdk-nag": "^2.38.2",
     "constructs": "^10.6.0",
     "js-yaml": "^4.2.0",
     "lodash": "^4.18.1",
     "source-map-support": "^0.5.21",
     "util": "^0.12.5",
-    "zod": "^4.3.6"
+    "zod": "^4.4.3"
   },
   "optionalDependencies": {
-    "@rollup/rollup-linux-x64-gnu": "4.60.2",
-    "@tailwindcss/oxide-linux-x64-gnu": "4.2.4"
+    "@rollup/rollup-linux-x64-gnu": "4.62.2",
+    "@tailwindcss/oxide-linux-x64-gnu": "4.3.1"
   },
   "peerDependencies": {
     "@cfworker/json-schema": "^4.1.0",
@@ -164,7 +164,7 @@
     "vitepress": {
       "esbuild": "^0.28.1"
     },
-    "eslint": "^10.2.1",
+    "eslint": "^10.5.0",
     "@eslint/js": "10.0.1",
     "js-yaml": "^4.2.0"
   },

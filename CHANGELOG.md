@@ -1,3 +1,15 @@
+# v6.7.1
+
+## Dependency Updates
+
+- Resolved Dependabot security findings across npm, Python, and GitHub Actions.
+- Upgraded LiteLLM to 1.86.2 to address a CVE (CVE-2026-49468).
+
+## Acknowledgements
+* @estohlmann
+
+**Full Changelog**: https://github.com/awslabs/LISA/compare/v6.7.0..v6.7.1
+
 # v6.7.0
 
 ## Key Features

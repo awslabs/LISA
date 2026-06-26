@@ -79,6 +79,15 @@ export class ConfigurationApi extends Construct {
             deletionProtection: config.removalPolicy !== RemovalPolicy.DESTROY,
         });
 
+        // Publish the config table name to SSM so Lambdas in other stacks (e.g.
+        // the RAG repository handlers) can resolve it by name for feature-gate
+        // reads, without a cross-stack CloudFormation reference.
+        new StringParameter(this, 'ConfigTableNameParameter', {
+            parameterName: `${config.deploymentPrefix}/configTableName`,
+            stringValue: this.configTable.tableName,
+            description: 'Name of the global configuration DynamoDB table',
+        });
+
         const lambdaRole: IRole = createLambdaRole(this, config.deploymentName, 'ConfigurationApi', this.configTable.tableArn, config.roles?.LambdaConfigurationApiExecutionRole);
 
         // Populate the App Config table with default config

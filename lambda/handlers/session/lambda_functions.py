@@ -57,6 +57,7 @@ from lisa.utilities.auth import get_user_context, get_username
 from lisa.utilities.aws_helpers import get_cert_path, get_rest_api_container_endpoint
 from lisa.utilities.common_functions import api_wrapper, get_session_id, retry_config
 from lisa.utilities.encoders import convert_decimal
+from lisa.utilities.feature_gate import require_feature
 from lisa.utilities.input_validation import MAX_LARGE_REQUEST_SIZE
 from lisa.utilities.pagination import decode_cursor, encode_cursor
 from lisa.utilities.session_encryption import (
@@ -464,6 +465,7 @@ def get_session(event: dict, context: dict) -> Session | dict:
 
 
 @api_wrapper
+@require_feature("deleteSessionHistory")
 def delete_session(event: dict, context: dict) -> DeleteResponse:
     """Delete session from DynamoDB."""
     user_id = get_username(event)
@@ -474,6 +476,7 @@ def delete_session(event: dict, context: dict) -> DeleteResponse:
 
 
 @api_wrapper
+@require_feature("deleteSessionHistory")
 def delete_user_sessions(event: dict, context: dict) -> DeleteResponse:
     """Delete sessions by user ID from DyanmoDB."""
     user_id = get_username(event)

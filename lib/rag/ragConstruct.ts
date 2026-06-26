@@ -227,6 +227,19 @@ export class LisaRagConstruct extends Construct {
             ...getAuditLoggingEnv(config),
         };
 
+        // The global config table is owned by the chat stack. When chat is
+        // deployed, resolve its name by SSM (avoiding a cross-stack
+        // CloudFormation reference) so @require_feature("uploadRagDocs") can read
+        // enabledComponents. Without chat there is no config table, so the gate
+        // fails open by design.
+        if (config.deployChat) {
+            const configTableName = StringParameter.valueForStringParameter(
+                scope,
+                `${config.deploymentPrefix}/configTableName`,
+            );
+            baseEnvironment['CONFIG_TABLE_NAME'] = configTableName;
+        }
+
         // Add REST API SSL Cert ARN if it exists to be used to verify SSL calls to REST API
         if (config.restApiConfig?.sslCertIamArn) {
             baseEnvironment['RESTAPI_SSL_CERT_ARN'] = config.restApiConfig?.sslCertIamArn;
@@ -244,6 +257,26 @@ export class LisaRagConstruct extends Construct {
         bucket.grantRead(lambdaRole);
         bucket.grantPut(lambdaRole);
         bucket.grantDelete(lambdaRole);
+
+        // Grant the RAG Lambda role read access to the global config table (in
+        // the chat stack) for feature-gate reads. Imported by name to avoid a
+        // cross-stack CloudFormation reference. Only when chat is deployed.
+        // Scoped to GetItem/Query (the only operations the gate performs) rather
+        // than the full read action set, matching the SessionApi grant.
+        if (config.deployChat) {
+            const configTable = Table.fromTableName(
+                this,
+                'ConfigTable',
+                baseEnvironment['CONFIG_TABLE_NAME'],
+            );
+            lambdaRole.addToPrincipalPolicy(
+                new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: ['dynamodb:GetItem', 'dynamodb:Query'],
+                    resources: [configTable.tableArn],
+                }),
+            );
+        }
 
         // Get common layer based on arn from SSM due to issues with cross stack references
         const commonLambdaLayer = LayerVersion.fromLayerVersionArn(

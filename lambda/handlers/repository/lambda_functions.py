@@ -69,6 +69,7 @@ from lisa.utilities.bedrock_kb_discovery import (
 from lisa.utilities.bedrock_kb_validation import validate_bedrock_kb_exists
 from lisa.utilities.common_functions import api_wrapper, retry_config
 from lisa.utilities.exceptions import ForbiddenException, NotFoundException
+from lisa.utilities.feature_gate import require_feature
 from lisa.utilities.repository_types import RepositoryType
 from lisa.utilities.response_builder import DecimalEncoder
 from lisa.utilities.validation import ValidationError
@@ -1117,6 +1118,7 @@ def handle_deprecated_chunking_strategy(request: IngestDocumentRequest, query_pa
 
 
 @api_wrapper
+@require_feature("uploadRagDocs")
 def ingest_documents(event: dict, context: dict) -> dict:
     """Ingest documents into the RAG repository."""
     body = json.loads(event["body"])
@@ -1250,6 +1252,7 @@ def download_document(event: dict, context: dict) -> str:
 
 
 @api_wrapper
+@require_feature("uploadRagDocs")
 def presigned_url(event: dict, context: dict) -> dict:
     """Generate a pre-signed URL for uploading files to the RAG ingest bucket.
 

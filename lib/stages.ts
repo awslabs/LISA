@@ -341,6 +341,7 @@ export class LisaServeApplicationStage extends Stage {
 
         if (config.deployServe) {
             let mcpWorkbenchStackInstance: McpWorkbenchStack | undefined;
+            let ragStackInstance: LisaRagStack | undefined;
             const serveStack = new LisaServeApplicationStack(this, 'LisaServe', {
                 ...baseStackProps,
                 description: `LISA-serve: ${config.deploymentName}-${config.deploymentStage}`,
@@ -424,6 +425,7 @@ export class LisaServeApplicationStage extends Stage {
                 ragStack.addDependency(modelsApiDeploymentStack);
                 this.stacks.push(ragStack);
                 apiDeploymentStack.addDependency(ragStack);
+                ragStackInstance = ragStack;
             }
 
             if (config.deployChat) {
@@ -440,6 +442,11 @@ export class LisaServeApplicationStage extends Stage {
                 // ChatStack reads: layerVersion/*, bucket/bucket-access-logs from CoreStack
                 chatStack.addDependency(coreStack);
                 chatStack.addDependency(apiBaseStack);
+                // RagStack reads: configTableName SSM param published by ChatStack
+                // (for the uploadRagDocs feature gate). Order chat before rag.
+                if (ragStackInstance) {
+                    ragStackInstance.addDependency(chatStack);
+                }
                 // ChatStack reads: modelTableName from ModelsApiStack
                 chatStack.addDependency(modelsApiDeploymentStack);
                 // ChatStack reads: serve/endpoint from ServeStack

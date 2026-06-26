@@ -353,6 +353,106 @@ def test_delete_session_not_found(dynamodb_table, lambda_context, mock_s3_operat
         mock_common.get_session_id.return_value = original_session_id
 
 
+def test_delete_session_blocked_when_feature_disabled(
+    dynamodb_table, sample_session, lambda_context, mock_s3_operations
+):
+    """When deleteSessionHistory is admin-disabled, delete_session must not delete."""
+    import lisa.utilities.feature_gate as feature_gate
+
+    dynamodb_table.put_item(Item=sample_session)
+    event = {
+        "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
+        "pathParameters": {"sessionId": "test-session"},
+    }
+
+    mock_config = MagicMock()
+    mock_config.query.return_value = {
+        "Items": [{"configuration": {"enabledComponents": {"deleteSessionHistory": False}}}]
+    }
+    feature_gate._feature_cache.clear()
+    try:
+        with patch.object(feature_gate, "_get_config_table", return_value=mock_config):
+            response = delete_session(event, lambda_context)
+        # Gate rejected the request before any deletion (real path returns 403;
+        # this harness maps the ForbiddenException to a non-200 response).
+        assert response["statusCode"] != 200
+        mock_s3_operations.assert_not_called()
+    finally:
+        feature_gate._feature_cache.clear()
+
+
+def test_delete_session_allowed_when_feature_enabled(
+    dynamodb_table, sample_session, lambda_context, mock_s3_operations
+):
+    """When deleteSessionHistory is enabled, delete_session proceeds normally."""
+    import lisa.utilities.feature_gate as feature_gate
+
+    dynamodb_table.put_item(Item=sample_session)
+    event = {
+        "requestContext": {"authorizer": {"claims": {"username": "test-user"}}},
+        "pathParameters": {"sessionId": "test-session"},
+    }
+
+    mock_config = MagicMock()
+    mock_config.query.return_value = {
+        "Items": [{"configuration": {"enabledComponents": {"deleteSessionHistory": True}}}]
+    }
+    feature_gate._feature_cache.clear()
+    try:
+        with patch.object(feature_gate, "_get_config_table", return_value=mock_config):
+            response = delete_session(event, lambda_context)
+        assert response["statusCode"] == 200
+        mock_s3_operations.assert_called_once_with("test-session", "test-user")
+    finally:
+        feature_gate._feature_cache.clear()
+
+
+def test_delete_user_sessions_blocked_when_feature_disabled(
+    dynamodb_table, sample_session, lambda_context, mock_s3_operations
+):
+    """When deleteSessionHistory is admin-disabled, delete_user_sessions must not delete."""
+    import lisa.utilities.feature_gate as feature_gate
+
+    dynamodb_table.put_item(Item=sample_session)
+    event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}}}}
+
+    mock_config = MagicMock()
+    mock_config.query.return_value = {
+        "Items": [{"configuration": {"enabledComponents": {"deleteSessionHistory": False}}}]
+    }
+    feature_gate._feature_cache.clear()
+    try:
+        with patch.object(feature_gate, "_get_config_table", return_value=mock_config):
+            response = delete_user_sessions(event, lambda_context)
+        assert response["statusCode"] != 200
+        mock_s3_operations.assert_not_called()
+    finally:
+        feature_gate._feature_cache.clear()
+
+
+def test_delete_user_sessions_allowed_when_feature_enabled(
+    dynamodb_table, sample_session, lambda_context, mock_s3_operations
+):
+    """When deleteSessionHistory is enabled, delete_user_sessions proceeds normally."""
+    import lisa.utilities.feature_gate as feature_gate
+
+    dynamodb_table.put_item(Item=sample_session)
+    event = {"requestContext": {"authorizer": {"claims": {"username": "test-user"}}}}
+
+    mock_config = MagicMock()
+    mock_config.query.return_value = {
+        "Items": [{"configuration": {"enabledComponents": {"deleteSessionHistory": True}}}]
+    }
+    feature_gate._feature_cache.clear()
+    try:
+        with patch.object(feature_gate, "_get_config_table", return_value=mock_config):
+            response = delete_user_sessions(event, lambda_context)
+        assert response["statusCode"] == 200
+        assert mock_s3_operations.called
+    finally:
+        feature_gate._feature_cache.clear()
+
+
 def test_put_session(dynamodb_table, config_table, sample_session, lambda_context):
     """Test putting a session."""
     # Create request using PutSessionRequest model

@@ -2994,6 +2994,88 @@ def test_presigned_url_success():
         assert result["statusCode"] == 200
 
 
+def _mock_upload_rag_docs_config(enabled):
+    """Build a mock config table whose query returns uploadRagDocs=<enabled>."""
+    table = MagicMock()
+    table.query.return_value = {"Items": [{"configuration": {"enabledComponents": {"uploadRagDocs": enabled}}}]}
+    return table
+
+
+def test_presigned_url_blocked_when_feature_disabled():
+    """When uploadRagDocs is admin-disabled, presigned_url must not vend a URL."""
+    import lisa.utilities.feature_gate as feature_gate
+    from repository.lambda_functions import presigned_url
+
+    feature_gate._feature_cache.clear()
+    try:
+        with patch("repository.lambda_functions.s3") as mock_s3, patch(
+            "repository.lambda_functions.get_username", return_value="user1"
+        ), patch.object(feature_gate, "_get_config_table", return_value=_mock_upload_rag_docs_config(False)):
+            mock_s3.generate_presigned_post.return_value = {"url": "https://test.com", "fields": {}}
+            event = {
+                "body": "test-key",
+                "requestContext": {"authorizer": {"username": "user1", "groups": ["users"]}},
+            }
+            context = SimpleNamespace(function_name="test", aws_request_id="123")
+
+            result = presigned_url(event, context)
+            # Gate rejects before generating a presigned URL.
+            assert result["statusCode"] != 200
+            mock_s3.generate_presigned_post.assert_not_called()
+    finally:
+        feature_gate._feature_cache.clear()
+
+
+def test_presigned_url_allowed_when_feature_enabled():
+    """When uploadRagDocs is enabled, presigned_url proceeds normally."""
+    import lisa.utilities.feature_gate as feature_gate
+    from repository.lambda_functions import presigned_url
+
+    feature_gate._feature_cache.clear()
+    try:
+        with patch("repository.lambda_functions.s3") as mock_s3, patch(
+            "repository.lambda_functions.get_username", return_value="user1"
+        ), patch.object(feature_gate, "_get_config_table", return_value=_mock_upload_rag_docs_config(True)):
+            mock_s3.generate_presigned_post.return_value = {"url": "https://test.com", "fields": {}}
+            event = {
+                "body": "test-key",
+                "requestContext": {"authorizer": {"username": "user1", "groups": ["users"]}},
+            }
+            context = SimpleNamespace(function_name="test", aws_request_id="123")
+
+            result = presigned_url(event, context)
+            assert result["statusCode"] == 200
+    finally:
+        feature_gate._feature_cache.clear()
+
+
+def test_ingest_documents_blocked_when_feature_disabled():
+    """When uploadRagDocs is admin-disabled, ingest_documents must not ingest."""
+    import lisa.utilities.feature_gate as feature_gate
+    from repository.lambda_functions import ingest_documents
+
+    feature_gate._feature_cache.clear()
+    try:
+        with patch("repository.lambda_functions.vs_repo") as mock_vs_repo, patch.object(
+            feature_gate, "_get_config_table", return_value=_mock_upload_rag_docs_config(False)
+        ):
+            event = {
+                "requestContext": {
+                    "authorizer": {"claims": {"username": "test-user"}, "groups": json.dumps(["test-group"])}
+                },
+                "pathParameters": {"repositoryId": "test-repo"},
+                "queryStringParameters": {},
+                "body": json.dumps({"collectionId": "c1", "keys": ["test-key"]}),
+            }
+
+            result = ingest_documents(event, SimpleNamespace())
+            # Gate rejects before any repository lookup/ingestion work.
+            assert result["statusCode"] != 200
+            mock_vs_repo.find_repository_by_id.assert_not_called()
+    finally:
+        feature_gate._feature_cache.clear()
+
+
 def test_get_document_success():
     """Test get_document"""
     from repository.lambda_functions import get_document

@@ -140,7 +140,7 @@
     "@aws-sdk/util-dynamodb": "^3.996.5",
     "aws-cdk-lib": "^2.260.0",
     "cdk-ecr-deployment": "^4.2.19",
-    "cdk-nag": "^2.38.2",
+    "cdk-nag": "^3.0.1",
     "constructs": "^10.6.0",
     "js-yaml": "^4.2.0",
     "lodash": "^4.18.1",

@@ -8,51 +8,51 @@
 
 # LiteLLM - needed to run rest-api tests in the shared venv.
 # >=1.86.2 fixes GHSA-4xpc-pv4p-pm3w (host-header auth bypass). Requires Python <3.14.
-litellm[proxy]==1.86.2; python_version < "3.14"
+litellm[proxy]==1.92.0; python_version < "3.14"
 
 # Test frameworks
 pytest==9.1.1
 pytest-cov==7.1.0
 pytest-xdist==3.8.0
 pytest-asyncio==1.4.0
-coverage>=7.14.2
-responses>=0.26.1
+coverage>=7.15.1
+responses>=0.26.2
 moto==5.2.2
 
 # Test data / evaluation
-pyarrow>=24.0.0
+pyarrow>=25.0.0
 datasets==5.0.0
 
 # Langchain - needed by tests that import langchain directly
-langchain==1.3.10
-langchain-openai==1.3.2
+langchain==1.3.13
+langchain-openai==1.3.5
 
 # Lambda runtime deps - needed because tests import lambda code which
 # has top-level imports of these packages
 mangum==0.21.0
 python-docx==1.2.0
 opensearch-py==3.2.0
-pypdf==6.14.0
+pypdf==6.14.2
 lxml==6.1.1
 psycopg2-binary==2.9.12
 requests-aws4auth==1.3.2
 langchain-community==0.4.2
-langchain-core==1.4.8
+langchain-core==1.4.9
 langchain-text-splitters==1.1.2
 cachetools==7.1.4
-tiktoken==0.12.0
-fastapi==0.124.4
+tiktoken==0.13.0
+fastapi==0.139.0
 pydantic==2.13.4
-# litellm[proxy] 1.86.2 pins cryptography==46.0.7 for the proxy extra.
-cryptography==46.0.7; python_version < "3.14"
-starlette>=0.40.0
+# litellm[proxy] 1.86.2 pins cryptography==49.0.0 for the proxy extra.
+cryptography==49.0.0; python_version < "3.14"
+starlette>=1.3.1
 loguru==0.7.3
 fastapi_utils==0.8.0
 
 # Linting / formatting / type checking
 black==26.5.1
 flake8==7.3.0
-mypy==2.1.0
+mypy==2.3.0
 pre-commit==4.6.0
 
 # Build tools

@@ -5210,12 +5210,12 @@ def test_document_denial_responses_are_indistinguishable():
 
 @mock_aws()
 def test_cross_repository_read_denied_end_to_end_with_real_document_store():
-    """SOC-requested regression test: user B's document is not readable via user A's repository.
+    """One user's document is not readable through a repository belonging to another user.
 
     Unlike the mocked tests above, this runs the real RagDocumentRepository against DynamoDB (moto)
-    using the deployed table schema, including the document_index GSI keyed on document_id alone --
-    the exact lookup the researcher's proof of concept exercises. The handler must deny the request
-    even though the GSI happily resolves the document.
+    using the deployed table schema, including the document_index GSI keyed on document_id alone.
+    That GSI resolves a document from its id no matter which repository holds it, so the handler is
+    the only thing standing between the caller and another repository's documents.
     """
     from lisa.domain.domain_objects import FixedChunkingStrategy, RagDocument
     from lisa.rag.rag_document_repo import RagDocumentRepository
@@ -5260,9 +5260,9 @@ def test_cross_repository_read_denied_end_to_end_with_real_document_store():
         repository_id="repo-bravo",
         collection_id="coll-b",
         document_name="bravo-quarterly-secret.pdf",
-        source="s3://lisa-rag-bravo-bucket/userB/quarterly-secret.pdf",
+        source="s3://lisa-rag-bravo-bucket/user-bravo/quarterly-secret.pdf",
         subdocs=[],
-        username="userB",
+        username="user-bravo",
         chunk_strategy=FixedChunkingStrategy(size="1000", overlap="200"),
     )
     real_repo.save(victim_doc)
@@ -5281,13 +5281,13 @@ def test_cross_repository_read_denied_end_to_end_with_real_document_store():
             )
             return get_document(event, SimpleNamespace(function_name="test", aws_request_id="1"))
 
-    # userA is a member of repo-alpha only; naming it in the path must not reach userB's document.
-    result = attack("userA", "repo-alpha")
+    # user-alpha is a member of repo-alpha only; naming it in the path must not reach user-bravo's document.
+    result = attack("user-alpha", "repo-alpha")
     assert result["statusCode"] == 404
-    for leaked in ("userB", "repo-bravo", "quarterly-secret"):
+    for leaked in ("user-bravo", "repo-bravo", "quarterly-secret"):
         assert leaked not in result["body"]
 
     # Positive control: the owner reads the same document through its own repository.
-    result = attack("userB", "repo-bravo")
+    result = attack("user-bravo", "repo-bravo")
     assert result["statusCode"] == 200
     assert "quarterly-secret" in result["body"]

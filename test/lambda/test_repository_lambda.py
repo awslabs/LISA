@@ -1665,6 +1665,7 @@ def test_real_download_document_function():
         mock_doc = MagicMock()
         mock_doc.source = "s3://test-bucket/test-key"
         mock_doc.username = "test-user"
+        mock_doc.repository_id = "test-repo"
         mock_doc_repo.find_by_id.return_value = mock_doc
 
         mock_s3.generate_presigned_url.return_value = "https://test-url"
@@ -3086,6 +3087,8 @@ def test_get_document_success():
         mock_get_repo.return_value = {"repositoryId": "repo1", "allowedGroups": ["users"]}
         mock_doc = MagicMock()
         mock_doc.model_dump.return_value = {"documentId": "doc1"}
+        mock_doc.repository_id = "repo1"
+        mock_doc.username = "test-user"
         mock_repo.find_by_id.return_value = mock_doc
 
         event = {
@@ -3108,6 +3111,8 @@ def test_download_document_success():
         mock_get_repo.return_value = {"repositoryId": "repo1", "allowedGroups": ["users"]}
         mock_doc = MagicMock()
         mock_doc.source = "s3://bucket/key"
+        mock_doc.repository_id = "repo1"
+        mock_doc.username = "test-user"
         mock_repo.find_by_id.return_value = mock_doc
         mock_s3.generate_presigned_url.return_value = "https://test.com"
 
@@ -4886,3 +4891,403 @@ def test_vector_mode_ignores_weight_params(mock_auth):
         assert result["statusCode"] == 200
         service.retrieve_documents.assert_called_once()
         service.hybrid_retrieve.assert_not_called()
+
+
+def _document_request_event(repository_id="repo1", document_id="doc1", username="test-user", groups=None):
+    """Build an API Gateway event for the document read/download handlers.
+
+    `username` only keeps the event shaped like a real one. The autouse setup_auth_patches fixture
+    patches get_username to return "test-user" regardless, so a test that needs a different caller
+    must patch repository.lambda_functions.get_username rather than change this argument.
+    """
+    return {
+        "pathParameters": {"repositoryId": repository_id, "documentId": document_id},
+        "requestContext": {
+            "authorizer": {"username": username, "groups": json.dumps(groups if groups is not None else ["users"])}
+        },
+    }
+
+
+def _rag_document(repository_id="repo1", username="owner", document_id="doc1"):
+    """Build a RagDocument for the repository-scoping tests."""
+    from lisa.domain.domain_objects import FixedChunkingStrategy, RagDocument
+
+    return RagDocument(
+        document_id=document_id,
+        repository_id=repository_id,
+        collection_id="coll1",
+        document_name="test",
+        source="s3://bucket/key",
+        subdocs=[],
+        username=username,
+        chunk_strategy=FixedChunkingStrategy(size="1000", overlap="200"),
+    )
+
+
+def test_get_document_rejects_document_from_another_repository():
+    """A document belonging to another repository must not be readable through an authorized one.
+
+    Documents resolve through the document_index GSI on document_id alone, so authorization against
+    the repository in the path says nothing about where the document actually lives.
+    """
+    from repository.lambda_functions import get_document
+
+    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
+        "repository.lambda_functions.doc_repo"
+    ) as mock_repo:
+        mock_get_repo.return_value = {"repositoryId": "repo1", "allowedGroups": ["users"]}
+        mock_repo.find_by_id.return_value = _rag_document(repository_id="repo2")
+
+        result = get_document(_document_request_event(), SimpleNamespace(function_name="test", aws_request_id="1"))
+
+        assert result["statusCode"] == 404
+        assert "repo2" not in result["body"]
+
+
+def test_download_document_rejects_document_from_another_repository():
+    """No presigned URL may be issued for a document in a repository the caller did not authorize."""
+    from repository.lambda_functions import download_document
+
+    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
+        "repository.lambda_functions.doc_repo"
+    ) as mock_repo, patch("repository.lambda_functions.s3") as mock_s3:
+        mock_get_repo.return_value = {"repositoryId": "repo1", "allowedGroups": ["users"]}
+        mock_repo.find_by_id.return_value = _rag_document(repository_id="repo2")
+
+        result = download_document(_document_request_event(), SimpleNamespace(function_name="test", aws_request_id="1"))
+
+        assert result["statusCode"] == 404
+        mock_s3.generate_presigned_url.assert_not_called()
+
+
+def test_get_document_returns_404_for_unknown_document():
+    """An unknown document id returns 404 rather than failing on a None lookup."""
+    from repository.lambda_functions import get_document
+
+    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
+        "repository.lambda_functions.doc_repo"
+    ) as mock_repo:
+        mock_get_repo.return_value = {"repositoryId": "repo1", "allowedGroups": ["users"]}
+        mock_repo.find_by_id.return_value = None
+
+        result = get_document(_document_request_event(), SimpleNamespace(function_name="test", aws_request_id="1"))
+
+        assert result["statusCode"] == 404
+
+
+def test_download_document_returns_404_for_unknown_document():
+    """An unknown document id returns 404 and issues no presigned URL."""
+    from repository.lambda_functions import download_document
+
+    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
+        "repository.lambda_functions.doc_repo"
+    ) as mock_repo, patch("repository.lambda_functions.s3") as mock_s3:
+        mock_get_repo.return_value = {"repositoryId": "repo1", "allowedGroups": ["users"]}
+        mock_repo.find_by_id.return_value = None
+
+        result = download_document(_document_request_event(), SimpleNamespace(function_name="test", aws_request_id="1"))
+
+        assert result["statusCode"] == 404
+        mock_s3.generate_presigned_url.assert_not_called()
+
+
+def test_get_document_rejects_non_owner_in_same_repository():
+    """A document is not readable by another user, even inside a repository both can access.
+
+    This matches the rule the delete path already enforces.
+    """
+    from repository.lambda_functions import get_document
+
+    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
+        "repository.lambda_functions.doc_repo"
+    ) as mock_repo, patch("repository.lambda_functions.get_username", return_value="test-user"), patch(
+        "repository.lambda_functions.is_admin", return_value=False
+    ), patch(
+        "repository.lambda_functions.is_rag_admin", return_value=False
+    ):
+        mock_get_repo.return_value = {"repositoryId": "repo1", "allowedGroups": ["users"]}
+        mock_repo.find_by_id.return_value = _rag_document(repository_id="repo1", username="someone-else")
+
+        result = get_document(_document_request_event(), SimpleNamespace(function_name="test", aws_request_id="1"))
+
+        assert result["statusCode"] == 404
+
+
+def test_download_document_rejects_non_owner_in_same_repository():
+    """No presigned URL is issued for another user's document, even within the same repository."""
+    from repository.lambda_functions import download_document
+
+    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
+        "repository.lambda_functions.doc_repo"
+    ) as mock_repo, patch("repository.lambda_functions.s3") as mock_s3, patch(
+        "repository.lambda_functions.get_username", return_value="test-user"
+    ), patch(
+        "repository.lambda_functions.is_admin", return_value=False
+    ), patch(
+        "repository.lambda_functions.is_rag_admin", return_value=False
+    ):
+        mock_get_repo.return_value = {"repositoryId": "repo1", "allowedGroups": ["users"]}
+        mock_repo.find_by_id.return_value = _rag_document(repository_id="repo1", username="someone-else")
+
+        result = download_document(_document_request_event(), SimpleNamespace(function_name="test", aws_request_id="1"))
+
+        assert result["statusCode"] == 404
+        mock_s3.generate_presigned_url.assert_not_called()
+
+
+def test_get_document_allows_owner():
+    """The owner can still read their own document."""
+    from repository.lambda_functions import get_document
+
+    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
+        "repository.lambda_functions.doc_repo"
+    ) as mock_repo, patch("repository.lambda_functions.get_username", return_value="test-user"), patch(
+        "repository.lambda_functions.is_admin", return_value=False
+    ), patch(
+        "repository.lambda_functions.is_rag_admin", return_value=False
+    ):
+        mock_get_repo.return_value = {"repositoryId": "repo1", "allowedGroups": ["users"]}
+        mock_repo.find_by_id.return_value = _rag_document(repository_id="repo1", username="test-user")
+
+        result = get_document(_document_request_event(), SimpleNamespace(function_name="test", aws_request_id="1"))
+
+        assert result["statusCode"] == 200
+
+
+def test_get_document_allows_admin_to_read_another_users_document():
+    """Admins retain access to any document, matching the delete path's exemption."""
+    from repository.lambda_functions import get_document
+
+    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
+        "repository.lambda_functions.doc_repo"
+    ) as mock_repo, patch("repository.lambda_functions.get_username", return_value="an-admin"), patch(
+        "repository.lambda_functions.is_admin", return_value=True
+    ):
+        mock_get_repo.return_value = {"repositoryId": "repo1", "allowedGroups": ["users"]}
+        mock_repo.find_by_id.return_value = _rag_document(repository_id="repo1", username="someone-else")
+
+        result = get_document(_document_request_event(), SimpleNamespace(function_name="test", aws_request_id="1"))
+
+        assert result["statusCode"] == 200
+
+
+def test_download_document_allows_rag_admin_to_read_another_users_document():
+    """RAG admins retain access, matching the delete path's exemption."""
+    from repository.lambda_functions import download_document
+
+    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
+        "repository.lambda_functions.doc_repo"
+    ) as mock_repo, patch("repository.lambda_functions.s3") as mock_s3, patch(
+        "repository.lambda_functions.get_username", return_value="a-rag-admin"
+    ), patch(
+        "repository.lambda_functions.is_admin", return_value=False
+    ), patch(
+        "repository.lambda_functions.is_rag_admin", return_value=True
+    ):
+        mock_get_repo.return_value = {"repositoryId": "repo1", "allowedGroups": ["users"]}
+        mock_repo.find_by_id.return_value = _rag_document(repository_id="repo1", username="someone-else")
+        mock_s3.generate_presigned_url.return_value = "https://example.com/presigned"
+
+        result = download_document(_document_request_event(), SimpleNamespace(function_name="test", aws_request_id="1"))
+
+        assert result["statusCode"] == 200
+        mock_s3.generate_presigned_url.assert_called_once()
+
+
+def test_download_document_allows_owner():
+    """The owner can download their own document and receives a presigned URL."""
+    from repository.lambda_functions import download_document
+
+    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
+        "repository.lambda_functions.doc_repo"
+    ) as mock_repo, patch("repository.lambda_functions.s3") as mock_s3, patch(
+        "repository.lambda_functions.get_username", return_value="test-user"
+    ), patch(
+        "repository.lambda_functions.is_admin", return_value=False
+    ), patch(
+        "repository.lambda_functions.is_rag_admin", return_value=False
+    ):
+        mock_get_repo.return_value = {"repositoryId": "repo1", "allowedGroups": ["users"]}
+        mock_repo.find_by_id.return_value = _rag_document(repository_id="repo1", username="test-user")
+        mock_s3.generate_presigned_url.return_value = "https://example.com/presigned"
+
+        result = download_document(_document_request_event(), SimpleNamespace(function_name="test", aws_request_id="1"))
+
+        assert result["statusCode"] == 200
+        mock_s3.generate_presigned_url.assert_called_once()
+
+
+def test_get_document_rejects_cross_repository_even_for_admin():
+    """Repository scoping is object correctness, not an ACL: it applies to admins too.
+
+    An admin can reach any document through its own repository's path, so a mismatched path is
+    always a wrong request, and answering it would keep the ID-only lookup exploitable as an oracle.
+    """
+    from repository.lambda_functions import get_document
+
+    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
+        "repository.lambda_functions.doc_repo"
+    ) as mock_repo, patch("repository.lambda_functions.get_username", return_value="an-admin"), patch(
+        "repository.lambda_functions.is_admin", return_value=True
+    ):
+        mock_get_repo.return_value = {"repositoryId": "repo1", "allowedGroups": ["users"]}
+        mock_repo.find_by_id.return_value = _rag_document(repository_id="repo2", username="someone-else")
+
+        result = get_document(_document_request_event(), SimpleNamespace(function_name="test", aws_request_id="1"))
+
+        assert result["statusCode"] == 404
+
+
+def test_get_document_rejects_cross_repository_even_for_owner():
+    """Owning a document does not allow reading it through a repository it does not belong to."""
+    from repository.lambda_functions import get_document
+
+    with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
+        "repository.lambda_functions.doc_repo"
+    ) as mock_repo, patch("repository.lambda_functions.get_username", return_value="test-user"), patch(
+        "repository.lambda_functions.is_admin", return_value=False
+    ), patch(
+        "repository.lambda_functions.is_rag_admin", return_value=False
+    ):
+        mock_get_repo.return_value = {"repositoryId": "repo1", "allowedGroups": ["users"]}
+        mock_repo.find_by_id.return_value = _rag_document(repository_id="repo2", username="test-user")
+
+        result = get_document(_document_request_event(), SimpleNamespace(function_name="test", aws_request_id="1"))
+
+        assert result["statusCode"] == 404
+
+
+def test_download_document_requires_document_id():
+    """A download request with no documentId is rejected as invalid, before any lookup."""
+    from repository.lambda_functions import download_document
+
+    with patch("repository.lambda_functions.get_repository"), patch(
+        "repository.lambda_functions.doc_repo"
+    ) as mock_repo, patch("repository.lambda_functions.s3") as mock_s3:
+        event = {
+            "pathParameters": {"repositoryId": "repo1"},
+            "requestContext": {"authorizer": {"username": "test-user", "groups": json.dumps(["users"])}},
+        }
+
+        result = download_document(event, SimpleNamespace(function_name="test", aws_request_id="1"))
+
+        assert result["statusCode"] == 400
+        mock_repo.find_by_id.assert_not_called()
+        mock_s3.generate_presigned_url.assert_not_called()
+
+
+def test_document_denial_responses_are_indistinguishable():
+    """Unknown ID, wrong repository, and another owner must produce identical responses.
+
+    If the three denial reasons differed, the response would become an oracle for which document
+    IDs exist and where they live, re-enabling the enumeration the finding describes.
+    """
+    from repository.lambda_functions import get_document
+
+    denial_bodies = []
+    for scenario_doc in (
+        None,
+        _rag_document(repository_id="repo2", username="someone-else"),
+        _rag_document(repository_id="repo1", username="someone-else"),
+    ):
+        with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
+            "repository.lambda_functions.doc_repo"
+        ) as mock_repo, patch("repository.lambda_functions.get_username", return_value="test-user"), patch(
+            "repository.lambda_functions.is_admin", return_value=False
+        ), patch(
+            "repository.lambda_functions.is_rag_admin", return_value=False
+        ):
+            mock_get_repo.return_value = {"repositoryId": "repo1", "allowedGroups": ["users"]}
+            mock_repo.find_by_id.return_value = scenario_doc
+
+            result = get_document(_document_request_event(), SimpleNamespace(function_name="test", aws_request_id="1"))
+
+            assert result["statusCode"] == 404
+            denial_bodies.append(result["body"])
+
+    assert len(set(denial_bodies)) == 1, "denial responses must not reveal why access was refused"
+
+
+@mock_aws()
+def test_cross_repository_read_denied_end_to_end_with_real_document_store():
+    """One user's document is not readable through a repository belonging to another user.
+
+    Unlike the mocked tests above, this runs the real RagDocumentRepository against DynamoDB (moto)
+    using the deployed table schema, including the document_index GSI keyed on document_id alone.
+    That GSI resolves a document from its id no matter which repository holds it, so the handler is
+    the only thing standing between the caller and another repository's documents.
+    """
+    from lisa.domain.domain_objects import FixedChunkingStrategy, RagDocument
+    from lisa.rag.rag_document_repo import RagDocumentRepository
+    from repository.lambda_functions import get_document
+
+    dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
+    dynamodb.create_table(
+        TableName=os.environ["RAG_DOCUMENT_TABLE"],
+        BillingMode="PAY_PER_REQUEST",
+        KeySchema=[
+            {"AttributeName": "pk", "KeyType": "HASH"},
+            {"AttributeName": "document_id", "KeyType": "RANGE"},
+        ],
+        AttributeDefinitions=[
+            {"AttributeName": "pk", "AttributeType": "S"},
+            {"AttributeName": "document_id", "AttributeType": "S"},
+        ],
+        GlobalSecondaryIndexes=[
+            {
+                "IndexName": "document_index",
+                "KeySchema": [{"AttributeName": "document_id", "KeyType": "HASH"}],
+                "Projection": {"ProjectionType": "ALL"},
+            }
+        ],
+    )
+    dynamodb.create_table(
+        TableName=os.environ["RAG_SUB_DOCUMENT_TABLE"],
+        BillingMode="PAY_PER_REQUEST",
+        KeySchema=[
+            {"AttributeName": "document_id", "KeyType": "HASH"},
+            {"AttributeName": "sk", "KeyType": "RANGE"},
+        ],
+        AttributeDefinitions=[
+            {"AttributeName": "document_id", "AttributeType": "S"},
+            {"AttributeName": "sk", "AttributeType": "S"},
+        ],
+    )
+
+    real_repo = RagDocumentRepository(os.environ["RAG_DOCUMENT_TABLE"], os.environ["RAG_SUB_DOCUMENT_TABLE"])
+    victim_doc = RagDocument(
+        document_id="doc-victim-b",
+        repository_id="repo-bravo",
+        collection_id="coll-b",
+        document_name="bravo-quarterly-secret.pdf",
+        source="s3://lisa-rag-bravo-bucket/user-bravo/quarterly-secret.pdf",
+        subdocs=[],
+        username="user-bravo",
+        chunk_strategy=FixedChunkingStrategy(size="1000", overlap="200"),
+    )
+    real_repo.save(victim_doc)
+
+    def attack(caller, repository_in_path):
+        with patch("repository.lambda_functions.get_repository") as mock_get_repo, patch(
+            "repository.lambda_functions.doc_repo", real_repo
+        ), patch("repository.lambda_functions.get_username", return_value=caller), patch(
+            "repository.lambda_functions.is_admin", return_value=False
+        ), patch(
+            "repository.lambda_functions.is_rag_admin", return_value=False
+        ):
+            mock_get_repo.return_value = {"repositoryId": repository_in_path, "allowedGroups": []}
+            event = _document_request_event(
+                repository_id=repository_in_path, document_id="doc-victim-b", username=caller
+            )
+            return get_document(event, SimpleNamespace(function_name="test", aws_request_id="1"))
+
+    # user-alpha is a member of repo-alpha only; naming it in the path must not reach user-bravo's document.
+    result = attack("user-alpha", "repo-alpha")
+    assert result["statusCode"] == 404
+    for leaked in ("user-bravo", "repo-bravo", "quarterly-secret"):
+        assert leaked not in result["body"]
+
+    # Positive control: the owner reads the same document through its own repository.
+    result = attack("user-bravo", "repo-bravo")
+    assert result["statusCode"] == 200
+    assert "quarterly-secret" in result["body"]

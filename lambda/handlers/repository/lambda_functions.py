@@ -978,13 +978,52 @@ def list_user_collections(event: dict, context: dict) -> dict[str, Any]:
     return response
 
 
+def _caller_owns_document(event: dict[str, Any], doc: RagDocument) -> bool:
+    """Whether the caller may act on a document. Admins and RAG admins may act on any document."""
+    return bool(is_admin(event) or is_rag_admin(event) or doc.username == get_username(event))
+
+
 def _ensure_document_ownership(event: dict[str, Any], docs: list[RagDocument]) -> None:
     """Verify ownership of documents. Admins and RAG admins can delete any document."""
     username = get_username(event)
-    if not is_admin(event) and not is_rag_admin(event):
-        for doc in docs:
-            if not (doc.username == username):
-                raise ValueError(f"Document {doc.document_id} is not owned by {username}")
+    for doc in docs:
+        if not _caller_owns_document(event, doc):
+            raise ValueError(f"Document {doc.document_id} is not owned by {username}")
+
+
+def _get_authorized_document(event: dict[str, Any], repository_id: str, document_id: str) -> RagDocument:
+    """Resolve a document for a read request and confirm the caller is authorized for it.
+
+    Documents resolve through the document_index GSI, which is keyed on document_id alone, so a
+    caller's authorization against the repository named in the request path says nothing about which
+    repository the document belongs to or who owns it. Both are checked here:
+
+    - the document must belong to the repository named in the path, so access to any one repository
+      does not reach documents held in another
+    - the caller must own the document, or be an admin or RAG admin, which is the same rule the
+      delete path enforces
+
+    Every denial raises NotFoundException with an identical message, never ForbiddenException, so a
+    response cannot be used to probe which document IDs exist or where they live.
+    """
+    not_found = NotFoundException(f"Document {document_id} not found in repository {repository_id}")
+
+    doc = doc_repo.find_by_id(document_id=document_id)
+    if doc is None:
+        raise not_found
+
+    if doc.repository_id != repository_id:
+        logger.warning(
+            f"Document {document_id} was requested through repository {repository_id}, "
+            f"but it belongs to a different repository"
+        )
+        raise not_found
+
+    if not _caller_owns_document(event, doc):
+        logger.warning(f"User {get_username(event)} is not authorized for document {document_id}")
+        raise not_found
+
+    return doc
 
 
 @api_wrapper
@@ -1209,7 +1248,7 @@ def get_document(event: dict, context: dict) -> dict[str, Any]:
     if not isinstance(repository_id, str):
         raise ValidationError("repositoryId must be a string")
     _ = get_repository(event, repository_id=repository_id)
-    doc = doc_repo.find_by_id(document_id=document_id)
+    doc = _get_authorized_document(event, repository_id=repository_id, document_id=document_id)
 
     result: dict[str, Any] = doc.model_dump()
     return result
@@ -1236,8 +1275,10 @@ def download_document(event: dict, context: dict) -> str:
 
     if not repository_id:
         raise ValidationError("repositoryId is required")
+    if not document_id:
+        raise ValidationError("documentId is required")
     _ = get_repository(event, repository_id=repository_id)
-    doc = doc_repo.find_by_id(document_id=document_id)
+    doc = _get_authorized_document(event, repository_id=repository_id, document_id=document_id)
 
     source = doc.source
     bucket, key = source.replace("s3://", "").split("/", 1)
